@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import {
   ComposerAddAttachment,
   ComposerAttachments,
@@ -24,9 +25,9 @@ import {
 } from "@/components/assistant-ui/elements/tool-group.aui";
 import { TooltipIconButton } from "@/components/assistant-ui/elements/tooltip-icon-button";
 import { chatBoxInputClass, chatBoxShellClass } from "@/components/assistant-ui/chat-box";
+import { shimmer } from "@/components/assistant-ui/elements/surfaces";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import {
   ActionBarMorePrimitive,
   ActionBarPrimitive,
@@ -75,6 +76,646 @@ import {
   type PropsWithChildren,
   type ReactNode,
 } from "react";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "flexDirection": "column",
+    "rowGap": "24px",
+    "animationDelay": "150ms",
+    "animationDuration": "200ms",
+  },
+  s1: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+  s2: {
+    "marginLeft": "auto",
+    "height": "36px",
+  },
+  s3: {
+    "display": "flex",
+    "flexDirection": "column",
+    "rowGap": "8px",
+  },
+  s4: {
+    "height": "16px",
+  },
+  s5: {
+    "height": "16px",
+  },
+  s6: {
+    "height": "16px",
+  },
+  s7: {
+    "marginLeft": "auto",
+    "height": "36px",
+  },
+  s8: {
+    "display": "flex",
+    "flexDirection": "column",
+    "rowGap": "8px",
+  },
+  s9: {
+    "height": "16px",
+  },
+  s10: {
+    "height": "16px",
+  },
+  s11: {
+    "backgroundColor": "var(--background)",
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "0px",
+    "flexDirection": "column",
+  },
+  s12: {
+    "position": "relative",
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "overflowX": "auto",
+    "scrollBehavior": "smooth",
+  },
+  s13: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "display": "flex",
+    "width": "100%",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "16px",
+  },
+  s14: {
+    "justifyContent": "center",
+  },
+  s15: {
+    "display": {
+      "default": "flex",
+      ":empty": "none",
+    },
+    "flexDirection": "column",
+    "rowGap": "24px",
+  },
+  s16: {
+    "marginBottom": "24px",
+  },
+  s17: {
+    "marginBottom": "56px",
+  },
+  s18: {
+    "marginBottom": "56px",
+    "display": {
+      ":empty": "none",
+    },
+  },
+  s19: {
+    "backgroundColor": "var(--background)",
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "16px",
+    "overflow": "visible",
+    "paddingBottom": {
+      "default": "16px",
+      "@media (min-width: 768px)": {
+        "default": "24px",
+      },
+    },
+  },
+  s20: {
+    "position": "sticky",
+    "bottom": "0px",
+    "marginTop": "auto",
+  },
+  s21: {
+    "margin": "0px",
+  },
+  s22: {
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "marginLeft": "8px",
+    "marginRight": "8px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "containIntrinsicSize": "auto 48px",
+    "contentVisibility": "auto",
+  },
+  s23: {
+    "borderRadius": "var(--radius-xl)",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s24: {
+    "borderTopLeftRadius": "var(--radius-xl)",
+    "borderTopRightRadius": "var(--radius-xl)",
+    "paddingTop": "8px",
+  },
+  s25: {
+    "marginTop": "calc(24px * -1)",
+  },
+  s26: {
+    "marginTop": "calc(24px * -1)",
+    "borderBottomLeftRadius": "var(--radius-xl)",
+    "borderBottomRightRadius": "var(--radius-xl)",
+    "paddingBottom": "8px",
+  },
+  s27: {
+    "color": "var(--muted-foreground)",
+    "marginBottom": "6px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s28: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s29: {
+    "color": "var(--foreground)",
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "fontSize": "14px",
+    "lineHeight": "1.625",
+  },
+  s30: {
+    "color": "var(--muted-foreground)",
+    "marginTop": "4px",
+    "flexShrink": 0,
+  },
+  s31: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s32: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s33: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+  s34: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowWrap": "break-word",
+  },
+  s35: {
+    "color": "var(--muted-foreground)",
+    "marginInlineStart": "4px",
+    "fontFamily": "var(--font-sans)",
+  },
+  s36: {
+    "color": "var(--muted-foreground)",
+    "display": "flex",
+    "flexShrink": 0,
+    "gap": "4px",
+  },
+  s37: {
+    "transitionDuration": "200ms",
+    "transitionTimingFunction": "cubic-bezier(0, 0, 0.2, 1)",
+  },
+  s38: {
+    "transitionDuration": "150ms",
+  },
+  s39: {
+    "display": "contents",
+  },
+  s40: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+  s41: {
+    "marginBottom": "24px",
+    "alignSelf": "center",
+    "borderRadius": "999px",
+  },
+  s42: {
+    "marginBottom": "24px",
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "textAlign": "center",
+  },
+  s43: {
+    "fontSize": "24px",
+    "lineHeight": "32px",
+    "fontWeight": 500,
+    "letterSpacing": "-0.025em",
+    "transitionDuration": "200ms",
+  },
+  s44: {
+    "display": "flex",
+    "width": "100%",
+    "flexDirection": "column",
+    "gap": "8px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+  },
+  s45: {
+    "width": "100%",
+    "overflowX": "auto",
+  },
+  s46: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "display": "flex",
+    "width": "max-content",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s47: {
+    "backgroundColor": "var(--muted)",
+  },
+  s48: {
+    "width": "100%",
+    "overflowX": "auto",
+    "transitionDuration": "200ms",
+  },
+  s49: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "display": "flex",
+    "width": "max-content",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s50: {
+    "position": "relative",
+    "display": "flex",
+    "width": "100%",
+    "flexDirection": "column",
+  },
+  s51: {
+    "position": "relative",
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "space-between",
+  },
+  s52: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s53: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s54: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s55: {
+    "width": "14px",
+    "height": "14px",
+    "fill": "currentColor",
+  },
+  s56: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s57: {
+    "width": "28px",
+    "height": "28px",
+    "borderRadius": "999px",
+  },
+  s58: {
+    "width": "14px",
+    "height": "14px",
+    "fill": "currentColor",
+  },
+  s59: {
+    "borderColor": "var(--border)",
+    "backgroundColor": {
+      "default": "light-dark(color-mix(in oklab, var(--destructive) 10%, transparent), color-mix(in oklab, var(--destructive) 5%, transparent))",
+    },
+    "color": {
+      "default": "light-dark(var(--destructive), #fecaca)",
+    },
+    "marginTop": "8px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "padding": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s60: {
+    "overflow": "hidden",
+    "display": "-webkit-box",
+    "WebkitLineClamp": 2,
+    "WebkitBoxOrient": "vertical",
+  },
+  s61: {
+    "position": "relative",
+    "marginBottom": "calc(30px * -1)",
+    "paddingBottom": "30px",
+    "transitionDuration": "150ms",
+    "containIntrinsicSize": "auto 200px",
+    "contentVisibility": "auto",
+  },
+  s62: {
+    "color": "var(--foreground)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "lineHeight": "1.625",
+    "overflowWrap": "break-word",
+  },
+  s63: {
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s64: {
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s65: {
+    "fontFamily": "var(--font-sans)",
+  },
+  s66: {
+    "marginInlineStart": "8px",
+    "display": "flex",
+    "alignItems": "center",
+  },
+  s67: {
+    "color": "var(--muted-foreground)",
+    "gridColumnStart": "3",
+    "gridRowStart": "2",
+    "marginInlineStart": "calc(4px * -1)",
+    "display": "flex",
+    "gap": "4px",
+    "transitionDuration": "200ms",
+  },
+  s68: {
+    "transitionDuration": "200ms",
+    "transitionTimingFunction": "cubic-bezier(0, 0, 0.2, 1)",
+  },
+  s69: {
+    "transitionDuration": "150ms",
+  },
+  s70: {
+    "backgroundColor": "var(--popover)",
+    "color": "var(--popover-foreground)",
+    "zIndex": 50,
+    "minWidth": "8rem",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "padding": "6px",
+  },
+  s71: {
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+      ":focus": "var(--accent)",
+    },
+    "color": {
+      ":hover": "var(--accent-foreground)",
+      ":focus": "var(--accent-foreground)",
+    },
+    "display": "flex",
+    "cursor": "pointer",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+    "userSelect": "none",
+  },
+  s72: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s73: {
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s74: {
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s75: {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(72px,1fr) auto",
+    "alignContent": "flex-start",
+    "rowGap": "8px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "transitionDuration": "150ms",
+    "containIntrinsicSize": "auto 200px",
+    "contentVisibility": "auto",
+    ":not(#\\#) :where(>*)": {
+      "gridColumnStart": "2",
+    },
+  },
+  s76: {
+    "position": "relative",
+    "gridColumnStart": "2",
+    "minWidth": "0px",
+  },
+  s77: {
+    "backgroundColor": "var(--muted)",
+    "color": "var(--foreground)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "overflowWrap": "break-word",
+    "display": {
+      ":empty": "none",
+    },
+  },
+  s78: {
+    "position": "absolute",
+    "insetInlineStart": "0px",
+    "paddingInlineEnd": "8px",
+  },
+  s79: {
+    "gridColumn": "1 / -1",
+    "gridColumnStart": "1",
+    "marginInlineEnd": "calc(4px * -1)",
+    "justifyContent": "flex-end",
+  },
+  s80: {
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "flex-end",
+  },
+  s81: {
+    "display": "flex",
+    "flexDirection": "column",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "containIntrinsicSize": "auto 200px",
+    "contentVisibility": "auto",
+  },
+  s82: {
+    "marginLeft": "10px",
+    "marginRight": "10px",
+    "marginBottom": "10px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "alignSelf": "flex-end",
+  },
+  s83: {
+    "height": "32px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+  },
+  s84: {
+    "height": "32px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+  },
+  s85: {
+    "color": "var(--muted-foreground)",
+    "marginInlineStart": "calc(8px * -1)",
+    "marginInlineEnd": "8px",
+    "display": "inline-flex",
+    "alignItems": "center",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s86: {
+    "fontWeight": 500,
+  },
+  q87: {
+    "containerType": "inline-size",
+  },
+  q88: {
+    "width": "40%",
+  },
+  q89: {
+    "width": "91.67%",
+  },
+  q90: {
+    "width": "80%",
+  },
+  q91: {
+    "width": "60%",
+  },
+  q92: {
+    "width": "33.33%",
+  },
+  q93: {
+    "width": "83.33%",
+  },
+  q94: {
+    "width": "66.67%",
+  },
+  q95: {
+    "scrollPaddingBottom": "320px",
+    "overflowY": "scroll",
+  },
+  q96: {
+    "maxWidth": "var(--thread-max-width)",
+  },
+  q97: {
+    "borderTopLeftRadius": "var(--composer-radius)",
+    "borderTopRightRadius": "var(--composer-radius)",
+  },
+  q98: {
+    "borderColor": {
+      "default": "color-mix(in oklab, var(--foreground) 10%, transparent)",
+      ":hover": "color-mix(in oklab, var(--foreground) 25%, transparent)",
+    },
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--foreground) 3%, transparent)",
+    },
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "whiteSpace": "nowrap",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+    "transitionTimingFunction": "cubic-bezier(0.4, 0, 1, 1)",
+    ":not(#\\#) svg": {
+      "width": "16px",
+      "height": "16px",
+    },
+  },
+  q99: {
+    "scrollbarWidth": "none",
+    "::-webkit-scrollbar": {
+      "display": "none",
+    },
+  },
+  q100: {
+    "scrollbarWidth": "none",
+    "::-webkit-scrollbar": {
+      "display": "none",
+    },
+  },
+  q101: {
+    "borderRadius": "var(--composer-radius)",
+  },
+  q102: {
+    "top": "50%",
+    "transform": "translateX(-100%) translateY(-50%)",
+    ":is(.peer:empty ~ &)": {
+      "display": "none",
+    },
+    ":is([dir=rtl] &)": {
+      "transform": "translateX(100%) translateY(-50%)",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart;
 
@@ -191,19 +832,19 @@ const ThreadHistorySkeleton: FC = () => (
   <div
     data-slot="aui_thread-history-skeleton"
     role="status"
-    className="animate-in fade-in fill-mode-both flex flex-col gap-y-6 [animation-delay:150ms] [animation-duration:200ms]"
+    className={[sx(paint.s0), "burf-fade"].filter(Boolean).join(" ")}
   >
-    <span className="sr-only">Loading conversation</span>
-    <div className="ml-auto h-9 w-2/5"><Skeleton  shape="lg" /></div>
-    <div className="flex flex-col gap-y-2">
-      <div className="h-4 w-11/12"><Skeleton  /></div>
-      <div className="h-4 w-4/5"><Skeleton  /></div>
-      <div className="h-4 w-3/5"><Skeleton  /></div>
+    <span className={sx(paint.s1)}>Loading conversation</span>
+    <div className={[sx(paint.s2), sx(paint.q88)].filter(Boolean).join(" ")}><Skeleton  shape="lg" /></div>
+    <div className={sx(paint.s3)}>
+      <div className={[sx(paint.s4), sx(paint.q89)].filter(Boolean).join(" ")}><Skeleton  /></div>
+      <div className={[sx(paint.s5), sx(paint.q90)].filter(Boolean).join(" ")}><Skeleton  /></div>
+      <div className={[sx(paint.s6), sx(paint.q91)].filter(Boolean).join(" ")}><Skeleton  /></div>
     </div>
-    <div className="ml-auto h-9 w-1/3"><Skeleton  shape="lg" /></div>
-    <div className="flex flex-col gap-y-2">
-      <div className="h-4 w-10/12"><Skeleton  /></div>
-      <div className="h-4 w-2/3"><Skeleton  /></div>
+    <div className={[sx(paint.s7), sx(paint.q92)].filter(Boolean).join(" ")}><Skeleton  shape="lg" /></div>
+    <div className={sx(paint.s8)}>
+      <div className={[sx(paint.s9), sx(paint.q93)].filter(Boolean).join(" ")}><Skeleton  /></div>
+      <div className={[sx(paint.s10), sx(paint.q94)].filter(Boolean).join(" ")}><Skeleton  /></div>
     </div>
   </div>
 );
@@ -241,7 +882,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
 
   return (
     <ThreadPrimitive.Root
-      className="aui-root aui-thread-root bg-background @container flex h-full min-h-0 flex-col"
+      className={[sx(paint.s11), [sx(paint.q87), "aui-root aui-thread-root"].filter(Boolean).join(" ")].filter(Boolean).join(" ")}
       style={{
         ["--thread-max-width" as string]: "var(--berth-chat-w, 44rem)",
         ["--composer-bg" as string]:
@@ -256,13 +897,10 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
         // scroll-pb: what is scrolled or tabbed into view (an approval's
         // buttons, say) stops above the composer, which stays on top of
         // the foot of the thread.
-        className="relative flex flex-1 scroll-pb-80 flex-col overflow-x-auto overflow-y-scroll scroll-smooth"
+        className={[sx(paint.s12), sx(paint.q95)].filter(Boolean).join(" ")}
       >
         <div
-          className={cn(
-            "mx-auto flex w-full max-w-(--thread-max-width) flex-1 flex-col px-4 pt-4",
-            isEmpty && "justify-center",
-          )}
+          className={[[sx(paint.s13), sx(paint.q96)].filter(Boolean).join(" "), isEmpty && sx(paint.s14)].filter(Boolean).join(" ")}
         >
           <AuiIf condition={isNewChatView}>
             {welcome ?? <Welcome />}
@@ -275,23 +913,16 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
 
           <div
             data-slot="aui_message-group"
-            className={cn(
-              "flex flex-col gap-y-6 empty:hidden",
-              after ? "mb-6" : "mb-14",
-            )}
+            className={[sx(paint.s15), after ? sx(paint.s16) : sx(paint.s17)].filter(Boolean).join(" ")}
           >
             {messageList ?? <ThreadPrimitive.Messages>
               {() => <ThreadMessage />}
             </ThreadPrimitive.Messages>}
           </div>
-          {after && <div className="mb-14 empty:hidden">{after}</div>}
+          {after && <div className={sx(paint.s18)}>{after}</div>}
 
           <ThreadPrimitive.ViewportFooter
-            className={cn(
-              "aui-thread-viewport-footer bg-background flex flex-col gap-4 overflow-visible pb-4 md:pb-6",
-              !isEmpty &&
-                "sticky bottom-0 mt-auto rounded-t-(--composer-radius)",
-            )}
+            className={[[sx(paint.s19), "aui-thread-viewport-footer"].filter(Boolean).join(" "), !isEmpty && [sx(paint.s20), sx(paint.q97)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}
           >
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
@@ -337,7 +968,7 @@ const useVoiceRunPosition = (): VoiceRunPosition =>
   });
 
 const SpokenText: TextMessagePartComponent = ({ text }) => (
-  <p className="aui-spoken-message-text m-0">{text}</p>
+  <p className={[sx(paint.s21), "aui-spoken-message-text"].filter(Boolean).join(" ")}>{text}</p>
 );
 
 const SpokenMessage: FC = () => {
@@ -354,44 +985,38 @@ const SpokenMessage: FC = () => {
       data-slot="aui_spoken-message-root"
       data-role={role}
       data-voice-run={position}
-      className={cn(
-        "aui-spoken-message bg-muted/40 mx-2 px-3 py-1.5 [contain-intrinsic-size:auto_48px] [content-visibility:auto]",
-        position === "single" && "rounded-xl py-2",
-        position === "start" && "rounded-t-xl pt-2",
-        position === "middle" && "-mt-6",
-        position === "end" && "-mt-6 rounded-b-xl pb-2",
-      )}
+      className={[[sx(paint.s22), "aui-spoken-message"].filter(Boolean).join(" "), position === "single" && sx(paint.s23), position === "start" && sx(paint.s24), position === "middle" && sx(paint.s25), position === "end" && sx(paint.s26)].filter(Boolean).join(" ")}
     >
       {opensExchange && (
         <div
           data-slot="aui_spoken-exchange-header"
-          className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs"
+          className={sx(paint.s27)}
         >
-          <PhoneIcon className="size-3" aria-hidden />
+          <PhoneIcon className={sx(paint.s28)} aria-hidden />
           <span>Voice conversation</span>
         </div>
       )}
       <div
         data-slot="aui_spoken-message-content"
-        className="text-foreground flex items-start gap-2 text-sm leading-relaxed"
+        className={sx(paint.s29)}
       >
-        <span className="text-muted-foreground mt-1 shrink-0" aria-hidden>
+        <span className={sx(paint.s30)} aria-hidden>
           {role === "user" ? (
-            <MicIcon className="size-3.5" />
+            <MicIcon className={sx(paint.s31)} />
           ) : (
-            <AudioLinesIcon className="size-3.5" />
+            <AudioLinesIcon className={sx(paint.s32)} />
           )}
         </span>
-        <span className="sr-only">
+        <span className={sx(paint.s33)}>
           {role === "user" ? "You said" : "Assistant said"}
         </span>
-        <div className="min-w-0 flex-1 wrap-break-word">
+        <div className={sx(paint.s34)}>
           <MessagePrimitive.Parts components={{ Text: SpokenText }} />
           {isSpeaking && (
             <span
               data-slot="aui_spoken-message-indicator"
               role="status"
-              className="text-muted-foreground ms-1 animate-pulse font-sans"
+              className={[sx(paint.s35), "burf-pulse"].filter(Boolean).join(" ")}
               aria-label="Assistant is speaking"
             >
               ●
@@ -409,15 +1034,15 @@ const SpokenActionBar: FC = () => {
     <ActionBarPrimitive.Root
       hideWhenRunning
       autohide="always"
-      className="aui-spoken-action-bar text-muted-foreground flex shrink-0 gap-1"
+      className={[sx(paint.s36), "aui-spoken-action-bar"].filter(Boolean).join(" ")}
     >
       <ActionBarPrimitive.Copy asChild>
-        <TooltipIconButton tooltip="Copy" className="size-6">
+        <TooltipIconButton tooltip="Copy" box={6}>
           <AuiIf condition={(s) => s.message.isCopied}>
-            <CheckIcon className="animate-in zoom-in-50 fade-in duration-200 ease-out" />
+            <CheckIcon className={[sx(paint.s37), "burf-fade"].filter(Boolean).join(" ")} />
           </AuiIf>
           <AuiIf condition={(s) => !s.message.isCopied}>
-            <CopyIcon className="animate-in zoom-in-75 fade-in duration-150" />
+            <CopyIcon className={[sx(paint.s38), "burf-fade"].filter(Boolean).join(" ")} />
           </AuiIf>
         </TooltipIconButton>
       </ActionBarPrimitive.Copy>
@@ -465,22 +1090,22 @@ const ThreadLoadEarlier: FC = () => {
   return (
     <div
       ref={slotRef}
-      className="contents"
+      className={sx(paint.s39)}
       onFocus={(event) => {
         focusedRef.current = event.target;
       }}
     >
-      <span role="status" className="sr-only">
+      <span role="status" className={sx(paint.s40)}>
         {loading ? "Loading earlier messages" : ""}
       </span>
       {visible && (
         <ThreadPrimitive.LoadEarlier asChild>
-          <span className="aui-thread-load-earlier mb-6 self-center rounded-full"><Button
+          <span className={[sx(paint.s41), "aui-thread-load-earlier"].filter(Boolean).join(" ")}><Button
             variant="ghost"
             size="sm"
             data-slot="aui_thread-load-earlier" muted>
             <span
-              className={cn(loading && "shimmer motion-reduce:animate-none")}
+              className={loading ? sx(shimmer) : undefined}
             >
               {loading ? "Loading earlier messages" : "Load earlier messages"}
             </span>
@@ -497,7 +1122,9 @@ const ThreadScrollToBottom: FC = () => {
       <TooltipIconButton
         tooltip="Scroll to bottom"
         variant="outline"
-        className="aui-thread-scroll-to-bottom dark:border-border dark:bg-background dark:hover:bg-accent absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible"
+        marker="aui-thread-scroll-to-bottom"
+        place="scroll"
+        round
       >
         <ArrowDownIcon />
       </TooltipIconButton>
@@ -507,8 +1134,8 @@ const ThreadScrollToBottom: FC = () => {
 
 const ThreadWelcome: FC = () => {
   return (
-    <div className="aui-thread-welcome-root mb-6 flex flex-col items-center px-2 text-center">
-      <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-2xl font-medium tracking-tight duration-200">
+    <div className={[sx(paint.s42), "aui-thread-welcome-root"].filter(Boolean).join(" ")}>
+      <p className={[sx(paint.s43), "aui-thread-welcome-message-inner burf-fade burf-rise"].filter(Boolean).join(" ")}>
         How can I help you today?
       </p>
     </div>
@@ -559,7 +1186,7 @@ const SUGGESTION_GROUPS: SuggestionGroup[] = [
 ];
 
 const suggestionChipClass =
-  "aui-thread-welcome-suggestion border-foreground/10 hover:bg-foreground/[0.03] hover:border-foreground/25 rounded-md border px-2.5 py-1 text-sm whitespace-nowrap transition-colors ease-in motion-reduce:transition-none [&_svg]:size-4";
+  [sx(paint.q98), "aui-thread-welcome-suggestion"].filter(Boolean).join(" ");
 
 const ThreadSuggestions: FC = () => {
   const aui = useAui();
@@ -577,14 +1204,11 @@ const ThreadSuggestions: FC = () => {
   };
 
   return (
-    <div className="aui-thread-welcome-suggestions flex w-full flex-col gap-2 px-4">
-      <div className="w-full scrollbar-none overflow-x-auto">
-        <div className="mx-auto flex w-max items-center gap-2">
+    <div className={[sx(paint.s44), "aui-thread-welcome-suggestions"].filter(Boolean).join(" ")}>
+      <div className={[sx(paint.s45), sx(paint.q99)].filter(Boolean).join(" ")}>
+        <div className={sx(paint.s46)}>
           {SUGGESTION_GROUPS.map((group) => (
-            <span className={cn(
-                suggestionChipClass,
-                group.label === expandedLabel && "bg-muted",
-              )}><Button
+            <span className={[suggestionChipClass, group.label === expandedLabel && sx(paint.s47)].filter(Boolean).join(" ")}><Button
               key={group.label}
               variant="ghost"
               
@@ -602,9 +1226,9 @@ const ThreadSuggestions: FC = () => {
       {expandedGroup && (
         <div
           key={expandedGroup.label}
-          className="fade-in slide-in-from-top-1 animate-in w-full scrollbar-none overflow-x-auto duration-200"
+          className={[sx(paint.s48), [sx(paint.q100), "burf-fade burf-rise"].filter(Boolean).join(" ")].filter(Boolean).join(" ")}
         >
-          <div className="mx-auto flex w-max items-center gap-2">
+          <div className={sx(paint.s49)}>
             {expandedGroup.options.map((option) => (
               <span className={suggestionChipClass}><Button
                 key={option.label}
@@ -625,7 +1249,7 @@ const Composer: FC<{ autoFocus: boolean }> = ({ autoFocus }) => {
   const { composerInput, composerTriggers } = useContext(ThreadSlotsContext);
   return (
     <ComposerPrimitive.TriggerPopoverRoot>
-    <ComposerPrimitive.Root data-testid="composer" className="aui-composer-root relative flex w-full flex-col">
+    <ComposerPrimitive.Root data-testid="composer" className={[sx(paint.s50), "aui-composer-root"].filter(Boolean).join(" ")}>
       <ComposerPrimitive.AttachmentDropzone asChild>
         <div
           data-slot="aui_composer-shell"
@@ -663,12 +1287,12 @@ const ComposerAction: FC = () => {
   );
 
   return (
-    <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      <div className="flex min-w-0 flex-1 items-center gap-1">
+    <div className={[sx(paint.s51), "aui-composer-action-wrapper"].filter(Boolean).join(" ")}>
+      <div className={sx(paint.s52)}>
         <ComposerAddAttachment />
         {composerControls}
       </div>
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div className={sx(paint.s53)}>
         <AuiIf condition={(s) => s.thread.capabilities.dictation}>
           <AuiIf condition={(s) => s.composer.dictation == null}>
             <ComposerPrimitive.Dictate asChild>
@@ -678,10 +1302,13 @@ const ComposerAction: FC = () => {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="aui-composer-dictate text-muted-foreground hover:text-foreground size-7 rounded-full"
+                marker="aui-composer-dictate"
+                box={7}
+                round
+                tone="muted"
                 aria-label="Start voice input"
               >
-                <MicIcon className="aui-composer-dictate-icon size-4" />
+                <MicIcon className={[sx(paint.s54), "aui-composer-dictate-icon"].filter(Boolean).join(" ")} />
               </TooltipIconButton>
             </ComposerPrimitive.Dictate>
           </AuiIf>
@@ -693,10 +1320,13 @@ const ComposerAction: FC = () => {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="aui-composer-stop-dictation text-destructive size-7 rounded-full"
+                marker="aui-composer-stop-dictation"
+                box={7}
+                round
+                tone="destructive"
                 aria-label="Stop voice input"
               >
-                <SquareIcon className="aui-composer-stop-dictation-icon size-3.5 animate-pulse fill-current" />
+                <SquareIcon className={[sx(paint.s55), "aui-composer-stop-dictation-icon burf-pulse"].filter(Boolean).join(" ")} />
               </TooltipIconButton>
             </ComposerPrimitive.StopDictation>
           </AuiIf>
@@ -715,10 +1345,13 @@ const ComposerAction: FC = () => {
               type="button"
               variant="default"
               size="icon"
-              className="aui-composer-send size-7 rounded-full"
+              marker="aui-composer-send"
+              box={7}
+              round
+              shape="pill"
               aria-label="Send message"
             >
-              <ArrowUpIcon className="aui-composer-send-icon size-4" />
+              <ArrowUpIcon className={[sx(paint.s56), "aui-composer-send-icon"].filter(Boolean).join(" ")} />
             </TooltipIconButton>
           </ComposerPrimitive.Send>
         </AuiIf>
@@ -730,13 +1363,13 @@ const ComposerAction: FC = () => {
           }
         >
           <ComposerPrimitive.Cancel asChild>
-            <span className="aui-composer-cancel size-7 rounded-full"><Button
+            <span className={[sx(paint.s57), "aui-composer-cancel"].filter(Boolean).join(" ")}><Button
               type="button"
               variant="default"
               size="icon"
               
               aria-label={isSending ? "Cancel sending" : "Stop generating"}>
-              <SquareIcon className="aui-composer-cancel-icon size-3.5 fill-current" />
+              <SquareIcon className={[sx(paint.s58), "aui-composer-cancel-icon"].filter(Boolean).join(" ")} />
             </Button></span>
           </ComposerPrimitive.Cancel>
         </AuiIf>
@@ -748,8 +1381,8 @@ const ComposerAction: FC = () => {
 const MessageError: FC = () => {
   return (
     <MessagePrimitive.Error>
-      <ErrorPrimitive.Root className="aui-message-error-root border-destructive bg-destructive/10 text-destructive dark:bg-destructive/5 mt-2 rounded-md border p-3 text-sm dark:text-red-200">
-        <ErrorPrimitive.Message className="aui-message-error-message line-clamp-2" />
+      <ErrorPrimitive.Root className={[sx(paint.s59), "aui-message-error-root"].filter(Boolean).join(" ")}>
+        <ErrorPrimitive.Message className={[sx(paint.s60), "aui-message-error-message"].filter(Boolean).join(" ")} />
       </ErrorPrimitive.Root>
     </MessagePrimitive.Error>
   );
@@ -776,11 +1409,11 @@ export const AssistantMessage: FC = () => {
       data-role="assistant"
       role={speakers ? "article" : undefined}
       aria-label={speakers?.assistant}
-      className="fade-in slide-in-from-bottom-1 animate-in relative -mb-7.5 pb-7.5 duration-150 [contain-intrinsic-size:auto_200px] [content-visibility:auto]"
+      className={[sx(paint.s61), "burf-fade burf-rise"].filter(Boolean).join(" ")}
     >
       <div
         data-slot="aui_assistant-message-content"
-        className="text-foreground px-2 leading-relaxed wrap-break-word"
+        className={sx(paint.s62)}
       >
         <MessagePrimitive.GroupedParts groupBy={groupBy}>
           {({ part, children }) => {
@@ -833,13 +1466,13 @@ export const AssistantMessage: FC = () => {
                 return part.dataRendererUI;
               case "file":
                 return (
-                  <div data-slot="aui_assistant-message-file" className="py-1">
+                  <div data-slot="aui_assistant-message-file" className={sx(paint.s63)}>
                     <File {...part} />
                   </div>
                 );
               case "image":
                 return (
-                  <div data-slot="aui_assistant-message-image" className="py-1">
+                  <div data-slot="aui_assistant-message-image" className={sx(paint.s64)}>
                     <Image {...part} />
                   </div>
                 );
@@ -847,7 +1480,7 @@ export const AssistantMessage: FC = () => {
                 return (
                   <span
                     data-slot="aui_assistant-message-indicator"
-                    className="animate-pulse font-sans"
+                    className={[sx(paint.s65), "burf-pulse"].filter(Boolean).join(" ")}
                     aria-label="Assistant is working"
                   >
                     {"●"}
@@ -863,7 +1496,7 @@ export const AssistantMessage: FC = () => {
 
       <div
         data-slot="aui_assistant-message-footer"
-        className={cn("ms-2 flex items-center", ACTION_BAR_HEIGHT)}
+        className={[sx(paint.s66), ACTION_BAR_HEIGHT].filter(Boolean).join(" ")}
       >
         <BranchPicker />
         <AssistantActionBar />
@@ -877,32 +1510,26 @@ const AssistantActionBar: FC = () => {
     <ActionBarPrimitive.Root
       hideWhenRunning
       autohide="not-last"
-      className="aui-assistant-action-bar-root text-muted-foreground animate-in fade-in col-start-3 row-start-2 -ms-1 flex gap-1 duration-200"
+      className={[sx(paint.s67), "aui-assistant-action-bar-root burf-fade"].filter(Boolean).join(" ")}
     >
       <ActionBarPrimitive.Copy asChild>
         <TooltipIconButton tooltip="Copy">
           <AuiIf condition={(s) => s.message.isCopied}>
-            <CheckIcon className="animate-in zoom-in-50 fade-in duration-200 ease-out" />
+            <CheckIcon className={[sx(paint.s68), "burf-fade"].filter(Boolean).join(" ")} />
           </AuiIf>
           <AuiIf condition={(s) => !s.message.isCopied}>
-            <CopyIcon className="animate-in zoom-in-75 fade-in duration-150" />
+            <CopyIcon className={[sx(paint.s69), "burf-fade"].filter(Boolean).join(" ")} />
           </AuiIf>
         </TooltipIconButton>
       </ActionBarPrimitive.Copy>
       <AuiIf condition={(s) => s.thread.capabilities.feedback}>
         <ActionBarPrimitive.FeedbackPositive asChild>
-          <TooltipIconButton
-            tooltip="Helpful"
-            className="data-[submitted=true]:bg-accent data-[submitted=true]:text-accent-foreground"
-          >
+          <TooltipIconButton tooltip="Helpful">
             <ThumbsUpIcon />
           </TooltipIconButton>
         </ActionBarPrimitive.FeedbackPositive>
         <ActionBarPrimitive.FeedbackNegative asChild>
-          <TooltipIconButton
-            tooltip="Not helpful"
-            className="data-[submitted=true]:bg-accent data-[submitted=true]:text-accent-foreground"
-          >
+          <TooltipIconButton tooltip="Not helpful">
             <ThumbsDownIcon />
           </TooltipIconButton>
         </ActionBarPrimitive.FeedbackNegative>
@@ -916,10 +1543,7 @@ const AssistantActionBar: FC = () => {
       </AuiIf>
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger asChild>
-          <TooltipIconButton
-            tooltip="More"
-            className="data-[state=open]:bg-accent"
-          >
+          <TooltipIconButton tooltip="More">
             <MoreHorizontalIcon />
           </TooltipIconButton>
         </ActionBarMorePrimitive.Trigger>
@@ -927,11 +1551,11 @@ const AssistantActionBar: FC = () => {
           side="bottom"
           align="start"
           sideOffset={6}
-          className="aui-action-bar-more-content bg-popover text-popover-foreground data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-[8rem] overflow-hidden rounded-xl border p-1.5"
+          className={[sx(paint.s70), "aui-action-bar-more-content burf-fade burf-rise"].filter(Boolean).join(" ")}
         >
           <ActionBarPrimitive.ExportMarkdown asChild>
-            <ActionBarMorePrimitive.Item className="aui-action-bar-more-item hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none select-none">
-              <DownloadIcon className="size-4" />
+            <ActionBarMorePrimitive.Item className={[sx(paint.s71), "aui-action-bar-more-item"].filter(Boolean).join(" ")}>
+              <DownloadIcon className={sx(paint.s72)} />
               Export as Markdown
             </ActionBarMorePrimitive.Item>
           </ActionBarPrimitive.ExportMarkdown>
@@ -942,13 +1566,13 @@ const AssistantActionBar: FC = () => {
 };
 
 const UserFilePart: FileMessagePartComponent = (part) => (
-  <div data-slot="aui_user-message-file" className="py-1">
+  <div data-slot="aui_user-message-file" className={sx(paint.s73)}>
     <File {...part} />
   </div>
 );
 
 const UserImagePart: ImageMessagePartComponent = (part) => (
-  <div data-slot="aui_user-message-image" className="py-1">
+  <div data-slot="aui_user-message-image" className={sx(paint.s74)}>
     <Image {...part} />
   </div>
 );
@@ -961,25 +1585,25 @@ export const UserMessage: FC = () => {
       data-slot="aui_user-message-root"
       role={speakers ? "article" : undefined}
       aria-label={speakers?.user}
-      className="fade-in slide-in-from-bottom-1 animate-in grid auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 duration-150 [contain-intrinsic-size:auto_200px] [content-visibility:auto] [&:where(>*)]:col-start-2"
+      className={[sx(paint.s75), "burf-fade burf-rise auto-rows-auto"].filter(Boolean).join(" ")}
       data-role="user"
     >
       <UserMessageAttachments />
 
-      <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
-        <div className="aui-user-message-content peer bg-muted text-foreground rounded-(--composer-radius) px-4 py-2 wrap-break-word empty:hidden">
+      <div className={[sx(paint.s76), "aui-user-message-content-wrapper"].filter(Boolean).join(" ")}>
+        <div className={[sx(paint.s77), [sx(paint.q101), "aui-user-message-content peer"].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
           <MessagePrimitive.Parts
             components={{ Text: UserText, File: UserFilePart, Image: UserImagePart }}
           />
         </div>
-        <div className="aui-user-action-bar-wrapper absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">
+        <div className={[sx(paint.s78), [sx(paint.q102), "aui-user-action-bar-wrapper"].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
           <UserActionBar />
         </div>
       </div>
 
       <BranchPicker
         data-slot="aui_user-branch-picker"
-        className="col-span-full col-start-1 -me-1 justify-end"
+        className={sx(paint.s79)}
       />
     </MessagePrimitive.Root>
   );
@@ -990,11 +1614,11 @@ const UserActionBar: FC = () => {
     <ActionBarPrimitive.Root
       hideWhenRunning
       autohide="not-last"
-      className="aui-user-action-bar-root flex flex-col items-end"
+      className={[sx(paint.s80), "aui-user-action-bar-root"].filter(Boolean).join(" ")}
     >
       <AuiIf condition={(s) => s.thread.capabilities.edit}>
         <ActionBarPrimitive.Edit asChild>
-          <TooltipIconButton tooltip="Edit" className="aui-user-action-edit">
+          <TooltipIconButton tooltip="Edit" marker="aui-user-action-edit">
             <PencilIcon />
           </TooltipIconButton>
         </ActionBarPrimitive.Edit>
@@ -1007,21 +1631,21 @@ const EditComposer: FC = () => {
   return (
     <MessagePrimitive.Root
       data-slot="aui_edit-composer-wrapper"
-      className="flex flex-col px-2 [contain-intrinsic-size:auto_200px] [content-visibility:auto]"
+      className={sx(paint.s81)}
     >
       <ComposerPrimitive.Root className={["aui-edit-composer-root", chatBoxShellClass(true)].filter(Boolean).join(" ")}>
         <ComposerPrimitive.Input
           className={["aui-edit-composer-input", chatBoxInputClass(true)].filter(Boolean).join(" ")}
           autoFocus
         />
-        <div className="aui-edit-composer-footer mx-2.5 mb-2.5 flex items-center gap-1.5 self-end">
+        <div className={[sx(paint.s82), "aui-edit-composer-footer"].filter(Boolean).join(" ")}>
           <ComposerPrimitive.Cancel asChild>
-            <span className="h-8 px-3"><Button variant="ghost" size="sm">
+            <span className={sx(paint.s83)}><Button variant="ghost" size="sm">
               Cancel
             </Button></span>
           </ComposerPrimitive.Cancel>
           <ComposerPrimitive.Send asChild>
-            <span className="h-8 px-3"><Button size="sm">
+            <span className={sx(paint.s84)}><Button size="sm">
               Update
             </Button></span>
           </ComposerPrimitive.Send>
@@ -1038,10 +1662,7 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
   return (
     <BranchPickerPrimitive.Root
       hideWhenSingleBranch
-      className={cn(
-        "aui-branch-picker-root text-muted-foreground -ms-2 me-2 inline-flex items-center text-xs",
-        className,
-      )}
+      className={[[sx(paint.s85), "aui-branch-picker-root"].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
       {...rest}
     >
       <BranchPickerPrimitive.Previous asChild>
@@ -1049,7 +1670,7 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
           <ChevronLeftIcon />
         </TooltipIconButton>
       </BranchPickerPrimitive.Previous>
-      <span className="aui-branch-picker-state font-medium">
+      <span className={[sx(paint.s86), "aui-branch-picker-state"].filter(Boolean).join(" ")}>
         <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
       </span>
       <BranchPickerPrimitive.Next asChild>

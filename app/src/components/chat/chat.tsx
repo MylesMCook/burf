@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { RotateCwIcon, XIcon } from "lucide-react";
 import { AssistantRuntimeProvider, createMessageQueue, useExternalStoreRuntime, WebSpeechDictationAdapter, type AppendMessage, type AssistantRuntime, type DictationAdapter } from "@assistant-ui/react";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, useReducer, type ReactNode, type KeyboardEvent } from "react";
@@ -23,6 +24,136 @@ import { refFor } from "@/lib/workspaces";
 import { useTitleAt } from "@/lib/worktree-names";
 import { BASE_PERMISSIONS, savedChatPermission, saveChatPermission, type ChatOptions, type ChatModel } from "@/lib/local-computer";
 import type { ChatSnapshot, ChatTransport } from "./chat-transport";
+
+const paint = stylex.create({
+  s0: {
+    "marginTop": "8px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s1: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingBottom": "24px",
+    "fontSize": "14px",
+    "lineHeight": "1.625",
+    "color": "var(--foreground)",
+    "display": {
+      ":empty": "none",
+    },
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "20px",
+    },
+  },
+  s2: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+    "color": "var(--warning)",
+  },
+  s3: {
+    "cursor": "pointer",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "marginTop": "12px",
+    "marginBottom": "12px",
+    "maxHeight": "320px",
+    "overflow": "auto",
+    "whiteSpace": "pre-wrap",
+    "overflowWrap": "break-word",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s5: {
+    "display": "flex",
+    "minHeight": "0px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s6: {
+    "display": "flex",
+    "height": "48px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s7: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+  },
+  s8: {
+    "flexShrink": 0,
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s9: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s10: {
+    "display": "inline-flex",
+    "height": "28px",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s11: {
+    "flexShrink": 0,
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s12: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export function Chat({ transport, messageList, after, children }: { transport: ChatTransport; messageList?: ReactNode; after?: ReactNode; children?: ReactNode }) {
   const { session, onChange, initialDraft = "", initialOptions, onDraftChange, onOptionsChange } = transport;
@@ -108,7 +239,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
     if (ref && madeIds.split(" ").some((key) => { const [id, n] = key.split("@"); return (have.get(id) ?? 0) < Number(n); })) void loadArtifacts(ref);
   }, [artifacts, madeIds]);
   const turns = useMemo(() => threadTurns(chat?.items ?? [], running, submitted ? { text: submitted, before: submittedItems.current } : undefined), [chat?.items, running, submitted]);
-  const toolExtra = useCallback((id: string) => made.get(id)?.map((artifact) => <div key={artifact.id} className="mt-2 flex items-center gap-1 text-sm"><ChatArtifact it={artifact} /></div>), [made]);
+  const toolExtra = useCallback((id: string) => made.get(id)?.map((artifact) => <div key={artifact.id} className={sx(paint.s0)}><ChatArtifact it={artifact} /></div>), [made]);
   const reports = chat?.reports;
   const reportCards = useCallback((id: string) => (reports?.[id]?.length ? reports[id].map((report, index) => <ReportCard key={index} it={{ kind: "report", id: `${id}:${index}`, report }} />) : undefined), [reports]);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -196,8 +327,8 @@ export function Chat({ transport, messageList, after, children }: { transport: C
     ...(running && chat?.turn_id && transport.interrupt ? [{ id: "interrupt", description: "Interrupt this turn", execute: () => runtime.thread.cancelRun() }] : []),
     ...(chat && transport.stop ? [{ id: "stop", description: "Stop this chat", execute: () => void mutate(() => transport.stop!()) }] : []),
   ] : [];
-  const approvals = !transport.readOnly && transport.approve && chat?.approvals.length ? <div className="space-y-5 px-2 pb-6 text-sm leading-relaxed text-foreground empty:hidden">
-        {!!chat?.approvals.length && <p className="text-xs font-medium text-warning">{chat.approvals.length} pending {chat.approvals.length === 1 ? "approval" : "approvals"}</p>}
+  const approvals = !transport.readOnly && transport.approve && chat?.approvals.length ? <div className={sx(paint.s1)}>
+        {!!chat?.approvals.length && <p className={sx(paint.s2)}>{chat.approvals.length} pending {chat.approvals.length === 1 ? "approval" : "approvals"}</p>}
         {chat?.approvals.map((approval, index) => {
           const ask = approval.kind === "tool" ? toolAsk(approval.detail) : undefined;
           const detail = ask ? ask.what : approval.detail;
@@ -208,9 +339,9 @@ export function Chat({ transport, messageList, after, children }: { transport: C
             approval.session_allowed ? `Chat-only approval applies to ${approval.kind === "files" ? "these files" : `matching commands in ${transport.agentName}'s approval cache`}, until this chat stops.` : "",
           ].filter(Boolean).join(" ");
           return <section key={approval.id} aria-label="Approval required">
-            <details open={index === 0}><summary className="cursor-pointer truncate text-xs font-medium text-muted-foreground">{ask ? `Burf · ${ask.tool}` : approval.kind === "files" ? "File changes" : approval.detail.split("\n")[0]}</summary>
+            <details open={index === 0}><summary className={sx(paint.s3)}>{ask ? `Burf · ${ask.tool}` : approval.kind === "files" ? "File changes" : approval.detail.split("\n")[0]}</summary>
             <fieldset disabled={busy || offline}>
-              {preformatted && <pre className="my-3 max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">{detail}</pre>}
+              {preformatted && <pre className={sx(paint.s4)}>{detail}</pre>}
               <ApprovalCard
                 state="request"
                 title={ask ? ask.question : approval.kind === "files" ? "Allow file changes?" : approval.kind === "browser" ? "Allow this in your browser?" : "Allow this command?"}
@@ -229,24 +360,24 @@ export function Chat({ transport, messageList, after, children }: { transport: C
           </section>;
         })}
       </div> : undefined;
-  return <div data-testid={transport.testId} className="flex min-h-0 min-w-0 flex-1 flex-col">
-    {!transport.readOnly && <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
-      <span className="min-w-0 truncate font-medium" title={session.cwd}>{named ?? session.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? session.cwd}</span>
-      <span role="status" className="shrink-0 text-xs text-muted-foreground">{offline ? "Disconnected" : chat?.state === "waiting" ? chat.approvals.length ? `Waiting for approval (${chat.approvals.length})` : "Waiting for your answer" : running ? "Working" : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span>
-      <div className="ml-auto flex shrink-0 items-center gap-1">
-        <WorktreeArtChip wt={artifacts} className="inline-flex h-7 items-center gap-1.5 rounded px-1.5 text-xs text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring" />
+  return <div data-testid={transport.testId} className={sx(paint.s5)}>
+    {!transport.readOnly && <header className={sx(paint.s6)}>
+      <span className={sx(paint.s7)} title={session.cwd}>{named ?? session.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? session.cwd}</span>
+      <span role="status" className={sx(paint.s8)}>{offline ? "Disconnected" : chat?.state === "waiting" ? chat.approvals.length ? `Waiting for approval (${chat.approvals.length})` : "Waiting for your answer" : running ? "Working" : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span>
+      <div className={sx(paint.s9)}>
+        <WorktreeArtChip wt={artifacts} className={sx(paint.s10)} />
         <Tip label="Refresh chat"><Button data-autofocus={!chat || undefined} size="icon-sm" variant="ghost" aria-label="Refresh chat" disabled={busy} onClick={() => void load()}><RotateCwIcon /></Button></Tip>
         {transport.stop && chat?.state !== "exited" && <Tip label="Stop chat"><Button size="icon-sm" variant="ghost" aria-label="Stop chat" disabled={busy || !chat} onClick={() => void mutate(() => transport.stop!())}><XIcon /></Button></Tip>}
       </div>
     </header>}
     {(error || chat?.error || readError || modelsError || voiceError) && <ErrorState title="Chat error" detail={error || chat?.error || readError || modelsError || voiceError} retrying={false} onRetry={() => { if (!busy) void load(); }} />}
-    {chat?.truncated && <p className="shrink-0 px-4 pt-2 text-xs text-muted-foreground">Earlier output is no longer in this live view.</p>}
+    {chat?.truncated && <p className={sx(paint.s11)}>Earlier output is no longer in this live view.</p>}
     <AssistantRuntimeProvider runtime={runtime}>
       {children}
       {!transport.readOnly && <ChatRuntimeState initialDraft={initialDraft} onDraftChange={onDraftChange} onBlocked={setComposerBlocked} transport={transport} input={input} keyDown={keyDown} />}
       <ChatMessages extras={extras}>
         <Thread autoFocus={false} components={ChatMessages.components} after={approvals || after ? <>{approvals}{after}</> : undefined} messageList={messageList} speakers={speakers} readOnly={transport.readOnly} loadEarlier={!!transport.loadEarlier}
-          welcome={transport.readOnly ? <p className="text-sm text-muted-foreground">No saved messages.</p> : undefined}
+          welcome={transport.readOnly ? <p className={sx(paint.s12)}>No saved messages.</p> : undefined}
           composerInput={{ ref: input, onKeyDown: (event) => keyDown.current?.(event), "aria-label": transport.inputLabel ?? `Message ${transport.agentName}`, "data-autofocus": true, placeholder: transport.placeholder ?? "Send a message..." }}
           composerControls={<ChatChoices agentName={transport.agentName} models={models} model={model} effort={effort} permission={permission} accepted={accepted} permissions={chat?.permissions ?? BASE_PERMISSIONS} reason={choicesReason} modelsError={modelsError} onModel={pickModel} onEffort={(value) => setOptions((o) => ({ ...o, effort: value || undefined }))} onPermission={pickPermission} />}
           composerTriggers={<ChatTriggers searchFiles={chat?.cwd === session.cwd ? transport.searchFiles : undefined} commands={commands} catalog={transport.commands} />}

@@ -1,4 +1,26 @@
+import * as stylex from "@stylexjs/stylex";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+
+const paint = stylex.create({
+  s0: {
+    "width": "6px",
+    "height": "6px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "currentColor",
+    "opacity": 0.7,
+  },
+  q1: {
+    ":is([data-pressed] &)": {
+      "backgroundColor": "currentColor",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // BoxFilter chooses which boxes a page covers. Pressed means shown: every
 // box starts pressed, turning one off hides what is on it, and the last
@@ -48,7 +70,7 @@ export function BoxFilter({
           tone="choice"
         >
           {/* Filled when shown, hollow when hidden: the state reads without colour. */}
-          <span className="size-1.5 shrink-0 rounded-full border border-current opacity-70 in-data-pressed:bg-current" aria-hidden />
+          <span className={[sx(paint.s0), sx(paint.q1)].filter(Boolean).join(" ")} aria-hidden />
           {b}
         </ToggleGroupItem>
       ))}

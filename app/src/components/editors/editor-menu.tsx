@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, CodeXmlIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -6,6 +7,18 @@ import { MenuItem } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { type Editor, installedEditors, setPreferredEditor, usePreferredEditor } from "@/lib/editors";
 import { useStore } from "@/lib/store";
+
+const paint = stylex.create({
+  s0: {
+    "marginInlineStart": "auto",
+    "width": "14px",
+    "height": "14px",
+    "opacity": 0.6,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // EditorMenuItems lists the editors installed on this computer for an
 // "Open in" submenu; picking one also makes it the preferred editor.
@@ -36,7 +49,7 @@ export function EditorMenuItems({ box, path }: { box: string; path: string }) {
         >
           <CodeXmlIcon />
           {e.name}
-          {e.id === preferred && <CheckIcon className="ms-auto size-3.5 opacity-60" />}
+          {e.id === preferred && <CheckIcon className={sx(paint.s0)} />}
         </MenuItem>
       ))}
     </>

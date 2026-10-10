@@ -92,18 +92,19 @@ export declare const PickOne: ComponentType<{
   options: { value: string; label: ReactNode; icon?: ReactNode }[];
   onChange(value: string): void;
   label?: string;
-  className?: string;
+  align?: "end";
+  nudge?: boolean;
 }>;
 // BoxFilter: which boxes a screen covers. Pressed means shown; every box
 // starts pressed and the last one on stays on. `hidden` is what you keep.
-export declare const BoxFilter: ComponentType<{ boxes: string[]; hidden: string[]; onChange(hidden: string[]): void; label?: string; className?: string }>;
+export declare const BoxFilter: ComponentType<{ boxes: string[]; hidden: string[]; onChange(hidden: string[]): void; label?: string; align?: "end" }>;
 // FilterChip: narrows a list to rows with a label, tag or state. Chips start
 // off; each one on narrows further. (One of a few values is PickOne.)
 export declare const FilterChip: ComponentType<{ pressed: boolean; onPressedChange(pressed: boolean): void; children?: ReactNode; className?: string }>;
 // Tip: the app's tooltip on one element, never the HTML title attribute,
 // which shows late and not at all for keyboard users. A disabled button
 // still shows its tip (why it is disabled, say).
-export declare const Tip: ComponentType<{ label: ReactNode; side?: "top" | "bottom" | "left" | "right"; align?: "start" | "center" | "end"; delay?: number; className?: string; wrapClassName?: string; children: ReactNode }>;
+export declare const Tip: ComponentType<{ label: ReactNode; side?: "top" | "bottom" | "left" | "right"; align?: "start" | "center" | "end"; delay?: number; width?: "xs" | "sm" | "md" | "lg" | "72" | "none"; narrow?: boolean; wrapClassName?: string; children: ReactNode }>;
 // AgentPicker: one of a box's agents (BoxInfo.agents), with their icons.
 export declare const AgentPicker: ComponentType<{ presets: { id: string; name: string }[]; value: string; onChange(id: string): void; allowNone?: boolean; className?: string }>;
 // AgentIcon: an agent's mark, by preset id ("claude", "codex", …).
@@ -117,8 +118,6 @@ export declare const ViewHeader: ComponentType<{ title: ReactNode; description?:
 export declare const PluginPage: ComponentType<{ className?: string; children?: ReactNode }>;
 // Any lucide icon by name: <Icon name="Server" />.
 export declare const Icon: ComponentType<{ name: string; className?: string }>;
-export declare function cn(...classes: unknown[]): string;
-
 // The app's diff renderer (@pierre/diffs, diffs.com: highlighted in two
 // workers, themed like the app), loaded on first use and shared with the
 // app's own diffs: its default export draws files as a scrolling list.

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { HouseIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -9,8 +10,76 @@ import { Kbd } from "@/components/ui/kbd";
 import { startSession } from "@/lib/actions";
 import { closeBoxPicker, lastHomeBox, openBoxPicker, pickableBoxes, rememberHomeBox, useBoxPicker } from "@/lib/box-home";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { here, homeKey } from "@/lib/workspaces";
+
+const paint = stylex.create({
+  s0: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+  },
+  s1: {
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--accent)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s2: {
+    "marginLeft": "auto",
+    "minWidth": "0px",
+    "flexShrink": 1,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s3: {
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 80%, transparent)",
+  },
+  s5: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s7: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s8: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s9: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s10: {
+    "width": "8px",
+    "height": "8px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // openHomeTerminal opens a terminal in box's home folder, as a tab over
 // Home, and makes box the default next time.
@@ -89,9 +158,9 @@ export function BoxPicker() {
                     {(item: Item) => (
                       <CommandItem key={item.box} value={item} disabled={!!item.blocked} data-box={item.box} gap={2} onClick={() => pick(item.box)}>
                         <BoxDot box={item.box} />
-                        <span className="truncate font-medium">{item.box}</span>
-                        {item.last && <span className="shrink-0 rounded bg-accent px-1 py-px text-[10px] text-muted-foreground">last used</span>}
-                        <span className={cn("ml-auto min-w-0 shrink truncate text-xs tabular-nums", item.blocked ? "text-muted-foreground" : "text-muted-foreground/80")}>{item.detail}</span>
+                        <span className={sx(paint.s0)}>{item.box}</span>
+                        {item.last && <span className={sx(paint.s1)}>last used</span>}
+                        <span className={[sx(paint.s2), item.blocked ? sx(paint.s3) : sx(paint.s4)].filter(Boolean).join(" ")}>{item.detail}</span>
                       </CommandItem>
                     )}
                   </CommandCollection>
@@ -100,11 +169,11 @@ export function BoxPicker() {
             </CommandList>
           </CommandPanel>
           <CommandFooter>
-            <span className="flex items-center gap-1">
+            <span className={sx(paint.s5)}>
               <Kbd>↵</Kbd> open a terminal in its home
             </span>
-            <span className="flex items-center gap-1">
-              <HouseIcon className="size-3" /> It opens on Home, in <span className="font-mono">~</span> <Kbd>esc</Kbd>
+            <span className={sx(paint.s6)}>
+              <HouseIcon className={sx(paint.s7)} /> It opens on Home, in <span className={sx(paint.s8)}>~</span> <Kbd>esc</Kbd>
             </span>
           </CommandFooter>
         </Command>
@@ -124,8 +193,8 @@ function reason(blocked: string): string {
 function BoxDot({ box }: { box: string }) {
   const state = useBoxState(box);
   return (
-    <span className="flex size-4 shrink-0 items-center justify-center">
-      <StatusDot state={state} className="size-2" />
+    <span className={sx(paint.s9)}>
+      <StatusDot state={state} className={sx(paint.s10)} />
     </span>
   );
 }

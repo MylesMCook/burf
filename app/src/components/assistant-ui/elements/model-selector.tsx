@@ -11,9 +11,9 @@ import {
   type ComponentPropsWithoutRef,
   type ReactNode,
 } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import * as stylex from "@stylexjs/stylex";
+import { color, radius } from "@/styles/tokens.stylex";
 import {
   Popover,
   PopoverContent,
@@ -239,38 +239,130 @@ function ModelSelectorRoot({
   );
 }
 
-export const modelSelectorTriggerVariants = cva(
-  "focus-visible:ring-ring/50 flex w-fit items-center justify-between gap-2 overflow-hidden rounded-md text-sm whitespace-nowrap transition-colors outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
-  {
-    variants: {
-      variant: {
-        outline:
-          "border-input hover:bg-accent hover:text-accent-foreground border bg-transparent",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        muted: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-      },
-      size: {
-        default: "h-9 px-3 py-2",
-        sm: "h-8 px-2.5 py-1.5 text-xs",
-        lg: "h-10 px-4 py-2.5",
-      },
-    },
-    defaultVariants: {
-      variant: "outline",
-      size: "default",
-    },
-  },
-);
+const still = "@media (prefers-reduced-motion: reduce)";
 
-export type ModelSelectorTriggerProps = ComponentPropsWithoutRef<
-  typeof PopoverTrigger
-> &
-  VariantProps<typeof modelSelectorTriggerVariants>;
+const styles = stylex.create({
+  trigger: {
+    display: "flex",
+    width: "fit-content",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    overflow: "hidden",
+    borderRadius: radius.md,
+    fontSize: 14,
+    whiteSpace: "nowrap",
+    outline: "none",
+    boxShadow: { ":focus-visible": "0 0 0 1px color-mix(in oklab, var(--ring) 50%, transparent)" },
+    transitionProperty: "background-color, color",
+    transitionDuration: { default: "150ms", [still]: "0s" },
+    opacity: { default: 1, ":disabled": 0.5 },
+    cursor: { default: "pointer", ":disabled": "not-allowed" },
+    ":not(#\\#) svg": { pointerEvents: "none", flexShrink: 0 },
+  },
+  outline: {
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: color.input,
+    backgroundColor: { default: "transparent", ":hover": color.accent },
+    color: { ":hover": color.accentForeground },
+  },
+  ghost: {
+    backgroundColor: { default: "transparent", ":hover": color.accent },
+    color: { ":hover": color.accentForeground },
+  },
+  muted: {
+    backgroundColor: { default: color.secondary, ":hover": "color-mix(in oklab, var(--secondary) 80%, transparent)" },
+    color: color.secondaryForeground,
+  },
+  sizeDefault: { height: 36, paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 8 },
+  sizeSm: { height: 32, paddingLeft: 10, paddingRight: 10, paddingTop: 6, paddingBottom: 6, fontSize: 12 },
+  sizeLg: { height: 40, paddingLeft: 16, paddingRight: 16, paddingTop: 10, paddingBottom: 10 },
+  sizeXs: { height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 12 },
+  pill: { borderRadius: radius.full, flexShrink: 0 },
+  chevron: { width: 16, height: 16, opacity: 0.5 },
+  icon: {
+    display: "flex",
+    width: 14,
+    height: 14,
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    ":not(#\\#) svg": { width: 14, height: 14 },
+  },
+  iconNudge: { marginTop: 3 },
+  placeholder: { color: color.mutedForeground },
+  value: { display: "flex", minWidth: 0, alignItems: "center", gap: 8 },
+  name: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 },
+  effort: { minWidth: 30, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center", color: color.mutedForeground },
+  sr: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: "hidden",
+    clip: "rect(0, 0, 0, 0)",
+    whiteSpace: "nowrap",
+    borderWidth: 0,
+  },
+  itemText: { display: "flex", minWidth: 0, flexDirection: "column" },
+  desc: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: color.mutedForeground, fontSize: 12 },
+  check: { position: "absolute", insetInlineEnd: 12, top: 10, display: "flex", width: 16, height: 16, alignItems: "center", justifyContent: "center" },
+  effortRow: {
+    display: "flex",
+    cursor: "default",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopStyle: "solid",
+    borderTopColor: color.border,
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  effortLabel: { color: color.mutedForeground, fontSize: 12 },
+  radios: { display: "flex", alignItems: "center", gap: 2 },
+  radio: {
+    cursor: "pointer",
+    borderRadius: radius.md,
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingTop: 4,
+    paddingBottom: 4,
+    fontSize: 12,
+    outline: "none",
+    color: { default: color.mutedForeground, ":hover": color.foreground, "[data-checked]": color.accentForeground },
+    backgroundColor: { default: "transparent", ":hover": color.muted, "[data-checked]": color.accent },
+    fontWeight: { "[data-checked]": 500 },
+    boxShadow: { ":focus-visible": "0 0 0 1px color-mix(in oklab, var(--ring) 50%, transparent)" },
+    transitionProperty: "background-color, color",
+    transitionDuration: { default: "150ms", [still]: "0s" },
+  },
+});
+
+function cls(...parts: readonly (false | null | undefined | object)[]): string | undefined {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className;
+}
+
+export type ModelSelectorVariant = "outline" | "ghost" | "muted";
+export type ModelSelectorSize = "default" | "sm" | "lg" | "xs";
+
+const variantStyle = { outline: styles.outline, ghost: styles.ghost, muted: styles.muted } as const;
+const sizeStyle = { default: styles.sizeDefault, sm: styles.sizeSm, lg: styles.sizeLg, xs: styles.sizeXs } as const;
+
+export type ModelSelectorTriggerProps = Omit<ComponentPropsWithoutRef<typeof PopoverTrigger>, "className" | "style"> & {
+  variant?: ModelSelectorVariant;
+  size?: ModelSelectorSize;
+  shape?: "pill";
+};
 
 function ModelSelectorTrigger({
-  className,
-  variant,
-  size,
+  variant = "outline",
+  size = "default",
+  shape,
   children,
   onKeyDown,
   ...props
@@ -280,11 +372,11 @@ function ModelSelectorTrigger({
   return (
     <PopoverTrigger
       data-slot="model-selector-trigger"
-      data-variant={variant ?? "outline"}
-      data-size={size ?? "default"}
+      data-variant={variant}
+      data-size={size}
       role="combobox"
       aria-haspopup="listbox"
-      className={cn(modelSelectorTriggerVariants({ variant, size }), className)}
+      className={cls(styles.trigger, variantStyle[variant], sizeStyle[size], shape === "pill" && styles.pill)}
       onKeyDown={(e) => {
         onKeyDown?.(e);
         if (e.defaultPrevented) return;
@@ -298,7 +390,7 @@ function ModelSelectorTrigger({
       {...props}
     >
       {children ?? <ModelSelectorValue />}
-      <ChevronDownIcon className="size-4 opacity-50" />
+      <ChevronDownIcon className={cls(styles.chevron)} />
     </PopoverTrigger>
   );
 }
@@ -307,41 +399,18 @@ export type ModelSelectorValueProps = {
   placeholder?: ReactNode;
   /** Show the active effort level next to the model name. */
   showEffort?: boolean;
-  className?: string;
 };
 
-function ModelIcon({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <span
-      className={cn(
-        "flex size-3.5 shrink-0 items-center justify-center [&_svg]:size-3.5",
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
+function ModelIcon({ children, nudge = false }: { children: ReactNode; nudge?: boolean }) {
+  return <span className={cls(styles.icon, nudge && styles.iconNudge)}>{children}</span>;
 }
 
-function ModelSelectorValue({
-  placeholder = "Select model",
-  showEffort = true,
-  className,
-}: ModelSelectorValueProps) {
+function ModelSelectorValue({ placeholder = "Select model", showEffort = true }: ModelSelectorValueProps) {
   const { selectedModel, efforts, effort } = useModelSelectorContext();
 
   if (!selectedModel) {
     return (
-      <span
-        data-slot="model-selector-value"
-        className={cn("text-muted-foreground", className)}
-      >
+      <span data-slot="model-selector-value" className={cls(styles.placeholder)}>
         {placeholder}
       </span>
     );
@@ -353,17 +422,10 @@ function ModelSelectorValue({
       : undefined;
 
   return (
-    <span
-      data-slot="model-selector-value"
-      className={cn("flex min-w-0 items-center gap-2", className)}
-    >
+    <span data-slot="model-selector-value" className={cls(styles.value)}>
       {selectedModel.icon && <ModelIcon>{selectedModel.icon}</ModelIcon>}
-      <span className="truncate font-medium">{selectedModel.name}</span>
-      {effortName && (
-        <span className="text-muted-foreground min-w-7.5 truncate text-center">
-          {effortName}
-        </span>
-      )}
+      <span className={cls(styles.name)}>{selectedModel.name}</span>
+      {effortName && <span className={cls(styles.effort)}>{effortName}</span>}
     </span>
   );
 }
@@ -416,7 +478,7 @@ function useLazyFlipSide(): {
 // Base UI's input anchors keyboard navigation when search is hidden.
 function ModelSelectorFocusAnchor() {
   return (
-    <div className="sr-only">
+    <div className={cls(styles.sr)}>
       <CommandInput readOnly aria-label="Model" />
     </div>
   );
@@ -569,29 +631,23 @@ function ModelSelectorItem({
     >
       {children ?? (
         <>
-          {model.icon && (
-            <ModelIcon className="mt-[3px]">{model.icon}</ModelIcon>
-          )}
-          <span className="flex min-w-0 flex-col">
-            <span className="truncate font-medium">{model.name}</span>
-            {model.description && (
-              <span className="text-muted-foreground truncate text-xs">
-                {model.description}
-              </span>
-            )}
+          {model.icon && <ModelIcon nudge>{model.icon}</ModelIcon>}
+          <span className={cls(styles.itemText)}>
+            <span className={cls(styles.name)}>{model.name}</span>
+            {model.description && <span className={cls(styles.desc)}>{model.description}</span>}
           </span>
         </>
       )}
       {isSelected && (
-        <span className="absolute end-3 top-2.5 flex size-4 items-center justify-center">
-          <CheckIcon className="size-4" />
+        <span className={cls(styles.check)}>
+          <CheckIcon className={cls(styles.chevron)} />
         </span>
       )}
     </CommandItem>
   );
 }
 
-export type ModelSelectorEffortProps = ComponentPropsWithoutRef<"div"> & {
+export type ModelSelectorEffortProps = Omit<ComponentPropsWithoutRef<"div">, "className" | "style"> & {
   label?: ReactNode;
   disabled?: boolean;
 };
@@ -599,7 +655,6 @@ export type ModelSelectorEffortProps = ComponentPropsWithoutRef<"div"> & {
 function ModelSelectorEffort({
   label = "Thinking",
   disabled,
-  className,
   onKeyDown,
   ...props
 }: ModelSelectorEffortProps) {
@@ -610,10 +665,7 @@ function ModelSelectorEffort({
   return (
     <div
       data-slot="model-selector-effort"
-      className={cn(
-        "flex cursor-default items-center justify-between gap-3 border-t px-3 py-2",
-        className,
-      )}
+      className={cls(styles.effortRow)}
       onKeyDown={(e) => {
         onKeyDown?.(e);
         if (e.defaultPrevented) return;
@@ -628,22 +680,19 @@ function ModelSelectorEffort({
       }}
       {...props}
     >
-      <span className="text-muted-foreground text-xs">{label}</span>
+      <span className={cls(styles.effortLabel)}>{label}</span>
       <RadioGroupPrimitive
         disabled={disabled}
         value={effort ?? ""}
         onValueChange={setEffort}
         aria-label={typeof label === "string" ? label : "Reasoning effort"}
-        className="flex items-center gap-0.5"
+        className={cls(styles.radios)}
       >
         {efforts.map((option) => (
           <RadioPrimitive.Root
             key={option.id}
             value={option.id}
-            className={cn(
-              "focus-visible:ring-ring/50 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer rounded-md px-2 py-1 text-xs transition-colors outline-none focus-visible:ring-1",
-              "data-checked:bg-accent data-checked:text-accent-foreground data-checked:font-medium",
-            )}
+            className={cls(styles.radio)}
           >
             {option.name}
           </RadioPrimitive.Root>
@@ -653,15 +702,16 @@ function ModelSelectorEffort({
   );
 }
 
-export type ModelSelectorProps = Omit<ModelSelectorRootProps, "children"> &
-  VariantProps<typeof modelSelectorTriggerVariants> & {
-    /** Render a search input above the model list. */
-    searchable?: boolean;
-    /** Alignment of the dropdown relative to the trigger. Use `"end"` when the
-     * trigger sits at the right edge of its container. */
-    align?: ModelSelectorContentProps["align"];
-    className?: string;
-  };
+export type ModelSelectorProps = Omit<ModelSelectorRootProps, "children"> & {
+  variant?: ModelSelectorVariant;
+  size?: ModelSelectorSize;
+  shape?: "pill";
+  /** Render a search input above the model list. */
+  searchable?: boolean;
+  /** Alignment of the dropdown relative to the trigger. Use `"end"` when the
+   * trigger sits at the right edge of its container. */
+  align?: ModelSelectorContentProps["align"];
+};
 
 export {
   ModelSelectorRoot,

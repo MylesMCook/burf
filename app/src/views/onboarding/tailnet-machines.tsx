@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, ExternalLinkIcon, KeyRoundIcon, PlusIcon, RefreshCwIcon, SearchIcon, ShieldCheckIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -9,11 +10,391 @@ import type { Discovery, Machine } from "@/lib/api";
 import { plainError } from "@/lib/errors";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { useAgentChoice, useInstallTarget } from "@/views/onboarding/guided-install";
 import { InlineAgents, QuickInstall } from "@/views/onboarding/quick-install";
 import { useSshPlan } from "@/views/onboarding/ssh-setup";
 import { discoverNetwork, type SystemTailnet, sortMachines, type TailnetSource } from "@/views/onboarding/tailnet";
+
+const paint = stylex.create({
+  s0: {
+    "marginBottom": "8px",
+    "display": "flex",
+    "height": "24px",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s1: {
+    "flexShrink": 0,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s2: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s3: {
+    "marginInlineEnd": "calc(8px * -1)",
+    "marginInlineStart": "auto",
+    "flexShrink": 0,
+  },
+  s4: {
+    "display": "flex",
+    "height": "96px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s5: {
+    "display": "flex",
+    "minHeight": "96px",
+    "flexDirection": "column",
+    "alignItems": "flex-start",
+    "justifyContent": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s6: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "display": "flex",
+    "minHeight": "96px",
+    "alignItems": "center",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s8: {
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s9: {
+    "display": "flex",
+    "height": "36px",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "color": "var(--muted-foreground)",
+  },
+  s10: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s11: {
+    "height": "100%",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "transparent",
+    "color": {
+      "default": "var(--foreground)",
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+    },
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+  },
+  s12: {
+    "maxHeight": "201px",
+    "overflowY": "auto",
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s13: {
+    "display": "flex",
+    "height": "40px",
+    "alignItems": "center",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s14: {
+    "display": "flex",
+    "height": "40px",
+    "alignItems": "center",
+    "gap": "10px",
+    "paddingInlineStart": "12px",
+    "paddingInlineEnd": "8px",
+  },
+  s15: {
+    "backgroundColor": "color-mix(in oklab, var(--accent) 50%, transparent)",
+  },
+  s16: {
+    "color": "var(--muted-foreground)",
+  },
+  s17: {
+    "width": "6px",
+    "height": "6px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+  },
+  s18: {
+    "backgroundColor": "var(--success)",
+  },
+  s19: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 40%, transparent)",
+  },
+  s20: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s21: {
+    "display": {
+      "default": "none",
+      "@media (min-width: 640px)": {
+        "default": "inline",
+      },
+    },
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "marginInlineStart": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+  },
+  s23: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "paddingInlineEnd": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s24: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s25: {
+    "paddingInlineEnd": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s26: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "padding": "12px",
+  },
+  s27: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s28: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "padding": "12px",
+  },
+  s29: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s30: {
+    "display": "flex",
+    "height": "32px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--input)",
+      ":focus-within": "var(--ring)",
+    },
+    "backgroundColor": {
+      "default": "light-dark(var(--background), color-mix(in oklab, var(--input) 32%, transparent))",
+    },
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "13px",
+    "boxShadow": {
+      "default": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+      ":focus-within": "0 0 0 2px color-mix(in oklab, var(--ring) 24%, transparent)",
+    },
+  },
+  s31: {
+    "height": "100%",
+    "minWidth": "0px",
+    "flexShrink": 0,
+    "backgroundColor": "transparent",
+    "outline": "none",
+    "color": {
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+    },
+    "opacity": {
+      ":disabled": 0.64,
+    },
+  },
+  s32: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  s33: {
+    "flexShrink": 0,
+  },
+  s34: {
+    "marginTop": "8px",
+    "display": "flex",
+    "minHeight": "20px",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "20px",
+  },
+  s35: {
+    "color": "var(--destructive-foreground)",
+  },
+  s36: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s37: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s38: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s39: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s40: {
+    "marginInlineStart": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s41: {
+    "height": "20px",
+    "width": "112px",
+    "borderColor": {
+      "default": "var(--input)",
+      ":focus": "var(--ring)",
+    },
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "transparent",
+    "paddingLeft": "2px",
+    "paddingRight": "2px",
+    "color": {
+      "default": "var(--foreground)",
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+    },
+    "outline": "none",
+  },
+  s42: {
+    "marginTop": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s43: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "12px",
+    },
+  },
+  s44: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s45: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s46: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+
+  s47: {
+    ":not(#\\#) > :not(:last-child)": {
+      borderBottomColor: "color-mix(in oklab, var(--border) 70%, transparent)",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const TAILSCALE_DOWNLOAD = "https://tailscale.com/download";
 
@@ -51,12 +432,12 @@ export function TailnetMachines({
 
   return (
     <section aria-labelledby="tailnet-heading">
-      <div className="mb-2 flex h-6 min-w-0 items-center gap-2">
-        <h2 id="tailnet-heading" className="shrink-0 text-sm">
+      <div className={sx(paint.s0)}>
+        <h2 id="tailnet-heading" className={sx(paint.s1)}>
           On your tailnet
         </h2>
-        {sources.length === 1 && <span className="min-w-0 truncate text-muted-foreground text-xs">{source.label}</span>}
-        <span className="-me-2 ms-auto shrink-0"><Button size="xs" variant="ghost" data-focus-skip=""  disabled={running} onClick={onSignIn} muted>
+        {sources.length === 1 && <span className={sx(paint.s2)}>{source.label}</span>}
+        <span className={sx(paint.s3)}><Button size="xs" variant="ghost" data-focus-skip=""  disabled={running} onClick={onSignIn} muted>
           <PlusIcon /> Sign in to another tailnet
         </Button></span>
       </div>
@@ -151,7 +532,7 @@ function MachineList({
 
   if (found.state === "loading") {
     return (
-      <div className="flex h-24 items-center justify-center gap-2 rounded-lg border text-muted-foreground text-sm">
+      <div className={sx(paint.s4)}>
         <Spinner  size="lg"/> Listing machines…
       </div>
     );
@@ -159,9 +540,9 @@ function MachineList({
   if (found.state === "error") {
     const login = /needs a login/i.test(found.message);
     return (
-      <div className="flex min-h-24 flex-col items-start justify-center gap-2 rounded-lg border px-3.5 py-3 text-sm">
+      <div className={sx(paint.s5)}>
         <span>{login ? `Burf is signed out of ${source.label}.` : `Couldn't list the machines on ${source.label}.`}</span>
-        {!login && <span className="text-muted-foreground text-xs">{found.message}</span>}
+        {!login && <span className={sx(paint.s6)}>{found.message}</span>}
         <Button size="xs" variant="outline" onClick={login ? onSignIn : found.retry}>
           {login ? "Sign in again" : "Try again"}
         </Button>
@@ -170,17 +551,17 @@ function MachineList({
   }
   if (all.length === 0) {
     return (
-      <div className="flex min-h-24 items-center rounded-lg border px-3.5 py-3 text-muted-foreground text-sm">
+      <div className={sx(paint.s7)}>
         Nothing on {source.label} can be a box yet: berthd runs on Linux and macOS. Add a machine to the tailnet, or run the command below on any box.
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border">
+    <div className={sx(paint.s8)}>
       {all.length >= FILTER_FROM && (
-        <label className="flex h-9 items-center gap-2 border-b px-3 text-muted-foreground">
-          <SearchIcon aria-hidden className="size-3.5 shrink-0" />
+        <label className={sx(paint.s9)}>
+          <SearchIcon aria-hidden className={sx(paint.s10)} />
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -189,12 +570,12 @@ function MachineList({
             spellCheck={false}
             autoComplete="off"
             data-focus-skip=""
-            className="h-full min-w-0 flex-1 bg-transparent text-foreground text-sm outline-none placeholder:text-muted-foreground/72"
+            className={sx(paint.s11)}
           />
         </label>
       )}
       {/* At most about five rows tall, whatever the tailnet's size. */}
-      <ul aria-label={`Machines on ${source.label}`} className="max-h-[201px] divide-y divide-border/70 overflow-y-auto">
+      <ul aria-label={`Machines on ${source.label}`} className={[sx(paint.s12), sx(paint.s47)].filter(Boolean).join(" ")}>
         {machines.map((m) => (
           <MachineRow
             key={m.ip}
@@ -205,7 +586,7 @@ function MachineList({
             onPick={() => onPick(m.ip === picked ? undefined : m.ip)}
           />
         ))}
-        {machines.length === 0 && <li className="flex h-10 items-center px-3 text-muted-foreground text-sm">No machine matches “{filter.trim()}”.</li>}
+        {machines.length === 0 && <li className={sx(paint.s13)}>No machine matches “{filter.trim()}”.</li>}
       </ul>
       {machine && found.state === "ok" && (
         <MachineSetup
@@ -227,22 +608,22 @@ function MachineRow({ machine: m, picked, locked, autoFocus, onPick }: { machine
   const sshSupported = useStore((s) => !s.status || !("ssh_setup_supported" in s.status) || s.status.ssh_setup_supported !== false);
   const kind = m.os === "linux" ? "Linux" : m.os;
   return (
-    <li className={cn("flex h-10 items-center gap-2.5 ps-3 pe-2", picked && "bg-accent/50", !m.online && !m.box && "text-muted-foreground")}>
+    <li className={[sx(paint.s14), picked && sx(paint.s15), !m.online && !m.box && sx(paint.s16)].filter(Boolean).join(" ")}>
       <Tip label={m.online ? "Online" : "Offline"}>
-        <span role="img" aria-label={m.online ? "Online" : "Offline"} className={cn("size-1.5 shrink-0 rounded-full", m.online ? "bg-success" : "bg-muted-foreground/40")} />
+        <span role="img" aria-label={m.online ? "Online" : "Offline"} className={[sx(paint.s17), m.online ? sx(paint.s18) : sx(paint.s19)].filter(Boolean).join(" ")} />
       </Tip>
-      <span className="min-w-0 truncate text-sm">{m.name}</span>
-      <span className="hidden shrink-0 text-muted-foreground text-xs sm:inline">
+      <span className={sx(paint.s20)}>{m.name}</span>
+      <span className={sx(paint.s21)}>
         {kind}
         {m.ssh ? " · Tailscale SSH" : ""}
       </span>
-      <span className="ms-auto flex shrink-0 items-center">
+      <span className={sx(paint.s22)}>
         {m.box ? (
-          <span className="flex items-center gap-1 pe-1 text-muted-foreground text-xs">
-            <CheckIcon className="size-3.5" /> Paired as {m.box}
+          <span className={sx(paint.s23)}>
+            <CheckIcon className={sx(paint.s24)} /> Paired as {m.box}
           </span>
         ) : !m.online ? (
-          <span className="pe-1 text-muted-foreground text-xs">Offline</span>
+          <span className={sx(paint.s25)}>Offline</span>
         ) : picked ? (
           <Button size="xs" variant="ghost"  disabled={locked} onClick={onPick} muted>
             Cancel
@@ -308,8 +689,8 @@ function MachineSetup({
 
   if (m.os !== "linux" || !sshSupported) {
     return (
-      <div className="border-t p-3">
-        <p className="text-muted-foreground text-xs leading-relaxed">
+      <div className={sx(paint.s26)}>
+        <p className={sx(paint.s27)}>
           Run the command in step 1 below on {m.name}, then paste what it prints into step 2.
         </p>
       </div>
@@ -324,15 +705,15 @@ function MachineSetup({
   const userError = /@/.test(user) ? `Only the user: Burf connects to ${m.name}.` : /\s/.test(user.trim()) ? "A user name has no spaces." : undefined;
 
   return (
-    <div className="border-t p-3">
+    <div className={sx(paint.s28)}>
       <form
-        className="flex items-center gap-2"
+        className={sx(paint.s29)}
         onSubmit={(e) => {
           e.preventDefault();
           go();
         }}
       >
-        <div className="flex h-8 min-w-0 flex-1 items-center rounded-md border border-input bg-background px-2.5 font-mono text-[13px] shadow-xs/5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/24 dark:bg-input/32">
+        <div className={sx(paint.s30)}>
           <input
             autoFocus
             value={user}
@@ -349,21 +730,21 @@ function MachineSetup({
             autoCapitalize="off"
             autoCorrect="off"
             style={{ width: `${(user.length || 4) + 0.25}ch` }}
-            className="h-full min-w-0 shrink-0 bg-transparent outline-none placeholder:text-muted-foreground/72 disabled:opacity-64"
+            className={sx(paint.s31)}
           />
-          <span className="min-w-0 truncate text-muted-foreground">@{host}</span>
+          <span className={sx(paint.s32)}>@{host}</span>
         </div>
-        <span className="shrink-0"><Button type="submit" size="sm"  disabled={!!userError || running} data-testid="machine-install">
+        <span className={sx(paint.s33)}><Button type="submit" size="sm"  disabled={!!userError || running} data-testid="machine-install">
           Install and pair
         </Button></span>
       </form>
-      <div aria-live="polite" className="mt-2 flex min-h-5 min-w-0 items-center gap-1.5 text-muted-foreground text-xs leading-5">
+      <div aria-live="polite" className={sx(paint.s34)}>
         {userError ? (
-          <span className="text-destructive-foreground">{userError}</span>
+          <span className={sx(paint.s35)}>{userError}</span>
         ) : m.ssh ? (
           <>
-            <ShieldCheckIcon className="size-3.5 shrink-0" />
-            <span className="min-w-0 truncate">Tailscale SSH: no keys needed</span>
+            <ShieldCheckIcon className={sx(paint.s36)} />
+            <span className={sx(paint.s37)}>Tailscale SSH: no keys needed</span>
           </>
         ) : plan === "loading" ? (
           <>
@@ -371,11 +752,11 @@ function MachineSetup({
           </>
         ) : plan ? (
           <>
-            <KeyRoundIcon className="size-3.5 shrink-0" />
-            <span className="min-w-0 truncate">{plan.summary}</span>
+            <KeyRoundIcon className={sx(paint.s38)} />
+            <span className={sx(paint.s39)}>{plan.summary}</span>
           </>
         ) : null}
-        <span className="ms-auto flex shrink-0 items-center gap-1">
+        <span className={sx(paint.s40)}>
           named
           <input
             value={name}
@@ -384,13 +765,13 @@ function MachineSetup({
             aria-label="Name in Burf"
             spellCheck={false}
             disabled={running}
-            className="h-5 w-28 border-input border-b bg-transparent px-0.5 text-foreground outline-none placeholder:text-muted-foreground/72 focus:border-ring"
+            className={sx(paint.s41)}
           />
         </span>
       </div>
       <InlineAgents value={agents} onChange={setAgents} disabled={running} />
       {state === "ready" && (
-        <p className="mt-1 text-muted-foreground text-xs leading-relaxed">
+        <p className={sx(paint.s42)}>
           Burf logs in once to install berthd for that user. It listens on {m.name}'s tailnet address only, and Burf never needs SSH for it again.
         </p>
       )}
@@ -422,12 +803,12 @@ export function UseTailscale({ system, onRefresh, onSignIn }: { system?: SystemT
             ? `Nothing on ${system?.name || "your tailnet"} can be a box yet: berthd runs on Linux and macOS.`
             : "Burf couldn't ask Tailscale on this computer for its machines.";
   return (
-    <div className="space-y-3">
-      <p className="text-muted-foreground text-xs leading-relaxed">
+    <div className={sx(paint.s43)}>
+      <p className={sx(paint.s44)}>
         Tailscale puts your machines on one private network. With it on this computer, they're listed here. Pair a box with the link its install command prints.
       </p>
-      {said && <p className="text-sm">{said}</p>}
-      <div className="flex flex-wrap items-center gap-2">
+      {said && <p className={sx(paint.s45)}>{said}</p>}
+      <div className={sx(paint.s46)}>
         {state === "missing" ? (
           <Button size="sm" variant="outline" onClick={() => void openUrl(TAILSCALE_DOWNLOAD)}>
             <ExternalLinkIcon /> Get Tailscale

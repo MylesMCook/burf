@@ -1,5 +1,7 @@
 import type * as React from "react";
 import { MessagesSquare } from "lucide-react";
+import * as stylex from "@stylexjs/stylex";
+
 import { GitHubIcon } from "@/components/icons/github";
 import {
   Sidebar,
@@ -12,6 +14,27 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { ThreadList } from "@/components/assistant-ui/elements/thread-list.aui";
+import { radius } from "@/styles/tokens.stylex";
+import { mark } from "./surfaces";
+
+const styles = stylex.create({
+  row: { display: "flex", alignItems: "center", justifyContent: "space-between" },
+  tile: {
+    display: "flex",
+    aspectRatio: "1",
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    backgroundColor: "var(--sidebar-primary)",
+    color: "var(--sidebar-primary-foreground)",
+  },
+  icon: { width: 16, height: 16 },
+  heading: { display: "flex", flexDirection: "column", gap: 2, lineHeight: 1 },
+  headingEnd: { marginInlineEnd: 24 },
+  title: { fontWeight: 600 },
+});
 
 export function ThreadListSidebar({
   ...props
@@ -19,7 +42,7 @@ export function ThreadListSidebar({
   return (
     <Sidebar {...props}>
       <SidebarHeader marker="aui-sidebar-header" rule>
-        <div className="aui-sidebar-header-content flex items-center justify-between">
+        <div {...mark("aui-sidebar-header-content", styles.row)}>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" render={<a
@@ -27,11 +50,11 @@ export function ThreadListSidebar({
                   target="_blank"
                   rel="noopener noreferrer"
                 />}>
-                  <div className="aui-sidebar-header-icon-wrapper bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                    <MessagesSquare className="aui-sidebar-header-icon size-4" />
+                  <div {...mark("aui-sidebar-header-icon-wrapper", styles.tile)}>
+                    <MessagesSquare {...mark("aui-sidebar-header-icon", styles.icon)} />
                   </div>
-                  <div className="aui-sidebar-header-heading me-6 flex flex-col gap-0.5 leading-none">
-                    <span className="aui-sidebar-header-title font-semibold">
+                  <div {...mark("aui-sidebar-header-heading", styles.heading, styles.headingEnd)}>
+                    <span {...mark("aui-sidebar-header-title", styles.title)}>
                       assistant-ui
                     </span>
                   </div>
@@ -52,11 +75,11 @@ export function ThreadListSidebar({
                 target="_blank"
                 rel="noopener noreferrer"
               />}>
-                <div className="aui-sidebar-footer-icon-wrapper bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <GitHubIcon className="aui-sidebar-footer-icon size-4" />
+                <div {...mark("aui-sidebar-footer-icon-wrapper", styles.tile)}>
+                  <GitHubIcon className={mark("aui-sidebar-footer-icon", styles.icon).className} />
                 </div>
-                <div className="aui-sidebar-footer-heading flex flex-col gap-0.5 leading-none">
-                  <span className="aui-sidebar-footer-title font-semibold">
+                <div {...mark("aui-sidebar-footer-heading", styles.heading)}>
+                  <span {...mark("aui-sidebar-footer-title", styles.title)}>
                     GitHub
                   </span>
                   <span>View Source</span>

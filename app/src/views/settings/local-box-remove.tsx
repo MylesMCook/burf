@@ -1,6 +1,8 @@
 import { useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogPopup, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { color } from "@/styles/tokens.stylex";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toastManager } from "@/components/ui/toast";
@@ -9,6 +11,12 @@ import { localBoxApi, useLocalBoxName } from "@/lib/local-box";
 import { useStore } from "@/lib/store";
 import { CommandLog } from "@/views/settings/command-log";
 import { IS_LINUX, thisComputer } from "@/lib/platform";
+
+const styles = stylex.create({
+  body: { paddingLeft: 24, paddingRight: 24 },
+  choice: { display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14 },
+  hint: { display: "block", marginTop: 2, color: color.mutedForeground, fontSize: 12, lineHeight: 1.625 },
+});
 
 // RemoveLocalBoxDialog stops using this Mac as a box (Use this Mac,
 // undone): Burf forgets the box, stops berthd here and removes its launch
@@ -46,15 +54,15 @@ export function RemoveLocalBoxDialog({ box, open, onOpenChange }: { box: string;
             Burf forgets {box}, stops berthd on {thisComputer("this Mac")} and removes its {IS_LINUX ? "systemd user unit" : "launch agent"}. Your repositories and files stay where they are, and agents still running here keep going until they finish.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="px-6">
-          <label className="flex items-start gap-2.5 text-sm">
+        <div {...stylex.props(styles.body)}>
+          <label {...stylex.props(styles.choice)}>
             <Checkbox offset checked={removeData} disabled={running} onCheckedChange={(v) => setRemoveData(v === true)} />
             <span>
               Also delete its data
-              <span className="mt-0.5 block text-muted-foreground text-xs leading-relaxed">{thisComputer("The box's keys, its list of projects and its session records. Keep them to set this Mac up again as the same box.")}</span>
+              <span {...stylex.props(styles.hint)}>{thisComputer("The box's keys, its list of projects and its session records. Keep them to set this Mac up again as the same box.")}</span>
             </span>
           </label>
-          {lines && <CommandLog className="mt-3" lines={lines} error={error} />}
+          {lines && <CommandLog lines={lines} error={error} />}
         </div>
         <AlertDialogFooter>
           <AlertDialogClose render={<Button variant="ghost" disabled={running} />}>Cancel</AlertDialogClose>

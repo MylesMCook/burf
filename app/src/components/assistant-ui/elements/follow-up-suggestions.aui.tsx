@@ -2,6 +2,56 @@
 
 import { AuiIf, useAuiState, ThreadPrimitive } from "@assistant-ui/react";
 import { useCallback, useEffect, useRef, useState, type FC } from "react";
+import * as stylex from "@stylexjs/stylex";
+
+import { color, radius } from "@/styles/tokens.stylex";
+import { mark } from "./surfaces";
+
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const styles = stylex.create({
+  scroller: {
+    marginTop: -4,
+    marginBottom: -4,
+    width: "100%",
+    scrollbarWidth: "none",
+    overflowX: "auto",
+    paddingTop: 4,
+    paddingBottom: 4,
+    "::-webkit-scrollbar": { display: "none" },
+  },
+  row: {
+    marginInline: "auto",
+    display: "flex",
+    minHeight: 32,
+    width: "max-content",
+    alignItems: "center",
+    gap: 8,
+    paddingLeft: 2,
+    paddingRight: 2,
+  },
+  chip: {
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: {
+      default: "color-mix(in oklab, var(--foreground) 10%, transparent)",
+      ":hover": "color-mix(in oklab, var(--foreground) 25%, transparent)",
+    },
+    backgroundColor: { ":hover": "color-mix(in oklab, var(--foreground) 3%, transparent)" },
+    borderRadius: radius.md,
+    paddingLeft: 10,
+    paddingRight: 10,
+    paddingTop: 4,
+    paddingBottom: 4,
+    fontSize: 14,
+    lineHeight: "20px",
+    whiteSpace: "nowrap",
+    transitionProperty: "background-color, border-color, color",
+    transitionTimingFunction: "cubic-bezier(0.4, 0, 1, 1)",
+    transitionDuration: { default: "150ms", [still]: "0s" },
+  },
+  label: { color: color.mutedForeground, marginInlineStart: 4 },
+});
 
 const FollowupSuggestionsRow: FC = () => {
   const suggestions = useAuiState((s) => s.thread.suggestions);
@@ -40,25 +90,25 @@ const FollowupSuggestionsRow: FC = () => {
     fades.left ? "transparent, black 2rem" : "black"
   }, ${fades.right ? "black calc(100% - 2rem), transparent" : "black"})`;
 
+  const scroller = mark("aui-thread-followup-suggestions", styles.scroller);
   return (
     <div
       ref={scrollRef}
       onScroll={updateFades}
-      // overflow-x clips both axes; py-1/-my-1 gives focus rings vertical room without changing outer height.
-      className="aui-thread-followup-suggestions -my-1 w-full [scrollbar-width:none] overflow-x-auto py-1 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-      style={{ maskImage, WebkitMaskImage: maskImage }}
+      className={scroller.className}
+      style={{ ...scroller.style, maskImage, WebkitMaskImage: maskImage }}
     >
-      <div className="mx-auto flex min-h-8 w-max items-center gap-2 px-0.5">
+      <div {...mark(undefined, styles.row)}>
         {suggestions.map((suggestion, idx) => (
           <ThreadPrimitive.Suggestion
             key={idx}
-            className="aui-thread-followup-suggestion border-foreground/10 hover:bg-foreground/[0.03] hover:border-foreground/25 rounded-md border px-2.5 py-1 text-sm whitespace-nowrap transition-colors ease-in motion-reduce:transition-none"
+            className={mark("aui-thread-followup-suggestion", styles.chip).className}
             prompt={suggestion.prompt}
             send
           >
             {suggestion.title ?? suggestion.prompt}
             {suggestion.label && (
-              <span className="aui-thread-followup-suggestion-label text-muted-foreground ms-1">
+              <span {...mark("aui-thread-followup-suggestion-label", styles.label)}>
                 {suggestion.label}
               </span>
             )}

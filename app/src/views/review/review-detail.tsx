@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckCheckIcon, CheckIcon, ChevronDownIcon, GitBranchIcon, GitCommitHorizontalIcon, GitPullRequestIcon, GlobeIcon, MessageSquareReplyIcon, MessageSquareTextIcon, SendIcon, SquareArrowOutUpRightIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -21,10 +22,533 @@ import { errorMessage } from "@/lib/format";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
 import { useSessionTitle } from "@/hooks/use-session-name";
-import { cn } from "@/lib/utils";
 import type { ApproveMode } from "@/views/review/review-actions";
 import { type ReviewEntry, useReview, useReviewName, where } from "@/views/review/review-store";
 import { lastMessage } from "@/views/review/summary";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "minHeight": "0px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s1: {
+    "display": "flex",
+    "flexShrink": 0,
+    "flexDirection": "column",
+    "gap": "12px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "16px",
+    "paddingBottom": "12px",
+  },
+  s2: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "flex-start",
+    "gap": "12px",
+  },
+  s3: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s4: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s5: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s6: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 600,
+    "fontSize": "16px",
+    "lineHeight": "24px",
+  },
+  s7: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s8: {
+    "marginTop": "4px",
+    "display": "flex",
+    "minWidth": "0px",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "8px",
+    "rowGap": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s9: {
+    "display": "inline-flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+    "fontFamily": "var(--font-mono)",
+  },
+  s10: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s11: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s12: {
+    "color": "var(--muted-foreground)",
+  },
+  s13: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+  },
+  s14: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s15: {
+    "color": "var(--muted-foreground)",
+  },
+  s16: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s17: {
+    "display": "flex",
+  },
+  s18: {
+    "borderTopRightRadius": "0px",
+    "borderBottomRightRadius": "0px",
+  },
+  s19: {
+    "marginLeft": "2px",
+    "display": "none",
+    "height": "18px",
+    "backgroundColor": "color-mix(in oklab, var(--primary-foreground) 15%, transparent)",
+    "fontSize": "10px",
+    "color": "var(--primary-foreground)",
+  },
+  s20: {
+    "borderTopLeftRadius": "0px",
+    "borderBottomLeftRadius": "0px",
+    "borderLeftWidth": 1,
+    "borderLeftStyle": "solid",
+    "borderLeftColor": "color-mix(in oklab, var(--primary-foreground) 20%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+  },
+  s21: {
+    "marginLeft": "2px",
+    "display": "none",
+    "height": "18px",
+    "fontSize": "10px",
+  },
+  s22: {
+    "marginLeft": "2px",
+    "display": "none",
+    "height": "18px",
+    "fontSize": "10px",
+  },
+  s23: {
+    "marginLeft": "4px",
+    "marginRight": "4px",
+    "height": "20px",
+    "width": "1px",
+    "backgroundColor": "var(--border)",
+  },
+  s24: {
+    "display": "none",
+  },
+  s25: {
+    "marginLeft": "2px",
+    "display": "none",
+    "height": "18px",
+    "fontSize": "10px",
+  },
+  s26: {
+    "marginLeft": "auto",
+  },
+  s27: {
+    "display": "none",
+  },
+  s28: {
+    "marginLeft": "2px",
+    "display": "none",
+    "height": "18px",
+    "fontSize": "10px",
+  },
+  s29: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+  },
+  s30: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "16px",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "16px",
+    "paddingBottom": "16px",
+  },
+  s31: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s32: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontWeight": 400,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s33: {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(3, minmax(0, 1fr))",
+    "gap": "8px",
+  },
+  s34: {
+    "maxHeight": "128px",
+    "overflow": "auto",
+    "borderRadius": "var(--radius-lg)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 60%, transparent)",
+    "padding": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--destructive-foreground)",
+  },
+  s35: {
+    "display": "block",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s36: {
+    "aspectRatio": "16/10",
+    "width": "100%",
+    "objectFit": "cover",
+  },
+  s37: {
+    "aspectRatio": "16/10",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+  },
+  s38: {
+    "height": "48px",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 60%, transparent)",
+  },
+  s39: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s40: {
+    "maxHeight": "224px",
+    "overflowY": "auto",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s41: {
+    "whiteSpace": "pre-wrap",
+    "overflowWrap": "break-word",
+  },
+  s42: {
+    "display": "inline-flex",
+    "width": "16px",
+    "height": "16px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+  },
+  s43: {
+    "backgroundColor": "var(--muted)",
+  },
+  s44: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--muted-foreground)",
+  },
+  s45: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s46: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s47: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s48: {
+    "marginLeft": "auto",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s49: {
+    "maxHeight": "160px",
+    "overflow": "auto",
+    "whiteSpace": "pre-wrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s50: {
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontSize": "13px",
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--background) 60%, transparent)",
+    },
+  },
+  s51: {
+    "backgroundColor": "var(--background)",
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s52: {
+    "marginLeft": "6px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s53: {
+    "marginLeft": "auto",
+    "paddingRight": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s54: {
+    "color": "var(--success-foreground)",
+  },
+  s55: {
+    "color": "var(--destructive-foreground)",
+  },
+  s56: {
+    "width": "240px",
+    "flexShrink": 0,
+    "overflowY": "auto",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+    "padding": "6px",
+  },
+  s57: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+    "fontSize": "13px",
+  },
+  s58: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--success-foreground)",
+  },
+  s59: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s60: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s61: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+    "fontSize": "13px",
+  },
+  s62: {
+    "display": "flex",
+    "minWidth": "0px",
+    "gap": "8px",
+  },
+  s63: {
+    "flexShrink": 0,
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "color": "var(--muted-foreground)",
+  },
+  s64: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s65: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s66: {
+    "marginTop": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s67: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s68: {
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s69: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "13px",
+  },
+  s70: {
+    "flexShrink": 0,
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s71: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s72: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s73: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  n0: {
+    "display": "inline-flex",
+    "width": "16px",
+    "height": "16px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+  },
+  n1: {
+    "backgroundColor": "var(--muted)",
+  },
+  n2: {
+    "backgroundColor": "color-mix(in oklab, var(--success) 15%, transparent)",
+    "color": "var(--success-foreground)",
+  },
+  n3: {
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 15%, transparent)",
+    "color": "var(--destructive-foreground)",
+  },
+
+  s74: {
+    "@media (min-width: 1280px)": {
+      display: "inline-flex",
+    },
+  },
+  s75: {
+    "@media (min-width: 1280px)": {
+      display: "inline",
+    },
+  },
+  s76: {
+    "@media (min-width: 1280px)": {
+      display: "none",
+    },
+  },
+  s77: {
+    objectPosition: "top",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface DetailActions {
   approve(mode: ApproveMode): void;
@@ -48,33 +572,33 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
   const title = work ?? name;
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header className="flex shrink-0 flex-col gap-3 border-b px-6 pt-4 pb-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <AgentIcon agent={entry.agent} className="size-4" />
-              <h2 className="truncate font-semibold text-base">{title}</h2>
+    <div className={sx(paint.s0)}>
+      <header className={sx(paint.s1)}>
+        <div className={sx(paint.s2)}>
+          <div className={sx(paint.s3)}>
+            <div className={sx(paint.s4)}>
+              <AgentIcon agent={entry.agent} className={sx(paint.s5)} />
+              <h2 className={sx(paint.s6)}>{title}</h2>
               {entry.agent_state === "waiting" ? (
                 <Badge variant="warning" size="sm">
                   Waiting for you
                 </Badge>
               ) : (
-                <span className="shrink-0 text-muted-foreground text-xs">
+                <span className={sx(paint.s7)}>
                   {agentLabel(entry.agent)} finished {ago(entry.state_since)}
                 </span>
               )}
             </div>
-            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
+            <div className={sx(paint.s8)}>
               <span>
                 {work && `${name} · `}
                 {entry.box} · {entry.location}
               </span>
               {entry.branch && (
-                <span className="inline-flex min-w-0 items-center gap-1 font-mono">
-                  <GitBranchIcon className="size-3" />
-                  <span className="truncate">{entry.branch}</span>
-                  {entry.base && <span className="text-muted-foreground">→ {entry.base.replace(/^origin\//, "")}</span>}
+                <span className={sx(paint.s9)}>
+                  <GitBranchIcon className={sx(paint.s10)} />
+                  <span className={sx(paint.s11)}>{entry.branch}</span>
+                  {entry.base && <span className={sx(paint.s12)}>→ {entry.base.replace(/^origin\//, "")}</span>}
                 </span>
               )}
               {unpushed > 0 && (
@@ -83,24 +607,24 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
                 </span>
               )}
               {pr && (
-                <button type="button" onClick={() => void openUrl(pr.url)} className="inline-flex items-center gap-1 hover:text-foreground">
-                  <GitPullRequestIcon className="size-3" />
+                <button type="button" onClick={() => void openUrl(pr.url)} className={sx(paint.s13)}>
+                  <GitPullRequestIcon className={sx(paint.s14)} />
                   PR #{pr.number}
-                  <span className="text-muted-foreground">· {pr.isDraft ? "draft" : pr.state.toLowerCase()}</span>
+                  <span className={sx(paint.s15)}>· {pr.isDraft ? "draft" : pr.state.toLowerCase()}</span>
                 </button>
               )}
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <div className="flex">
-            <span className="rounded-r-none"><Button size="sm"  onClick={() => actions.approve(hasFiles ? "commit" : "push")}>
+        <div className={sx(paint.s16)}>
+          <div className={sx(paint.s17)}>
+            <span className={sx(paint.s18)}><Button size="sm"  onClick={() => actions.approve(hasFiles ? "commit" : "push")}>
               <CheckIcon />
               Approve…
-              <span className="ml-0.5 hidden h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground xl:inline-flex"><Kbd>A</Kbd></span>
+              <span className={[sx(paint.s19), sx(paint.s74)].filter(Boolean).join(" ")}><Kbd>A</Kbd></span>
             </Button></span>
             <Menu>
-              <MenuTrigger render={<span className="rounded-l-none border-l border-l-primary-foreground/20 px-1.5"><Button size="sm"  aria-label="More ways to approve" /></span>}>
+              <MenuTrigger render={<span className={sx(paint.s20)}><Button size="sm"  aria-label="More ways to approve" /></span>}>
                 <ChevronDownIcon />
               </MenuTrigger>
               <MenuPopup align="start">
@@ -124,34 +648,34 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
           <Button size="sm" variant="outline" onClick={actions.sendBack}>
             <MessageSquareReplyIcon />
             Send back…
-            <span className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex"><Kbd>S</Kbd></span>
+            <span className={[sx(paint.s21), sx(paint.s74)].filter(Boolean).join(" ")}><Kbd>S</Kbd></span>
           </Button>
           <Tip label={hasFiles ? undefined : "Nothing uncommitted to discard"}>
             <Button size="sm" variant="outline" onClick={actions.discard} disabled={!hasFiles}>
               <Trash2Icon />
               Discard…
-              <span className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex"><Kbd>D</Kbd></span>
+              <span className={[sx(paint.s22), sx(paint.s74)].filter(Boolean).join(" ")}><Kbd>D</Kbd></span>
             </Button>
           </Tip>
-          <span className="mx-1 h-5 w-px bg-border" />
+          <span className={sx(paint.s23)} />
           <Button size="sm" variant="ghost" onClick={actions.open}>
             <SquareArrowOutUpRightIcon />
-            <span className="hidden xl:inline">Open worktree</span>
-            <span className="xl:hidden">Open</span>
-            <span className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex"><Kbd>↵</Kbd></span>
+            <span className={[sx(paint.s24), sx(paint.s75)].filter(Boolean).join(" ")}>Open worktree</span>
+            <span className={sx(paint.s76)}>Open</span>
+            <span className={[sx(paint.s25), sx(paint.s74)].filter(Boolean).join(" ")}><Kbd>↵</Kbd></span>
           </Button>
           <Tip label="Mark reviewed (E): it comes back if the agent changes anything">
-            <span className="ml-auto"><Button size="sm" variant="ghost"  onClick={actions.markReviewed} muted>
+            <span className={sx(paint.s26)}><Button size="sm" variant="ghost"  onClick={actions.markReviewed} muted>
               <CheckCheckIcon />
-              <span className="hidden xl:inline">Mark reviewed</span>
-              <span className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex"><Kbd>E</Kbd></span>
+              <span className={[sx(paint.s27), sx(paint.s75)].filter(Boolean).join(" ")}>Mark reviewed</span>
+              <span className={[sx(paint.s28), sx(paint.s74)].filter(Boolean).join(" ")}><Kbd>E</Kbd></span>
             </Button></span>
           </Tip>
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="flex flex-col gap-4 px-6 py-4">
+      <div className={sx(paint.s29)}>
+        <div className={sx(paint.s30)}>
           <LastWords entry={entry} />
           {(run || loop) && <LastCheck run={run} loop={loop} />}
           {entry.browser && <AgentBrowserArtifacts entry={entry} />}
@@ -172,21 +696,21 @@ function AgentBrowserArtifacts({ entry }: { entry: ReviewEntry }) {
     <Frame>
       <FrameHeader>
         <FrameTitle row>
-          <GlobeIcon className="size-3.5 text-muted-foreground" />
+          <GlobeIcon className={sx(paint.s31)} />
           The agent's browser
-          {b.url && <span className="truncate font-mono font-normal text-[11px] text-muted-foreground">{b.url}</span>}
+          {b.url && <span className={sx(paint.s32)}>{b.url}</span>}
         </FrameTitle>
       </FrameHeader>
       <FramePanel stack gap={2}>
         {(b.shots?.length ?? 0) > 0 && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className={sx(paint.s33)}>
             {b.shots!.map((name) => (
               <Shot key={name} entry={entry} name={name} />
             ))}
           </div>
         )}
         {(b.errors?.length ?? 0) > 0 && (
-          <pre className="max-h-32 overflow-auto rounded-lg bg-muted/60 p-2 font-mono text-[11px] text-destructive-foreground">{b.errors!.join("\n")}</pre>
+          <pre className={sx(paint.s34)}>{b.errors!.join("\n")}</pre>
         )}
       </FramePanel>
     </Frame>
@@ -196,11 +720,11 @@ function AgentBrowserArtifacts({ entry }: { entry: ReviewEntry }) {
 function Shot({ entry, name }: { entry: ReviewEntry; name: string }) {
   const url = useShotUrl(entry.box, entry.location, entry.worktree, name);
   return url ? (
-    <a href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border">
-      <img src={url} alt={`The agent's screenshot ${name}`} className="aspect-[16/10] w-full object-cover object-top" />
+    <a href={url} target="_blank" rel="noreferrer" className={sx(paint.s35)}>
+      <img src={url} alt={`The agent's screenshot ${name}`} className={[sx(paint.s36), sx(paint.s77)].filter(Boolean).join(" ")} />
     </a>
   ) : (
-    <div className="aspect-[16/10] rounded-lg border bg-muted/40" />
+    <div className={sx(paint.s37)} />
   );
 }
 
@@ -227,13 +751,13 @@ function LastWords({ entry }: { entry: ReviewEntry }) {
       </FrameHeader>
       <FramePanel pad="field">
         {lines === undefined ? (
-          <div className="h-12 animate-pulse rounded bg-muted/60" />
+          <div className={[sx(paint.s38), "burf-pulse"].filter(Boolean).join(" ")} />
         ) : lines.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Nothing on its screen to show.</p>
+          <p className={sx(paint.s39)}>Nothing on its screen to show.</p>
         ) : (
-          <div className="max-h-56 overflow-y-auto font-mono text-[12px] leading-relaxed">
+          <div className={sx(paint.s40)}>
             {lines.map((l, i) => (
-              <div key={i} className="whitespace-pre-wrap break-words">
+              <div key={i} className={sx(paint.s41)}>
                 {l || " "}
               </div>
             ))}
@@ -256,18 +780,18 @@ function LastCheck({ run, loop }: { run?: ReturnType<typeof useReview.getState>[
   return (
     <Frame variant="card">
       <FrameHeader row gap={2} pad="bar">
-        <span className={cn("inline-flex size-4 items-center justify-center rounded-full", pending ? "bg-muted" : passed ? "bg-success/15 text-success-foreground" : "bg-destructive/15 text-destructive-foreground")}>
-          {pending ? <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" /> : passed ? <CheckIcon className="size-3" /> : <XIcon className="size-3" />}
+        <span className={[sx(paint.n0), pending ? sx(paint.n1) : passed ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")}>
+          {pending ? <span className={[sx(paint.s44), "burf-pulse"].filter(Boolean).join(" ")} /> : passed ? <CheckIcon className={sx(paint.s45)} /> : <XIcon className={sx(paint.s46)} />}
         </span>
         <FrameTitle size="13" truncate>
           Last check {pending ? "running" : passed ? "passed" : "failed"}
         </FrameTitle>
-        <span className="min-w-0 truncate font-mono text-muted-foreground text-xs">{what}</span>
-        <span className="ml-auto shrink-0 text-muted-foreground text-xs">{when}</span>
+        <span className={sx(paint.s47)}>{what}</span>
+        <span className={sx(paint.s48)}>{when}</span>
       </FrameHeader>
       {!passed && output && (
         <FramePanel pad="field">
-          <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-muted-foreground">{output.trim()}</pre>
+          <pre className={sx(paint.s49)}>{output.trim()}</pre>
         </FramePanel>
       )}
     </Frame>
@@ -333,18 +857,18 @@ function Changes({ entry }: { entry: ReviewEntry }) {
               setGroup(g.id);
               setSelected(undefined);
             }}
-            className={cn("rounded-md px-2.5 py-1 text-[13px] text-foreground/80 hover:bg-background/60", g.id === current.id && "bg-background font-medium text-foreground shadow-xs/5")}
+            className={[sx(paint.s50), g.id === current.id && sx(paint.s51)].filter(Boolean).join(" ")}
           >
             {g.label}
-            <span className="ml-1.5 font-mono text-[11px] text-muted-foreground tabular-nums">{g.files.length}</span>
+            <span className={sx(paint.s52)}>{g.files.length}</span>
           </button>
         ))}
-        <span className="ml-auto pr-2 font-mono text-[11px] tabular-nums">
-          <span className="text-success-foreground">+{added}</span> <span className="text-destructive-foreground">−{removed}</span>
+        <span className={sx(paint.s53)}>
+          <span className={sx(paint.s54)}>+{added}</span> <span className={sx(paint.s55)}>−{removed}</span>
         </span>
       </FrameHeader>
       <FramePanel tall pad="none">
-        <ul className="w-60 shrink-0 overflow-y-auto border-r p-1.5">
+        <ul className={sx(paint.s56)}>
           {current.files.map((f) => (
             <FileRow key={`${current.id}:${f.path}`} file={f} active={f.path === file?.path} onSelect={() => setSelected(f.path)} comments={counts[f.path]} />
           ))}
@@ -387,9 +911,9 @@ function CommentsBar({ entry }: { entry: ReviewEntry }) {
   if (!todo.length) {
     const last = Math.max(...sent.map((c) => c.sent ?? 0));
     return (
-      <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-4 py-2.5 text-[13px]">
-        <CheckIcon className="size-3.5 text-success-foreground" />
-        <span className="min-w-0 flex-1 truncate">
+      <div className={sx(paint.s57)}>
+        <CheckIcon className={sx(paint.s58)} />
+        <span className={sx(paint.s59)}>
           Sent {sent.length} comment{sent.length === 1 ? "" : "s"} to {who} {ago(new Date(last).toISOString())}
         </span>
         <Button size="xs" variant="ghost" onClick={() => dismissComments(entry.key, true)}>
@@ -401,7 +925,7 @@ function CommentsBar({ entry }: { entry: ReviewEntry }) {
   return (
     <Frame variant="card">
       <FrameHeader row gap={2} pad="bar">
-        <MessageSquareTextIcon className="size-3.5 text-muted-foreground" />
+        <MessageSquareTextIcon className={sx(paint.s60)} />
         <FrameTitle size="13" truncate grow>
           {todo.length} comment{todo.length === 1 ? "" : "s"} for {who}
         </FrameTitle>
@@ -414,19 +938,19 @@ function CommentsBar({ entry }: { entry: ReviewEntry }) {
         </Button>
       </FrameHeader>
       <FramePanel pad="text">
-        <ul className="flex flex-col gap-1 text-[13px]">
+        <ul className={sx(paint.s61)}>
           {todo.slice(0, 5).map((c) => (
-            <li key={c.id} className="flex min-w-0 gap-2">
-              <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+            <li key={c.id} className={sx(paint.s62)}>
+              <span className={sx(paint.s63)}>
                 {c.file.split("/").pop()}:{c.line}
                 {c.side === "old" && " (removed)"}
               </span>
-              <span className="min-w-0 truncate">{c.text}</span>
+              <span className={sx(paint.s64)}>{c.text}</span>
             </li>
           ))}
-          {todo.length > 5 && <li className="text-muted-foreground text-xs">and {todo.length - 5} more</li>}
+          {todo.length > 5 && <li className={sx(paint.s65)}>and {todo.length - 5} more</li>}
         </ul>
-        <p className="mt-2 text-muted-foreground text-xs">
+        <p className={sx(paint.s66)}>
           {fit < todo.length
             ? `The first ${fit} fit in one message (2 KB); send again for the rest.`
             : `${who} gets each file and line with your note, not the code: it reads the file itself. It waits until ${who} is idle.`}
@@ -440,24 +964,24 @@ function Commits({ entry }: { entry: ReviewEntry }) {
   return (
     <Frame variant="card">
       <FrameHeader row gap={2} pad="bar">
-        <GitCommitHorizontalIcon className="size-3.5 text-muted-foreground" />
+        <GitCommitHorizontalIcon className={sx(paint.s67)} />
         <FrameTitle size="13">
           {entry.base_ahead} commit{entry.base_ahead === 1 ? "" : "s"} not on {(entry.base ?? "base").replace(/^origin\//, "")}
         </FrameTitle>
       </FrameHeader>
       <FramePanel pad="none">
-        <ul className="divide-y">
+        <ul className={sx(paint.s68)}>
           {entry.commits.map((c) => (
-            <li key={c.sha} className="flex items-center gap-3 px-4 py-2 text-[13px]">
-              <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{c.sha.slice(0, 7)}</span>
-              <span className="min-w-0 flex-1 truncate">{c.subject}</span>
-              <span className="shrink-0 text-muted-foreground text-xs">
+            <li key={c.sha} className={sx(paint.s69)}>
+              <span className={sx(paint.s70)}>{c.sha.slice(0, 7)}</span>
+              <span className={sx(paint.s71)}>{c.subject}</span>
+              <span className={sx(paint.s72)}>
                 {c.author} · {ago(c.when)}
               </span>
             </li>
           ))}
         </ul>
-        {entry.base_ahead > entry.commits.length && <p className="border-t px-4 py-2 text-muted-foreground text-xs">and {entry.base_ahead - entry.commits.length} older</p>}
+        {entry.base_ahead > entry.commits.length && <p className={sx(paint.s73)}>and {entry.base_ahead - entry.commits.length} older</p>}
       </FramePanel>
     </Frame>
   );

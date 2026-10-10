@@ -1,10 +1,95 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowRightIcon, LaptopIcon, ServerIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
 import { thisComputer } from "@/lib/platform";
+
+const paint = stylex.create({
+  s0: {
+    "fontWeight": 600,
+    "fontSize": "24px",
+    "lineHeight": "32px",
+    "letterSpacing": "-0.025em",
+  },
+  s1: {
+    "marginTop": "8px",
+    "color": "var(--muted-foreground)",
+    "lineHeight": "1.625",
+  },
+  s2: {
+    "marginTop": "24px",
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+  },
+  s3: {
+    "marginTop": "16px",
+    "marginLeft": "calc(12px * -1)",
+  },
+  s4: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "16px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "14px",
+    "paddingBottom": "14px",
+  },
+  s5: {
+    "borderColor": "color-mix(in oklab, var(--foreground) 20%, transparent)",
+    "backgroundColor": "var(--card)",
+  },
+  s6: {
+    "backgroundColor": "color-mix(in oklab, var(--card) 40%, transparent)",
+  },
+  s7: {
+    "display": "flex",
+    "width": "36px",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "color": "var(--muted-foreground)",
+    ":not(#\\#) svg": {
+      "width": "16px",
+      "height": "16px",
+    },
+  },
+  s8: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s9: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s10: {
+    "marginTop": "2px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s11: {
+    "flexShrink": 0,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // WelcomeStep says what Burf is in a line and offers the quickest way in:
 // this Mac as the box, a sample project on it and a first task, in about a
@@ -17,11 +102,11 @@ export function WelcomeStep({ local, onThisMac, onRemote, onJoin }: { local?: bo
     <div>
       {/* The title starts where every step's does; the scene (dawn) is the
           page's, above the progress. */}
-      <h1 className="font-semibold text-2xl tracking-tight">Welcome to Burf</h1>
-      <p className="mt-2 text-muted-foreground leading-relaxed">
+      <h1 className={sx(paint.s0)}>Welcome to Burf</h1>
+      <p className={sx(paint.s1)}>
         Burf runs coding agents on your own machines, each in a worktree of its own, and shows you which need you, which are working and what they built.
       </p>
-      <div className="mt-6 flex flex-col gap-2">
+      <div className={sx(paint.s2)}>
         {local !== false && (
           <Way
             primary
@@ -49,7 +134,7 @@ export function WelcomeStep({ local, onThisMac, onRemote, onJoin }: { local?: bo
         />
       </div>
       {onJoin && (
-        <span className="mt-4 -ml-3"><Button variant="ghost"  onClick={onJoin} muted>
+        <span className={sx(paint.s3)}><Button variant="ghost"  onClick={onJoin} muted>
           I already use Burf on another computer
         </Button></span>
       )}
@@ -59,15 +144,15 @@ export function WelcomeStep({ local, onThisMac, onRemote, onJoin }: { local?: bo
 
 function Way({ icon, title, detail, action, primary }: { icon: ReactNode; title: string; detail: string; action: ReactNode; primary?: boolean }) {
   return (
-    <section aria-label={title} className={cn("flex items-center gap-4 rounded-xl border px-4 py-3.5", primary ? "border-foreground/20 bg-card" : "bg-card/40")}>
-      <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground [&_svg]:size-4">
+    <section aria-label={title} className={[sx(paint.s4), primary ? sx(paint.s5) : sx(paint.s6)].filter(Boolean).join(" ")}>
+      <span aria-hidden className={sx(paint.s7)}>
         {icon}
       </span>
-      <div className="min-w-0 flex-1">
-        <h2 className="font-medium text-sm">{title}</h2>
-        <p className="mt-0.5 text-muted-foreground text-xs leading-relaxed">{detail}</p>
+      <div className={sx(paint.s8)}>
+        <h2 className={sx(paint.s9)}>{title}</h2>
+        <p className={sx(paint.s10)}>{detail}</p>
       </div>
-      <div className="shrink-0">{action}</div>
+      <div className={sx(paint.s11)}>{action}</div>
     </section>
   );
 }

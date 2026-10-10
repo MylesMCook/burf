@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -29,11 +30,213 @@ import { useAgentCounts } from "@/hooks/use-agent-counts";
 import { arrange, type NavList, navActions, useNav } from "@/lib/nav";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { goHome, homeBox, useWorkspaces } from "@/lib/workspaces";
 import { useRegistry } from "@/plugins/registry";
 import { Icon } from "@/plugins/ui";
 import { useReviewCount } from "@/views/review/review-store";
+
+const paint = stylex.create({
+  s0: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "left": "8px",
+    "right": "8px",
+    "top": "-1px",
+    "height": "2px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--ring)",
+  },
+  s1: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    ":not(#\\#) svg": {
+      "width": "16px",
+      "height": "16px",
+    },
+  },
+  s2: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s3: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s4: {
+    "color": "var(--warning-foreground)",
+  },
+  s5: {
+    "color": "var(--muted-foreground)",
+  },
+  s6: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": "50%",
+    "transform": "translateY(-50%)",
+    "right": "8px",
+    "maxWidth": "96px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s8: {
+    "marginTop": "6px",
+    "display": "flex",
+    "height": "32px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "dashed",
+    "borderColor": "var(--border)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s9: {
+    "borderColor": "var(--ring)",
+    "backgroundColor": "var(--sidebar-accent)",
+    "color": "var(--foreground)",
+  },
+  s10: {
+    "borderColor": "var(--sidebar-border)",
+  },
+  s11: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s12: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s13: {
+    "marginBottom": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s14: {
+    "display": "flex",
+    "minHeight": "36px",
+    "flexDirection": "column",
+    "gap": "1px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "padding": "4px",
+  },
+  s15: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s16: {
+    "position": "relative",
+    "display": "flex",
+    "height": "32px",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+  },
+  s17: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "left": "4px",
+    "right": "4px",
+    "top": "-1px",
+    "height": "2px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--ring)",
+  },
+  s18: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "cursor": "grab",
+    "color": "var(--muted-foreground)",
+  },
+  s19: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "color": "var(--muted-foreground)",
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+  s20: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s21: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "opacity": {
+      ":disabled": 0.3,
+    },
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The app's places: Home, its own views and any plugin's screens. The person
 // arranges them into Pinned, More and Hidden (lib/nav). This is the one model
@@ -168,7 +371,7 @@ function NavRow({ item, list, index, ids }: { item: NavItem; list: NavList; inde
   const before = over?.list === list && over.index === index;
   return (
     <SidebarMenuItem {...dropProps(list, index, ids)}>
-      {before && <span className="pointer-events-none absolute inset-x-2 -top-px h-0.5 rounded-full bg-ring" />}
+      {before && <span className={sx(paint.s0)} />}
       <ContextRow items={() => navItemActions(item.id, list, ids)}>
         <SidebarMenuButton size="sm" density="row" dim={dragging} data-testid={`nav-${item.id}`} isActive={item.active} aria-current={item.active ? "page" : undefined} onClick={item.go} {...dragProps(item.id)}>
           {item.icon}
@@ -187,9 +390,9 @@ export function MoreItems({ more }: { more: NavItem[] }) {
     <>
       {more.map((n) => (
         <MenuItem key={n.id} onClick={n.go} aria-current={n.active ? "page" : undefined} current={n.active}>
-          <span className="flex size-4 items-center justify-center [&_svg]:size-4">{n.icon}</span>
-          <span className="min-w-0 flex-1 truncate">{n.label}</span>
-          {n.badge && <span className={cn("text-xs tabular-nums", n.badge.loud ? "text-warning-foreground" : "text-muted-foreground")}>{n.badge.count}</span>}
+          <span className={sx(paint.s1)}>{n.icon}</span>
+          <span className={sx(paint.s2)}>{n.label}</span>
+          {n.badge && <span className={[sx(paint.s3), n.badge.loud ? sx(paint.s4) : sx(paint.s5)].filter(Boolean).join(" ")}>{n.badge.count}</span>}
         </MenuItem>
       ))}
       {more.length > 0 && <MenuSeparator />}
@@ -216,7 +419,7 @@ export function Nav() {
         {pinned.map((item, i) => (
           <NavRow key={item.id} item={item} list="pinned" index={i} ids={ids} />
         ))}
-        {pinned.length === 0 && <li className="px-2 py-1 text-muted-foreground text-xs">Drag places here to pin them.</li>}
+        {pinned.length === 0 && <li className={sx(paint.s6)}>Drag places here to pin them.</li>}
         <SidebarMenuItem {...dropProps("more", more.length, ids)}>
           <Menu>
             <MenuTrigger
@@ -232,7 +435,7 @@ export function Nav() {
             </MenuPopup>
           </Menu>
           {here ? (
-            <span className="pointer-events-none absolute top-1/2 right-2 max-w-24 -translate-y-1/2 truncate text-muted-foreground text-xs">{here.label}</span>
+            <span className={sx(paint.s7)}>{here.label}</span>
           ) : loud?.badge ? (
             <RowBadge badge={loud.badge} />
           ) : null}
@@ -241,12 +444,9 @@ export function Nav() {
       {dragging && (
         <div
           {...dropProps("hidden", 0, ids)}
-          className={cn(
-            "mt-1.5 flex h-8 items-center justify-center gap-1.5 rounded-md border border-dashed text-muted-foreground text-xs",
-            over?.list === "hidden" ? "border-ring bg-sidebar-accent text-foreground" : "border-sidebar-border",
-          )}
+          className={[sx(paint.s8), over?.list === "hidden" ? sx(paint.s9) : sx(paint.s10)].filter(Boolean).join(" ")}
         >
-          <EyeOffIcon className="size-3.5" />
+          <EyeOffIcon className={sx(paint.s11)} />
           Drop to hide (still in ⌘K)
         </div>
       )}
@@ -277,10 +477,10 @@ export function CustomizeSidebarSheet() {
         <SheetPanel stack={5}>
           {lists.map(([list, title, items, hint]) => (
             <section key={list} {...dropProps(list, items.length, ids)}>
-              <h3 className="font-medium text-sm">{title}</h3>
-              <p className="mb-1.5 text-muted-foreground text-xs">{hint}</p>
-              <ul className="flex min-h-9 flex-col gap-px rounded-lg border p-1">
-                {items.length === 0 && <li className="px-2 py-1.5 text-muted-foreground text-xs">Nothing here. Drag a place in.</li>}
+              <h3 className={sx(paint.s12)}>{title}</h3>
+              <p className={sx(paint.s13)}>{hint}</p>
+              <ul className={sx(paint.s14)}>
+                {items.length === 0 && <li className={sx(paint.s15)}>Nothing here. Drag a place in.</li>}
                 {items.map((item, i) => (
                   <CustomizeRow key={item.id} item={item} list={list} index={i} count={items.length} ids={ids} />
                 ))}
@@ -311,11 +511,11 @@ function CustomizeRow({ item, list, index, count, ids }: { item: NavItem; list: 
     ] as [NavList, string, ReactNode][]
   ).filter(([l]) => l !== list);
   return (
-    <li {...dropProps(list, index, ids)} {...dragProps(item.id)} className="relative flex h-8 items-center gap-2 rounded-md px-1.5 text-sm hover:bg-accent/60">
-      {before && <span className="pointer-events-none absolute inset-x-1 -top-px h-0.5 rounded-full bg-ring" />}
-      <GripVerticalIcon className="size-3.5 shrink-0 cursor-grab text-muted-foreground" />
-      <span className="flex size-4 items-center justify-center text-muted-foreground [&_svg]:size-3.5">{item.icon}</span>
-      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+    <li {...dropProps(list, index, ids)} {...dragProps(item.id)} className={sx(paint.s16)}>
+      {before && <span className={sx(paint.s17)} />}
+      <GripVerticalIcon className={sx(paint.s18)} />
+      <span className={sx(paint.s19)}>{item.icon}</span>
+      <span className={sx(paint.s20)}>{item.label}</span>
       <IconButton label="Move up" disabled={index === 0} onClick={() => navActions.move(item.id, -1, ids)}>
         <ArrowUpIcon />
       </IconButton>
@@ -339,7 +539,7 @@ function IconButton({ label, disabled, onClick, children }: { label: string; dis
         aria-label={label}
         disabled={disabled}
         onClick={onClick}
-        className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30 [&_svg]:size-3.5"
+        className={sx(paint.s21)}
       >
         {children}
       </button>

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CircleArrowUpIcon, RefreshCwIcon } from "lucide-react";
 
 import { ErrorDetails } from "@/components/error-note";
@@ -6,7 +7,87 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { explain } from "@/lib/errors";
 import { updateBoxes, useOutdated, useOutdatedBoxes } from "@/lib/outdated";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "12px",
+    "rowGap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--info) 32%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--info) 4%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s1: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--info)",
+  },
+  s2: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s3: {
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "color": "var(--muted-foreground)",
+  },
+  s5: {
+    "fontWeight": 500,
+  },
+  s6: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s8: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "12px",
+    "rowGap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--info) 32%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--info) 4%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s9: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // UpgradeBox updates a box's berthd to the build this Burf ships: the same
 // upgrade as Settings → Boxes and the status bar's Update all, sharing their
@@ -50,17 +131,17 @@ export function OutdatedNotice({ className }: { className?: string }) {
   const { outdated, busy, running, progress, updateAll } = useUpdateAll();
   if (!outdated.length && !busy) return null;
   return (
-    <div role="status" className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-info/32 bg-info/4 px-3 py-2 text-sm", className)}>
-      <CircleArrowUpIcon className="size-4 shrink-0 text-info" />
-      <span className="min-w-0 flex-1">
+    <div role="status" className={[sx(paint.s0), className].filter(Boolean).join(" ")}>
+      <CircleArrowUpIcon className={sx(paint.s1)} />
+      <span className={sx(paint.s2)}>
         {busy ? (
           <>
-            Installing bundled agent on {running ?? "boxes"}… <span className="text-muted-foreground">({progress})</span>
+            Installing bundled agent on {running ?? "boxes"}… <span className={sx(paint.s3)}>({progress})</span>
           </>
         ) : (
           <>
             {outdated.length === 1 ? `${outdated[0]} has` : `${outdated.length} boxes have`} a different agent build.{" "}
-            <span className="text-muted-foreground">Build IDs do not indicate which is newer.</span>
+            <span className={sx(paint.s4)}>Build IDs do not indicate which is newer.</span>
           </>
         )}
       </span>
@@ -80,14 +161,14 @@ export function BoxError({ box, error, what, className }: { box: string; error: 
   if (e.step === "update-box") {
     return (
       <NeedsUpdate box={box} className={className}>
-        <span className="font-medium">{box}</span>'s box agent does not support {what}. The install action uses Burf's bundled agent.
+        <span className={sx(paint.s5)}>{box}</span>'s box agent does not support {what}. The install action uses Burf's bundled agent.
       </NeedsUpdate>
     );
   }
   return (
-    <div className={cn("flex flex-col gap-1 text-muted-foreground text-xs", className)}>
+    <div className={[sx(paint.s6), className].filter(Boolean).join(" ")}>
       <span>
-        <span className="font-medium text-foreground">{box}</span>: couldn't read {what}. {e.message}
+        <span className={sx(paint.s7)}>{box}</span>: couldn't read {what}. {e.message}
       </span>
       <ErrorDetails text={e.details} />
     </div>
@@ -98,8 +179,8 @@ export function BoxError({ box, error, what, className }: { box: string; error: 
 // what's missing, and the one button that fixes it.
 export function NeedsUpdate({ box, children, className }: { box: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-info/32 bg-info/4 px-3 py-2 text-sm", className)}>
-      <span className="min-w-0 flex-1">{children}</span>
+    <div className={[sx(paint.s8), className].filter(Boolean).join(" ")}>
+      <span className={sx(paint.s9)}>{children}</span>
       <UpgradeBox box={box} size="xs" variant="outline" />
     </div>
   );

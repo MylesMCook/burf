@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ChevronRightIcon, CopyIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -16,6 +17,42 @@ import { showOnboardingAgain } from "@/views/onboarding/onboarding-state";
 import { appVersion } from "@/views/settings/app-version";
 import { ConfirmButton } from "@/views/settings/confirm";
 import { Code, SettingsGroup, SettingsPage, SettingsRow, Value } from "@/views/settings/rows";
+import { color, font, radius } from "@/styles/tokens.stylex";
+
+const panelOpen = ":is(.group[data-panel-open] &)";
+
+const styles = stylex.create({
+  slot: { minWidth: 96, display: "inline-flex" },
+  token: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    fontFamily: font.mono,
+    fontSize: 12,
+    color: { default: color.mutedForeground, ":hover": color.foreground },
+  },
+  eye: { width: 14, height: 14 },
+  chevron: {
+    width: 14,
+    height: 14,
+    color: color.mutedForeground,
+    transitionProperty: "transform",
+    transitionDuration: "150ms",
+    transform: { default: "rotate(0deg)", [panelOpen]: "rotate(90deg)" },
+  },
+  aside: { marginLeft: "auto", color: color.mutedForeground, fontSize: 12 },
+  json: {
+    marginTop: 8,
+    maxHeight: 288,
+    overflow: "auto",
+    borderRadius: radius.lg,
+    backgroundColor: "color-mix(in oklab, var(--muted) 50%, transparent)",
+    padding: 12,
+    fontFamily: font.mono,
+    fontSize: 11,
+    lineHeight: 1.625,
+  },
+});
 
 // Everything here acts on this window's own storage. The agent, its files,
 // ~/.berth and the boxes are never touched.
@@ -111,7 +148,7 @@ export function DeveloperSection() {
           />
         </SettingsRow>
         <SettingsRow label="Show onboarding again" description="In this window, until you finish or skip it, even though you have boxes. The next launch starts without it.">
-          <span className="min-w-24"><Button
+          <span {...stylex.props(styles.slot)}><Button
             size="xs"
             variant="outline"
             
@@ -126,7 +163,7 @@ export function DeveloperSection() {
 
       <SettingsGroup title="Reload">
         <SettingsRow label="Reload plugins" description="Re-read ~/.berth/plugins and load them again.">
-          <span className="min-w-24"><Button
+          <span {...stylex.props(styles.slot)}><Button
             size="xs"
             variant="outline"
             
@@ -139,13 +176,13 @@ export function DeveloperSection() {
           </Button></span>
         </SettingsRow>
         <SettingsRow label="Reload window">
-          <span className="min-w-24"><Button size="xs" variant="outline"  onClick={() => location.reload()}>
+          <span {...stylex.props(styles.slot)}><Button size="xs" variant="outline"  onClick={() => location.reload()}>
             Reload window
           </Button></span>
         </SettingsRow>
         {isTauri() && (
           <SettingsRow label="Developer tools" description="The Web Inspector for Burf's own window. A Browser tab's page has its own: Inspect in its toolbar.">
-            <span className="min-w-24"><Button
+            <span {...stylex.props(styles.slot)}><Button
               size="xs"
               variant="outline"
               
@@ -158,12 +195,12 @@ export function DeveloperSection() {
 
       <SettingsGroup title="Mock data">
         <SettingsRow label="Mock mode" description="Run the app on built-in sample boxes, without the agent.">
-          <span className="min-w-24"><Button size="xs" variant="outline"  onClick={() => withQuery(mock ? null : { mock: "1" })}>
+          <span {...stylex.props(styles.slot)}><Button size="xs" variant="outline"  onClick={() => withQuery(mock ? null : { mock: "1" })}>
             {mock ? "Turn mock off" : "Turn mock on"}
           </Button></span>
         </SettingsRow>
         <SettingsRow label="Fresh account preview" description="Mock mode with no boxes, to see onboarding.">
-          <span className="min-w-24"><Button size="xs" variant="outline"  onClick={() => withQuery({ mock: "1", fresh: "1" })}>
+          <span {...stylex.props(styles.slot)}><Button size="xs" variant="outline"  onClick={() => withQuery({ mock: "1", fresh: "1" })}>
             Open preview
           </Button></span>
         </SettingsRow>
@@ -175,9 +212,9 @@ export function DeveloperSection() {
         </SettingsRow>
         {ep && (
           <SettingsRow label="Token" description="Anyone with it can drive your boxes from this computer. burf ui-token prints it too.">
-            <button type="button" onClick={() => setReveal((r) => !r)} className="flex items-center gap-1.5 font-mono text-muted-foreground text-xs hover:text-foreground">
+            <button type="button" onClick={() => setReveal((r) => !r)} {...stylex.props(styles.token)}>
               {reveal ? ep.token : `${ep.token.slice(0, 4)}${"•".repeat(12)}`}
-              {reveal ? <EyeOffIcon className="size-3.5" /> : <EyeIcon className="size-3.5" />}
+              {reveal ? <EyeOffIcon {...stylex.props(styles.eye)} /> : <EyeIcon {...stylex.props(styles.eye)} />}
             </button>
             <Button size="icon-xs" variant="ghost" aria-label="Copy token" onClick={() => void copy(ep.token, "the token")}>
               <CopyIcon />
@@ -186,16 +223,16 @@ export function DeveloperSection() {
         )}
         <Collapsible section>
           <CollapsibleTrigger look="row" marker="group">
-            <ChevronRightIcon className="size-3.5 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
+            <ChevronRightIcon {...stylex.props(styles.chevron)} />
             Agent status
-            <span className="ml-auto text-muted-foreground text-xs">JSON</span>
+            <span {...stylex.props(styles.aside)}>JSON</span>
           </CollapsibleTrigger>
           <CollapsiblePanel>
-            <pre className="mt-2 max-h-72 overflow-auto rounded-lg bg-muted/50 p-3 font-mono text-[11px] leading-relaxed">{JSON.stringify(status, null, 2) ?? "No status yet."}</pre>
+            <pre {...stylex.props(styles.json)}>{JSON.stringify(status, null, 2) ?? "No status yet."}</pre>
           </CollapsiblePanel>
         </Collapsible>
         <SettingsRow label="Diagnostics" description="Versions, connection, boxes, plugins and the last 50 events, as JSON for a bug report. The token is left out.">
-          <span className="min-w-24"><Button size="xs" variant="outline"  onClick={async () => void copy(await diagnostics(), "diagnostics")}>
+          <span {...stylex.props(styles.slot)}><Button size="xs" variant="outline"  onClick={async () => void copy(await diagnostics(), "diagnostics")}>
             <CopyIcon /> Copy diagnostics
           </Button></span>
         </SettingsRow>

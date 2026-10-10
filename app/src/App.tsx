@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { AddLocationDialog } from "@/components/add-location-dialog";
 import { Connecting } from "@/components/agent-offline";
@@ -42,7 +43,6 @@ import { watchStillness } from "@/lib/still";
 import { useStore } from "@/lib/store";
 import { startUpdater } from "@/lib/updater";
 import { useWhatsNewAfterUpdate } from "@/lib/whats-new";
-import { cn } from "@/lib/utils";
 import { homeBox, useWorkspaces } from "@/lib/workspaces";
 import { AutomationsView } from "@/views/automations";
 import { WorktreesView } from "@/views/worktrees/worktrees-view";
@@ -59,12 +59,59 @@ import { usePrefs } from "@/lib/prefs";
 import { useLocalComputer } from "@/lib/local-computer";
 import { placeLabel } from "@/lib/worktree-names";
 import { useRescueRemovedFocus } from "@/lib/focus-home";
+import { color } from "@/styles/tokens.stylex";
 
 // The live demo's guide and script (pnpm build:demo); not in the app.
 const DemoGuide = __BERTH_DEMO__ ? lazy(() => import("@/demo/guide")) : null;
 const LocalComputerView = lazy(() => import("@/views/local-computer").then((m) => ({ default: m.LocalComputerView })));
 
 const viewTitles = { dashboard: "Agent Dashboard", local: "This computer", review: "Review", worktrees: "Worktrees", automations: "Automations", project: "Project settings", settings: "Settings", plugin: "" } as const;
+
+const wide = "@media (min-width: 1300px)";
+
+const styles = stylex.create({
+  shell: {
+    display: "flex",
+    height: "100svh",
+    flexDirection: "column",
+    overflow: "hidden",
+    backgroundColor: color.background,
+    color: color.foreground,
+  },
+  drag: { height: 40, flexShrink: 0 },
+  dragFill: { height: 40, flexShrink: 0, backgroundColor: color.background },
+  main: { position: "relative", minHeight: 0, flexGrow: 1, flexShrink: 1, flexBasis: "0%" },
+  body: { display: "flex", minHeight: 0, flexGrow: 1, flexShrink: 1, flexBasis: "0%" },
+  column: { position: "relative", display: "flex", minWidth: 0, flexGrow: 1, flexShrink: 1, flexBasis: "0%", flexDirection: "column" },
+  fill: { position: "absolute", inset: 0 },
+  view: { position: "absolute", inset: 0, backgroundColor: color.background },
+  zen: {
+    marginLeft: "auto",
+    marginRight: "auto",
+    maxWidth: 1280,
+    borderLeftWidth: { default: 0, [wide]: 1 },
+    borderRightWidth: { default: 0, [wide]: 1 },
+    borderLeftStyle: "solid",
+    borderRightStyle: "solid",
+    borderLeftColor: color.border,
+    borderRightColor: color.border,
+  },
+  loading: { padding: 24, fontSize: 14, color: color.mutedForeground },
+  sr: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: "hidden",
+    clip: "rect(0, 0, 0, 0)",
+    whiteSpace: "nowrap",
+    borderWidth: 0,
+  },
+  row: { display: "flex" },
+  stack: { flexShrink: 0, flexDirection: "column" },
+  offline: { pointerEvents: "none", opacity: 0.5 },
+});
 
 export default function App() {
   useApplyTheme();
@@ -118,10 +165,10 @@ export default function App() {
     return (
       <TooltipProvider delay={300}>
         <ToastProvider position="bottom-right" clear="onboarding">
-          <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
+          <div {...stylex.props(styles.shell)}>
             {/* Room for the traffic lights; the strip drags the window. */}
-            <div data-tauri-drag-region className="h-10 shrink-0" />
-            <main className="relative min-h-0 flex-1">
+            <div data-tauri-drag-region {...stylex.props(styles.drag)} />
+            <main {...stylex.props(styles.main)}>
               <ErrorBoundary scope="onboarding">
                 <OnboardingView />
               </ErrorBoundary>
@@ -150,27 +197,27 @@ export default function App() {
           or sheet open they move to a corner clear of it; see
           components/ui/toast.tsx. The stack is as wide as the loops panel. */}
       <ToastProvider position="bottom-right" clear="chrome">
-        <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
+        <div {...stylex.props(styles.shell)}>
           {fakeTrafficLights() && <FakeTrafficLights />}
-          <div className="flex min-h-0 flex-1">
+          <div {...stylex.props(styles.body)}>
             {!zen && (
               <Disconnectable>
                 <AppSidebar />
               </Disconnectable>
             )}
-            <div className="relative flex min-w-0 flex-1 flex-col">
+            <div {...stylex.props(styles.column)}>
               {zen && !onboarding ? (
                 <ZenBar />
               ) : workspace && !onboarding ? (
-                <Disconnectable className="shrink-0 flex-col" label="Tab bar">
+                <Disconnectable stack label="Tab bar">
                   {!onHome && <WorkspaceHeading />}
                   {onHome ? <HomeTabs /> : <TabStrip />}
                 </Disconnectable>
               ) : !workspace ? null /* every other view's ViewHeader is the strip */ : (
                 // Onboarding names itself; the strip only drags the window.
-                <div data-tauri-drag-region className="h-10 shrink-0 bg-background" />
+                <div data-tauri-drag-region {...stylex.props(styles.dragFill)} />
               )}
-              <main className="relative min-h-0 flex-1">
+              <main {...stylex.props(styles.main)}>
                 {/* Always mounted: terminals keep running behind other views. */}
                 <TreeDockFrame showing={workspace && view.kind === "workspace"}>
                   <PaneLayer showing={workspace} />
@@ -227,7 +274,7 @@ function MainView() {
   // A new account starts here; Settings and the other views stay reachable.
   if (view.kind === "workspace" && onboarding) {
     return (
-      <div className="absolute inset-0">
+      <div {...stylex.props(styles.fill)}>
         <OnboardingView />
       </div>
     );
@@ -240,9 +287,9 @@ function MainView() {
   return (
     // In zen there is no sidebar: a view keeps the width it has beside one,
     // centred, rather than stretching across the window.
-    <div className={cn("absolute inset-0 bg-background", zen && "mx-auto max-w-[1280px] min-[1300px]:border-x")}>
+    <div {...stylex.props(styles.view, zen && styles.zen)}>
       {view.kind === "dashboard" && <DashboardView />}
-      {view.kind === "local" && <Suspense fallback={<p role="status" className="p-6 text-sm text-muted-foreground">Loading this computer...</p>}><LocalComputerView /></Suspense>}
+      {view.kind === "local" && <Suspense fallback={<p role="status" {...stylex.props(styles.loading)}>Loading this computer...</p>}><LocalComputerView /></Suspense>}
       {view.kind === "automations" && <AutomationsView />}
       {view.kind === "review" && <ReviewView />}
       {view.kind === "worktrees" && <WorktreesView />}
@@ -267,13 +314,13 @@ function NoWorktree() {
 function WorkspaceHeading() {
   const ref = useWorkspaces((s) => (s.current && !homeBox(s.current) ? s.spaces[s.current]?.ref : undefined));
   const label = useStore((s) => (ref?.path ? placeLabel(ref, s.boxes) : undefined));
-  return label ? <h1 className="sr-only">{label}</h1> : null;
+  return label ? <h1 {...stylex.props(styles.sr)}>{label}</h1> : null;
 }
 
-function Disconnectable({ children, className, label }: { children: React.ReactNode; className?: string; label?: string }) {
+function Disconnectable({ children, label, stack = false }: { children: React.ReactNode; label?: string; stack?: boolean }) {
   const offline = useStore((s) => !s.client);
   return (
-    <div role={label ? "region" : undefined} aria-label={label} className={cn("flex", className, offline && "pointer-events-none opacity-50")} aria-disabled={offline || undefined} inert={offline || undefined}>
+    <div role={label ? "region" : undefined} aria-label={label} {...stylex.props(styles.row, stack && styles.stack, offline && styles.offline)} aria-disabled={offline || undefined} inert={offline || undefined}>
       {children}
     </div>
   );

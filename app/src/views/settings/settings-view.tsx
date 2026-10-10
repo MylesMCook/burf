@@ -1,9 +1,10 @@
 import { BellIcon, BotIcon, FlaskConicalIcon, InfoIcon, KeyboardIcon, LaptopIcon, PaletteIcon, PuzzleIcon, ServerIcon, SlidersHorizontalIcon, SmartphoneIcon, SquareTerminalIcon, WrenchIcon } from "lucide-react";
 import type { ComponentType } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { Tip } from "@/components/tip";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
+import { color, radius } from "@/styles/tokens.stylex";
 import { AboutSection } from "@/views/settings/about-section";
 import { AgentsSection } from "@/views/settings/agents-section";
 import { AppearanceSection } from "@/views/settings/appearance-section";
@@ -21,7 +22,59 @@ import { ViewHeaderHost } from "@/views/view-header";
 
 export type SettingsSectionId = "general" | "notifications" | "appearance" | "terminal" | "boxes" | "computers" | "phone" | "agents" | "plugins" | "shortcuts" | "labs" | "about" | "developer";
 
-const SECTIONS: { id: SettingsSectionId; title: string; icon: ComponentType<{ className?: string }>; Component: ComponentType }[] = [
+const narrow = "@media (max-width: 1200px)";
+
+const styles = stylex.create({
+  page: { display: "flex", height: "100%", flexDirection: "column" },
+  body: { display: "flex", minHeight: 0, flexGrow: 1, flexShrink: 1, flexBasis: "0%" },
+  nav: {
+    display: "flex",
+    width: { default: 192, [narrow]: 48 },
+    flexShrink: 0,
+    flexDirection: "column",
+    gap: 1,
+    borderRightWidth: 1,
+    borderRightStyle: "solid",
+    borderRightColor: color.border,
+    paddingTop: 16,
+    paddingLeft: { default: 8, [narrow]: 6 },
+    paddingRight: { default: 8, [narrow]: 6 },
+  },
+  rule: {
+    marginTop: 8,
+    marginBottom: 8,
+    marginLeft: { default: 10, [narrow]: 4 },
+    marginRight: { default: 10, [narrow]: 4 },
+    borderTopWidth: 1,
+    borderTopStyle: "solid",
+    borderTopColor: color.border,
+  },
+  item: {
+    display: "flex",
+    height: 30,
+    width: "100%",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: radius.md,
+    paddingLeft: { default: 10, [narrow]: 0 },
+    paddingRight: { default: 10, [narrow]: 0 },
+    justifyContent: { default: "flex-start", [narrow]: "center" },
+    textAlign: "left",
+    fontSize: 13,
+    transitionProperty: "color, background-color",
+    transitionDuration: "150ms",
+  },
+  idle: {
+    color: { default: color.mutedForeground, ":hover": color.foreground },
+    backgroundColor: { default: "transparent", ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)" },
+  },
+  current: { backgroundColor: color.accent, color: color.foreground },
+  icon: { width: 14, height: 14, flexShrink: 0 },
+  title: { display: { default: "inline", [narrow]: "none" } },
+  panel: { minWidth: 0, flexGrow: 1, flexShrink: 1, flexBasis: "0%", overflowY: "auto" },
+});
+
+const SECTIONS: { id: SettingsSectionId; title: string; icon: ComponentType<Record<string, unknown>>; Component: ComponentType }[] = [
   { id: "general", title: "General", icon: SlidersHorizontalIcon, Component: GeneralSection },
   { id: "notifications", title: "Notifications", icon: BellIcon, Component: NotificationsSection },
   { id: "appearance", title: "Appearance", icon: PaletteIcon, Component: AppearanceSection },
@@ -50,13 +103,13 @@ export function SettingsView() {
   const current = SECTIONS.find((s) => s.id === id)!;
 
   return (
-    <div className="flex h-full flex-col">
+    <div {...stylex.props(styles.page)}>
       <ViewHeaderHost fallback={{ title: "Settings" }}>
-        <div className="flex min-h-0 flex-1">
-          <nav aria-label="Settings sections" className="flex w-48 shrink-0 flex-col gap-px border-r px-2 pt-4 max-[1200px]:w-12 max-[1200px]:px-1.5">
+        <div {...stylex.props(styles.body)}>
+          <nav aria-label="Settings sections" {...stylex.props(styles.nav)}>
             {SECTIONS.map((s) => (
               <div key={s.id}>
-                {s.id === "about" && <div className="mx-2.5 my-2 border-t max-[1200px]:mx-1" />}
+                {s.id === "about" && <div {...stylex.props(styles.rule)} />}
                 {/* The tooltip is for the narrow window, where only icons show. */}
                 <Tip label={s.title} side="right" narrow>
                   <button
@@ -65,19 +118,16 @@ export function SettingsView() {
                     data-testid={`settings-nav-${s.id}`}
                     aria-current={s.id === id ? "page" : undefined}
                     aria-label={s.title}
-                    className={cn(
-                      "flex h-7.5 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-[13px] transition-colors max-[1200px]:justify-center max-[1200px]:px-0",
-                      s.id === id ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                    )}
+                    {...stylex.props(styles.item, s.id === id ? styles.current : styles.idle)}
                   >
-                    <s.icon className="size-3.5 shrink-0" />
-                    <span className="max-[1200px]:hidden">{s.title}</span>
+                    <s.icon {...stylex.props(styles.icon)} />
+                    <span {...stylex.props(styles.title)}>{s.title}</span>
                   </button>
                 </Tip>
               </div>
             ))}
           </nav>
-          <div data-testid={`settings-${id}`} className="min-w-0 flex-1 overflow-y-auto">
+          <div data-testid={`settings-${id}`} {...stylex.props(styles.panel)}>
             <current.Component key={id} />
           </div>
         </div>

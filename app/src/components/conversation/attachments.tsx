@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CircleAlertIcon, FileTextIcon, ImageIcon, RotateCwIcon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -8,7 +9,232 @@ import { ApiError } from "@/lib/api";
 import { type AttachTarget, attachable, isImage, localPaths, MAX_ATTACHMENT, named, onThisComputer, pastedFiles, shrinkImage, uploadAttachment, uploadLocalFile } from "@/lib/attachments";
 import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "transitionDuration": "200ms",
+  },
+  s1: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "gap": "8px",
+  },
+  s2: {
+    "position": "relative",
+    "minWidth": "0px",
+    "cursor": "default",
+  },
+  s3: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s4: {
+    "wordBreak": "break-all",
+  },
+  s5: {
+    "color": "var(--muted-foreground)",
+  },
+  s6: {
+    "color": "var(--destructive-foreground)",
+  },
+  s7: {
+    "display": "flex",
+    "height": "44px",
+    "maxWidth": "224px",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": {
+      "default": "light-dark(color-mix(in oklab, var(--muted) 48%, transparent), color-mix(in oklab, var(--muted) 40%, transparent))",
+    },
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "paddingInlineStart": "4px",
+    "paddingInlineEnd": "10px",
+  },
+  s8: {
+    "borderColor": "color-mix(in oklab, var(--destructive) 40%, transparent)",
+    "backgroundColor": {
+      "default": "light-dark(color-mix(in oklab, var(--destructive) 6%, transparent), color-mix(in oklab, var(--destructive) 10%, transparent))",
+    },
+  },
+  s9: {
+    "position": "relative",
+    "display": "flex",
+    "width": "36px",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "color": "var(--muted-foreground)",
+  },
+  s10: {
+    "width": "100%",
+    "height": "100%",
+    "objectFit": "cover",
+  },
+  s11: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s12: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s13: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s14: {
+    "backgroundColor": "color-mix(in oklab, #000 48%, transparent)",
+    "color": "#fff",
+  },
+  s15: {
+    "backgroundColor": "var(--background)",
+    "color": "var(--foreground)",
+  },
+  s16: {
+    "width": "20px",
+    "height": "20px",
+  },
+  s17: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "backgroundColor": "color-mix(in oklab, var(--background) 72%, transparent)",
+  },
+  s18: {
+    "width": "16px",
+    "height": "16px",
+    "color": "var(--destructive)",
+  },
+  s19: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+    "lineHeight": "1.25",
+  },
+  s20: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s21: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "0.6875rem",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s22: {
+    "color": "var(--destructive-foreground)",
+  },
+  s23: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "2px",
+    "borderRadius": "var(--radius-sm)",
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+    "textDecoration": "underline",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s24: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s25: {
+    "position": "absolute",
+    "display": "flex",
+    "width": "20px",
+    "height": "20px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "opacity": {
+      "default": 0,
+      ":focus-visible": 1,
+    },
+    "boxShadow": {
+      "default": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+    "outline": "none",
+    "transitionProperty": "opacity",
+    "transitionDuration": "150ms",
+    ":is(.group\\/chip:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s26: {
+    "opacity": 1,
+  },
+  s27: {
+    "width": "12px",
+    "height": "12px",
+  },
+  q28: {
+    "transitionProperty": "stroke-dashoffset",
+    "transitionDuration": "150ms",
+  },
+  q29: {
+    "transform": "rotate(-90deg)",
+  },
+  q30: {
+    "textDecorationColor": {
+      "default": "color-mix(in oklab, var(--foreground) 24%, transparent)",
+      ":hover": "var(--foreground)",
+    },
+    "textUnderlineOffset": "2px",
+  },
+  q31: {
+    "top": "calc(6px * -1)",
+    "right": "calc(6px * -1)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // A file on its way to the box, or there: the composer shows it as a chip
 // until the prompt goes.
@@ -310,9 +536,9 @@ const size = (n: number) => (n < 1024 ? `${n} B` : n < 2 ** 20 ? `${Math.round(n
 function ProgressRing({ value, className }: { value: number; className?: string }) {
   const c = 2 * Math.PI * 8;
   return (
-    <svg viewBox="0 0 20 20" className={cn("-rotate-90", className)} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)} aria-label="Uploaded">
+    <svg viewBox="0 0 20 20" className={[sx(paint.q29), className].filter(Boolean).join(" ")} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)} aria-label="Uploaded">
       <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeOpacity={0.3} strokeWidth="2.5" />
-      <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.max(0.02, value))} className="transition-[stroke-dashoffset] duration-200" />
+      <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.max(0.02, value))} className={[sx(paint.s0), sx(paint.q28)].filter(Boolean).join(" ")} />
     </svg>
   );
 }
@@ -331,16 +557,16 @@ function status(it: PendingAttachment): string {
 export function AttachmentChips({ items, onRemove, onRetry, className }: { items: PendingAttachment[]; onRemove(id: string): void; onRetry?(id: string): void; className?: string }) {
   if (!items.length) return null;
   return (
-    <ul aria-label="Attachments" className={cn("flex flex-wrap gap-2", className)}>
+    <ul aria-label="Attachments" className={[sx(paint.s1), className].filter(Boolean).join(" ")}>
       {items.map((it) => {
         const busy = it.state === "uploading" || it.state === "shrinking";
         return (
-          <li key={it.id} data-testid="attachment-chip" data-state={it.state} className="group/chip relative min-w-0 cursor-default">
+          <li key={it.id} data-testid="attachment-chip" data-state={it.state} className={[sx(paint.s2), "group/chip"].filter(Boolean).join(" ")}>
             <Tip
               label={
-                <span className="flex flex-col gap-0.5">
-                  <span className="break-all">{it.name}</span>
-                  <span className={cn("text-muted-foreground", it.state === "error" && "text-destructive-foreground")}>
+                <span className={sx(paint.s3)}>
+                  <span className={sx(paint.s4)}>{it.name}</span>
+                  <span className={[sx(paint.s5), it.state === "error" && sx(paint.s6)].filter(Boolean).join(" ")}>
                     {it.state === "shrinking"
                       ? "Making the screenshot smaller before it goes…"
                       : it.state === "uploading"
@@ -353,33 +579,30 @@ export function AttachmentChips({ items, onRemove, onRetry, className }: { items
               }
             >
               <div
-                className={cn(
-                  "flex h-11 max-w-56 items-center gap-2 rounded-lg border bg-muted/48 py-1 ps-1 pe-2.5 dark:bg-muted/40",
-                  it.state === "error" && "border-destructive/40 bg-destructive/6 dark:bg-destructive/10",
-                )}
+                className={[sx(paint.s7), it.state === "error" && sx(paint.s8)].filter(Boolean).join(" ")}
               >
-                <span className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-background text-muted-foreground">
+                <span className={sx(paint.s9)}>
                   {it.preview ? (
-                    <img src={it.preview} alt="" className="size-full object-cover" />
+                    <img src={it.preview} alt="" className={sx(paint.s10)} />
                   ) : it.type.startsWith("image/") ? (
-                    <ImageIcon className="size-4" />
+                    <ImageIcon className={sx(paint.s11)} />
                   ) : (
-                    <FileTextIcon className="size-4" />
+                    <FileTextIcon className={sx(paint.s12)} />
                   )}
                   {busy && (
-                    <span className={cn("absolute inset-0 flex items-center justify-center", it.preview ? "bg-black/48 text-white" : "bg-background text-foreground")}>
-                      {it.state === "uploading" && it.progress !== undefined ? <ProgressRing value={it.progress} className="size-5" /> : <Spinner  size="lg"/>}
+                    <span className={[sx(paint.s13), it.preview ? sx(paint.s14) : sx(paint.s15)].filter(Boolean).join(" ")}>
+                      {it.state === "uploading" && it.progress !== undefined ? <ProgressRing value={it.progress} className={sx(paint.s16)} /> : <Spinner  size="lg"/>}
                     </span>
                   )}
                   {it.state === "error" && (
-                    <span className="absolute inset-0 flex items-center justify-center bg-background/72">
-                      <CircleAlertIcon className="size-4 text-destructive" />
+                    <span className={sx(paint.s17)}>
+                      <CircleAlertIcon className={sx(paint.s18)} />
                     </span>
                   )}
                 </span>
-                <span className="flex min-w-0 flex-col leading-tight">
-                  <span className="truncate font-medium text-foreground text-xs">{it.name}</span>
-                  <span className={cn("flex items-center gap-1 truncate text-[0.6875rem] text-muted-foreground tabular-nums", it.state === "error" && "text-destructive-foreground")}>
+                <span className={sx(paint.s19)}>
+                  <span className={sx(paint.s20)}>{it.name}</span>
+                  <span className={[sx(paint.s21), it.state === "error" && sx(paint.s22)].filter(Boolean).join(" ")}>
                     {status(it)}
                     {it.state === "error" && onRetry && (
                       <>
@@ -387,9 +610,9 @@ export function AttachmentChips({ items, onRemove, onRetry, className }: { items
                         <button
                           type="button"
                           onClick={() => onRetry(it.id)}
-                          className="inline-flex items-center gap-0.5 rounded-sm font-medium text-foreground underline decoration-foreground/24 underline-offset-2 outline-none hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                          className={[sx(paint.s23), sx(paint.q30)].filter(Boolean).join(" ")}
                         >
-                          <RotateCwIcon className="size-3" />
+                          <RotateCwIcon className={sx(paint.s24)} />
                           Retry
                         </button>
                       </>
@@ -402,12 +625,9 @@ export function AttachmentChips({ items, onRemove, onRetry, className }: { items
               type="button"
               aria-label={busy ? `Stop uploading ${it.name}` : `Remove ${it.name}`}
               onClick={() => onRemove(it.id)}
-              className={cn(
-                "absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border bg-background text-muted-foreground opacity-0 shadow-xs outline-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-hover/chip:opacity-100",
-                it.state === "error" && "opacity-100",
-              )}
+              className={[[sx(paint.s25), sx(paint.q31)].filter(Boolean).join(" "), it.state === "error" && sx(paint.s26)].filter(Boolean).join(" ")}
             >
-              <XIcon className="size-3" />
+              <XIcon className={sx(paint.s27)} />
             </button>
           </li>
         );

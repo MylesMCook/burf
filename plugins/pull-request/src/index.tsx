@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { definePlugin, sessionName, useEvent, useSessions, worktreeLocation, type WorktreePanelProps } from "@berth/plugin";
 import {
   AlertDialog,
@@ -28,12 +29,537 @@ import {
   Skeleton,
   Switch,
   Textarea,
-  cn,
 } from "@berth/plugin/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CiWidget, PullRequestsWidget, usePRCount } from "./home";
 import { type Check, checkState, type CheckState, FIELDS, type Outcome, type PR, plainText, quote, readOutcome, since } from "./gh";
+
+const paint = stylex.create({
+  s0: {
+    "whiteSpace": "pre-wrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s1: {
+    "padding": "20px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "12px",
+    },
+  },
+  s2: {
+    "height": "24px",
+  },
+  s3: {
+    "height": "16px",
+  },
+  s4: {
+    "height": "112px",
+    "width": "100%",
+  },
+  s5: {
+    "height": "80px",
+    "width": "100%",
+  },
+  s6: {
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "240px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "padding": "24px",
+  },
+  s7: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "marginBottom": "8px",
+    "width": "20px",
+    "height": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s8: {
+    "backgroundColor": "color-mix(in oklab, var(--success) 12%, transparent)",
+    "color": "var(--success)",
+    "borderColor": "color-mix(in oklab, var(--success) 24%, transparent)",
+  },
+  s9: {
+    "backgroundColor": "var(--muted)",
+    "color": "var(--muted-foreground)",
+  },
+  s10: {
+    "backgroundColor": "color-mix(in oklab, oklch(0.6 0.18 300) 12%, transparent)",
+    "color": "oklch(0.62 0.18 300)",
+    "borderColor": "color-mix(in oklab, oklch(0.6 0.18 300) 24%, transparent)",
+  },
+  s11: {
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 10%, transparent)",
+    "color": "var(--destructive)",
+    "borderColor": "color-mix(in oklab, var(--destructive) 24%, transparent)",
+  },
+  s12: {
+    "color": "var(--success)",
+  },
+  s13: {
+    "color": "var(--destructive)",
+  },
+  s14: {
+    "color": "var(--warning)",
+  },
+  s15: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "padding": "20px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "16px",
+    },
+  },
+  s16: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "8px",
+    },
+  },
+  s17: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "12px",
+  },
+  s18: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "fontWeight": 600,
+    "fontSize": "16px",
+    "lineHeight": "1.375",
+  },
+  s19: {
+    "fontWeight": 400,
+    "color": "var(--muted-foreground)",
+  },
+  s20: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s21: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s22: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s23: {
+    "gap": "4px",
+  },
+  s24: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s25: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s26: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s27: {
+    "color": "var(--success)",
+  },
+  s28: {
+    "color": "var(--destructive)",
+  },
+  s29: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "gap": "12px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s30: {
+    "color": "var(--destructive)",
+  },
+  s31: {
+    "color": "var(--warning)",
+  },
+  s32: {
+    "color": "var(--muted-foreground)",
+  },
+  s33: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "20px",
+    "paddingBottom": "20px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s34: {
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s35: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "10px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "left",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    },
+  },
+  s36: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s37: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "10px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "left",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    },
+  },
+  s38: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s39: {
+    "marginLeft": "auto",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s40: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "20px",
+    "paddingBottom": "20px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s41: {
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s42: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s43: {
+    "width": "16px",
+    "flexShrink": 0,
+  },
+  s44: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s45: {
+    "color": "var(--success)",
+  },
+  s46: {
+    "fontWeight": 500,
+  },
+  s47: {
+    "color": "var(--muted-foreground)",
+  },
+  s48: {
+    "marginLeft": "auto",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s49: {
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s50: {
+    "display": "flex",
+    "gap": "10px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s51: {
+    "backgroundColor": "color-mix(in oklab, var(--accent) 40%, transparent)",
+  },
+  s52: {
+    "marginTop": "2px",
+  },
+  s53: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s54: {
+    "marginBottom": "4px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s55: {
+    "fontWeight": 500,
+  },
+  s56: {
+    "color": "var(--muted-foreground)",
+  },
+  s57: {
+    "overflow": "hidden",
+    "display": "-webkit-box",
+    "WebkitLineClamp": 4,
+    "WebkitBoxOrient": "vertical",
+    "whiteSpace": "pre-wrap",
+    "color": "var(--muted-foreground)",
+  },
+  s58: {
+    "flexShrink": 0,
+    "transitionProperty": "opacity",
+    "transitionDuration": "150ms",
+  },
+  s59: {
+    "opacity": {
+      "default": 0,
+      ":focus-visible": 1,
+    },
+    ":is(.group\\/row:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s60: {
+    "position": "sticky",
+    "bottom": "12px",
+    "zIndex": 10,
+    "display": "flex",
+    "width": "fit-content",
+    "maxWidth": "100%",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--popover)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
+  },
+  s61: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s62: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s63: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s64: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s65: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s66: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s67: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s68: {
+    "color": "var(--success)",
+  },
+  s69: {
+    "color": "var(--destructive)",
+  },
+  s70: {
+    "color": "var(--warning)",
+  },
+  s71: {
+    "color": "var(--muted-foreground)",
+  },
+  s72: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "10px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s73: {
+    "backgroundColor": "color-mix(in oklab, var(--accent) 40%, transparent)",
+  },
+  s74: {
+    "width": "16px",
+    "flexShrink": 0,
+  },
+  s75: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+  },
+  s76: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s77: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s78: {
+    "marginLeft": "auto",
+  },
+  s79: {
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "240px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "padding": "24px",
+  },
+  s80: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "marginBottom": "8px",
+    "width": "20px",
+    "height": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s81: {
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "12px",
+    },
+  },
+  s82: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s83: {
+    "whiteSpace": "pre-wrap",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 8%, transparent)",
+    "padding": "8px",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--destructive)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  n0: {
+    "width": "16px",
+    "height": "16px",
+  },
+  n1: {
+    "color": "var(--success)",
+  },
+  n2: {
+    "color": "var(--destructive)",
+  },
+  n3: {
+    "color": "var(--muted-foreground)",
+  },
+  q84: {
+    "color": "var(--success)",
+  },
+  q85: {
+    "color": "var(--destructive)",
+  },
+  q86: {
+    "color": "var(--warning)",
+  },
+  q87: {
+    "width": "66.67%",
+  },
+  q88: {
+    "width": "33.33%",
+  },
+  q89: {
+    "maxWidth": "48rem",
+  },
+  q90: {
+    "color": "var(--success)",
+  },
+  q91: {
+    "color": "var(--destructive)",
+  },
+  q92: {
+    "color": "var(--warning)",
+  },
+  q93: {
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Pull request: the branch's PR as GitHub sees it, read with `gh` on the
 // box, so what you see is what the box's credentials see.
@@ -141,27 +667,27 @@ function PullRequestPanel({ berth, box, location, worktree, main, path }: Worktr
     case "not-github":
       return <Notice icon="GitBranch" title="Not a GitHub repository" body="This worktree's remotes don't point at GitHub, so there are no pull requests to show." onRetry={refresh} />;
     default:
-      return <Notice icon="TriangleAlert" title="Couldn't read the pull request" body={<span className="whitespace-pre-wrap font-mono text-xs">{outcome.message}</span>} onRetry={refresh} />;
+      return <Notice icon="TriangleAlert" title="Couldn't read the pull request" body={<span className={sx(paint.s0)}>{outcome.message}</span>} onRetry={refresh} />;
   }
 }
 
 function Loading() {
   return (
-    <div className="space-y-3 p-5">
-      <Skeleton className="h-6 w-2/3" />
-      <Skeleton className="h-4 w-1/3" />
-      <Skeleton className="h-28 w-full" />
-      <Skeleton className="h-20 w-full" />
+    <div className={sx(paint.s1)}>
+      <Skeleton className={[sx(paint.s2), sx(paint.q87)].filter(Boolean).join(" ")} />
+      <Skeleton className={[sx(paint.s3), sx(paint.q88)].filter(Boolean).join(" ")} />
+      <Skeleton className={sx(paint.s4)} />
+      <Skeleton className={sx(paint.s5)} />
     </div>
   );
 }
 
 function Notice({ icon, title, body, onRetry }: { icon: string; title: string; body: React.ReactNode; onRetry(): void }) {
   return (
-    <div className="flex h-full min-h-60 items-center justify-center p-6">
+    <div className={sx(paint.s6)}>
       <Empty>
         <EmptyHeader>
-          <Icon name={icon} className="mx-auto mb-2 size-5 text-muted-foreground" />
+          <Icon name={icon} className={sx(paint.s7)} />
           <EmptyTitle>{title}</EmptyTitle>
           <EmptyDescription measure="md">{body}</EmptyDescription>
         </EmptyHeader>
@@ -172,16 +698,16 @@ function Notice({ icon, title, body, onRetry }: { icon: string; title: string; b
 }
 
 const stateBadge: Record<string, { label: string; className: string; icon: string }> = {
-  OPEN: { label: "Open", className: "bg-success/12 text-success border-success/24", icon: "GitPullRequest" },
-  DRAFT: { label: "Draft", className: "bg-muted text-muted-foreground", icon: "GitPullRequestDraft" },
-  MERGED: { label: "Merged", className: "bg-[oklch(0.6_0.18_300)]/12 text-[oklch(0.62_0.18_300)] border-[oklch(0.6_0.18_300)]/24", icon: "GitMerge" },
-  CLOSED: { label: "Closed", className: "bg-destructive/10 text-destructive border-destructive/24", icon: "GitPullRequestClosed" },
+  OPEN: { label: "Open", className: sx(paint.s8), icon: "GitPullRequest" },
+  DRAFT: { label: "Draft", className: sx(paint.s9), icon: "GitPullRequestDraft" },
+  MERGED: { label: "Merged", className: sx(paint.s10), icon: "GitMerge" },
+  CLOSED: { label: "Closed", className: sx(paint.s11), icon: "GitPullRequestClosed" },
 };
 
 const decision: Record<string, { label: string; tone: string }> = {
-  APPROVED: { label: "Approved", tone: "text-success" },
-  CHANGES_REQUESTED: { label: "Changes requested", tone: "text-destructive" },
-  REVIEW_REQUIRED: { label: "Review required", tone: "text-warning" },
+  APPROVED: { label: "Approved", tone: sx(paint.q84) },
+  CHANGES_REQUESTED: { label: "Changes requested", tone: sx(paint.q85) },
+  REVIEW_REQUIRED: { label: "Review required", tone: sx(paint.q86) },
 };
 
 function PRView({ pr, berth, box, path, onRefresh }: { pr: PR; berth: WorktreePanelProps["berth"]; box: string; path: string; onRefresh(): void }) {
@@ -207,29 +733,29 @@ function PRView({ pr, berth, box, path, onRefresh }: { pr: PR; berth: WorktreePa
     });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-5">
-      <header className="space-y-2">
-        <div className="flex items-start gap-3">
-          <h2 className="min-w-0 flex-1 font-semibold text-base leading-snug">
-            {pr.title} <span className="font-normal text-muted-foreground">#{pr.number}</span>
+    <div className={[sx(paint.s15), sx(paint.q89)].filter(Boolean).join(" ")}>
+      <header className={sx(paint.s16)}>
+        <div className={sx(paint.s17)}>
+          <h2 className={sx(paint.s18)}>
+            {pr.title} <span className={sx(paint.s19)}>#{pr.number}</span>
           </h2>
           <Button size="sm" variant="outline" onClick={onRefresh} aria-label="Refresh">
-            <Icon name="RefreshCw" className="size-3.5" />
+            <Icon name="RefreshCw" className={sx(paint.s20)} />
           </Button>
           <Button size="sm" onClick={() => berth.openUrl(pr.url)}>
-            Open on GitHub <Icon name="ArrowUpRight" className="size-3.5" />
+            Open on GitHub <Icon name="ArrowUpRight" className={sx(paint.s21)} />
           </Button>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-          <Badge variant="outline" className={cn("gap-1", st.className)}>
-            <Icon name={st.icon} className="size-3" />
+        <div className={sx(paint.s22)}>
+          <Badge variant="outline" className={[sx(paint.s23), st.className].filter(Boolean).join(" ")}>
+            <Icon name={st.icon} className={sx(paint.s24)} />
             {st.label}
           </Badge>
           <span>
-            {pr.author?.login && <b className="font-medium text-foreground">{pr.author.login}</b>} {pr.state === "OPEN" ? "wants to merge" : pr.state === "MERGED" ? "merged" : "wanted to merge"} <Kbd>{pr.headRefName}</Kbd> into <Kbd>{pr.baseRefName}</Kbd>
+            {pr.author?.login && <b className={sx(paint.s25)}>{pr.author.login}</b>} {pr.state === "OPEN" ? "wants to merge" : pr.state === "MERGED" ? "merged" : "wanted to merge"} <Kbd>{pr.headRefName}</Kbd> into <Kbd>{pr.baseRefName}</Kbd>
           </span>
-          <span className="tabular-nums">
-            <span className="text-success">+{pr.additions}</span> <span className="text-destructive">−{pr.deletions}</span> · {pr.changedFiles} {pr.changedFiles === 1 ? "file" : "files"}
+          <span className={sx(paint.s26)}>
+            <span className={sx(paint.s27)}>+{pr.additions}</span> <span className={sx(paint.s28)}>−{pr.deletions}</span> · {pr.changedFiles} {pr.changedFiles === 1 ? "file" : "files"}
           </span>
           {pr.updatedAt && <span>updated {since(pr.updatedAt)}</span>}
         </div>
@@ -238,32 +764,32 @@ function PRView({ pr, berth, box, path, onRefresh }: { pr: PR; berth: WorktreePa
       <Frame variant="card">
         <FrameHeader row gap={2} pad="tight">
           <FrameTitle>Checks</FrameTitle>
-          <span className="ml-auto flex gap-3 text-xs tabular-nums">
-            {counts.fail > 0 && <span className="text-destructive">{counts.fail} failing</span>}
-            {counts.pending > 0 && <span className="text-warning">{counts.pending} running</span>}
-            <span className="text-muted-foreground">{counts.pass} passed</span>
+          <span className={sx(paint.s29)}>
+            {counts.fail > 0 && <span className={sx(paint.s30)}>{counts.fail} failing</span>}
+            {counts.pending > 0 && <span className={sx(paint.s31)}>{counts.pending} running</span>}
+            <span className={sx(paint.s32)}>{counts.pass} passed</span>
           </span>
         </FrameHeader>
         <FramePanel pad="none">
           {checks.length === 0 ? (
-            <p className="px-4 py-5 text-center text-muted-foreground text-sm">No checks on this pull request.</p>
+            <p className={sx(paint.s33)}>No checks on this pull request.</p>
           ) : (
-            <ul className="divide-y">
+            <ul className={sx(paint.s34)}>
               {visible.map((c, i) => (
                 <CheckRow key={i} check={c} berth={berth} pick={checkPick(c)} picked={picked} onToggle={toggle} />
               ))}
               {hidden > 0 && (
                 <li>
-                  <button type="button" className="flex w-full items-center gap-2.5 px-4 py-2 text-left text-muted-foreground text-sm hover:bg-accent/50" onClick={() => setShowPassed(true)}>
-                    <Icon name="ChevronsUpDown" className="size-4" />
+                  <button type="button" className={sx(paint.s35)} onClick={() => setShowPassed(true)}>
+                    <Icon name="ChevronsUpDown" className={sx(paint.s36)} />
                     Show {hidden} passed or skipped check{hidden === 1 ? "" : "s"}
                   </button>
                 </li>
               )}
               {fold === false && checks.length > 8 && (
                 <li>
-                  <button type="button" className="flex w-full items-center gap-2.5 px-4 py-2 text-left text-muted-foreground text-sm hover:bg-accent/50" onClick={() => setShowPassed(false)}>
-                    <Icon name="ChevronsDownUp" className="size-4" />
+                  <button type="button" className={sx(paint.s37)} onClick={() => setShowPassed(false)}>
+                    <Icon name="ChevronsDownUp" className={sx(paint.s38)} />
                     Hide passed checks
                   </button>
                 </li>
@@ -276,20 +802,20 @@ function PRView({ pr, berth, box, path, onRefresh }: { pr: PR; berth: WorktreePa
       <Frame variant="card">
         <FrameHeader row gap={2} pad="tight">
           <FrameTitle>Reviews</FrameTitle>
-          {pr.reviewDecision && decision[pr.reviewDecision] && <span className={cn("ml-auto text-xs", decision[pr.reviewDecision].tone)}>{decision[pr.reviewDecision].label}</span>}
+          {pr.reviewDecision && decision[pr.reviewDecision] && <span className={[sx(paint.s39), decision[pr.reviewDecision].tone].filter(Boolean).join(" ")}>{decision[pr.reviewDecision].label}</span>}
         </FrameHeader>
         <FramePanel pad="none">
           {reviews.length === 0 ? (
-            <p className="px-4 py-5 text-center text-muted-foreground text-sm">Nobody has reviewed it yet.</p>
+            <p className={sx(paint.s40)}>Nobody has reviewed it yet.</p>
           ) : (
-            <ul className="divide-y">
+            <ul className={sx(paint.s41)}>
               {reviews.map((r, i) => (
-                <li key={i} className="group/row flex items-center gap-2 px-4 py-2 text-sm">
-                  {r.body?.trim() ? <PickBox pick={reviewPick(r)} picked={picked} onToggle={toggle} /> : <span className="w-4 shrink-0" />}
-                  <Icon name={r.state === "APPROVED" ? "CircleCheck" : r.state === "CHANGES_REQUESTED" ? "CircleX" : "MessageSquare"} className={cn("size-4", r.state === "APPROVED" ? "text-success" : r.state === "CHANGES_REQUESTED" ? "text-destructive" : "text-muted-foreground")} />
-                  <span className="font-medium">{r.author?.login ?? "someone"}</span>
-                  <span className="text-muted-foreground">{reviewLabel(r.state)}</span>
-                  <span className="ml-auto text-muted-foreground text-xs">{since(r.submittedAt)}</span>
+                <li key={i} className={[sx(paint.s42), "group/row"].filter(Boolean).join(" ")}>
+                  {r.body?.trim() ? <PickBox pick={reviewPick(r)} picked={picked} onToggle={toggle} /> : <span className={sx(paint.s43)} />}
+                  <Icon name={r.state === "APPROVED" ? "CircleCheck" : r.state === "CHANGES_REQUESTED" ? "CircleX" : "MessageSquare"} className={[sx(paint.n0), r.state === "APPROVED" ? sx(paint.n1) : r.state === "CHANGES_REQUESTED" ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")} />
+                  <span className={sx(paint.s46)}>{r.author?.login ?? "someone"}</span>
+                  <span className={sx(paint.s47)}>{reviewLabel(r.state)}</span>
+                  <span className={sx(paint.s48)}>{since(r.submittedAt)}</span>
                 </li>
               ))}
             </ul>
@@ -303,16 +829,16 @@ function PRView({ pr, berth, box, path, onRefresh }: { pr: PR; berth: WorktreePa
             <FrameTitle>Latest comments</FrameTitle>
           </FrameHeader>
           <FramePanel pad="none">
-            <ul className="divide-y">
+            <ul className={sx(paint.s49)}>
               {comments.map((c, i) => (
-                <li key={i} className={cn("group/row flex gap-2.5 px-4 py-3 text-sm", picked.has(commentPick(c).key) && "bg-accent/40")}>
-                  <PickBox pick={commentPick(c)} picked={picked} onToggle={toggle} className="mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-center gap-2 text-xs">
-                      <span className="font-medium">{c.author?.login ?? "someone"}</span>
-                      <span className="text-muted-foreground">{since(c.createdAt)}</span>
+                <li key={i} className={[[sx(paint.s50), "group/row"].filter(Boolean).join(" "), picked.has(commentPick(c).key) && sx(paint.s51)].filter(Boolean).join(" ")}>
+                  <PickBox pick={commentPick(c)} picked={picked} onToggle={toggle} className={sx(paint.s52)} />
+                  <div className={sx(paint.s53)}>
+                    <div className={sx(paint.s54)}>
+                      <span className={sx(paint.s55)}>{c.author?.login ?? "someone"}</span>
+                      <span className={sx(paint.s56)}>{since(c.createdAt)}</span>
                     </div>
-                    <p className="line-clamp-4 whitespace-pre-wrap text-muted-foreground">{plainText(c.body)}</p>
+                    <p className={sx(paint.s57)}>{plainText(c.body)}</p>
                   </div>
                 </li>
               ))}
@@ -363,7 +889,7 @@ function PickBox({ pick, picked, onToggle, className }: { pick: PrItem; picked: 
       checked={on}
       onCheckedChange={() => onToggle(pick)}
       aria-label={`Pick ${pick.label}`}
-      className={cn("shrink-0 transition-opacity", !on && picked.size === 0 && "opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100", className)}
+      className={[sx(paint.s58), !on && picked.size === 0 && sx(paint.s59), className].filter(Boolean).join(" ")}
     />
   );
 }
@@ -401,19 +927,19 @@ function SendBar({ pr, picked, berth, box, path, onClear }: { pr: PR; picked: Pr
     }
   };
   return (
-    <div className="sticky bottom-3 z-10 flex w-fit max-w-full items-center gap-2 rounded-xl border bg-popover px-3 py-2 text-sm shadow-lg">
-      <span className="tabular-nums">{picked.length} picked</span>
+    <div className={sx(paint.s60)}>
+      <span className={sx(paint.s61)}>{picked.length} picked</span>
       {agents.length === 1 ? (
         <Button size="sm" loading={busy} onClick={() => void send(agents[0].name)}>
-          <Icon name="Send" className="size-3.5" />
+          <Icon name="Send" className={sx(paint.s62)} />
           Send to {sessionName(agents[0], { sessions })}
         </Button>
       ) : agents.length > 1 ? (
         <Menu>
           <MenuTrigger render={<Button size="sm" loading={busy} />}>
-            <Icon name="Send" className="size-3.5" />
+            <Icon name="Send" className={sx(paint.s63)} />
             Send to agent
-            <Icon name="ChevronDown" className="size-3.5" />
+            <Icon name="ChevronDown" className={sx(paint.s64)} />
           </MenuTrigger>
           <MenuPopup align="start">
             {agents.map((a) => (
@@ -424,14 +950,14 @@ function SendBar({ pr, picked, berth, box, path, onClear }: { pr: PR; picked: Pr
           </MenuPopup>
         </Menu>
       ) : (
-        <span className="text-muted-foreground text-xs">No agent in this worktree</span>
+        <span className={sx(paint.s65)}>No agent in this worktree</span>
       )}
       <Button size="sm" variant="outline" onClick={() => void copy()}>
-        <Icon name="Copy" className="size-3.5" />
+        <Icon name="Copy" className={sx(paint.s66)} />
         Copy
       </Button>
       <Button size="sm" variant="ghost" onClick={onClear} aria-label="Clear">
-        <Icon name="X" className="size-3.5" />
+        <Icon name="X" className={sx(paint.s67)} />
       </Button>
     </div>
   );
@@ -443,15 +969,15 @@ function CheckRow({ check, berth, pick, picked, onToggle }: { check: Check; bert
   const s = checkState(check);
   const url = check.detailsUrl || check.targetUrl;
   const icon = { pass: "CircleCheck", fail: "CircleX", pending: "LoaderCircle", skip: "CircleMinus" }[s];
-  const tone = { pass: "text-success", fail: "text-destructive", pending: "text-warning animate-spin", skip: "text-muted-foreground" }[s];
+  const tone = { pass: sx(paint.q90), fail: sx(paint.q91), pending: [sx(paint.q92), "burf-spin"].filter(Boolean).join(" "), skip: sx(paint.q93) }[s];
   return (
-    <li className={cn("group/row flex items-center gap-2.5 px-4 py-2 text-sm", picked.has(pick.key) && "bg-accent/40")}>
-      {s === "fail" ? <PickBox pick={pick} picked={picked} onToggle={onToggle} /> : <span className="w-4 shrink-0" />}
-      <Icon name={icon} className={cn("size-4 shrink-0", tone)} />
-      <span className="min-w-0 truncate">{check.name ?? check.context}</span>
-      {check.workflowName && <span className="truncate text-muted-foreground text-xs">{check.workflowName}</span>}
+    <li className={[[sx(paint.s72), "group/row"].filter(Boolean).join(" "), picked.has(pick.key) && sx(paint.s73)].filter(Boolean).join(" ")}>
+      {s === "fail" ? <PickBox pick={pick} picked={picked} onToggle={onToggle} /> : <span className={sx(paint.s74)} />}
+      <Icon name={icon} className={[sx(paint.s75), tone].filter(Boolean).join(" ")} />
+      <span className={sx(paint.s76)}>{check.name ?? check.context}</span>
+      {check.workflowName && <span className={sx(paint.s77)}>{check.workflowName}</span>}
       {url && (
-        <Button size="xs" variant="ghost" className="ml-auto" onClick={() => berth.openUrl(url)}>
+        <Button size="xs" variant="ghost" className={sx(paint.s78)} onClick={() => berth.openUrl(url)}>
           Details
         </Button>
       )}
@@ -501,28 +1027,28 @@ function NoPR({ run, worktree, onCreated, berth }: { run: Run; worktree: string;
   };
 
   return (
-    <div className="flex h-full min-h-60 items-center justify-center p-6">
+    <div className={sx(paint.s79)}>
       <Empty>
         <EmptyHeader>
-          <Icon name="GitPullRequestCreate" className="mx-auto mb-2 size-5 text-muted-foreground" />
+          <Icon name="GitPullRequestCreate" className={sx(paint.s80)} />
           <EmptyTitle>No pull request for this branch</EmptyTitle>
           <EmptyDescription>Open one when the work is ready for eyes. It pushes the branch first.</EmptyDescription>
         </EmptyHeader>
         <Button size="sm" onClick={() => void start()}>Create pull request…</Button>
       </Empty>
       <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogPopup className="sm:max-w-lg">
+        <AlertDialogPopup>
           <AlertDialogHeader>
             <AlertDialogTitle>Create a pull request</AlertDialogTitle>
             <AlertDialogDescription>Pushes this branch to origin, then opens the pull request with gh on the box.</AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-3 px-6">
+          <div className={sx(paint.s81)}>
             <Input value={title} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)} placeholder="Title" aria-label="Title" />
             <Textarea value={body} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setBody(e.target.value)} placeholder="What changed and why (optional)" rows={4} aria-label="Description" />
-            <label className="flex items-center gap-2 text-sm">
+            <label className={sx(paint.s82)}>
               <Switch checked={draft} onCheckedChange={setDraft} /> Open as a draft
             </label>
-            {error && <p className="whitespace-pre-wrap rounded-md bg-destructive/8 p-2 font-mono text-destructive text-xs">{error}</p>}
+            {error && <p className={sx(paint.s83)}>{error}</p>}
           </div>
           <AlertDialogFooter>
             <AlertDialogClose render={<Button variant="ghost" />}>Cancel</AlertDialogClose>

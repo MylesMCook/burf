@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, GripVerticalIcon, LayoutGridIcon, MoveDiagonal2Icon, PlusIcon, RotateCcwIcon, XIcon } from "lucide-react";
 import { type KeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -6,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { add, columnsFor, LAYOUT_VERSION, move, moveToward, type Placed, readLayout, remove, resize, SIZE_ORDER, SIZES, snapSize, stepSize, type WidgetSize } from "@/lib/home-layout";
 import { setPrefs, usePrefs } from "@/lib/prefs";
-import { cn } from "@/lib/utils";
 import { scrollBehavior } from "@/lib/motion";
 import { usePluginsLoading } from "@/plugins/registry";
 
@@ -14,6 +14,470 @@ import { useOnScreen, WidgetBoundary, WidgetHeading, WidgetMenu } from "./card";
 import { GAP, HomeWidgetProvider, ROW } from "./env";
 import { AddWidgetDialog } from "./picker";
 import { sizeFor, useWidgets, type WidgetDef } from "./registry";
+
+const paint = stylex.create({
+  s0: {
+    "gridColumn": "span 1 / span 1",
+  },
+  s1: {
+    "gridColumn": "span 2 / span 2",
+  },
+  s2: {
+    "gridColumn": "span 1 / span 1",
+  },
+  s3: {
+    "gridColumn": "span 2 / span 2",
+  },
+  s4: {
+    "gridColumn": "span 4 / span 4",
+  },
+  s5: {
+    "width": "100%",
+  },
+  s6: {
+    "marginBottom": "10px",
+    "display": "flex",
+    "minHeight": "32px",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "8px",
+    "rowGap": "6px",
+  },
+  s7: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s8: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s9: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s11: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s12: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s13: {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(4, minmax(0, 1fr))",
+  },
+  s14: {
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "dashed",
+    "borderColor": "var(--border)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s15: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s16: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+  s17: {
+    "position": "relative",
+    "minHeight": "0px",
+    "minWidth": "0px",
+  },
+  s18: {
+    "position": "relative",
+    "width": "100%",
+    "height": "100%",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s19: {
+    "position": "absolute",
+    "top": "6px",
+    "right": "6px",
+    "zIndex": 10,
+    "backgroundColor": "color-mix(in oklab, var(--background) 80%, transparent)",
+  },
+  s20: {
+    "position": "relative",
+    "display": "flex",
+    "width": "100%",
+    "height": "100%",
+    "minHeight": "0px",
+    "flexDirection": "column",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--card)",
+    "color": "var(--card-foreground)",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s21: {
+    "borderStyle": "dashed",
+  },
+  s22: {
+    "opacity": 0.4,
+    "boxShadow": "0 0 0 2px var(--ring)",
+  },
+  s23: {
+    "display": "flex",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "paddingRight": "6px",
+    "paddingLeft": "4px",
+  },
+  s24: {
+    "display": "flex",
+    "height": "28px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "cursor": {
+      "default": "grab",
+      ":active": "grabbing",
+    },
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "textAlign": "left",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s25: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s26: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "13px",
+  },
+  s27: {
+    "display": "flex",
+    "width": "24px",
+    "height": "24px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s28: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s29: {
+    "position": "relative",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "paddingBottom": "6px",
+  },
+  s30: {
+    "pointerEvents": "none",
+    "userSelect": "none",
+  },
+  s31: {
+    "marginLeft": "6px",
+    "marginRight": "6px",
+    "marginBottom": "6px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "paddingBottom": "0px",
+  },
+  s32: {
+    "position": "absolute",
+    "right": "4px",
+    "bottom": "4px",
+    "zIndex": 10,
+    "display": "flex",
+    "width": "20px",
+    "height": "20px",
+    "cursor": "se-resize",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--popover)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s33: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s34: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "padding": "2px",
+  },
+  s35: {
+    "height": "20px",
+    "minWidth": "24px",
+    "borderRadius": "5px",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "10px",
+    "fontVariantNumeric": "tabular-nums",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s36: {
+    "backgroundColor": "var(--foreground)",
+    "color": "var(--background)",
+  },
+  s37: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s38: {
+    "position": "relative",
+    "minHeight": "0px",
+    "minWidth": "0px",
+  },
+  s39: {
+    "display": "flex",
+    "width": "100%",
+    "height": "100%",
+    "flexDirection": "column",
+    "gap": "12px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--card)",
+    "padding": "12px",
+  },
+  s40: {
+    "height": "14px",
+    "width": "112px",
+  },
+  s41: {
+    "height": "12px",
+  },
+  s42: {
+    "height": "12px",
+  },
+  s43: {
+    "position": "relative",
+    "minHeight": "0px",
+    "minWidth": "0px",
+  },
+  s44: {
+    "display": "flex",
+    "width": "100%",
+    "height": "100%",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "dashed",
+    "borderColor": "var(--border)",
+    "padding": "12px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s45: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s46: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s47: {
+    "textWrap": "balance",
+  },
+  s48: {
+    "marginTop": "4px",
+  },
+  s49: {
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "dashed",
+    "borderColor": "var(--border)",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "48px",
+    "paddingBottom": "48px",
+    "textAlign": "center",
+  },
+  s50: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s51: {
+    "marginTop": "8px",
+    "display": "flex",
+    "gap": "8px",
+  },
+
+  s52: {
+    containerType: "inline-size",
+  },
+  s53: {
+    gridAutoFlow: "row dense",
+    "@container (max-width: 480px)": {
+      gridTemplateColumns: "repeat(1, minmax(0, 1fr))",
+    },
+    "@container (max-width: 800px)": {
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    },
+  },
+  s54: {
+    backdropFilter: "blur(4px)",
+  },
+  s55: {
+    touchAction: "none",
+  },
+  s56: {
+    "@container (max-width: 200px)": {
+      display: "none",
+    },
+  },
+  s57: {
+    width: "75%",
+  },
+  s58: {
+    width: "50%",
+  },
+  s59: {
+    gridColumn: "span 1 / span 1",
+    gridRow: "span 1 / span 1",
+  },
+  s60: {
+    gridColumn: "span 2 / span 2",
+    gridRow: "span 1 / span 1",
+    "@container (max-width: 480px)": {
+      gridColumn: "span 1 / span 1",
+    },
+  },
+  s61: {
+    gridColumn: "span 1 / span 1",
+    gridRow: "span 2 / span 2",
+  },
+  s62: {
+    gridColumn: "span 2 / span 2",
+    gridRow: "span 2 / span 2",
+    "@container (max-width: 480px)": {
+      gridColumn: "span 1 / span 1",
+    },
+  },
+  s63: {
+    gridColumn: "span 4 / span 4",
+    gridRow: "span 1 / span 1",
+    "@container (max-width: 800px)": {
+      gridColumn: "span 2 / span 2",
+    },
+    "@container (max-width: 480px)": {
+      gridColumn: "span 1 / span 1",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Home's grid of widgets, under the composer. Four columns, two in a
 // narrower window and one in a narrow one (container queries, so the
@@ -27,11 +491,11 @@ import { sizeFor, useWidgets, type WidgetDef } from "./registry";
 
 // Each size's cells, as Tailwind classes (written out so they're built).
 const SPAN: Record<WidgetSize, string> = {
-  s: "col-span-1 row-span-1",
-  m: "col-span-2 row-span-1 @max-[480px]:col-span-1",
-  t: "col-span-1 row-span-2",
-  l: "col-span-2 row-span-2 @max-[480px]:col-span-1",
-  w: "col-span-4 row-span-1 @max-[800px]:col-span-2 @max-[480px]:col-span-1",
+  s: (sx(paint.s59) ?? ""),
+  m: (sx(paint.s60) ?? ""),
+  t: (sx(paint.s61) ?? ""),
+  l: (sx(paint.s62) ?? ""),
+  w: (sx(paint.s63) ?? ""),
 };
 
 type Dir = "left" | "right" | "up" | "down";
@@ -161,14 +625,14 @@ export function HomeGrid({ className }: { className?: string }) {
   };
 
   return (
-    <section aria-label="Your widgets" data-testid="home-grid" data-editing={edit || undefined} className={cn("w-full", className)}>
-      <div className="mb-2.5 flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1.5">
+    <section aria-label="Your widgets" data-testid="home-grid" data-editing={edit || undefined} className={[sx(paint.s5), className].filter(Boolean).join(" ")}>
+      <div className={sx(paint.s6)}>
         {edit ? (
           <>
-            <div className="flex min-w-0 flex-1 flex-col">
-              <h2 className="font-medium text-sm">Customize Home</h2>
-              <p id="home-grid-hint" className="text-muted-foreground text-xs">
-                Drag a heading to move a widget, or focus it and use the arrow keys. <kbd className="font-mono">[</kbd> <kbd className="font-mono">]</kbd> resize, Delete removes. Saved as you go.
+            <div className={sx(paint.s7)}>
+              <h2 className={sx(paint.s8)}>Customize Home</h2>
+              <p id="home-grid-hint" className={sx(paint.s9)}>
+                Drag a heading to move a widget, or focus it and use the arrow keys. <kbd className={sx(paint.s10)}>[</kbd> <kbd className={sx(paint.s11)}>]</kbd> resize, Delete removes. Saved as you go.
               </p>
             </div>
             <Button size="sm" variant="ghost" onClick={reset}>
@@ -186,7 +650,7 @@ export function HomeGrid({ className }: { className?: string }) {
           </>
         ) : (
           <>
-            <span className="flex-1" />
+            <span className={sx(paint.s12)} />
             <Button size="sm" variant="ghost"  onClick={() => setEdit(true)} data-testid="home-customize" muted>
               <LayoutGridIcon />
               Customize
@@ -194,11 +658,11 @@ export function HomeGrid({ className }: { className?: string }) {
           </>
         )}
       </div>
-      <div ref={wrap} className="@container">
+      <div ref={wrap} className={sx(paint.s52)}>
         {drawn.length === 0 ? (
           <EmptyGrid onAdd={() => setPicker(true)} onReset={reset} />
         ) : (
-          <div role="list" aria-label="Home widgets" className="grid grid-flow-row-dense grid-cols-4 @max-[480px]:grid-cols-1 @max-[800px]:grid-cols-2" style={{ gridAutoRows: ROW, gap: GAP }}>
+          <div role="list" aria-label="Home widgets" className={[sx(paint.s13), sx(paint.s53)].filter(Boolean).join(" ")} style={{ gridAutoRows: ROW, gap: GAP }}>
             {drawn.map((p) => {
               const def = byId.get(p.id);
               if (!def)
@@ -234,16 +698,16 @@ export function HomeGrid({ className }: { className?: string }) {
               <button
                 type="button"
                 onClick={() => setPicker(true)}
-                className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed text-muted-foreground text-sm outline-none hover:bg-accent/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                className={sx(paint.s14)}
               >
-                <PlusIcon className="size-4" />
+                <PlusIcon className={sx(paint.s15)} />
                 Add widget
               </button>
             )}
           </div>
         )}
       </div>
-      <p className="sr-only" aria-live="polite">
+      <p className={sx(paint.s16)} aria-live="polite">
         {said}
       </p>
       <AddWidgetDialog
@@ -320,24 +784,20 @@ function Cell({ def, size, cols, edit, dragging, refresh, handleRef, onKeyDown, 
   };
 
   return (
-    <div ref={setEl} role="listitem" data-widget={def.id} data-size={size} className={cn("relative min-h-0 min-w-0", SPAN[size])}>
+    <div ref={setEl} role="listitem" data-widget={def.id} data-size={size} className={[sx(paint.s17), SPAN[size]].filter(Boolean).join(" ")}>
       <HomeWidgetProvider size={size} cols={cols} visible={onScreen} refresh={refresh} bare={def.bare && !edit}>
       {def.bare && !edit ? (
-        <section aria-label={def.title} className="group/w relative size-full overflow-hidden rounded-lg border">
+        <section aria-label={def.title} className={[sx(paint.s18), "group/w"].filter(Boolean).join(" ")}>
           {content}
-          <WidgetMenu def={def} size={size} onSize={onSize} onRefresh={onRefresh} onRemove={onRemove} onCustomize={onCustomize} className="absolute top-1.5 right-1.5 z-10 bg-background/80 backdrop-blur-sm" />
+          <WidgetMenu def={def} size={size} onSize={onSize} onRefresh={onRefresh} onRemove={onRemove} onCustomize={onCustomize} className={[sx(paint.s19), sx(paint.s54)].filter(Boolean).join(" ")} />
         </section>
       ) : (
         <section
           aria-labelledby={headingId}
-          className={cn(
-            "group/w relative flex size-full min-h-0 flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-xs/5",
-            edit && "border-dashed",
-            dragging && "opacity-40 ring-2 ring-ring",
-          )}
+          className={[[sx(paint.s20), "group/w"].filter(Boolean).join(" "), edit && sx(paint.s21), dragging && sx(paint.s22)].filter(Boolean).join(" ")}
         >
           {edit ? (
-            <div className="flex h-9 shrink-0 items-center gap-1 pr-1.5 pl-1">
+            <div className={sx(paint.s23)}>
               <button
                 ref={handleRef}
                 type="button"
@@ -350,10 +810,10 @@ function Cell({ def, size, cols, edit, dragging, refresh, handleRef, onKeyDown, 
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
-                className="flex h-7 min-w-0 flex-1 cursor-grab touch-none items-center gap-1.5 rounded-md px-1.5 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+                className={[sx(paint.s24), sx(paint.s55)].filter(Boolean).join(" ")}
               >
-                <GripVerticalIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                <span id={headingId} className="truncate font-medium text-[13px]">
+                <GripVerticalIcon className={sx(paint.s25)} />
+                <span id={headingId} className={sx(paint.s26)}>
                   {def.title}
                 </span>
               </button>
@@ -363,25 +823,25 @@ function Cell({ def, size, cols, edit, dragging, refresh, handleRef, onKeyDown, 
                   type="button"
                   aria-label={`Remove ${def.title}`}
                   onClick={onRemove}
-                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                  className={sx(paint.s27)}
                 >
-                  <XIcon className="size-3.5" />
+                  <XIcon className={sx(paint.s28)} />
                 </button>
               </Tip>
             </div>
           ) : (
             <WidgetHeading def={def} id={headingId} actions={<WidgetMenu def={def} size={size} onSize={onSize} onRefresh={onRefresh} onRemove={onRemove} onCustomize={onCustomize} />} />
           )}
-          <div className={cn("@container relative min-h-0 flex-1 overflow-hidden px-1 pb-1.5", edit && "pointer-events-none select-none", def.bare && edit && "mx-1.5 mb-1.5 rounded-md px-0 pb-0")} inert={edit || undefined}>
+          <div className={[[sx(paint.s29), sx(paint.s52)].filter(Boolean).join(" "), edit && sx(paint.s30), def.bare && edit && sx(paint.s31)].filter(Boolean).join(" ")} inert={edit || undefined}>
             {content}
           </div>
           {edit && def.sizes.length > 1 && (
             <span
               aria-hidden
               onPointerDown={startResize}
-              className="absolute right-1 bottom-1 z-10 flex size-5 cursor-se-resize touch-none items-center justify-center rounded-md border bg-popover text-muted-foreground shadow-xs hover:text-foreground"
+              className={[sx(paint.s32), sx(paint.s55)].filter(Boolean).join(" ")}
             >
-              <MoveDiagonal2Icon className="size-3" />
+              <MoveDiagonal2Icon className={sx(paint.s33)} />
             </span>
           )}
         </section>
@@ -394,7 +854,7 @@ function Cell({ def, size, cols, edit, dragging, refresh, handleRef, onKeyDown, 
 function SizeChips({ def, size, onSize }: { def: WidgetDef; size: WidgetSize; onSize(s: WidgetSize): void }) {
   if (def.sizes.length < 2) return null;
   return (
-    <div role="group" aria-label={`${def.title} size`} className="flex shrink-0 items-center rounded-md border bg-background p-0.5 @max-[200px]:hidden">
+    <div role="group" aria-label={`${def.title} size`} className={[sx(paint.s34), sx(paint.s56)].filter(Boolean).join(" ")}>
       {SIZE_ORDER.filter((s) => def.sizes.includes(s)).map((s) => (
         <Tip key={s} label={`${SIZES[s].label}, ${SIZES[s].c}×${SIZES[s].r}`}>
           <button
@@ -402,10 +862,7 @@ function SizeChips({ def, size, onSize }: { def: WidgetDef; size: WidgetSize; on
             aria-pressed={s === size}
             aria-label={`${SIZES[s].label}, ${SIZES[s].c} by ${SIZES[s].r}`}
             onClick={() => onSize(s)}
-            className={cn(
-              "h-5 min-w-6 rounded-[5px] px-1 font-mono text-[10px] tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              s === size ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-            )}
+            className={[sx(paint.s35), s === size ? sx(paint.s36) : sx(paint.s37)].filter(Boolean).join(" ")}
           >
             {s.toUpperCase()}
           </button>
@@ -418,11 +875,11 @@ function SizeChips({ def, size, onSize }: { def: WidgetDef; size: WidgetSize; on
 // A plugin's widget while plugins load: its cell, so nothing moves.
 function PendingCell({ p }: { p: Placed }) {
   return (
-    <div role="listitem" data-widget={p.id} className={cn("relative min-h-0 min-w-0", SPAN[p.size] ?? SPAN.m)}>
-      <div className="flex size-full flex-col gap-3 rounded-lg border bg-card p-3" role="status" aria-busy="true" aria-label="Loading">
-        <div className="h-3.5 w-28"><Skeleton  /></div>
-        <div className="h-3 w-3/4"><Skeleton  /></div>
-        <div className="h-3 w-1/2"><Skeleton  /></div>
+    <div role="listitem" data-widget={p.id} className={[sx(paint.s38), SPAN[p.size] ?? SPAN.m].filter(Boolean).join(" ")}>
+      <div className={sx(paint.s39)} role="status" aria-busy="true" aria-label="Loading">
+        <div className={sx(paint.s40)}><Skeleton  /></div>
+        <div className={[sx(paint.s41), sx(paint.s57)].filter(Boolean).join(" ")}><Skeleton  /></div>
+        <div className={[sx(paint.s42), sx(paint.s58)].filter(Boolean).join(" ")}><Skeleton  /></div>
       </div>
     </div>
   );
@@ -433,12 +890,12 @@ function PendingCell({ p }: { p: Placed }) {
 function OffCell({ p, onRemove }: { p: Placed; onRemove(): void }) {
   const plugin = p.id.includes("/") ? p.id.split("/")[0] : undefined;
   return (
-    <div role="listitem" data-widget={p.id} className={cn("relative min-h-0 min-w-0", SPAN[p.size] ?? SPAN.m)}>
-      <div className="flex size-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed p-3 text-center text-muted-foreground text-xs">
-        <p className="font-medium text-foreground text-sm">{plugin ? "Its plugin is off" : "Not available"}</p>
-        <p className="font-mono text-[11px]">{p.id}</p>
-        <p className="text-balance">{plugin ? `Turn ${plugin} on in Settings → Plugins and it comes back here.` : "This version of Burf has no such widget."}</p>
-        <span className="mt-1"><Button size="xs" variant="outline"  onClick={onRemove}>
+    <div role="listitem" data-widget={p.id} className={[sx(paint.s43), SPAN[p.size] ?? SPAN.m].filter(Boolean).join(" ")}>
+      <div className={sx(paint.s44)}>
+        <p className={sx(paint.s45)}>{plugin ? "Its plugin is off" : "Not available"}</p>
+        <p className={sx(paint.s46)}>{p.id}</p>
+        <p className={sx(paint.s47)}>{plugin ? `Turn ${plugin} on in Settings → Plugins and it comes back here.` : "This version of Burf has no such widget."}</p>
+        <span className={sx(paint.s48)}><Button size="xs" variant="outline"  onClick={onRemove}>
           Remove
         </Button></span>
       </div>
@@ -448,9 +905,9 @@ function OffCell({ p, onRemove }: { p: Placed; onRemove(): void }) {
 
 function EmptyGrid({ onAdd, onReset }: { onAdd(): void; onReset(): void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-6 py-12 text-center">
-      <h3 className="font-medium text-sm">No widgets on Home</h3>
-      <div className="mt-2 flex gap-2">
+    <div className={sx(paint.s49)}>
+      <h3 className={sx(paint.s50)}>No widgets on Home</h3>
+      <div className={sx(paint.s51)}>
         <Button size="sm" onClick={onAdd}>
           <PlusIcon />
           Add a widget

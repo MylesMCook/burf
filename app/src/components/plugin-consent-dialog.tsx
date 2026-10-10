@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { PuzzleIcon, TriangleAlertIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -8,6 +9,132 @@ import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 import { answerConsent, PLUGIN_POWERS, type PluginFiles, readPluginFiles, usePluginConsent } from "@/plugins/consent";
 import { ErrorText } from "@/components/error-note";
+
+const paint = stylex.create({
+  s0: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s1: {
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--warning) 40%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 8%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s2: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s3: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--warning)",
+  },
+  s4: {
+    "marginTop": "6px",
+    "display": "flex",
+    "listStyleType": "disc",
+    "flexDirection": "column",
+    "gap": "4px",
+    "paddingLeft": "36px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s5: {
+    "display": "grid",
+    "gridTemplateColumns": "auto 1fr",
+    "columnGap": "16px",
+    "rowGap": "4px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "color": "var(--muted-foreground)",
+  },
+  s7: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s8: {
+    "color": "var(--muted-foreground)",
+  },
+  s9: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+  },
+  s10: {
+    "color": "var(--muted-foreground)",
+  },
+  s11: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+  },
+  s12: {
+    "color": "var(--muted-foreground)",
+  },
+  s13: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+  },
+  s14: {
+    "marginBottom": "6px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s15: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 30%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s16: {
+    "wordBreak": "break-all",
+  },
+  s17: {
+    "color": "var(--muted-foreground)",
+  },
+  s18: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s19: {
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // PluginConsentDialog asks before a plugin from ~/.berth/plugins first runs,
 // and again whenever its code changes. Plugins are not sandboxed, so it says
@@ -55,7 +182,7 @@ export function PluginConsentDialog() {
       <DialogPopup>
         <DialogHeader>
           <DialogTitle row>
-            <PuzzleIcon className="size-4" />
+            <PuzzleIcon className={sx(paint.s0)} />
             {again ? `${name} has changed` : `Allow ${name}?`}
           </DialogTitle>
           <DialogDescription>
@@ -64,44 +191,44 @@ export function PluginConsentDialog() {
           </DialogDescription>
         </DialogHeader>
         <DialogPanel inset="body" stack={4}>
-          <div className="rounded-lg border border-warning/40 bg-warning/8 px-3 py-2.5">
-            <div className="flex items-center gap-2 font-medium text-sm">
-              <TriangleAlertIcon className="size-4 shrink-0 text-warning" />
+          <div className={sx(paint.s1)}>
+            <div className={sx(paint.s2)}>
+              <TriangleAlertIcon className={sx(paint.s3)} />
               It will be able to
             </div>
-            <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-9 text-sm">
+            <ul className={sx(paint.s4)}>
               {PLUGIN_POWERS.map((p) => (
                 <li key={p}>{p}</li>
               ))}
             </ul>
           </div>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
-            <dt className="text-muted-foreground">Plugin</dt>
-            <dd className="font-mono">
+          <dl className={sx(paint.s5)}>
+            <dt className={sx(paint.s6)}>Plugin</dt>
+            <dd className={sx(paint.s7)}>
               {plugin?.id}
               {plugin?.version ? ` ${plugin.version}` : ""}
             </dd>
-            <dt className="text-muted-foreground">Folder</dt>
-            <dd className="truncate font-mono">~/.berth/plugins/{plugin?.id}</dd>
-            <dt className="text-muted-foreground">Code</dt>
-            <dd className="truncate font-mono">{files ? (files.mainPath ? `${files.mainPath} · ${(files.main.length / 1024).toFixed(1)} KB` : "none (hooks or themes only)") : "Reading…"}</dd>
-            <dt className="text-muted-foreground">Hash</dt>
-            <dd className="truncate font-mono">{files ? files.hash.slice(0, 7 + 16) : "…"}</dd>
+            <dt className={sx(paint.s8)}>Folder</dt>
+            <dd className={sx(paint.s9)}>~/.berth/plugins/{plugin?.id}</dd>
+            <dt className={sx(paint.s10)}>Code</dt>
+            <dd className={sx(paint.s11)}>{files ? (files.mainPath ? `${files.mainPath} · ${(files.main.length / 1024).toFixed(1)} KB` : "none (hooks or themes only)") : "Reading…"}</dd>
+            <dt className={sx(paint.s12)}>Hash</dt>
+            <dd className={sx(paint.s13)}>{files ? files.hash.slice(0, 7 + 16) : "…"}</dd>
           </dl>
           {files && files.hooks.length > 0 && (
             <div>
-              <h4 className="mb-1.5 font-medium text-muted-foreground text-xs">Hooks it runs on this computer</h4>
-              <ul className="flex flex-col gap-1 rounded-lg border bg-muted/30 px-3 py-2 font-mono text-xs">
+              <h4 className={sx(paint.s14)}>Hooks it runs on this computer</h4>
+              <ul className={sx(paint.s15)}>
                 {files.hooks.map((h, i) => (
-                  <li key={`${i}-${h.on}`} className="break-all">
-                    <span className="text-muted-foreground">{h.on}</span> {h.run}
+                  <li key={`${i}-${h.on}`} className={sx(paint.s16)}>
+                    <span className={sx(paint.s17)}>{h.on}</span> {h.run}
                   </li>
                 ))}
               </ul>
             </div>
           )}
-          <p className="text-muted-foreground text-xs">Allow only plugins you trust. Burf asks again whenever the plugin's code changes, and you can turn it off in Settings → Plugins.</p>
-          {error && <ErrorText className="text-destructive-foreground text-xs" text={error} />}
+          <p className={sx(paint.s18)}>Allow only plugins you trust. Burf asks again whenever the plugin's code changes, and you can turn it off in Settings → Plugins.</p>
+          {error && <ErrorText className={sx(paint.s19)} text={error} />}
         </DialogPanel>
         <DialogFooter>
           <Button variant="ghost" onClick={() => answerConsent(false)}>

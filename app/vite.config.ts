@@ -1,7 +1,6 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import stylex from "@stylexjs/unplugin";
-import tailwindcss from "@tailwindcss/vite";
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -139,13 +138,13 @@ export default defineConfig(({ mode }) => ({
     // StyleX before React so Fast Refresh still sees the compiled output.
     // https://stylexjs.com/docs/llm-resources
     stylex.vite({
-      useCSSLayers: true,
       treeshakeCompensation: true,
+      // Keep light-dark() so a theme switch still flips the colors lightningcss would otherwise bake.
+      lightningcssOptions: { exclude: 1048576 },
       unstable_moduleResolution: { type: "commonJS", rootDir: import.meta.dirname },
       aliases: { "@/*": [path.resolve(import.meta.dirname, "./src/*")] },
     }),
     react(),
-    tailwindcss(),
     devPlugins(),
     mockVdiff(),
     noShikiWasm(),

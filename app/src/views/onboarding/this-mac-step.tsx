@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
 
 import { StepHeader } from "@/components/step-header";
@@ -6,6 +7,27 @@ import type { LocalBoxStatus } from "@/lib/local-box";
 import type { AddBoxStage } from "@/views/onboarding/add-box-flow";
 import { UseThisMac } from "@/views/onboarding/local-box";
 import { thisComputer } from "@/lib/platform";
+
+const paint = stylex.create({
+  s0: {
+    "marginTop": "24px",
+  },
+  s1: {
+    "marginTop": "16px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "height": "auto",
+    "padding": "0px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // ThisMacStep makes this Mac the box, at once: the person chose it on the
 // welcome. The log shows each step; once paired it moves on by itself, and
@@ -30,10 +52,10 @@ export function ThisMacStep({ status, onStage, onDone, onRemote, onBack }: { sta
         description={thisComputer("Burf installs berthd for your user, no password needed. It listens on this Mac only, so nothing opens to your network.")}
         onBack={running ? undefined : onBack}
       />
-      <UseThisMac status={status} autoStart className="mt-6" onRunning={setRunning} onPaired={setPaired} />
-      <p className="mt-4 text-muted-foreground text-xs">
+      <UseThisMac status={status} autoStart className={sx(paint.s0)} onRunning={setRunning} onPaired={setPaired} />
+      <p className={sx(paint.s1)}>
         Rather run agents on a server?{" "}
-        <span className="h-auto p-0 text-xs"><Button variant="link" size="xs"  disabled={running && !paired} onClick={onRemote}>
+        <span className={sx(paint.s2)}><Button variant="link" size="xs"  disabled={running && !paired} onClick={onRemote}>
           Connect a remote box
         </Button></span>
       </p>

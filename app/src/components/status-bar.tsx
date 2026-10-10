@@ -1,5 +1,6 @@
 import { CircleArrowUpIcon, GitBranchIcon, RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { StatusDot } from "@/components/agent-glyph";
 import { BoxMeter } from "@/components/box-processes";
@@ -14,12 +15,100 @@ import { useOutdatedBoxes } from "@/lib/outdated";
 import { AGENT_WORDS, BOX_WORDS, boxState } from "@/lib/state-model";
 import { useStore } from "@/lib/store";
 import { restartToUpdate, useAgentRestart, useUpdater } from "@/lib/updater";
-import { cn } from "@/lib/utils";
 import { PluginBoundary, pluginContexts } from "@/plugins/plugin-boundary";
 import { useRegistry } from "@/plugins/registry";
 import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
 import { homeBox, useWorkspaces } from "@/lib/workspaces";
 import { findWorktree } from "@/lib/worktree-names";
+import { color, radius } from "@/styles/tokens.stylex";
+
+const tight = "@container (max-width: 700px)";
+const crowded = "@container (max-width: 1100px)";
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const spin = stylex.keyframes({
+  to: { transform: "rotate(360deg)" },
+});
+
+const styles = stylex.create({
+  bar: {
+    containerType: "inline-size",
+    display: "flex",
+    height: 26,
+    flexShrink: 0,
+    alignItems: "center",
+    gap: 12,
+    overflow: "hidden",
+    whiteSpace: "nowrap",
+    borderTopWidth: 1,
+    borderTopStyle: "solid",
+    borderTopColor: color.border,
+    backgroundColor: color.sidebar,
+    paddingLeft: 12,
+    paddingRight: 12,
+    fontSize: 11,
+    color: color.mutedForeground,
+  },
+  chip: {
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: color.border,
+    paddingLeft: 4,
+    paddingRight: 4,
+  },
+  mock: {
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "color-mix(in oklab, var(--warning) 40%, transparent)",
+    paddingLeft: 4,
+    paddingRight: 4,
+    color: "var(--warning-foreground)",
+  },
+  cluster: { display: "flex", alignItems: "center", gap: 6 },
+  down: { display: "flex", alignItems: "center", gap: 6, color: color.destructive },
+  dot: { width: 6, height: 6, borderRadius: radius.full, backgroundColor: color.destructive },
+  waitDot: { width: 6, height: 6, borderRadius: radius.full, backgroundColor: color.warning },
+  spacer: { flexGrow: 1, flexShrink: 1, flexBasis: "0%" },
+  hideMeter: { display: { default: "contents", [crowded]: "none" } },
+  refresh: {
+    color: { default: color.mutedForeground, ":hover": color.foreground },
+  },
+  icon: { width: 12, height: 12, flexShrink: 0 },
+  successIcon: { width: 12, height: 12, flexShrink: 0, color: color.success },
+  infoIcon: { width: 12, height: 12, flexShrink: 0, color: color.info },
+  spinning: {
+    animationName: spin,
+    animationDuration: { default: "1s", [still]: "0s" },
+    animationTimingFunction: "linear",
+    animationIterationCount: "infinite",
+  },
+  tip: { display: "flex", flexDirection: "column" },
+  quiet: { color: color.mutedForeground },
+  name: { maxWidth: 224, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  nums: { color: color.mutedForeground, fontVariantNumeric: "tabular-nums" },
+  dim: { color: "color-mix(in oklab, var(--muted-foreground) 60%, transparent)" },
+  item: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: radius.sm,
+    paddingLeft: 4,
+    paddingRight: 4,
+    marginLeft: -4,
+    marginRight: -4,
+    backgroundColor: { default: "transparent", ":hover": color.accent },
+    color: { default: "inherit", ":hover": color.foreground },
+  },
+  warning: { color: { default: "var(--warning-foreground)", ":hover": color.foreground } },
+  foreground: { color: { default: color.foreground, ":hover": color.foreground } },
+  medium: { fontWeight: 500 },
+  hideNarrow: {
+    minWidth: 0,
+    display: { default: "flex", [tight]: "none" },
+  },
+});
 
 // StatusBar is the strip along the bottom: what agents are doing on the
 // left, the boxes on the right. Every item goes somewhere when clicked.
@@ -49,34 +138,34 @@ export function StatusBar() {
   const forwards = status?.forwards.length ?? 0;
 
   return (
-    <footer className="@container flex h-6.5 shrink-0 items-center gap-3 overflow-hidden whitespace-nowrap border-t bg-sidebar px-3 text-[11px] text-muted-foreground">
+    <footer {...stylex.props(styles.bar)}>
       {/* ?shots=1, used by site/scripts/capture.mjs, hides the badge. */}
       {__BERTH_DEMO__ ? (
         !new URLSearchParams(location.search).has("shots") && <Tip label="A demo: invented boxes and repositories, and nothing runs">
-          <span className="rounded border border-border px-1">demo</span>
+          <span {...stylex.props(styles.chip)}>demo</span>
         </Tip>
       ) : isMock() && !new URLSearchParams(location.search).has("shots") && (
         <Tip label="Showing made-up data (?mock=1)">
-          <span className="rounded border border-warning/40 px-1 text-warning-foreground">mock</span>
+          <span {...stylex.props(styles.mock)}>mock</span>
         </Tip>
       )}
       {connection.state === "offline" && restarting ? (
-        <span className="flex items-center gap-1.5">
-          <Spinner  size="sm"/>
+        <span {...stylex.props(styles.cluster)}>
+          <Spinner size="sm" />
           Restarting the Burf agent…
         </span>
       ) : connection.state === "offline" ? (
         <Tip label={connection.error}>
-          <span className="flex items-center gap-1.5 text-destructive">
-            <span className="size-1.5 rounded-full bg-destructive" />
+          <span {...stylex.props(styles.down)}>
+            <span {...stylex.props(styles.dot)} />
             Agent unreachable
           </span>
         </Tip>
       ) : (
         <>
           {counts.waiting > 0 && (
-            <Item className="text-warning-foreground dark:text-warning" onClick={() => go({ kind: "dashboard" })} tip="Agents waiting for your answer or permission">
-              <span className="size-1.5 rounded-full bg-warning" />
+            <Item tone="warning" onClick={() => go({ kind: "dashboard" })} tip="Agents waiting for your answer or permission">
+              <span {...stylex.props(styles.waitDot)} />
               {counts.waiting} {AGENT_WORDS["needs-you"].lower}
             </Item>
           )}
@@ -95,7 +184,7 @@ export function StatusBar() {
           </PluginBoundary>
         ))}
 
-      <div className="flex-1" />
+      <div {...stylex.props(styles.spacer)} />
 
       {items
         .filter((i) => i.item.align === "right")
@@ -113,7 +202,8 @@ export function StatusBar() {
         // The computer on screen stays named when the bar runs short of room.
         // The others follow it. Clicked, a meter lists that box's browsers
         // and heavy sessions; its tip names the route Burf reaches it by.
-        return <BoxMeter key={b.name} box={b.name} mem={mem} route={viaRoute(b)} className={here ? undefined : "@max-[1100px]:hidden"} />;
+        const meter = <BoxMeter key={b.name} box={b.name} mem={mem} route={viaRoute(b)} />;
+        return here ? meter : <span key={b.name} {...stylex.props(styles.hideMeter)}>{meter}</span>;
       })}
       {forwards > 0 && (
         <Item tip="Ports forwarded to this computer" onClick={() => go({ kind: "settings", section: "developer" })}>
@@ -124,10 +214,10 @@ export function StatusBar() {
         tip={status?.boxes.map((b) => {
           const st = boxState(b, boxes[b.name], outdated.includes(b.name));
           return (
-            <span key={b.name} className="flex items-center gap-1.5">
+            <span key={b.name} {...stylex.props(styles.cluster)}>
               <StatusDot state={st} />
               {b.name}: {BOX_WORDS[st].lower}
-              {b.state === "online" && viaRoute(b) && <span className="text-muted-foreground">· {viaRoute(b)}</span>}
+              {b.state === "online" && viaRoute(b) && <span {...stylex.props(styles.quiet)}>· {viaRoute(b)}</span>}
             </span>
           );
         })}
@@ -142,14 +232,14 @@ export function StatusBar() {
         <button
           type="button"
           aria-label="Refresh"
-          className="hover:text-foreground"
+          {...stylex.props(styles.refresh)}
           onClick={async () => {
             setSyncing(true);
             await useStore.getState().refreshAll();
             setSyncing(false);
           }}
         >
-          <RefreshCwIcon className={cn("size-3", syncing && "animate-spin")} />
+          <RefreshCwIcon {...stylex.props(styles.icon, syncing && styles.spinning)} />
         </button>
       </Tip>
     </footer>
@@ -171,17 +261,17 @@ function WorktreeItem() {
   return (
     <Item
       data-testid="status-worktree"
-      className="min-w-0 @max-[700px]:hidden"
+      hide="narrow"
       tip={
-        <span className="flex flex-col">
+        <span {...stylex.props(styles.tip)}>
           {title ? `${title} · ${own}` : own}
-          <span className="text-muted-foreground">Click to rename it (F2 in the sidebar)</span>
+          <span {...stylex.props(styles.quiet)}>Click to rename it (F2 in the sidebar)</span>
         </span>
       }
       onClick={() => openRenameWorktree(at.box, loc, wt, { inPlace: false })}
     >
-      <GitBranchIcon className="size-3 shrink-0" />
-      <span className="max-w-56 truncate">{title || wt.name}</span>
+      <GitBranchIcon {...stylex.props(styles.icon)} />
+      <span {...stylex.props(styles.name)}>{title || wt.name}</span>
     </Item>
   );
 }
@@ -194,12 +284,12 @@ function UpdateItem() {
   const installing = update.status === "installing";
   return (
     <Item
-      className="text-foreground"
+      tone="foreground"
       disabled={installing}
       tip={`Burf ${update.version} is downloaded. Restarting reopens this window; agents keep running on their boxes.`}
       onClick={() => void restartToUpdate()}
     >
-      <CircleArrowUpIcon className="size-3 text-success" />
+      <CircleArrowUpIcon {...stylex.props(styles.successIcon)} />
       {installing ? "Updating…" : "Restart to update"}
     </Item>
   );
@@ -213,21 +303,21 @@ function OutdatedItem() {
   if (!outdated.length && !busy) return null;
   if (busy) {
     return (
-      <Item className="text-foreground" tip="Installing Burf's bundled box agent. Settings → Boxes shows each box's output." onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
-        <Spinner  size="sm"/>
-        Updating {running ?? "boxes"}… {progress && <span className="text-muted-foreground tabular-nums">{progress}</span>}
+      <Item tone="foreground" tip="Installing Burf's bundled box agent. Settings → Boxes shows each box's output." onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
+        <Spinner size="sm" />
+        Updating {running ?? "boxes"}… {progress && <span {...stylex.props(styles.nums)}>{progress}</span>}
       </Item>
     );
   }
   const n = outdated.length;
   return (
-    <span className="flex items-center gap-1.5">
+    <span {...stylex.props(styles.cluster)}>
       <Item tip={`${outdated.join(", ")} ${n === 1 ? "has" : "have"} a different agent build from Burf's bundle, not necessarily an older one.`} onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
-        <CircleArrowUpIcon className="size-3 text-info" />
+        <CircleArrowUpIcon {...stylex.props(styles.infoIcon)} />
         {n === 1 ? `${outdated[0]}: different build` : `${n} different builds`}
       </Item>
-      <span aria-hidden className="text-muted-foreground/60">—</span>
-      <Item className="font-medium text-foreground" tip="Replaces each box agent with the build bundled with Burf" onClick={updateAll}>
+      <span aria-hidden {...stylex.props(styles.dim)}>—</span>
+      <Item tone="foreground" weight="medium" tip="Replaces each box agent with the build bundled with Burf" onClick={updateAll}>
         Install bundled
       </Item>
     </span>
@@ -235,10 +325,21 @@ function OutdatedItem() {
 }
 
 // Item is one clickable entry, with what it means in a tooltip.
-function Item({ className, tip, ...props }: React.ComponentProps<"button"> & { tip?: React.ReactNode }) {
+function Item({
+  tip,
+  tone,
+  weight,
+  hide,
+  ...props
+}: Omit<React.ComponentProps<"button">, "className" | "style"> & {
+  tip?: React.ReactNode;
+  tone?: "warning" | "foreground";
+  weight?: "medium";
+  hide?: "narrow";
+}) {
   return (
     <Tip label={tip}>
-      <button type="button" className={cn("flex items-center gap-1.5 rounded px-1 -mx-1 hover:bg-accent hover:text-foreground", className)} {...props} />
+      <button type="button" {...stylex.props(styles.item, tone === "warning" && styles.warning, tone === "foreground" && styles.foreground, weight === "medium" && styles.medium, hide === "narrow" && styles.hideNarrow)} {...props} />
     </Tip>
   );
 }

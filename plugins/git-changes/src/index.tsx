@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { definePlugin, useEvent, worktreeLocation, type WorktreePanelProps } from "@berth/plugin";
 import {
   AlertDialog,
@@ -18,11 +19,396 @@ import {
   Spinner,
   Textarea,
   Tip,
-  cn,
 } from "@berth/plugin/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { describeCode, diffCommand, type DiffLine, type FileChange, type GitStatus, parseDiff, parseStatus, quote, STATUS_COMMAND, splitRows } from "./git";
+
+const paint = stylex.create({
+  s0: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s1: {
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "0px",
+    "flexDirection": "column",
+  },
+  s2: {
+    "display": "flex",
+    "height": "40px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s3: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+  },
+  s5: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s8: {
+    "color": "var(--muted-foreground)",
+  },
+  s9: {
+    "color": "var(--success)",
+  },
+  s10: {
+    "color": "var(--destructive)",
+  },
+  s11: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s12: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s13: {
+    "display": "flex",
+    "width": "256px",
+    "flexShrink": 0,
+    "flexDirection": "column",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+  },
+  s14: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s15: {
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "160px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "padding": "24px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s16: {
+    "color": "var(--success)",
+  },
+  s17: {
+    "color": "var(--success)",
+  },
+  s18: {
+    "color": "var(--destructive)",
+  },
+  s19: {
+    "color": "var(--warning)",
+  },
+  s20: {
+    "color": "var(--info)",
+  },
+  s21: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "textAlign": "left",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+  },
+  s22: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s23: {
+    "width": "12px",
+    "flexShrink": 0,
+    "textAlign": "center",
+    "fontFamily": "var(--font-mono)",
+    "fontWeight": 600,
+  },
+  s24: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s25: {
+    "marginLeft": "6px",
+    "color": "var(--muted-foreground)",
+  },
+  s26: {
+    "color": "var(--muted-foreground)",
+  },
+  s27: {
+    "flexShrink": 0,
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s28: {
+    "color": "var(--success)",
+  },
+  s29: {
+    "color": "var(--destructive)",
+  },
+  s30: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s31: {
+    "display": "flex",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s32: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+  },
+  s33: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "auto",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "20px",
+  },
+  s34: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s35: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 8%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontFamily": "var(--font-sans)",
+    "color": "var(--warning)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s36: {
+    "backgroundColor": "color-mix(in oklab, var(--success) 10%, transparent)",
+  },
+  s37: {
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 10%, transparent)",
+  },
+  s38: {
+    "backgroundColor": "color-mix(in oklab, var(--info) 8%, transparent)",
+    "color": "var(--info)",
+  },
+  s39: {
+    "color": "var(--muted-foreground)",
+    "fontStyle": "italic",
+  },
+  s40: {
+    "width": "44px",
+    "flexShrink": 0,
+    "userSelect": "none",
+    "paddingRight": "8px",
+    "textAlign": "right",
+    "color": "color-mix(in oklab, var(--muted-foreground) 60%, transparent)",
+  },
+  s41: {
+    "minWidth": "fit-content",
+  },
+  s42: {
+    "display": "flex",
+    "whiteSpace": "pre",
+  },
+  s43: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+  },
+  s44: {
+    "width": "16px",
+    "flexShrink": 0,
+    "userSelect": "none",
+    "color": "var(--muted-foreground)",
+  },
+  s45: {
+    "paddingRight": "16px",
+  },
+  s46: {
+    "minWidth": "fit-content",
+  },
+  s47: {
+    "whiteSpace": "pre",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+  },
+  s48: {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(2, minmax(0, 1fr))",
+  },
+  s49: {
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+  },
+  s50: {
+    "display": "flex",
+    "minWidth": "0px",
+    "whiteSpace": "pre",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+  },
+  s51: {
+    "overflow": "hidden",
+    "paddingRight": "12px",
+  },
+  s52: {
+    "flexShrink": 0,
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "padding": "8px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "8px",
+    },
+  },
+  s53: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s54: {
+    "width": "100%",
+  },
+  s55: {
+    "marginLeft": "24px",
+    "marginRight": "24px",
+    "whiteSpace": "pre-wrap",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 8%, transparent)",
+    "padding": "8px",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--destructive)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s56: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s57: {
+    "marginLeft": "24px",
+    "marginRight": "24px",
+    "whiteSpace": "pre-wrap",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 8%, transparent)",
+    "padding": "8px",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--destructive)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  q58: {
+    "color": "var(--success)",
+  },
+  q59: {
+    "color": "var(--success)",
+  },
+  q60: {
+    "color": "var(--destructive)",
+  },
+  q61: {
+    "color": "var(--warning)",
+  },
+  q62: {
+    "color": "var(--info)",
+  },
+  q63: {
+    "backgroundColor": "color-mix(in oklab, var(--success) 10%, transparent)",
+  },
+  q64: {
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 10%, transparent)",
+  },
+  q65: {
+    "backgroundColor": "color-mix(in oklab, var(--info) 8%, transparent)",
+    "color": "var(--info)",
+  },
+  q66: {
+    "color": "var(--muted-foreground)",
+    "fontStyle": "italic",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Git changes: what an agent changed in a worktree, before you trust it.
 // Everything is read with `git` on the box through orchestrate.exec; commit
@@ -65,7 +451,7 @@ function ChangesPanel({ berth, box, location, worktree, path, main }: WorktreePa
   const files = status.state === "ready" ? status.value.files : [];
   const current = files.find((f) => f.path === selected) ?? files[0];
 
-  if (status.state === "loading") return <Centered><Spinner className="size-4" /> Reading changes…</Centered>;
+  if (status.state === "loading") return <Centered><Spinner className={sx(paint.s0)} /> Reading changes…</Centered>;
   if (status.state === "error") {
     return (
       <Centered>
@@ -84,31 +470,31 @@ function ChangesPanel({ berth, box, location, worktree, path, main }: WorktreePa
   const removed = files.reduce((n, f) => n + (f.removed ?? 0), 0);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="flex h-10 shrink-0 items-center gap-2 border-b px-3 text-sm">
-        <Icon name="GitBranch" className="size-3.5 text-muted-foreground" />
-        <span className="truncate font-medium">{branch.branch || "detached"}</span>
+    <div className={sx(paint.s1)}>
+      <header className={sx(paint.s2)}>
+        <Icon name="GitBranch" className={sx(paint.s3)} />
+        <span className={sx(paint.s4)}>{branch.branch || "detached"}</span>
         {branch.upstream ? (
-          <span className="truncate text-muted-foreground text-xs">
+          <span className={sx(paint.s5)}>
             {branch.ahead > 0 && `↑${branch.ahead} `}
             {branch.behind > 0 && `↓${branch.behind} `}
             {branch.ahead === 0 && branch.behind === 0 ? "up to date with " : "vs "}
             {branch.upstream}
           </span>
         ) : (
-          <span className="text-muted-foreground text-xs">not pushed yet</span>
+          <span className={sx(paint.s6)}>not pushed yet</span>
         )}
-        <span className="ml-auto flex items-center gap-2 text-xs tabular-nums">
+        <span className={sx(paint.s7)}>
           {files.length > 0 && (
             <>
-              <span className="text-muted-foreground">{files.length} file{files.length === 1 ? "" : "s"}</span>
-              <span className="text-success">+{added}</span>
-              <span className="text-destructive">−{removed}</span>
+              <span className={sx(paint.s8)}>{files.length} file{files.length === 1 ? "" : "s"}</span>
+              <span className={sx(paint.s9)}>+{added}</span>
+              <span className={sx(paint.s10)}>−{removed}</span>
             </>
           )}
         </span>
         <Button size="icon-sm" variant="ghost" aria-label="Refresh" onClick={refresh}>
-          <Icon name="RefreshCw" className="size-3.5" />
+          <Icon name="RefreshCw" className={sx(paint.s11)} />
         </Button>
       </header>
 
@@ -126,9 +512,9 @@ function ChangesPanel({ berth, box, location, worktree, path, main }: WorktreePa
           </Empty>
         </Centered>
       ) : (
-        <div className="flex min-h-0 flex-1">
-          <aside className="flex w-64 shrink-0 flex-col border-r">
-            <ul className="min-h-0 flex-1 overflow-y-auto py-1">
+        <div className={sx(paint.s12)}>
+          <aside className={sx(paint.s13)}>
+            <ul className={sx(paint.s14)}>
               {files.map((f) => (
                 <FileRow key={f.path} file={f} active={f.path === current?.path} onSelect={() => setSelected(f.path)} />
               ))}
@@ -143,15 +529,15 @@ function ChangesPanel({ berth, box, location, worktree, path, main }: WorktreePa
 }
 
 function Centered({ children }: { children: React.ReactNode }) {
-  return <div className="flex h-full min-h-40 flex-1 items-center justify-center gap-2 p-6 text-muted-foreground text-sm">{children}</div>;
+  return <div className={sx(paint.s15)}>{children}</div>;
 }
 
 const toneClass = {
-  add: "text-success",
-  new: "text-success",
-  del: "text-destructive",
-  mod: "text-warning",
-  ren: "text-info",
+  add: sx(paint.q58),
+  new: sx(paint.q59),
+  del: sx(paint.q60),
+  mod: sx(paint.q61),
+  ren: sx(paint.q62),
 } as const;
 
 function FileRow({ file, active, onSelect }: { file: FileChange; active: boolean; onSelect(): void }) {
@@ -165,19 +551,19 @@ function FileRow({ file, active, onSelect }: { file: FileChange; active: boolean
         <button
           type="button"
           onClick={onSelect}
-          className={cn("flex w-full items-center gap-2 px-3 py-1 text-left text-xs hover:bg-accent/60", active && "bg-accent text-foreground")}
+          className={[sx(paint.s21), active && sx(paint.s22)].filter(Boolean).join(" ")}
         >
-          <span className={cn("w-3 shrink-0 text-center font-mono font-semibold", toneClass[tone])}>{file.code === "??" ? "U" : file.code.trim()[0]}</span>
-          <span className="min-w-0 flex-1 truncate">
+          <span className={[sx(paint.s23), toneClass[tone]].filter(Boolean).join(" ")}>{file.code === "??" ? "U" : file.code.trim()[0]}</span>
+          <span className={sx(paint.s24)}>
             {name}
-            {dir && <span className="ml-1.5 text-muted-foreground">{dir}</span>}
+            {dir && <span className={sx(paint.s25)}>{dir}</span>}
           </span>
           {file.binary ? (
-            <span className="text-muted-foreground">bin</span>
+            <span className={sx(paint.s26)}>bin</span>
           ) : (
             (file.added !== undefined || file.removed !== undefined) && (
-              <span className="shrink-0 tabular-nums">
-                <span className="text-success">+{file.added ?? 0}</span> <span className="text-destructive">−{file.removed ?? 0}</span>
+              <span className={sx(paint.s27)}>
+                <span className={sx(paint.s28)}>+{file.added ?? 0}</span> <span className={sx(paint.s29)}>−{file.removed ?? 0}</span>
               </span>
             )
           )}
@@ -204,9 +590,9 @@ function DiffView({ file, run }: { file: FileChange; run: Run }) {
   }, [file, run]);
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col">
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b px-3 text-xs">
-        <span className="truncate font-mono">{file.from ? `${file.from} → ${file.path}` : file.path}</span>
+    <section className={sx(paint.s30)}>
+      <div className={sx(paint.s31)}>
+        <span className={sx(paint.s32)}>{file.from ? `${file.from} → ${file.path}` : file.path}</span>
         <Badge variant="outline" size="sm">{describeCode(file.code).label}</Badge>
         <PickOne
           label="Diff layout"
@@ -219,36 +605,36 @@ function DiffView({ file, run }: { file: FileChange; run: Run }) {
           ]}
         />
       </div>
-      <div className="min-h-0 flex-1 overflow-auto font-mono text-[12px] leading-5">
-        {diff.state === "loading" && <Centered><Spinner className="size-4" /></Centered>}
+      <div className={sx(paint.s33)}>
+        {diff.state === "loading" && <Centered><Spinner className={sx(paint.s34)} /></Centered>}
         {diff.state === "error" && <Centered>{diff.message}</Centered>}
         {diff.state === "ready" && diff.value.lines.length === 0 && <Centered>Nothing to show for this file.</Centered>}
-        {diff.state === "ready" && diff.value.truncated && <p className="border-b bg-warning/8 px-3 py-1 font-sans text-warning text-xs">Only the end of this diff is shown: it is longer than 64 KB.</p>}
+        {diff.state === "ready" && diff.value.truncated && <p className={sx(paint.s35)}>Only the end of this diff is shown: it is longer than 64 KB.</p>}
         {diff.state === "ready" && (mode === "unified" ? <Unified lines={diff.value.lines} /> : <Split lines={diff.value.lines} />)}
       </div>
     </section>
   );
 }
 
-const lineBg = { add: "bg-success/10", del: "bg-destructive/10", ctx: "", hunk: "bg-info/8 text-info", meta: "text-muted-foreground italic" } as const;
+const lineBg = { add: sx(paint.q63), del: sx(paint.q64), ctx: "", hunk: sx(paint.q65), meta: sx(paint.q66) } as const;
 
 function Num({ n }: { n?: number }) {
-  return <span className="w-11 shrink-0 select-none pr-2 text-right text-muted-foreground/60">{n ?? ""}</span>;
+  return <span className={sx(paint.s40)}>{n ?? ""}</span>;
 }
 
 function Unified({ lines }: { lines: DiffLine[] }) {
   return (
-    <div className="min-w-fit">
+    <div className={sx(paint.s41)}>
       {lines.map((l, i) => (
-        <div key={i} className={cn("flex whitespace-pre", lineBg[l.kind])}>
+        <div key={i} className={[sx(paint.s42), lineBg[l.kind]].filter(Boolean).join(" ")}>
           {l.kind === "hunk" ? (
-            <span className="px-3">{l.text}</span>
+            <span className={sx(paint.s43)}>{l.text}</span>
           ) : (
             <>
               <Num n={l.oldNo} />
               <Num n={l.newNo} />
-              <span className="w-4 shrink-0 select-none text-muted-foreground">{l.kind === "add" ? "+" : l.kind === "del" ? "−" : ""}</span>
-              <span className="pr-4">{l.text || " "}</span>
+              <span className={sx(paint.s44)}>{l.kind === "add" ? "+" : l.kind === "del" ? "−" : ""}</span>
+              <span className={sx(paint.s45)}>{l.text || " "}</span>
             </>
           )}
         </div>
@@ -260,12 +646,12 @@ function Unified({ lines }: { lines: DiffLine[] }) {
 function Split({ lines }: { lines: DiffLine[] }) {
   const rows = useMemo(() => splitRows(lines), [lines]);
   return (
-    <div className="min-w-fit">
+    <div className={sx(paint.s46)}>
       {rows.map((r, i) =>
         r.hunk ? (
-          <div key={i} className={cn("whitespace-pre px-3", lineBg.hunk)}>{r.hunk}</div>
+          <div key={i} className={[sx(paint.s47), lineBg.hunk].filter(Boolean).join(" ")}>{r.hunk}</div>
         ) : (
-          <div key={i} className="grid grid-cols-2">
+          <div key={i} className={sx(paint.s48)}>
             <Half line={r.left} side="old" />
             <Half line={r.right} side="new" />
           </div>
@@ -276,11 +662,11 @@ function Split({ lines }: { lines: DiffLine[] }) {
 }
 
 function Half({ line, side }: { line?: DiffLine; side: "old" | "new" }) {
-  if (!line) return <div className="border-r bg-muted/40" />;
+  if (!line) return <div className={sx(paint.s49)} />;
   return (
-    <div className={cn("flex min-w-0 whitespace-pre border-r", line.kind !== "ctx" && lineBg[line.kind])}>
+    <div className={[sx(paint.s50), line.kind !== "ctx" && lineBg[line.kind]].filter(Boolean).join(" ")}>
       <Num n={side === "old" ? line.oldNo : line.newNo} />
-      <span className="overflow-hidden pr-3">{line.text || " "}</span>
+      <span className={sx(paint.s51)}>{line.text || " "}</span>
     </div>
   );
 }
@@ -309,16 +695,16 @@ function CommitBox({ run, count, branch, onDone, berth }: { run: Run; count: num
   };
 
   return (
-    <div className="shrink-0 space-y-2 border-t p-2">
+    <div className={sx(paint.s52)}>
       <Textarea
         size="sm"
         value={message}
         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
         placeholder="Commit message"
         rows={2}
-        className="text-xs"
+        className={sx(paint.s53)}
       />
-      <Button size="sm" className="w-full" disabled={!message.trim()} onClick={() => setOpen(true)}>
+      <Button size="sm" className={sx(paint.s54)} disabled={!message.trim()} onClick={() => setOpen(true)}>
         Commit {count} file{count === 1 ? "" : "s"}…
       </Button>
       <AlertDialog open={open} onOpenChange={setOpen}>
@@ -329,7 +715,7 @@ function CommitBox({ run, count, branch, onDone, berth }: { run: Run; count: num
               Stages all {count} changed file{count === 1 ? "" : "s"} (including new ones) and commits them on the box. Push also sends the branch to origin.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {error && <p className="mx-6 whitespace-pre-wrap rounded-md bg-destructive/8 p-2 font-mono text-destructive text-xs">{error}</p>}
+          {error && <p className={sx(paint.s55)}>{error}</p>}
           <AlertDialogFooter>
             <AlertDialogClose render={<Button variant="ghost" />}>Cancel</AlertDialogClose>
             <Button variant="outline" loading={busy} onClick={() => void commit(true)}>Commit and push</Button>
@@ -348,7 +734,7 @@ function PushButton({ run, branch, onDone, berth }: { run: Run; branch: string; 
   return (
     <>
       <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-        <Icon name="Upload" className="size-3.5" /> Push {branch}…
+        <Icon name="Upload" className={sx(paint.s56)} /> Push {branch}…
       </Button>
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogPopup>
@@ -356,7 +742,7 @@ function PushButton({ run, branch, onDone, berth }: { run: Run; branch: string; 
             <AlertDialogTitle>Push {branch} to origin?</AlertDialogTitle>
             <AlertDialogDescription>Runs git push -u origin HEAD on the box.</AlertDialogDescription>
           </AlertDialogHeader>
-          {error && <p className="mx-6 whitespace-pre-wrap rounded-md bg-destructive/8 p-2 font-mono text-destructive text-xs">{error}</p>}
+          {error && <p className={sx(paint.s57)}>{error}</p>}
           <AlertDialogFooter>
             <AlertDialogClose render={<Button variant="ghost" />}>Cancel</AlertDialogClose>
             <Button

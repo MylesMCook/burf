@@ -1,15 +1,117 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
 
 import { StateGlyph } from "@/components/agent-glyph";
 import { DitherBand } from "@/components/art/dither-band";
 import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
-import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 
 import { type AgentRow, useAgentRows } from "./agents";
 import { useHomeWidget } from "./env";
 
 import "./harbour.css";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "overflow": "hidden",
+  },
+  s1: {
+    "borderRadius": "var(--radius-lg)",
+  },
+  s2: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+  },
+  s3: {
+    "pointerEvents": "none",
+    "position": "absolute",
+  },
+  s4: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": "12px",
+    "left": "16px",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--background) 70%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s5: {
+    "position": "absolute",
+    "display": "flex",
+    "alignItems": "flex-end",
+    "gap": "4px",
+    "outline": "none",
+  },
+  s6: {
+    "display": "block",
+  },
+  s7: {
+    "opacity": 0.8,
+  },
+  s8: {
+    "fill": "var(--warning)",
+  },
+  s9: {
+    "marginBottom": "2px",
+    "display": "flex",
+    "maxWidth": "192px",
+    "alignItems": "center",
+    "gap": "4px",
+    "whiteSpace": "nowrap",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--background) 85%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "fontSize": "11px",
+    "color": "var(--foreground)",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+    "transitionProperty": "opacity",
+    "transitionDuration": "150ms",
+  },
+  s10: {
+    "opacity": 1,
+  },
+  s11: {
+    "opacity": 0,
+    ":is(.group\\/boat:hover &)": {
+      "opacity": 1,
+    },
+    ":is(.group\\/boat:focus-visible &)": {
+      "opacity": 1,
+    },
+  },
+  s12: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s13: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s14: {
+    "width": "100%",
+    "height": "100%",
+  },
+
+  s15: {
+    backdropFilter: "blur(4px)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The living harbour: the harbour painting with a boat for each agent at
 // work, out on the water; agents that need you wait by the lighthouse, whose
@@ -86,12 +188,12 @@ export function LivingHarbour({ className, position = 0.42, fade = 0.45, depth =
   done.forEach((r, i) => boats.push({ r, x: ox + (0.035 + i * 0.04) * dw, y: horizon + 0.035 * water + (i % 2) * 3, s: 13, kind: "moored" }));
 
   return (
-    <div ref={ref} className={cn("relative overflow-hidden", framed && "rounded-lg", className)} style={style} data-light={light}>
-      <DitherBand src={HARBOUR[light]} position={position} fade={fade} mute={HARBOUR_MUTE[light]} className="absolute inset-0" />
+    <div ref={ref} className={[sx(paint.s0), framed && sx(paint.s1), className].filter(Boolean).join(" ")} style={style} data-light={light}>
+      <DitherBand src={HARBOUR[light]} position={position} fade={fade} mute={HARBOUR_MUTE[light]} className={sx(paint.s2)} />
       {w > 0 && (
         <>
           {waiting.length > 0 && lamp.x > -10 && (
-            <div aria-hidden className="pointer-events-none absolute" style={{ left: lamp.x, top: lamp.y }}>
+            <div aria-hidden className={sx(paint.s3)} style={{ left: lamp.x, top: lamp.y }}>
               <span className="bh-beam" data-night={night || undefined} />
               <span className="bh-lamp" />
             </div>
@@ -102,7 +204,7 @@ export function LivingHarbour({ className, position = 0.42, fade = 0.45, depth =
         </>
       )}
       {caption && (
-        <p className="pointer-events-none absolute top-3 left-4 rounded-md bg-background/70 px-2 py-1 text-xs backdrop-blur-sm">
+        <p className={[sx(paint.s4), sx(paint.s15)].filter(Boolean).join(" ")}>
           {!working.length && !waiting.length ? "All calm · no boats out" : `${working.length} out working${waiting.length ? ` · ${waiting.length} waiting at the lighthouse` : ""}`}
         </p>
       )}
@@ -120,10 +222,10 @@ function Boat({ r, x, y, s, kind, night, labels }: { r: AgentRow; x: number; y: 
       type="button"
       onClick={() => void focusSession(r.box, r.session.name)}
       aria-label={`${r.title}: ${kind === "wait" ? "needs you" : kind === "out" ? "working" : "finished"}`}
-      className="group/boat absolute flex items-end gap-1 outline-none"
+      className={[sx(paint.s5), "group/boat"].filter(Boolean).join(" ")}
       style={{ left: x, top: y, transform: `translate(-${s / 2}px, -88%)` }}
     >
-      <span className={cn("bh-bob block", kind === "moored" && "opacity-80")} style={{ animationDelay: delay }}>
+      <span className={[[sx(paint.s6), "bh-bob"].filter(Boolean).join(" "), kind === "moored" && sx(paint.s7)].filter(Boolean).join(" ")} style={{ animationDelay: delay }}>
         <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
           {kind === "moored" ? (
             <>
@@ -138,19 +240,16 @@ function Boat({ r, x, y, s, kind, night, labels }: { r: AgentRow; x: number; y: 
             </>
           )}
           <path d="M3 17 L21 17 L18 20.5 L6 20.5 Z" fill={hull} />
-          {kind === "wait" && <circle cx="12" cy="2.6" r="1.9" className="fill-warning" />}
+          {kind === "wait" && <circle cx="12" cy="2.6" r="1.9" className={sx(paint.s8)} />}
         </svg>
         {kind === "out" && <span className="bh-wake" style={{ width: s * 1.2 }} />}
       </span>
       {kind !== "moored" && (
         <span
-          className={cn(
-            "mb-0.5 flex max-w-48 items-center gap-1 whitespace-nowrap rounded-md bg-background/85 px-1.5 py-0.5 text-[11px] text-foreground shadow-xs backdrop-blur-sm transition-opacity",
-            label ? "opacity-100" : "opacity-0 group-hover/boat:opacity-100 group-focus-visible/boat:opacity-100",
-          )}
+          className={[[sx(paint.s9), sx(paint.s15)].filter(Boolean).join(" "), label ? sx(paint.s10) : sx(paint.s11)].filter(Boolean).join(" ")}
         >
-          <StateGlyph state={r.state} className="size-3" />
-          <span className="truncate">{r.title}</span>
+          <StateGlyph state={r.state} className={sx(paint.s12)} />
+          <span className={sx(paint.s13)}>{r.title}</span>
         </span>
       )}
     </button>
@@ -161,5 +260,5 @@ function Boat({ r, x, y, s, kind, night, labels }: { r: AgentRow; x: number; y: 
 // motion stops while it is off screen.
 export function HarbourWidget() {
   const { span, visible } = useHomeWidget();
-  return <LivingHarbour framed className={cn("size-full", !visible && "bh-still")} position={span.r > 1 ? 0.46 : 0.5} fade={0} depth={0.7} labels="hover" caption />;
+  return <LivingHarbour framed className={[sx(paint.s14), !visible && "bh-still"].filter(Boolean).join(" ")} position={span.r > 1 ? 0.46 : 0.5} fade={0} depth={0.7} labels="hover" caption />;
 }

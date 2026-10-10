@@ -1,13 +1,123 @@
+import * as stylex from "@stylexjs/stylex";
 import { EllipsisIcon, EyeOffIcon, LayoutGridIcon, PlugIcon, RefreshCwIcon } from "lucide-react";
 import { Component, type ErrorInfo, type ReactNode, useEffect, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { Menu, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { SIZE_ORDER, SIZES, type WidgetSize } from "@/lib/home-layout";
-import { cn } from "@/lib/utils";
 
 import type { WidgetDef } from "./registry";
 import { WidgetEmpty } from "./parts";
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "borderRadius": "var(--radius-sm)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s1: {
+    "backgroundColor": "color-mix(in oklab, var(--warning) 14%, transparent)",
+    "color": "var(--warning-foreground)",
+  },
+  s2: {
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "display": "flex",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingRight": "6px",
+    "paddingLeft": "12px",
+  },
+  s4: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s5: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "13px",
+  },
+  s6: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "color": "color-mix(in oklab, var(--muted-foreground) 70%, transparent)",
+  },
+  s7: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s8: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s9: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "opacity": {
+      "default": 0,
+      ":focus-visible": 1,
+    },
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+    ":is(.group\\/w:focus-within &)": {
+      "opacity": 1,
+    },
+    ":is(.group\\/w:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s10: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s11: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "12px",
+  },
+  s12: {
+    "marginLeft": "auto",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+
+  s13: {
+    backgroundColor: { "[data-popup-open]": color.accent },
+    opacity: { "[data-popup-open]": 1 },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // A widget's card: one bordered surface (rounded-lg) with a 36px heading
 // (its icon, title, count and, for a plugin's, the plugin), a menu, and its
@@ -17,7 +127,7 @@ function Count({ use }: { use: NonNullable<WidgetDef["useCount"]> }) {
   const c = use();
   if (!c || c.n <= 0) return null;
   return (
-    <span className={cn("rounded-sm px-1 font-medium text-[11px] tabular-nums", c.urgent ? "bg-warning/14 text-warning-foreground" : "text-muted-foreground")} aria-label={`${c.n}${c.urgent ? ", needs you" : ""}`}>
+    <span className={[sx(paint.s0), c.urgent ? sx(paint.s1) : sx(paint.s2)].filter(Boolean).join(" ")} aria-label={`${c.n}${c.urgent ? ", needs you" : ""}`}>
       {c.n}
     </span>
   );
@@ -36,20 +146,20 @@ export function CountBadge({ def }: { def: WidgetDef }) {
 export function WidgetHeading({ def, id, actions, className }: { def: WidgetDef; id?: string; actions?: ReactNode; className?: string }) {
   const Icon = def.icon;
   return (
-    <div className={cn("flex h-9 shrink-0 items-center gap-2 pr-1.5 pl-3", className)}>
-      <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-      <h2 id={id} className="truncate font-medium text-[13px]">
+    <div className={[sx(paint.s3), className].filter(Boolean).join(" ")}>
+      <Icon className={sx(paint.s4)} />
+      <h2 id={id} className={sx(paint.s5)}>
         {def.title}
       </h2>
       <CountBadge def={def} />
       {def.plugin && (
         <Tip label={`From the ${def.plugin.name} plugin`}>
-          <span className="inline-flex shrink-0 text-muted-foreground/70" role="img" aria-label={`From the ${def.plugin.name} plugin`}>
-            <PlugIcon className="size-3" />
+          <span className={sx(paint.s6)} role="img" aria-label={`From the ${def.plugin.name} plugin`}>
+            <PlugIcon className={sx(paint.s7)} />
           </span>
         </Tip>
       )}
-      <span className="flex-1" />
+      <span className={sx(paint.s8)} />
       {actions}
     </div>
   );
@@ -63,14 +173,11 @@ export function WidgetMenu({ def, size, onSize, onRefresh, onRemove, onCustomize
           <button
             type="button"
             aria-label={`${def.title} options`}
-            className={cn(
-              "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 outline-none hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-focus-within/w:opacity-100 group-hover/w:opacity-100 data-popup-open:bg-accent data-popup-open:opacity-100",
-              className,
-            )}
+            className={[[sx(paint.s9), sx(paint.s13)].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
           />
         }
       >
-        <EllipsisIcon className="size-3.5" />
+        <EllipsisIcon className={sx(paint.s10)} />
       </MenuTrigger>
       <MenuPopup align="end" width={menuWidths.w48}>
         {def.sizes.length > 1 && (
@@ -79,9 +186,9 @@ export function WidgetMenu({ def, size, onSize, onRefresh, onRemove, onCustomize
             <MenuRadioGroup value={size} onValueChange={(v) => onSize(v as WidgetSize)}>
               {SIZE_ORDER.filter((s) => def.sizes.includes(s)).map((s) => (
                 <MenuRadioItem key={s} value={s}>
-                  <span className="flex w-full items-center gap-3">
+                  <span className={sx(paint.s11)}>
                     {SIZES[s].label}
-                    <span className="ml-auto text-muted-foreground text-xs tabular-nums">
+                    <span className={sx(paint.s12)}>
                       {SIZES[s].c}×{SIZES[s].r}
                     </span>
                   </span>

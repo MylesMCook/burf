@@ -1,7 +1,9 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { create } from "zustand";
+import * as stylex from "@stylexjs/stylex";
 
 import { Button } from "@/components/ui/button";
+import { color, font, radius } from "@/styles/tokens.stylex";
 import { AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogPopup, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -37,6 +39,26 @@ export interface ConfirmRequest {
   secondary?: { label: string; run(checked: Record<string, boolean>): Promise<void> | void };
   run(checked: Record<string, boolean>, value: string): Promise<void> | void;
 }
+
+const styles = stylex.create({
+  body: { display: "flex", flexDirection: "column", gap: 12, paddingLeft: 24, paddingRight: 24, paddingBottom: 8, fontSize: 14 },
+  field: { display: "flex", flexDirection: "column", gap: 6 },
+  fieldLabel: { fontWeight: 500, fontSize: 12 },
+  detail: {
+    borderRadius: radius.md,
+    backgroundColor: "color-mix(in oklab, var(--muted) 60%, transparent)",
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    fontFamily: font.mono,
+    fontSize: 12,
+    lineHeight: 1.625,
+  },
+  option: { display: "flex", alignItems: "flex-start", gap: 10 },
+  hint: { display: "block", color: color.mutedForeground, fontSize: 12 },
+  error: { color: "var(--destructive-foreground)", fontSize: 12 },
+});
 
 const useConfirm = create<{ req?: ConfirmRequest; submit: number }>()(() => ({ submit: 0 }));
 
@@ -83,10 +105,10 @@ function Body({ req }: { req: ConfirmRequest }) {
         <AlertDialogDescription>{req.description}</AlertDialogDescription>
       </AlertDialogHeader>
       {(req.detail || req.options?.length || error || req.input) && (
-        <div className="flex flex-col gap-3 px-6 pb-2 text-sm">
+        <div {...stylex.props(styles.body)}>
           {req.input && (
-            <label className="flex flex-col gap-1.5">
-              <span className="font-medium text-xs">{req.input.label}</span>
+            <label {...stylex.props(styles.field)}>
+              <span {...stylex.props(styles.fieldLabel)}>{req.input.label}</span>
               <Input
                 autoFocus
                 value={value}
@@ -96,17 +118,17 @@ function Body({ req }: { req: ConfirmRequest }) {
               />
             </label>
           )}
-          {req.detail && <div className="rounded-md bg-muted/60 px-3 py-2 font-mono text-xs leading-relaxed">{req.detail}</div>}
+          {req.detail && <div {...stylex.props(styles.detail)}>{req.detail}</div>}
           {req.options?.map((o) => (
-            <label key={o.id} className="flex items-start gap-2.5">
+            <label key={o.id} {...stylex.props(styles.option)}>
               <Checkbox offset checked={!!checked[o.id]} onCheckedChange={(v) => setChecked((c) => ({ ...c, [o.id]: !!v }))} />
               <span>
                 {o.label}
-                {o.hint && <span className="block text-muted-foreground text-xs">{o.hint}</span>}
+                {o.hint && <span {...stylex.props(styles.hint)}>{o.hint}</span>}
               </span>
             </label>
           ))}
-          {error && <ErrorText className="text-destructive-foreground text-xs" text={error} />}
+          {error && <div {...stylex.props(styles.error)}><ErrorText text={error} /></div>}
         </div>
       )}
       <AlertDialogFooter>

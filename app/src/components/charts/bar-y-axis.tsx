@@ -1,10 +1,38 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { motion } from "motion/react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@/lib/utils";
 import { useChart, useChartStable } from "./chart-context";
+
+const paint = stylex.create({
+  s0: {
+    "position": "absolute",
+    "right": "0px",
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "flex-end",
+    "paddingRight": "8px",
+  },
+  s1: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "textAlign": "right",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": "0px",
+    "bottom": "0px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface BarYAxisProps {
   /** Whether to show all labels or skip some for dense data. Default: true */
@@ -28,7 +56,7 @@ function BarYAxisLabel({
 }: BarYAxisLabelProps) {
   return (
     <div
-      className="absolute right-0 flex items-center justify-end pr-2"
+      className={sx(paint.s0)}
       style={{
         top: y,
         height: bandHeight,
@@ -41,7 +69,7 @@ function BarYAxisLabel({
             ? "var(--foreground)"
             : "var(--chart-label, var(--color-zinc-500))",
         }}
-        className={cn("truncate whitespace-nowrap text-right text-xs")}
+        className={sx(paint.s1)}
         initial={{
           opacity: 0.7,
           color: "var(--chart-label, var(--color-zinc-500))",
@@ -118,7 +146,7 @@ const BarYAxisInner = memo(function BarYAxisInner({
 
   return createPortal(
     <div
-      className="pointer-events-none absolute top-0 bottom-0"
+      className={sx(paint.s2)}
       style={{
         left: 0,
         width: margin.left,

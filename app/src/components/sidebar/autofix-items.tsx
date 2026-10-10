@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { MenuCheckboxItem } from "@/components/ui/menu";
+import { color } from "@/styles/tokens.stylex";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { errorMessage } from "@/lib/format";
@@ -19,6 +21,11 @@ export interface AutoFix {
   agent?: string;
 }
 
+const styles = stylex.create({
+  loading: { display: "flex", alignItems: "center", gap: 8, paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8, color: color.mutedForeground, fontSize: 12 },
+  note: { maxWidth: 240, paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8, fontSize: 11, color: color.mutedForeground },
+});
+
 export const autofixApi = {
   list: async (box: string) => (await call<AutoFix[] | null>(box, "GET", "autofix")) ?? [],
   put: (box: string, a: AutoFix) => call<AutoFix[]>(box, "PUT", "autofix", a),
@@ -35,7 +42,7 @@ export function AutoFixItems({ box, path }: { box: string; path: string }) {
   }, [box, path]);
   if (!a)
     return (
-      <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground text-xs">
+      <div {...stylex.props(styles.loading)}>
         <Spinner  size="sm"/> Loading…
       </div>
     );
@@ -58,7 +65,7 @@ export function AutoFixItems({ box, path }: { box: string; path: string }) {
       <MenuCheckboxItem checked={a.review} onCheckedChange={(review) => void set({ review })}>
         Address review comments
       </MenuCheckboxItem>
-      <div className="max-w-60 px-2 py-1.5 text-[11px] text-muted-foreground">Sends the worktree's agent the failing CI tail or the new comments, then pushes. 3 runs a day each.</div>
+      <div {...stylex.props(styles.note)}>Sends the worktree's agent the failing CI tail or the new comments, then pushes. 3 runs a day each.</div>
     </>
   );
 }

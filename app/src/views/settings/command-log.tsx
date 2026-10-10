@@ -1,35 +1,82 @@
-import { useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { useActiveTheme } from "@/hooks/use-theme";
-import { cn } from "@/lib/utils";
+import { font, radius, color } from "@/styles/tokens.stylex";
+
+const pulse = stylex.keyframes({
+  "50%": { opacity: 0.5 },
+});
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const styles = stylex.create({
+  log: {
+    maxHeight: 256,
+    marginTop: 12,
+    overflowY: "auto",
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: color.border,
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingLeft: 12,
+    paddingRight: 12,
+    fontFamily: font.mono,
+    fontSize: 11.5,
+    lineHeight: 1.55,
+  },
+  line: { whiteSpace: "pre-wrap", opacity: 0.85, overflowWrap: "anywhere" },
+  caret: {
+    display: "inline-block",
+    marginTop: 2,
+    height: 12,
+    width: 6,
+    verticalAlign: "middle",
+  },
+  blink: {
+    animationName: pulse,
+    animationDuration: { default: "2s", [still]: "0s" },
+    animationTimingFunction: "cubic-bezier(0.4, 0, 0.6, 1)",
+    animationIterationCount: "infinite",
+  },
+  note: { marginTop: 4, whiteSpace: "pre-wrap" },
+});
 
 // CommandLog shows a running command's output as a terminal would, in the
 // theme's terminal colors, keeping the newest line in view.
-export function CommandLog({ lines, error, done, className }: { lines: string[]; error?: string; done?: boolean; className?: string }) {
+export function CommandLog({ lines, error, done }: { lines: string[]; error?: string; done?: boolean }) {
   const t = useActiveTheme().terminal;
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => {
     end.current?.scrollIntoView({ block: "nearest" });
   }, [lines.length, error, done]);
+  const shell = stylex.props(styles.log);
   return (
-    <div className={cn("max-h-64 overflow-y-auto rounded-lg border px-3 py-2.5 font-mono text-[11.5px] leading-[1.55]", className)} style={{ background: t.background, color: t.foreground }}>
+    <div {...shell} style={{ ...shell.style, background: t.background, color: t.foreground }}>
       {lines.map((l, i) => (
-        <div key={i} className="whitespace-pre-wrap opacity-85 [overflow-wrap:anywhere]">
+        <div key={i} {...stylex.props(styles.line)}>
           {l || " "}
         </div>
       ))}
-      {!done && !error && <span className="mt-0.5 inline-block h-3 w-1.5 animate-pulse align-middle" style={{ background: t.cursor }} />}
-      {error && (
-        <div className="mt-1 whitespace-pre-wrap" style={{ color: t.red }}>
-          ✕ {error}
-        </div>
-      )}
-      {done && !error && (
-        <div className="mt-1" style={{ color: t.green }}>
-          ✓ Done
-        </div>
-      )}
+      {!done && !error && <Caret color={t.cursor} />}
+      {error && <Note color={t.red}>✕ {error}</Note>}
+      {done && !error && <Note color={t.green}>✓ Done</Note>}
       <div ref={end} />
+    </div>
+  );
+}
+
+function Caret({ color }: { color: string }) {
+  const painted = stylex.props(styles.caret, styles.blink);
+  return <span {...painted} style={{ ...painted.style, background: color }} />;
+}
+
+function Note({ color, children }: { color: string; children: ReactNode }) {
+  const painted = stylex.props(styles.note);
+  return (
+    <div {...painted} style={{ ...painted.style, color }}>
+      {children}
     </div>
   );
 }

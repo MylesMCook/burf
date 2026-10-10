@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowRightIcon, ChevronRightIcon, FolderGit2Icon, FolderOpenIcon, FolderPlusIcon, GitForkIcon, SparklesIcon } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
@@ -11,6 +12,235 @@ import { plainError } from "@/lib/errors";
 import { useIsLocalBox } from "@/lib/local-box";
 import { NONE, useStore } from "@/lib/store";
 import { thisComputer } from "@/lib/platform";
+
+const paint = stylex.create({
+  s0: {
+    "marginTop": "24px",
+  },
+  s1: {
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-2xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--popover)",
+    "paddingTop": "4px",
+  },
+  s2: {
+    "marginTop": "24px",
+  },
+  s3: {
+    "marginBottom": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s5: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s6: {
+    "width": "16px",
+    "height": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s7: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s8: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s9: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s10: {
+    "marginTop": "24px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--foreground) 20%, transparent)",
+    "backgroundColor": "var(--card)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "14px",
+    "paddingBottom": "14px",
+  },
+  s11: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "16px",
+  },
+  s12: {
+    "display": "flex",
+    "width": "36px",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "color": "var(--muted-foreground)",
+  },
+  s13: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s14: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s15: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s16: {
+    "marginTop": "2px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s17: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s18: {
+    "flexShrink": 0,
+  },
+  s19: {
+    "marginTop": "8px",
+    "paddingInlineStart": "52px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s20: {
+    "marginTop": "24px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "8px",
+    },
+  },
+  s21: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "16px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--border)",
+      ":hover": "color-mix(in oklab, var(--foreground) 20%, transparent)",
+    },
+    "backgroundColor": {
+      "default": "color-mix(in oklab, var(--card) 40%, transparent)",
+      ":hover": "color-mix(in oklab, var(--accent) 40%, transparent)",
+    },
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "textAlign": "left",
+    "outline": "none",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s23: {
+    "display": "flex",
+    "width": "32px",
+    "height": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "color": "var(--muted-foreground)",
+    ":not(#\\#) svg": {
+      "width": "16px",
+      "height": "16px",
+    },
+  },
+  s24: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s25: {
+    "display": "block",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s26: {
+    "marginTop": "2px",
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s27: {
+    "width": "16px",
+    "height": "16px",
+    "color": "color-mix(in oklab, var(--muted-foreground) 60%, transparent)",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+
+  s28: {
+    ":not(#\\#) > :not(:last-child)": {
+      borderBottomColor: "color-mix(in oklab, var(--border) 70%, transparent)",
+    },
+  },
+  s29: {
+    translate: { ":is(.group:hover *)": "2px" },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type Way = "browse" | "clone" | "create";
 
@@ -76,9 +306,9 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
       />
 
       {way ? (
-        <div className="mt-6">
+        <div className={sx(paint.s0)}>
           {/* The Add a project forms, in a frame shaped like their dialog. */}
-          <div data-slot="dialog-popup" className="overflow-hidden rounded-2xl border bg-popover pt-1">
+          <div data-slot="dialog-popup" className={sx(paint.s1)}>
             {way === "browse" && <FolderBrowser box={box} onAdded={added} />}
             {way === "clone" && <CloneForm box={box} onAdded={added} onCancel={() => setWay(undefined)} />}
             {way === "create" && <CreateForm box={box} onAdded={added} onCancel={() => setWay(undefined)} />}
@@ -87,15 +317,15 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
       ) : (
         <>
           {existing.length > 0 && (
-            <div className="mt-6">
-              <div className="mb-2 text-muted-foreground text-xs">Already on {where}</div>
-              <ul className="divide-y divide-border/70 rounded-xl border">
+            <div className={sx(paint.s2)}>
+              <div className={sx(paint.s3)}>Already on {where}</div>
+              <ul className={[sx(paint.s4), sx(paint.s28)].filter(Boolean).join(" ")}>
                 {existing.map((l) => (
-                  <li key={l.name} className="flex items-center gap-3 px-3.5 py-2.5">
-                    <FolderGit2Icon className="size-4 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm">{l.name}</div>
-                      <div className="truncate font-mono text-[11px] text-muted-foreground">{l.path}</div>
+                  <li key={l.name} className={sx(paint.s5)}>
+                    <FolderGit2Icon className={sx(paint.s6)} />
+                    <div className={sx(paint.s7)}>
+                      <div className={sx(paint.s8)}>{l.name}</div>
+                      <div className={sx(paint.s9)}>{l.path}</div>
                     </div>
                     <Button size="xs" variant="outline" onClick={() => onDone(l.name)}>
                       Use this
@@ -106,28 +336,28 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
             </div>
           )}
           {canSample !== false && (
-            <section aria-labelledby="sample-heading" className="mt-6 rounded-xl border border-foreground/20 bg-card px-4 py-3.5">
-              <div className="flex items-center gap-4">
-                <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground">
-                  <SparklesIcon className="size-4" />
+            <section aria-labelledby="sample-heading" className={sx(paint.s10)}>
+              <div className={sx(paint.s11)}>
+                <span aria-hidden className={sx(paint.s12)}>
+                  <SparklesIcon className={sx(paint.s13)} />
                 </span>
-                <div className="min-w-0 flex-1">
-                  <h2 id="sample-heading" className="font-medium text-sm">
+                <div className={sx(paint.s14)}>
+                  <h2 id="sample-heading" className={sx(paint.s15)}>
                     Try the sample project
                   </h2>
-                  <p className="mt-0.5 text-muted-foreground text-xs leading-relaxed">
-                    <span className="font-mono">hello</span>: a tiny Node web server and its test, made in ~/work/hello on {where}. A good size for a first task.
+                  <p className={sx(paint.s16)}>
+                    <span className={sx(paint.s17)}>hello</span>: a tiny Node web server and its test, made in ~/work/hello on {where}. A good size for a first task.
                   </p>
                 </div>
-                <span className="shrink-0"><Button autoFocus={existing.length === 0}  disabled={canSample === undefined} loading={making} onClick={() => void sample()}>
+                <span className={sx(paint.s18)}><Button autoFocus={existing.length === 0}  disabled={canSample === undefined} loading={making} onClick={() => void sample()}>
                   Use the sample <ArrowRightIcon />
                 </Button></span>
               </div>
-              {error && <p className="mt-2 ps-13 text-destructive-foreground text-xs">{error}</p>}
+              {error && <p className={sx(paint.s19)}>{error}</p>}
             </section>
           )}
-          <div className="mt-6 space-y-2">
-            <div className="text-muted-foreground text-xs">{existing.length > 0 ? "Or add another" : canSample !== false ? "Or one of your own" : "Add one"}</div>
+          <div className={sx(paint.s20)}>
+            <div className={sx(paint.s21)}>{existing.length > 0 ? "Or add another" : canSample !== false ? "Or one of your own" : "Add one"}</div>
             <WayButton icon={<FolderOpenIcon />} title={wayTitles.browse} detail={wayDetails(box, local).browse} onClick={() => setWay("browse")} />
             <WayButton icon={<GitForkIcon />} title={wayTitles.clone} detail={wayDetails(box, local).clone} onClick={() => setWay("clone")} />
             <WayButton icon={<FolderPlusIcon />} title={wayTitles.create} detail={wayDetails(box, local).create} onClick={() => setWay("create")} />
@@ -143,14 +373,14 @@ function WayButton({ icon, title, detail, onClick }: { icon: ReactNode; title: s
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full items-center gap-4 rounded-xl border bg-card/40 px-4 py-3 text-left outline-none transition-colors hover:border-foreground/20 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
+      className={[sx(paint.s22), "group"].filter(Boolean).join(" ")}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground [&_svg]:size-4">{icon}</span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm">{title}</span>
-        <span className="mt-0.5 block truncate text-muted-foreground text-xs">{detail}</span>
+      <span className={sx(paint.s23)}>{icon}</span>
+      <span className={sx(paint.s24)}>
+        <span className={sx(paint.s25)}>{title}</span>
+        <span className={sx(paint.s26)}>{detail}</span>
       </span>
-      <ChevronRightIcon className="size-4 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5" />
+      <ChevronRightIcon className={[sx(paint.s27), sx(paint.s29)].filter(Boolean).join(" ")} />
     </button>
   );
 }

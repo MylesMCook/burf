@@ -1,7 +1,7 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
 import {
   chartCenterContainerClassName,
   chartCenterLabelClassName,
@@ -13,6 +13,24 @@ import {
   defaultChartStatFlowFormat,
 } from "./chart-stat-flow";
 import { useRingHover, useRingStable } from "./ring-context";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s1: {
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "textAlign": "center",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface RingCenterProps {
   /** Label shown below the value. Default: "Total" when not hovering */
@@ -73,11 +91,7 @@ export function RingCenter({
   if (children && hoveredData) {
     return (
       <div
-        className={cn(
-          chartCenterContainerClassName,
-          "flex items-center justify-center",
-          className
-        )}
+        className={[chartCenterContainerClassName, sx(paint.s0), className].filter(Boolean).join(" ")}
         style={{ width: centerSize, height: centerSize }}
       >
         {children({
@@ -94,11 +108,7 @@ export function RingCenter({
   // Now renders as pure HTML, avoiding Safari's foreignObject bugs
   return (
     <div
-      className={cn(
-        chartCenterContainerClassName,
-        "flex flex-col items-center justify-center text-center",
-        className
-      )}
+      className={[chartCenterContainerClassName, sx(paint.s1), className].filter(Boolean).join(" ")}
       style={{ width: centerSize, height: centerSize }}
     >
       <ChartStatFlow

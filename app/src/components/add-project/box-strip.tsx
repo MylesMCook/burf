@@ -1,10 +1,146 @@
+import * as stylex from "@stylexjs/stylex";
 import { useRef } from "react";
 
 import { boxLoad } from "@/components/sidebar/box-load";
 import type { BoxStatus } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { Tip } from "@/components/tip";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "marginLeft": "calc(4px * -1)",
+    "marginRight": "calc(4px * -1)",
+    "display": "flex",
+    "gap": "8px",
+    "overflowX": "auto",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "scrollbarWidth": "none",
+  },
+  s1: {
+    "position": "relative",
+    "display": "flex",
+    "height": "52px",
+    "minWidth": "0px",
+    "flexShrink": 0,
+    "flexDirection": "column",
+    "justifyContent": "center",
+    "gap": "2px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "textAlign": "left",
+    "outline": "none",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px color-mix(in oklab, var(--ring) 40%, transparent)",
+    },
+  },
+  s2: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s3: {
+    "width": "160px",
+  },
+  s4: {
+    "borderColor": "color-mix(in oklab, var(--foreground) 20%, transparent)",
+    "backgroundColor": {
+      "default": "light-dark(color-mix(in oklab, var(--accent) 72%, transparent), color-mix(in oklab, var(--input) 64%, transparent))",
+    },
+  },
+  s5: {
+    "borderColor": "color-mix(in oklab, var(--border) 80%, transparent)",
+    "backgroundColor": {
+      ":hover": "light-dark(color-mix(in oklab, var(--accent) 40%, transparent), color-mix(in oklab, var(--input) 32%, transparent))",
+    },
+  },
+  s6: {
+    "borderStyle": "dashed",
+    "opacity": 0.64,
+    "cursor": {
+      ":disabled": "not-allowed",
+    },
+  },
+  s7: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s8: {
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+  },
+  s9: {
+    "backgroundColor": "var(--foreground)",
+  },
+  s10: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s11: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "paddingInlineStart": "16px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  n0: {
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+  },
+  n1: {
+    "backgroundColor": "var(--foreground)",
+  },
+  n2: {
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--muted-foreground) 48%, transparent)",
+  },
+  n3: {
+    "borderWidth": 1,
+    "borderStyle": "dashed",
+    "borderColor": "color-mix(in oklab, var(--muted-foreground) 48%, transparent)",
+  },
+
+  s12: {
+    flexBasis: 0,
+  },
+  s13: {
+    display: "flex",
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // BoxStrip is where the project will live: every box, how it is doing, and
 // how many projects it has. The chosen one carries the logo's amber dot.
@@ -27,7 +163,7 @@ export function BoxStrip({ boxes, value, onChange }: { boxes: BoxStatus[]; value
       ref={ref}
       role="radiogroup"
       aria-label="Box"
-      className="-mx-1 flex gap-2 overflow-x-auto px-1 py-0.5 [scrollbar-width:none]"
+      className={sx(paint.s0)}
       onKeyDown={(e) => {
         if (e.key === "ArrowRight" || e.key === "ArrowDown") {
           e.preventDefault();
@@ -59,25 +195,17 @@ function Tile({ box, selected, wide, onSelect }: { box: BoxStatus; selected: boo
       tabIndex={selected ? 0 : -1}
       disabled={!online && !selected}
       onClick={onSelect}
-      className={cn(
-        "group relative flex h-13 min-w-0 shrink-0 flex-col justify-center gap-0.5 rounded-lg border px-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40",
-        wide ? "flex-1 basis-0" : "w-40",
-        selected ? "border-foreground/20 bg-accent/72 dark:bg-input/64" : "border-border/80 hover:bg-accent/40 dark:hover:bg-input/32",
-        !online && "border-dashed opacity-64 disabled:cursor-not-allowed",
-      )}
+      className={[[sx(paint.s1), "group"].filter(Boolean).join(" "), wide ? [sx(paint.s2), sx(paint.s12)].filter(Boolean).join(" ") : sx(paint.s3), selected ? sx(paint.s4) : sx(paint.s5), !online && sx(paint.s6)].filter(Boolean).join(" ")}
     >
-      <span className="flex min-w-0 items-center gap-2">
+      <span className={sx(paint.s7)}>
         <span
           aria-hidden
-          className={cn(
-            "size-2 shrink-0 rounded-full transition-colors",
-            selected && online ? "bg-foreground" : online ? "border border-muted-foreground/48" : "border border-dashed border-muted-foreground/48",
-          )}
+          className={[sx(paint.n0), selected && online ? sx(paint.n1) : online ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")}
         />
-        <span className="min-w-0 truncate font-medium text-sm">{box.name}</span>
+        <span className={sx(paint.s10)}>{box.name}</span>
       </span>
-      <span className="truncate ps-4 text-muted-foreground text-xs tabular-nums">{facts}</span>
+      <span className={sx(paint.s11)}>{facts}</span>
     </button>
   );
-  return load ? <Tip label={load} wrapClassName={wide ? "flex min-w-0 flex-1 basis-0" : undefined}>{tile}</Tip> : tile;
+  return load ? <Tip label={load} wrapClassName={wide ? sx(paint.s13) : undefined}>{tile}</Tip> : tile;
 }

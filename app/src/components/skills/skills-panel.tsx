@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { BookOpenIcon, CheckIcon, ArrowUpCircleIcon, Trash2Icon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -12,8 +13,187 @@ import { errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
 import { type SkillAgent, type SkillRow, type SkillsChange, type SkillsReport, type SkillState, skillSummary, skillsApi } from "@/lib/skills";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { ErrorText } from "@/components/error-note";
+
+const paint = stylex.create({
+  s0: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s1: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+  },
+  s2: {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(0,1fr) 7.5rem 7.5rem",
+    "alignItems": "center",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s4: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s5: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "24px",
+    "paddingBottom": "24px",
+    "textAlign": "center",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "24px",
+    "paddingBottom": "24px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(0,1fr) 7.5rem 7.5rem",
+    "alignItems": "center",
+    "rowGap": "4px",
+    "borderBottomWidth": {
+      "default": 1,
+      ":last-child": 0,
+    },
+    "borderBottomStyle": {
+      "default": "solid",
+      ":last-child": "solid",
+    },
+    "borderBottomColor": {
+      "default": "var(--border)",
+      ":last-child": "var(--border)",
+    },
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s8: {
+    "minWidth": "0px",
+    "paddingRight": "12px",
+  },
+  s9: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "gap": "8px",
+  },
+  s10: {
+    "fontWeight": 500,
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12.5px",
+  },
+  s11: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s12: {
+    "overflow": "hidden",
+    "display": "-webkit-box",
+    "WebkitLineClamp": 2,
+    "WebkitBoxOrient": "vertical",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.375",
+  },
+  s13: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s14: {
+    "display": "flex",
+    "cursor": "pointer",
+    "alignItems": "center",
+    "gap": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s15: {
+    "display": "flex",
+    "height": "24px",
+    "alignItems": "center",
+  },
+  s16: {
+    "display": "flex",
+    "height": "24px",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s17: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "color": "var(--success-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s18: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s19: {
+    "opacity": {
+      "default": 0,
+      ":focus-visible": 1,
+    },
+    "transitionProperty": "opacity",
+    "transitionDuration": "150ms",
+    ":is(.group\\/cell:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s20: {
+    "display": "flex",
+    "height": "24px",
+    "alignItems": "center",
+  },
+  s21: {
+    "color": "var(--warning-foreground)",
+  },
+  s22: {
+    "display": "flex",
+    "height": "24px",
+    "alignItems": "center",
+  },
+  s23: {
+    "opacity": 0.5,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const agentNames: Record<SkillAgent, string> = {
   claude: "Claude Code",
@@ -77,7 +257,7 @@ export function SkillsPanel({ box, location, hideTitle }: { box: string; locatio
       <CardFrameHeader pad="tight">
         {!hideTitle && (
           <CardFrameTitle row>
-            <BookOpenIcon className="size-3.5 text-muted-foreground" />
+            <BookOpenIcon className={sx(paint.s0)} />
             {location ? "Skills in this project" : `Skills on ${box}`}
           </CardFrameTitle>
         )}
@@ -92,30 +272,30 @@ export function SkillsPanel({ box, location, hideTitle }: { box: string; locatio
         </CardFrameAction>
       </CardFrameHeader>
 
-      <div className="border-t">
-        <div className="grid grid-cols-[minmax(0,1fr)_7.5rem_7.5rem] items-center border-b px-4 py-1.5 text-[11px] text-muted-foreground">
+      <div className={sx(paint.s1)}>
+        <div className={sx(paint.s2)}>
           <span>Skill</span>
           {(["claude", "codex"] as const).map((a) => (
-            <span key={a} className="flex items-center gap-1.5">
-              <AgentIcon agent={a} className="size-3" />
+            <span key={a} className={sx(paint.s3)}>
+              <AgentIcon agent={a} className={sx(paint.s4)} />
               {agentNames[a]}
             </span>
           ))}
         </div>
-        {error && <ErrorText className="px-4 py-6 text-center text-destructive-foreground text-xs" text={error} />}
+        {error && <ErrorText className={sx(paint.s5)} text={error} />}
         {!report && !error && (
-          <div className="flex items-center justify-center gap-2 px-4 py-6 text-muted-foreground text-xs">
+          <div className={sx(paint.s6)}>
             <Spinner  size="sm"/> Checking {box}…
           </div>
         )}
         {report?.skills.map((s) => (
-          <div key={s.name} className="grid grid-cols-[minmax(0,1fr)_7.5rem_7.5rem] items-center gap-y-1 border-b px-4 py-2.5 last:border-b-0">
-            <div className="min-w-0 pr-3">
-              <div className="flex items-baseline gap-2">
-                <span className="font-medium font-mono text-[12.5px]">{s.name}</span>
-                <span className="font-mono text-[10px] text-muted-foreground">{s.version.slice(0, 7)}</span>
+          <div key={s.name} className={sx(paint.s7)}>
+            <div className={sx(paint.s8)}>
+              <div className={sx(paint.s9)}>
+                <span className={sx(paint.s10)}>{s.name}</span>
+                <span className={sx(paint.s11)}>{s.version.slice(0, 7)}</span>
               </div>
-              <p className="line-clamp-2 text-muted-foreground text-xs leading-snug" title={s.description}>
+              <p className={sx(paint.s12)} title={s.description}>
                 {skillSummary(s)}
               </p>
             </div>
@@ -138,11 +318,11 @@ export function SkillsPanel({ box, location, hideTitle }: { box: string; locatio
       </div>
 
       <CardFrameFooter bar>
-        <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground" title={dirs ? `${dirs.claude}\n${dirs.codex}` : undefined}>
+        <span className={sx(paint.s13)} title={dirs ? `${dirs.claude}\n${dirs.codex}` : undefined}>
           {dirs ? `${shortDir(dirs.claude)} · ${shortDir(dirs.codex)}` : " "}
         </span>
         {target === "project" && (
-          <label className="flex cursor-pointer items-center gap-2 text-muted-foreground text-xs">
+          <label className={sx(paint.s14)}>
             <Switch checked={commit} onCheckedChange={setCommit} />
             Commit with the repository
           </label>
@@ -159,22 +339,22 @@ function shortDir(dir: string): string {
 function StateCell({ state, committed, busy, disabled, onInstall, onRemove }: { state?: SkillState; committed: boolean; busy: boolean; disabled: boolean; onInstall(): void; onRemove(): void }) {
   if (busy) {
     return (
-      <span className="flex h-6 items-center">
+      <span className={sx(paint.s15)}>
         <Spinner  size="md"/>
       </span>
     );
   }
   if (state === "installed") {
     return (
-      <span className="group/cell flex h-6 items-center gap-1">
-        <span className="inline-flex items-center gap-1 text-success-foreground text-xs">
-          <CheckIcon className="size-3.5" />
+      <span className={[sx(paint.s16), "group/cell"].filter(Boolean).join(" ")}>
+        <span className={sx(paint.s17)}>
+          <CheckIcon className={sx(paint.s18)} />
           {committed ? "Committed" : "Installed"}
         </span>
         <Tooltip>
           <TooltipTrigger
             render={
-              <span className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover/cell:opacity-100"><Button
+              <span className={sx(paint.s19)}><Button
                 size="icon-xs"
                 variant="ghost"
                 aria-label="Remove"
@@ -192,8 +372,8 @@ function StateCell({ state, committed, busy, disabled, onInstall, onRemove }: { 
   }
   if (state === "outdated") {
     return (
-      <span className="flex h-6 items-center">
-        <span className="text-warning-foreground"><Button size="xs" variant="outline" disabled={disabled} onClick={onInstall}>
+      <span className={sx(paint.s20)}>
+        <span className={sx(paint.s21)}><Button size="xs" variant="outline" disabled={disabled} onClick={onInstall}>
           <ArrowUpCircleIcon />
           Update
         </Button></span>
@@ -201,7 +381,7 @@ function StateCell({ state, committed, busy, disabled, onInstall, onRemove }: { 
     );
   }
   return (
-    <span className={cn("flex h-6 items-center", !state && "opacity-50")}>
+    <span className={[sx(paint.s22), !state && sx(paint.s23)].filter(Boolean).join(" ")}>
       <Button size="xs" variant="outline" disabled={disabled || !state} onClick={onInstall}>
         Install
       </Button>

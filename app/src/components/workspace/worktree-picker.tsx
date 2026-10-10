@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowLeftIcon, GitBranchIcon, GlobeIcon, HomeIcon, PuzzleIcon, RadioIcon, SquareTerminalIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { create } from "zustand";
@@ -18,6 +19,90 @@ import { addGroup, bringSession, focusedPane, groupKeys, here, refFor, refOf, sp
 import { Icon } from "@/plugins/ui";
 import { useRegistry } from "@/plugins/registry";
 import { worktreeLabel } from "@/lib/worktree-names";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "color": "var(--muted-foreground)",
+    ":not(#\\#) svg": {
+      "width": "16px",
+      "height": "16px",
+    },
+  },
+  s1: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s2: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s3: {
+    "marginLeft": "auto",
+    "minWidth": "0px",
+    "flexShrink": 1,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+  },
+  s5: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s7: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s8: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s9: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s10: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s11: {
+    "width": "6px",
+    "height": "6px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The worktree picker (Labs): ⌘⌥D, "Split right with another worktree…".
 // First a worktree, then what of it to show beside the focused pane: one of
@@ -55,7 +140,7 @@ interface Group {
   items: Item[];
 }
 
-const slot = (n: React.ReactNode) => <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-4">{n}</span>;
+const slot = (n: React.ReactNode) => <span className={sx(paint.s0)}>{n}</span>;
 
 // besideFocus puts content beside the focused pane, for worktree key.
 function besideFocus(key: string, content: PaneContent) {
@@ -119,7 +204,7 @@ export function WorktreePicker() {
                 label: wt.main ? loc.name : `${loc.name} / ${worktreeLabel(wt)}`,
                 search: [wt.name, wt.branch].filter(Boolean).join(" "),
                 detail: [agent ? sessionName(agent, { sessions: boxes[box]?.sessions }) : wt.branch, box].filter(Boolean).join(" · "),
-                icon: slot(state && state !== "idle" ? <StateGlyph state={state} className="size-3.5" /> : wt.main ? <HomeIcon /> : <GitBranchIcon />),
+                icon: slot(state && state !== "idle" ? <StateGlyph state={state} className={sx(paint.s1)} /> : wt.main ? <HomeIcon /> : <GitBranchIcon />),
                 run: () => {
                   setQuery("");
                   if (mode.kind === "group") {
@@ -246,8 +331,8 @@ export function WorktreePicker() {
                         }}
                       >
                         {item.icon}
-                        <span className="truncate">{item.label}</span>
-                        {item.detail && <span className="ml-auto min-w-0 shrink truncate text-muted-foreground text-xs">{item.detail}</span>}
+                        <span className={sx(paint.s2)}>{item.label}</span>
+                        {item.detail && <span className={sx(paint.s3)}>{item.detail}</span>}
                         {item.trailing}
                       </CommandItem>
                     )}
@@ -258,24 +343,24 @@ export function WorktreePicker() {
           </CommandPanel>
           <CommandFooter>
             {picked ? (
-              <button type="button" className="flex items-center gap-1 hover:text-foreground" onClick={() => useWorktreePicker.setState({ picked: undefined })}>
-                <ArrowLeftIcon className="size-3" />
+              <button type="button" className={sx(paint.s4)} onClick={() => useWorktreePicker.setState({ picked: undefined })}>
+                <ArrowLeftIcon className={sx(paint.s5)} />
                 <Kbd>⌫</Kbd> other worktrees
               </button>
             ) : mode?.kind === "group" ? (
-              <span className="flex items-center gap-1">
+              <span className={sx(paint.s6)}>
                 <Kbd>↵</Kbd> add its tabs as a group
               </span>
             ) : mode?.kind === "compare" ? (
-              <span className="flex items-center gap-1">
+              <span className={sx(paint.s7)}>
                 <Kbd>↵</Kbd> compare <Kbd>⌥↵</Kbd> compare diffs
               </span>
             ) : (
-              <span className="flex items-center gap-1">
+              <span className={sx(paint.s8)}>
                 <Kbd>↵</Kbd> pick, then what to show
               </span>
             )}
-            <span className="flex items-center gap-1">
+            <span className={sx(paint.s9)}>
               {mode?.kind === "group" ? "or ⌥-click it in the sidebar" : mode?.kind === "compare" ? "Side by side, in a Compare tab" : "It opens beside the focused pane"} <Kbd>esc</Kbd>
             </span>
           </CommandFooter>
@@ -288,8 +373,8 @@ export function WorktreePicker() {
 // OnScreen marks a worktree that already shows, in its colour.
 function OnScreen({ wsKey }: { wsKey: string }) {
   return (
-    <span className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
-      <WtDot wsKey={wsKey} className="size-1.5" />
+    <span className={sx(paint.s10)}>
+      <WtDot wsKey={wsKey} className={sx(paint.s11)} />
       on screen
     </span>
   );

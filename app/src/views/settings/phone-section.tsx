@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CopyIcon, EllipsisIcon, RefreshCwIcon, SmartphoneIcon } from "lucide-react";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -11,9 +12,136 @@ import { errorMessage } from "@/lib/format";
 import { BoxError } from "@/components/upgrade-box";
 import { newNtfyTopic, type PairedBox, pairingLink, phoneApi, type PhoneStatus } from "@/lib/phone";
 import { NONE, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { Code, SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
+
+const paint = stylex.create({
+  s0: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "24px",
+    "paddingBottom": "24px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s1: {
+    "marginTop": "4px",
+  },
+  s2: {
+    "color": "var(--destructive)",
+  },
+  s3: {
+    "height": "96px",
+  },
+  s4: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "20px",
+    "paddingBottom": "20px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s5: {
+    "width": "20px",
+    "height": "20px",
+    "flexShrink": 0,
+  },
+  s6: {
+    "display": "flex",
+    "gap": "20px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "16px",
+    "paddingBottom": "16px",
+    "flexDirection": {
+      "@media (max-width: 639px)": {
+        "default": "column",
+      },
+    },
+  },
+  s7: {
+    "width": "176px",
+    "height": "176px",
+    "flexShrink": 0,
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "backgroundColor": "#fff",
+    "padding": "6px",
+    ":not(#\\#) svg": {
+      "width": "100%",
+      "height": "100%",
+    },
+  },
+  s8: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+    "gap": "10px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s9: {
+    "fontWeight": 500,
+  },
+  s10: {
+    "listStyleType": "decimal",
+    "paddingLeft": "16px",
+    "color": "var(--muted-foreground)",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "4px",
+    },
+  },
+  s11: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "20px",
+    "paddingBottom": "20px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s12: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "16px",
+    "paddingBottom": "16px",
+  },
+  s13: {
+    "display": "flex",
+    "gap": "8px",
+  },
+  s14: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s15: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s16: {
+    "display": "flex",
+    "gap": "8px",
+  },
+  s17: {
+    "justifyContent": "flex-start",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Settings → Phone: turn on each box's phone app, pair a phone with one QR
 // code, and send "needs you" notifications through ntfy.
@@ -67,7 +195,7 @@ export function PhoneSection() {
       description="See which agents need you and answer them from your phone, across your boxes. Each box serves the phone app on its tailnet address, so it works while this computer sleeps."
     >
       <SettingsGroup title="Boxes" description="Phone access is off until you turn it on. Only devices on your tailnet can reach it, and only with the code below.">
-        {online.length === 0 && <p className="px-4 py-6 text-center text-muted-foreground text-sm">No boxes are online.</p>}
+        {online.length === 0 && <p className={sx(paint.s0)}>No boxes are online.</p>}
         {online.map((b) => {
           const st = phone[b.name];
           const unsupported = st && "unsupported" in st;
@@ -80,9 +208,9 @@ export function PhoneSection() {
                 !st ? (
                   "Checking…"
                 ) : unsupported ? (
-                  <BoxError className="mt-1" box={b.name} error={st.error} what="phone access" />
+                  <BoxError className={sx(paint.s1)} box={b.name} error={st.error} what="phone access" />
                 ) : "error" in st && st.error ? (
-                  <span className="text-destructive">{st.error}</span>
+                  <span className={sx(paint.s2)}>{st.error}</span>
                 ) : on ? (
                   <Code>{st.url}</Code>
                 ) : (
@@ -113,7 +241,7 @@ export function PhoneSection() {
       </SettingsGroup>
 
       <Notifications boxes={paired.map((p) => p.name)} phone={phone} onChange={change} />
-      <div aria-hidden className="h-24" />
+      <div aria-hidden className={sx(paint.s3)} />
 
       <ConfirmDialog
         open={!!rotate}
@@ -138,21 +266,21 @@ function PairCode({ link, count }: { link?: string; count: number }) {
   }, [link]);
   if (!link) {
     return (
-      <div className="flex items-center gap-3 px-4 py-5 text-muted-foreground text-sm">
-        <SmartphoneIcon className="size-5 shrink-0" />
+      <div className={sx(paint.s4)}>
+        <SmartphoneIcon className={sx(paint.s5)} />
         Turn on phone access for a box to get a pairing code.
       </div>
     );
   }
   return (
-    <div className="flex gap-5 px-4 py-4 max-sm:flex-col">
+    <div className={sx(paint.s6)}>
       {/* The code holds the tokens, so it is shown here and nowhere else. */}
-      <div className="size-44 shrink-0 overflow-hidden rounded-lg bg-white p-1.5 [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: svg }} />
-      <div className="flex min-w-0 flex-col gap-2.5 text-sm">
-        <p className="font-medium">
+      <div className={sx(paint.s7)} dangerouslySetInnerHTML={{ __html: svg }} />
+      <div className={sx(paint.s8)}>
+        <p className={sx(paint.s9)}>
           Scan with your phone's camera ({count} {count === 1 ? "box" : "boxes"})
         </p>
-        <ol className="list-decimal space-y-1 pl-4 text-muted-foreground">
+        <ol className={sx(paint.s10)}>
           <li>Your phone needs the Tailscale app, signed in to the same tailnet as the boxes.</li>
           <li>Scan the code, then add the page to your home screen (Share → Add to Home Screen).</li>
           <li>Anyone with this code can answer your agents. Make a new code if it leaks.</li>
@@ -208,23 +336,23 @@ function Notifications({ boxes, phone, onChange }: { boxes: string[]; phone: Rec
       }
     >
       {boxes.length === 0 ? (
-        <p className="px-4 py-5 text-muted-foreground text-sm">Turn on phone access for a box first.</p>
+        <p className={sx(paint.s11)}>Turn on phone access for a box first.</p>
       ) : (
-        <div className="flex flex-col gap-3 px-4 py-4">
-          <div className="flex gap-2">
+        <div className={sx(paint.s12)}>
+          <div className={sx(paint.s13)}>
             <Input value={url} onChange={(e) => setUrl(e.currentTarget.value)} placeholder="https://ntfy.sh/your-private-topic" mono text="xs" aria-label="ntfy topic URL" />
             <Button size="sm" variant="outline" onClick={() => setUrl(newNtfyTopic())}>
               New topic
             </Button>
           </div>
-          <label className="flex items-center gap-2 text-sm">
+          <label className={sx(paint.s14)}>
             <Switch checked={finished} onCheckedChange={setFinished} />
             Also when an agent finishes its turn
           </label>
-          <p className="text-muted-foreground text-xs">
+          <p className={sx(paint.s15)}>
             Install ntfy on your phone and subscribe to the same topic. The topic name is the only secret, so keep it long and random; anyone who knows it can read these notifications, which say which worktree needs you, never what the agent wrote.
           </p>
-          <div className={cn("flex gap-2", !saved && "justify-start")}>
+          <div className={[sx(paint.s16), !saved && sx(paint.s17)].filter(Boolean).join(" ")}>
             <Button size="sm" disabled={!valid} onClick={save}>
               {saved ? "Update" : "Turn on notifications"}
             </Button>

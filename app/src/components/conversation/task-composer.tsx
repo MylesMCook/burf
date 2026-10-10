@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowUpIcon, ChevronDownIcon, FolderIcon, GitBranchIcon, SendIcon, ServerIcon, ShieldAlertIcon, SlidersHorizontalIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -45,8 +46,530 @@ import { type StartDraft, sendWork, startWork } from "@/lib/start-work";
 import { load, save } from "@/lib/storage";
 import { NONE, useStore } from "@/lib/store";
 import { fill as fillTemplate, templateVariables } from "@/lib/templates";
-import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
+
+const paint = stylex.create({
+  s0: {
+    "width": "100%",
+    "minWidth": "0px",
+  },
+  s1: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "paddingTop": "4px",
+  },
+  s2: {
+    "display": "flex",
+    "minHeight": "32px",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "textAlign": "left",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s3: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s4: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "opacity": 0.72,
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s5: {
+    "transform": "rotate(180deg)",
+  },
+  s6: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+  },
+  s7: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s8: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s9: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "color": "var(--destructive)",
+  },
+  s10: {
+    "width": "100%",
+    "minWidth": "0px",
+  },
+  s11: {
+    "display": "block",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s12: {
+    "display": "flex",
+    "width": "100%",
+    "minWidth": "0px",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "2px",
+    "rowGap": "4px",
+  },
+  s13: {
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s14: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+  },
+  s15: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s16: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--background) 70%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "color": "var(--foreground)",
+  },
+  s17: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s18: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s19: {
+    "marginLeft": "auto",
+  },
+  s20: {
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+  },
+  s21: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "paddingTop": "4px",
+  },
+  s22: {
+    "display": "flex",
+    "minHeight": "32px",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "textAlign": "left",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s23: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s24: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "opacity": 0.72,
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s25: {
+    "transform": "rotate(180deg)",
+  },
+  s26: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+  },
+  s27: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s28: {
+    "marginLeft": "4px",
+    "marginRight": "4px",
+    "marginTop": "4px",
+  },
+  s29: {
+    "marginTop": "4px",
+  },
+  s30: {
+    "marginTop": "8px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s31: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s32: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s33: {
+    "width": "100%",
+    "minWidth": "0px",
+  },
+  s34: {
+    "display": "flex",
+    "width": "100%",
+    "minWidth": "0px",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "2px",
+    "rowGap": "4px",
+  },
+  s35: {
+    "display": "contents",
+  },
+  s36: {
+    "display": "flex",
+    "height": "32px",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s37: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s38: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s39: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+  s40: {
+    "display": "contents",
+  },
+  s41: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+  },
+  s42: {
+    "color": "var(--muted-foreground)",
+  },
+  s43: {
+    "color": "var(--muted-foreground)",
+  },
+  s44: {
+    "color": "var(--muted-foreground)",
+  },
+  s45: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s46: {
+    "marginLeft": "auto",
+  },
+  s47: {
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+  },
+  s48: {
+    "marginTop": "4px",
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "12px",
+    "rowGap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--background) 60%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s49: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s50: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s51: {
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+  },
+  s52: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s53: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s54: {
+    "marginLeft": "auto",
+  },
+  s55: {
+    "marginTop": "calc(2px * -1)",
+    "marginBottom": "2px",
+    "display": "flex",
+    "height": "32px",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "2px",
+    "paddingLeft": "2px",
+    "paddingRight": "2px",
+  },
+  s56: {
+    "fieldSizing": "content",
+    "display": "block",
+    "maxHeight": "240px",
+    "minHeight": "76px",
+    "width": "100%",
+    "resize": "none",
+    "borderRadius": "inherit",
+    "backgroundColor": "transparent",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "fontSize": "0.875rem",
+    "outline": "none",
+    "color": {
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+    },
+  },
+  s57: {
+    "marginTop": "calc(4px * -1)",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingBottom": "10px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s58: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s59: {
+    "display": "inline-flex",
+  },
+  s60: {
+    "marginInlineEnd": "calc(4px * -1)",
+    "backgroundColor": "color-mix(in oklab, var(--primary-foreground) 16%, transparent)",
+    "color": "color-mix(in oklab, var(--primary-foreground) 80%, transparent)",
+  },
+  s61: {
+    "display": "inline-flex",
+  },
+  s62: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  s63: {
+    "backgroundColor": "color-mix(in oklab, var(--background) 70%, transparent)",
+    "color": "var(--foreground)",
+  },
+  s64: {
+    "display": "inline-flex",
+    "height": "24px",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontWeight": 500,
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "outline": "none",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s65: {
+    "backgroundColor": "var(--background)",
+    "color": "var(--foreground)",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s66: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  s67: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  s68: {
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s69: {
+    "marginTop": "calc(2px * -1)",
+    "marginBottom": "2px",
+    "display": "flex",
+    "height": "32px",
+    "alignItems": "center",
+    "paddingLeft": "2px",
+    "paddingRight": "2px",
+  },
+  s70: {
+    "marginBottom": "12px",
+  },
+  s71: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s72: {
+    "textWrap": "balance",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s73: {
+    "marginTop": "12px",
+  },
+  q74: {
+    "maxWidth": "20rem",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export type { AgentPick } from "@/lib/composer";
 
@@ -211,29 +734,29 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
   };
   const summary = `${folderName(cwd) || "Choose folder"} on ${local.name} · this folder · ${agent ? localAgentName(agent.id) : "Choose agent"}`;
   const folderOptions = [...new Set([...folders, cwd].filter(Boolean))].map((path) => ({ value: path, label: folderName(path), detail: path }));
-  return <fieldset disabled={busy} className="w-full min-w-0">
+  return <fieldset disabled={busy} className={sx(paint.s0)}>
     <Shell head={tabs}
       editor={<Editor value={text} onChange={setText} onSubmit={() => void submit()} autoFocus={autoFocus} label="What should your agents work on?" placeholder={placeholder ?? "Describe a task, a bug to fix, an idea to try…"} />}
-      summary={<div className="flex min-w-0 items-center gap-1 px-1 pt-1">
-        <button type="button" data-testid="task-composer-summary" aria-expanded={expanded} aria-controls={pickersId} onClick={() => setPrefs({ taskComposerExpanded: !expanded })} className="flex min-h-8 min-w-0 items-center gap-1 rounded-md px-2.5 py-1 text-left text-muted-foreground text-xs outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-          <span className="min-w-0 truncate">{summary}</span><ChevronDownIcon aria-hidden className={cn("size-3.5 shrink-0 opacity-72 transition-transform", expanded && "rotate-180")} />
+      summary={<div className={sx(paint.s1)}>
+        <button type="button" data-testid="task-composer-summary" aria-expanded={expanded} aria-controls={pickersId} onClick={() => setPrefs({ taskComposerExpanded: !expanded })} className={sx(paint.s2)}>
+          <span className={sx(paint.s3)}>{summary}</span><ChevronDownIcon aria-hidden className={[sx(paint.s4), expanded && sx(paint.s5)].filter(Boolean).join(" ")} />
         </button>
-        {!expanded && <span className="ml-auto flex shrink-0"><SendButton label="Start" dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
+        {!expanded && <span className={sx(paint.s6)}><SendButton label="Start" dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
       </div>}
       notice={<>
-        {!structured && agent && <p className="px-3 pt-2 text-xs text-muted-foreground">{localAgentName(agent.id)} starts in its terminal. Your prompt is copied for you to paste there.</p>}
-        {historyError && <p className="px-3 pt-2 text-xs text-muted-foreground">{historyError}</p>}
-        {error && <p role="alert" className="px-3 pt-2 text-sm text-destructive">{error}</p>}
+        {!structured && agent && <p className={sx(paint.s7)}>{localAgentName(agent.id)} starts in its terminal. Your prompt is copied for you to paste there.</p>}
+        {historyError && <p className={sx(paint.s8)}>{historyError}</p>}
+        {error && <p role="alert" className={sx(paint.s9)}>{error}</p>}
         {started && !busy && <Button size="sm" variant="outline" onClick={() => openSession(started)}>Open started {started.mode === "chat" ? "chat" : "terminal"}</Button>}
       </>}
-      footer={<div id={pickersId} hidden={!expanded} className="w-full min-w-0">
-        {typingFolder && <label className="block px-2 pb-2 text-xs text-muted-foreground">Folder path<Input aria-label="Project directory" value={cwd} onChange={(e) => chooseFolder(e.target.value)} placeholder="Full folder path" /></label>}
-        <div data-slot="launch-toolbar" className="flex w-full min-w-0 flex-wrap items-center gap-x-0.5 gap-y-1">
+      footer={<div id={pickersId} hidden={!expanded} className={sx(paint.s10)}>
+        {typingFolder && <label className={sx(paint.s11)}>Folder path<Input aria-label="Project directory" value={cwd} onChange={(e) => chooseFolder(e.target.value)} placeholder="Full folder path" /></label>}
+        <div data-slot="launch-toolbar" className={sx(paint.s12)}>
           <Pick label="Project" icon={<FolderIcon />} value={cwd} options={folderOptions} onPick={chooseFolder} footer={<><MenuSeparator /><MenuItem onClick={() => setTypingFolder(true)}>Type folder path…</MenuItem></>} />
           <Pick label="Place" icon={<ServerIcon />} value="local" options={[{ value: "local", label: `${local.name} · This computer` }, ...boxes.filter((b) => b.state === "online").map((b) => ({ value: `box:${b.name}`, label: b.name }))]} onPick={(value) => { if (!busy && value !== "local") onPlace({ kind: "box", box: value.slice(4) }); }} />
-          <span className="px-2.5 text-xs text-muted-foreground">this folder</span>
+          <span className={sx(paint.s13)}>this folder</span>
           <AgentsPicker presets={presets} sel={sel} copies={1} single onChange={(value) => { if (!busy) setAgent(Object.keys(value)[0] ?? ""); }} onCopies={() => {}} />
-          <span className="ml-auto flex shrink-0"><SendButton label="Start" dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>
+          <span className={sx(paint.s14)}><SendButton label="Start" dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>
         </div>
       </div>}
     />
@@ -709,15 +1232,15 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           <>
             {tabs}
             {followed && (
-              <span className="flex min-w-0 items-center gap-1.5 px-2 text-muted-foreground text-xs">
+              <span className={sx(paint.s15)}>
                 {from.kind === "review" ? "Reviews" : "Picks up from"}
-                <span className="flex min-w-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-foreground">
-                  <AgentIcon agent={fromSession && agentOf(fromSession)} className="size-3" />
-                  <span className="truncate">{followed}</span>
+                <span className={sx(paint.s16)}>
+                  <AgentIcon agent={fromSession && agentOf(fromSession)} className={sx(paint.s17)} />
+                  <span className={sx(paint.s18)}>{followed}</span>
                 </span>
               </span>
             )}
-            <span className="ml-auto" />
+            <span className={sx(paint.s19)} />
             {(!collapsible || expanded) && !noAgent && <SavedPrompts onPick={(_, body) => setText(text.trim() ? `${text.trimEnd()}\n\n${body}` : body)} />}
             {(!collapsible || expanded) && hasOptions && <OptionsToggle open={optionsOpen} onOpen={setOptionsOpen} />}
           </>
@@ -732,7 +1255,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           }}
           onSubmit={() => void submit()}
           onPaste={files.onPaste}
-          above={!noAgent && <AttachmentChips items={files.items} onRemove={files.remove} onRetry={files.retry} className="px-3.5 pt-3" />}
+          above={!noAgent && <AttachmentChips items={files.items} onRemove={files.remove} onRetry={files.retry} className={sx(paint.s20)} />}
           autoFocus={autoFocus}
           label={noAgent ? "What the worktree starts from" : "What should your agents work on?"}
           placeholder={
@@ -743,29 +1266,29 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           hint={noAgent && input.trim() ? <Resolved resolution={resolution} pending={pending} error={resolveError} /> : undefined}
         />
       }
-      summary={collapsible && <div className="flex min-w-0 items-center gap-1 px-1 pt-1">
+      summary={collapsible && <div className={sx(paint.s21)}>
         <button
           type="button"
           data-testid="task-composer-summary"
           aria-expanded={expanded}
           aria-controls={pickersId}
           onClick={() => setPrefs({ taskComposerExpanded: !expanded })}
-          className="flex min-h-8 min-w-0 items-center gap-1 rounded-md px-2.5 py-1 text-left text-muted-foreground text-xs outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          className={sx(paint.s22)}
         >
-          <span className="min-w-0 truncate">{summary}</span>
+          <span className={sx(paint.s23)}>{summary}</span>
           {/* Says the line opens: it reads as plain words otherwise. */}
-          <ChevronDownIcon aria-hidden className={cn("size-3.5 shrink-0 opacity-72 transition-transform", expanded && "rotate-180")} />
+          <ChevronDownIcon aria-hidden className={[sx(paint.s24), expanded && sx(paint.s25)].filter(Boolean).join(" ")} />
         </button>
-        {!expanded && <span className="ml-auto flex shrink-0"><SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
+        {!expanded && <span className={sx(paint.s26)}><SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
       </div>}
       options={!collapsible && options}
       notice={
         <>
           {noProjects && <NoProjects />}
-          {retryWorktree && !busy && <p className="px-3 pt-2 text-sm">The worktree is at {retryWorktree.path} on {box}. Start again to use it without creating another worktree.</p>}
-          {box && !structuredChat && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className="mx-1 mt-1" />}
+          {retryWorktree && !busy && <p className={sx(paint.s27)}>The worktree is at {retryWorktree.path} on {box}. Start again to use it without creating another worktree.</p>}
+          {box && !structuredChat && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className={sx(paint.s28)} />}
           {pendingTrust?.wants && fresh && (
-            <div className="mt-1"><Alert variant="warning">
+            <div className={sx(paint.s29)}><Alert variant="warning">
               <ShieldAlertIcon />
               <AlertTitle>This repository wants to run commands on {box}</AlertTitle>
               <AlertDescription>
@@ -774,7 +1297,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
                   worktree is made but none of this runs.
                 </p>
                 <RepoWants wants={pendingTrust.wants} />
-                <div className="mt-2 flex items-center gap-2">
+                <div className={sx(paint.s30)}>
                   {/* Trusting needs no task; starting does, and says so
                       rather than sitting there disabled. */}
                   <Button size="xs" variant="outline" disabled={busy} onClick={() => void trustOnly()}>
@@ -787,25 +1310,25 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
                       </Button>
                     </span>
                   </Tip>
-                  {blocker && <span className="text-muted-foreground text-xs">{blocker}</span>}
+                  {blocker && <span className={sx(paint.s31)}>{blocker}</span>}
                 </div>
               </AlertDescription>
             </Alert></div>
           )}
-          {error && <ErrorText className="px-3 pt-2 text-destructive-foreground text-sm" text={error} />}
+          {error && <ErrorText className={sx(paint.s32)} text={error} />}
         </>
       }
       footer={
-        <div className="w-full min-w-0">
+        <div className={sx(paint.s33)}>
           <div id={collapsible ? pickersId : undefined} hidden={collapsible && !expanded}>
           {collapsible && options && <FramePanel pad="compact" stack gap={4} scroll drop>{options}</FramePanel>}
           {/* One wrapping row of everything: a pick that does not fit starts the next row at the left edge, whole, and Send ends the last row. */}
-          <div data-slot="launch-toolbar" className="flex w-full min-w-0 flex-wrap items-center gap-x-0.5 gap-y-1">
-          <div data-slot="launch-place" className="contents">
+          <div data-slot="launch-toolbar" className={sx(paint.s34)}>
+          <div data-slot="launch-place" className={sx(paint.s35)}>
           {fixed && (
-            <span className="flex h-8 min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
-              <GitBranchIcon className="size-3.5 shrink-0" />
-              <span className="truncate">{attempts ? "Each attempt in a new worktree from this branch" : `In ${fixed.name}`}</span>
+            <span className={sx(paint.s36)}>
+              <GitBranchIcon className={sx(paint.s37)} />
+              <span className={sx(paint.s38)}>{attempts ? "Each attempt in a new worktree from this branch" : `In ${fixed.name}`}</span>
             </span>
           )}
           {!pinned && (
@@ -835,14 +1358,14 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
                   if (local && value === "local") onLocal?.();
                   else setBoxChoice(local ? value.slice(4) : value);
                 }}
-                footer={local && !project?.places.length ? <span className="sr-only">Choose a place</span> : project && project.places.length > 1 && box !== project.defaultBox ? <DefaultBoxItem box={box} onSet={() => void setDefault(box)} /> : undefined}
+                footer={local && !project?.places.length ? <span className={sx(paint.s39)}>Choose a place</span> : project && project.places.length > 1 && box !== project.defaultBox ? <DefaultBoxItem box={box} onSet={() => void setDefault(box)} /> : undefined}
                 empty={status ? "No box online" : "Connecting…"}
               />}
             </>
           )}
           {(!pinned || from?.kind === "handoff") && !attempts && <Pick label="Where" icon={<GitBranchIcon />} value={where} options={whereOptions} onPick={(v) => setWhere(v as "new" | "main" | "here")} />}
           </div>
-          <div data-slot="launch-agent" className="contents">
+          <div data-slot="launch-agent" className={sx(paint.s40)}>
             <AgentsPicker
               presets={pickerPresets}
               sel={sel}
@@ -859,7 +1382,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
               permissions={hasFullAccess(box) ? Object.keys(chatPermissions) : BASE_PERMISSIONS}
               onPermission={(p) => { saveChatPermission(p); setPermission(p); }}
             />
-            <span className="ml-auto flex shrink-0">
+            <span className={sx(paint.s41)}>
               <SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} />
             </span>
           </div>
@@ -883,13 +1406,13 @@ const slugOf = (s: string) =>
 
 // Resolved says what the box made of the text, for the worktree alone.
 function Resolved({ resolution, pending, error }: { resolution?: { name?: string; branch?: string; title?: string }; pending: boolean; error?: string }) {
-  if (pending) return <span className="text-muted-foreground">Reading it…</span>;
-  if (error) return <span className="text-muted-foreground">A new worktree named as typed</span>;
+  if (pending) return <span className={sx(paint.s42)}>Reading it…</span>;
+  if (error) return <span className={sx(paint.s43)}>A new worktree named as typed</span>;
   if (!resolution) return null;
   return (
-    <span className="text-muted-foreground">
+    <span className={sx(paint.s44)}>
       {resolution.title ? `${resolution.title} · ` : ""}
-      <span className="font-mono">{resolution.branch || resolution.name}</span>
+      <span className={sx(paint.s45)}>{resolution.branch || resolution.name}</span>
     </span>
   );
 }
@@ -1009,7 +1532,7 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
       head={
         <>
           {tabs}
-          <span className="ml-auto" />
+          <span className={sx(paint.s46)} />
           <SavedPrompts
             onPick={(id, body) => {
               setPromptId(id);
@@ -1025,7 +1548,7 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
           onChange={setText}
           onSubmit={submit}
           onPaste={files.onPaste}
-          above={<AttachmentChips items={files.items} onRemove={files.remove} onRetry={files.retry} className="px-3.5 pt-3" />}
+          above={<AttachmentChips items={files.items} onRemove={files.remove} onRetry={files.retry} className={sx(paint.s47)} />}
           autoFocus={autoFocus}
           label="What to tell them"
           placeholder={v.loop ? "The first prompt (empty runs the check first)" : "What should they do next? Variables like {{branch}} fill in for each agent."}
@@ -1033,8 +1556,8 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
       }
       notice={
         ended.length > 0 && (
-          <div role="status" className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-background/60 px-3 py-2 text-sm">
-            <span className="min-w-0 flex-1">
+          <div role="status" className={sx(paint.s48)}>
+            <span className={sx(paint.s49)}>
               {endedNames.join(", ")} {ended.length === 1 ? "has" : "have"} ended, so {ended.length === 1 ? "it can't" : "they can't"} take a prompt. Hand the work to a new agent instead.
             </span>
             {ended.length === 1 && (
@@ -1085,7 +1608,7 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
             }
             onAll={(on) => setSelected(new Set(on ? shown.map(entryKey) : []))}
           />
-          <div className="ml-auto flex min-w-0 items-center gap-1">
+          <div className={sx(paint.s50)}>
             <SendButton label={action} icon={<SendIcon />} dialog={dialog} blocker={blocker} onClick={submit} />
           </div>
         </>
@@ -1137,7 +1660,7 @@ function ToBody({ to, onSend, onFail, autoFocus }: TaskComposerProps & { to: Non
           onChange={setText}
           onSubmit={() => void go()}
           onPaste={att.onPaste}
-          above={<AttachmentChips items={att.items} onRemove={att.remove} onRetry={att.retry} className="px-3.5 pt-3" />}
+          above={<AttachmentChips items={att.items} onRemove={att.remove} onRetry={att.retry} className={sx(paint.s51)} />}
           menu={menu}
           autoFocus={autoFocus}
           label={`What should ${who} do?`}
@@ -1146,11 +1669,11 @@ function ToBody({ to, onSend, onFail, autoFocus }: TaskComposerProps & { to: Non
       }
       footer={
         <>
-          <span className="flex min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
-            <AgentIcon agent={to.agent} className="size-3.5" />
+          <span className={sx(paint.s52)}>
+            <AgentIcon agent={to.agent} className={sx(paint.s53)} />
             {who} · {AGENT_WORDS.idle.lower}, waiting for a first task
           </span>
-          <div className="ml-auto">
+          <div className={sx(paint.s54)}>
             <SendButton label="Send" blocker={att.blocker ?? (ready ? undefined : "Write the first prompt")} busy={busy} onClick={() => void go()} />
           </div>
         </>
@@ -1166,7 +1689,7 @@ function ToBody({ to, onSend, onFail, autoFocus }: TaskComposerProps & { to: Non
 function Shell({ head, editor, summary, options, notice, footer, drop }: { head?: React.ReactNode; editor: React.ReactNode; summary?: React.ReactNode; options?: React.ReactNode; notice?: React.ReactNode; footer: React.ReactNode; drop?: Attachments }) {
   return (
     <Frame data-testid="task-composer" data-dragging={drop?.dragging || undefined} {...drop?.dropProps} width="full" lift dragging={!!drop?.dragging}>
-      {head && <div className="-mt-0.5 mb-0.5 flex h-8 min-w-0 items-center gap-0.5 px-0.5">{head}</div>}
+      {head && <div className={sx(paint.s55)}>{head}</div>}
       <FramePanel pad="none" focus>{editor}</FramePanel>
       {summary}
       {options && <FramePanel pad="compact" stack gap={4} scroll>{options}</FramePanel>}
@@ -1196,9 +1719,9 @@ function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, p
         }}
         aria-label={label}
         placeholder={placeholder}
-        className="field-sizing-content block max-h-60 min-h-[76px] w-full resize-none rounded-[inherit] bg-transparent px-3.5 py-3 text-[0.875rem] outline-none placeholder:text-muted-foreground/72"
+        className={sx(paint.s56)}
       />
-      {hint && <p className="-mt-1 truncate px-3.5 pb-2.5 text-xs">{hint}</p>}
+      {hint && <p className={sx(paint.s57)}>{hint}</p>}
       {menu?.chip}
       {menu?.menu}
     </>
@@ -1207,7 +1730,7 @@ function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, p
 
 function SendButton({ label, icon, dialog, blocker, busy, onClick }: { label: string; icon?: React.ReactNode; dialog?: boolean; blocker?: string; busy?: boolean; onClick(): void }) {
   const tip = blocker ?? (
-    <span className="flex items-center gap-1.5">
+    <span className={sx(paint.s58)}>
       {label} <Kbd>⏎</Kbd>
     </span>
   );
@@ -1215,11 +1738,11 @@ function SendButton({ label, icon, dialog, blocker, busy, onClick }: { label: st
     return (
       <Tip label={blocker}>
         {/* A disabled button takes no pointer: the wrapper keeps the tip. */}
-        <span className="inline-flex">
+        <span className={sx(paint.s59)}>
           <Button size="sm" disabled={!!blocker} loading={busy} onClick={onClick}>
             {icon}
             {label}
-            <span className="-me-1 bg-primary-foreground/16 text-primary-foreground/80"><Kbd>⏎</Kbd></span>
+            <span className={sx(paint.s60)}><Kbd>⏎</Kbd></span>
           </Button>
         </span>
       </Tip>
@@ -1227,7 +1750,7 @@ function SendButton({ label, icon, dialog, blocker, busy, onClick }: { label: st
   }
   return (
     <Tip label={tip}>
-      <span className="inline-flex">
+      <span className={sx(paint.s61)}>
         <Button size="icon-sm" aria-label={blocker ? `${label}: ${blocker}` : label} disabled={!!blocker} loading={busy} onClick={onClick}>
           <ArrowUpIcon />
         </Button>
@@ -1239,7 +1762,7 @@ function SendButton({ label, icon, dialog, blocker, busy, onClick }: { label: st
 function OptionsToggle({ open, onOpen }: { open: boolean; onOpen(open: boolean): void }) {
   return (
     <Tip label={open ? "Hide options" : "Options"}>
-      <span className={cn("text-muted-foreground hover:text-foreground", open && "bg-background/70 text-foreground")}><Button size="icon-sm" variant="ghost" aria-label="Options" aria-pressed={open}  onClick={() => onOpen(!open)}>
+      <span className={[sx(paint.s62), open && sx(paint.s63)].filter(Boolean).join(" ")}><Button size="icon-sm" variant="ghost" aria-label="Options" aria-pressed={open}  onClick={() => onOpen(!open)}>
         <SlidersHorizontalIcon />
       </Button></span>
     </Tip>
@@ -1257,22 +1780,19 @@ function ModeTabs({ mode, onMode }: { mode: "start" | "send"; onMode(m: "start" 
       role="tab"
       aria-selected={mode === m}
       onClick={() => onMode(m)}
-      className={cn(
-        "inline-flex h-6 items-center gap-1.5 rounded-md px-2 font-medium text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-        mode === m ? "bg-background text-foreground shadow-xs/5" : "text-muted-foreground hover:text-foreground",
-      )}
+      className={[sx(paint.s64), mode === m ? sx(paint.s65) : sx(paint.s66)].filter(Boolean).join(" ")}
     >
       {label}
     </button>
   );
   return (
-    <div role="tablist" aria-label="Start new work, or prompt running agents" className="flex items-center gap-0.5">
+    <div role="tablist" aria-label="Start new work, or prompt running agents" className={sx(paint.s67)}>
       {tab("start", "New task")}
       {tab(
         "send",
         <>
           Running agents
-          {running > 0 && <span className="text-muted-foreground tabular-nums">{running}</span>}
+          {running > 0 && <span className={sx(paint.s68)}>{running}</span>}
         </>,
       )}
     </div>
@@ -1297,12 +1817,12 @@ function NoProjects({ tabs }: { tabs?: React.ReactNode }) {
   };
   return (
     <Frame width="full" lift>
-      {tabs && <div className="-mt-0.5 mb-0.5 flex h-8 items-center px-0.5">{tabs}</div>}
+      {tabs && <div className={sx(paint.s69)}>{tabs}</div>}
       <FramePanel pad="center">
-        <Scene name={copy.scene} width={120} className="mb-3" />
-        <p className="font-medium text-sm">{copy.title}</p>
-        <p className="max-w-xs text-balance text-muted-foreground text-xs">{copy.text}</p>
-        <span className="mt-3"><Button size="sm"  onClick={go}>
+        <Scene name={copy.scene} width={120} className={sx(paint.s70)} />
+        <p className={sx(paint.s71)}>{copy.title}</p>
+        <p className={[sx(paint.s72), sx(paint.q74)].filter(Boolean).join(" ")}>{copy.text}</p>
+        <span className={sx(paint.s73)}><Button size="sm"  onClick={go}>
           <ServerIcon />
           {state === "no-boxes" ? "Add a box" : state === "offline" ? "Open Boxes" : "Add a project"}
         </Button></span>

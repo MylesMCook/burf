@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { TaskComposer } from "@/components/conversation/task-composer";
 import { useBoxRequirements } from "@/components/requirements-card";
 import { StepHeader } from "@/components/step-header";
@@ -6,6 +7,39 @@ import { Kbd } from "@/components/ui/kbd";
 import { useIsLocalBox } from "@/lib/local-box";
 import { useStore } from "@/lib/store";
 import { thisComputer } from "@/lib/platform";
+
+const paint = stylex.create({
+  s0: {
+    "color": "var(--foreground)",
+  },
+  s1: {
+    "color": "var(--foreground)",
+  },
+  s2: {
+    "marginTop": "24px",
+  },
+  s3: {
+    "marginTop": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "marginTop": "32px",
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "space-between",
+    "gap": "12px",
+  },
+  s5: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // A first task the sample project can do in a minute or two, with a test.
 export const SAMPLE_TASK = 'Add a /health endpoint to server.js that returns {"ok": true}, with a test';
@@ -29,17 +63,17 @@ export function AgentStep({ box, location, sample, onFinish }: { box: string; lo
         title="Start your first agent"
         description={
           <>
-            It works in a new worktree of <span className="text-foreground">{location}</span> on <span className="text-foreground">{local ? thisComputer("this Mac") : box}</span>, keeps going if you close Burf, and tells you
+            It works in a new worktree of <span className={sx(paint.s0)}>{location}</span> on <span className={sx(paint.s1)}>{local ? thisComputer("this Mac") : box}</span>, keeps going if you close Burf, and tells you
             when it needs you.{sample ? " The task below is a small one to start with; change it, or press Enter." : ""}
           </>
         }
       />
-      <div className="mt-6">
+      <div className={sx(paint.s2)}>
         <TaskComposer draft={{ box, location, text: sample ? SAMPLE_TASK : undefined }} autoFocus onDone={onFinish} />
       </div>
-      {none && <p className="mt-3 text-muted-foreground text-xs">No agent CLI on {local ? thisComputer("this Mac") : box} yet. Settings → Agents shows how to install Claude Code or Codex.</p>}
-      <div className="mt-8 flex items-center justify-between gap-3">
-        <p className="text-muted-foreground text-xs">
+      {none && <p className={sx(paint.s3)}>No agent CLI on {local ? thisComputer("this Mac") : box} yet. Settings → Agents shows how to install Claude Code or Codex.</p>}
+      <div className={sx(paint.s4)}>
+        <p className={sx(paint.s5)}>
           Later: <Kbd>⌘N</Kbd> new task · <Kbd>⌘K</Kbd> everything else
         </p>
         <Button variant="ghost" size="sm"  onClick={onFinish} muted>

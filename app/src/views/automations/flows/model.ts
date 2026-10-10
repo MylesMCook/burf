@@ -1,22 +1,37 @@
+import * as stylex from "@stylexjs/stylex";
 import { BellIcon, BotIcon, HourglassIcon, MessageSquareTextIcon, SquareTerminalIcon, WebhookIcon , WorkflowIcon } from "lucide-react";
-
 import type { GitHubOn, Flow, Step, StepKind, StepWhen } from "@/lib/flows";
+import { color } from "@/styles/tokens.stylex";
 import { CATALOG } from "@/views/automations/catalog";
+
+const paint = stylex.create({
+  run: { color: "var(--color-sky-400)" },
+  prompt: { color: "#d97757" },
+  wait: { color: "var(--color-violet-400)" },
+  start: { color: "var(--color-emerald-400)" },
+  notify: { color: "var(--color-amber-400)" },
+  webhook: { color: "var(--color-pink-400)" },
+  muted: { color: color.mutedForeground },
+});
+
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // What each kind of step is, for the editor's cards and the "+" menu.
 export const STEP_KINDS: Record<StepKind, { label: string; hint: string; Icon: typeof BellIcon; tone: string }> = {
-  run: { label: "Run a command", hint: "In the worktree, with its environment and ports.", Icon: SquareTerminalIcon, tone: "text-sky-400" },
-  prompt: { label: "Tell the agent", hint: "Type a prompt into the agent's session.", Icon: MessageSquareTextIcon, tone: "text-[#d97757]" },
-  wait: { label: "Wait for the agent", hint: "Until its turn ends, or it needs you.", Icon: HourglassIcon, tone: "text-violet-400" },
-  start_agent: { label: "Start an agent", hint: "Here, or in a new worktree.", Icon: BotIcon, tone: "text-emerald-400" },
-  notify: { label: "Notify me", hint: "A notification on this laptop.", Icon: BellIcon, tone: "text-amber-400" },
-  webhook: { label: "Call a webhook", hint: "POST JSON to Slack, Linear, anything.", Icon: WebhookIcon, tone: "text-pink-400" },
+  run: { label: "Run a command", hint: "In the worktree, with its environment and ports.", Icon: SquareTerminalIcon, tone: sx(paint.run) },
+  prompt: { label: "Tell the agent", hint: "Type a prompt into the agent's session.", Icon: MessageSquareTextIcon, tone: sx(paint.prompt) },
+  wait: { label: "Wait for the agent", hint: "Until its turn ends, or it needs you.", Icon: HourglassIcon, tone: sx(paint.wait) },
+  start_agent: { label: "Start an agent", hint: "Here, or in a new worktree.", Icon: BotIcon, tone: sx(paint.start) },
+  notify: { label: "Notify me", hint: "A notification on this laptop.", Icon: BellIcon, tone: sx(paint.notify) },
+  webhook: { label: "Call a webhook", hint: "POST JSON to Slack, Linear, anything.", Icon: WebhookIcon, tone: sx(paint.webhook) },
 };
 
 // kindMeta is a step kind's look, with a plain one for the run step kinds
 // (loop, gate, map, …) the editor shows but does not edit.
 export function kindMeta(kind: string): (typeof STEP_KINDS)[StepKind] {
-  return STEP_KINDS[kind as StepKind] ?? { label: kind, hint: "A run step; edit it in the flow's JSON.", Icon: WorkflowIcon, tone: "text-muted-foreground" };
+  return STEP_KINDS[kind as StepKind] ?? { label: kind, hint: "A run step; edit it in the flow's JSON.", Icon: WorkflowIcon, tone: sx(paint.muted) };
 }
 
 export const isEditableKind = (kind: string) => kind in STEP_KINDS;

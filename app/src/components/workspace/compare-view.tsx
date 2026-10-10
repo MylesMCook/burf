@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { Toolbar as ToolbarPrimitive } from "@base-ui/react/toolbar";
 import { ArchiveIcon, ArrowLeftRightIcon, BotIcon, CloudOffIcon, FileDiffIcon, GitCompareArrowsIcon, GlobeIcon, Link2Icon, Link2OffIcon, MessagesSquareIcon, SquareTerminalIcon, XIcon, LayoutGridIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -15,9 +16,323 @@ import { closeCompare, setCompareLane, setCompareSync, swapCompare, useLoadTimes
 import { sessionState } from "@/lib/derive";
 import { exec } from "@/lib/orchestrate";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { focusPane, leadAgent, splitKey, useWorkspaces, useWorktreeRef, type WsTab } from "@/lib/workspaces";
 import { platformKeys } from "@/lib/platform";
+import { radius } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "position": "absolute",
+    "left": 0,
+    "right": 0,
+    "top": "0px",
+    "zIndex": 10,
+    "display": "grid",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "var(--sidebar)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+  },
+  s1: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s2: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "2px",
+    "borderRadius": "var(--radius-lg)",
+    "backgroundColor": "color-mix(in oklab, var(--background) 60%, transparent)",
+    "padding": "2px",
+  },
+  s3: {
+    "backgroundColor": "var(--background)",
+    "color": "var(--foreground)",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s4: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  s5: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s6: {
+    "width": "28px",
+    "justifyContent": "center",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s7: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s8: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s9: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s10: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s11: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s12: {
+    "color": "var(--muted-foreground)",
+  },
+  s13: {
+    "margin": "calc(4px * -1)",
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+    "overflow": "hidden",
+    "padding": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s14: {
+    "justifyContent": "flex-end",
+  },
+  s15: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s16: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s17: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+  s18: {
+    "color": "var(--foreground)",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s19: {
+    "width": "28px",
+    "justifyContent": "center",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+  },
+  s20: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s21: {
+    "height": "24px",
+    "minWidth": "0px",
+    "gap": "4px",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+  },
+  s22: {
+    "maxWidth": "128px",
+  },
+  s23: {
+    "maxWidth": "192px",
+  },
+  s24: {
+    "width": "6px",
+    "height": "6px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+  },
+  s25: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s26: {
+    "flexShrink": 0,
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "10px",
+  },
+  s27: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s28: {
+    "flexShrink": 0,
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s29: {
+    "color": "var(--success-foreground)",
+  },
+  s30: {
+    "color": "var(--muted-foreground)",
+  },
+  s31: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s32: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s33: {
+    "color": "var(--success-foreground)",
+  },
+  s34: {
+    "color": "var(--destructive-foreground)",
+  },
+  s35: {
+    "margin": "calc(4px * -1)",
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+    "overflow": "hidden",
+    "padding": "4px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s36: {
+    "flexDirection": "row-reverse",
+  },
+  s37: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "row-reverse",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s38: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "padding": "24px",
+    "textAlign": "center",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s39: {
+    "width": "20px",
+    "height": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s40: {
+    "fontWeight": 500,
+  },
+  s41: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s42: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "12px",
+    "padding": "24px",
+    "textAlign": "center",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s43: {
+    "width": "20px",
+    "height": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s44: {
+    "fontWeight": 500,
+  },
+  s45: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s46: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "justifyContent": "center",
+    "gap": "8px",
+  },
+
+  s47: {
+    maxWidth: "20rem",
+  },
+  s48: {
+    display: "inline-flex",
+    height: 28,
+    flexShrink: 0,
+    alignItems: "center",
+    gap: 6,
+    borderRadius: radius.md,
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 12,
+    lineHeight: "16px",
+    outline: "none",
+    transitionProperty: "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke",
+    boxShadow: { ":focus-visible": "0 0 0 1px var(--sidebar), 0 0 0 3px var(--ring)" },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The Compare tab's chrome (lib/compare.ts): one bar over its two panes,
 // with each side's worktree, its agent's state and what it changed, the
@@ -121,7 +436,7 @@ function useAgentState(key: string) {
   });
 }
 
-const btn = "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar";
+const btn = (sx(paint.s48) ?? "");
 
 export function CompareBar({ wsKey, tab }: { wsKey: string; tab: WsTab }) {
   const c = tab.compare!;
@@ -150,12 +465,12 @@ export function CompareBar({ wsKey, tab }: { wsKey: string; tab: WsTab }) {
     <ToolbarPrimitive.Root
       aria-label={`Compare ${la} and ${lb}`}
       data-compare-bar
-      className="absolute inset-x-0 top-0 z-10 grid items-center gap-2 border-b bg-sidebar px-2"
+      className={sx(paint.s0)}
       style={{ height: COMPARE_BAR, gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)" }}
     >
       <Side wsKey={wsKey} tab={tab} i={0} pane={pair[0].id} focused={focused === 0} shown={shown[0]} other={lb} stats={!narrow} preview={c.lane === "preview"} tiny={tiny} ms={times[0]} faster={faster === 0} />
-      <div className="flex items-center gap-1">
-        <ToolbarPrimitive.Group aria-label="Lanes" className="flex items-center gap-0.5 rounded-lg bg-background/60 p-0.5">
+      <div className={sx(paint.s1)}>
+        <ToolbarPrimitive.Group aria-label="Lanes" className={sx(paint.s2)}>
           {LANES.map((l, n) => {
             const Icon = LANE_ICON[l];
             const on = c.lane === l;
@@ -165,9 +480,9 @@ export function CompareBar({ wsKey, tab }: { wsKey: string; tab: WsTab }) {
                   aria-pressed={on}
                   aria-label={`${LANE_LABEL[l]} lane`}
                   onClick={() => setCompareLane(wsKey, tab.id, l)}
-                  className={cn(btn, on ? "bg-background text-foreground shadow-xs/5" : "text-muted-foreground hover:text-foreground")}
+                  className={[btn, on ? sx(paint.s3) : sx(paint.s4)].filter(Boolean).join(" ")}
                 >
-                  <Icon className="size-3.5" />
+                  <Icon className={sx(paint.s5)} />
                   {!tiny && LANE_LABEL[l]}
                 </ToolbarPrimitive.Button>
               </Tip>
@@ -178,8 +493,8 @@ export function CompareBar({ wsKey, tab }: { wsKey: string; tab: WsTab }) {
         {!alone && (
           <>
             <Tip label={<Keys label="Swap sides" keys="⌘⌥S" />} side="bottom">
-              <ToolbarPrimitive.Button aria-label={`Swap sides: ${lb} on the left`} onClick={() => swapCompare(wsKey, tab.id)} className={cn(btn, "w-7 justify-center px-0 text-muted-foreground hover:bg-accent hover:text-foreground")}>
-                <ArrowLeftRightIcon className="size-3.5" />
+              <ToolbarPrimitive.Button aria-label={`Swap sides: ${lb} on the left`} onClick={() => swapCompare(wsKey, tab.id)} className={[btn, sx(paint.s6)].filter(Boolean).join(" ")}>
+                <ArrowLeftRightIcon className={sx(paint.s7)} />
               </ToolbarPrimitive.Button>
             </Tip>
             <Tip label={c.sync ? SYNC_HELP[c.lane] : "The two sides move on their own"} side="bottom">
@@ -187,9 +502,9 @@ export function CompareBar({ wsKey, tab }: { wsKey: string; tab: WsTab }) {
                 aria-pressed={c.sync}
                 aria-label="Sync the two sides"
                 onClick={() => setCompareSync(wsKey, tab.id, !c.sync)}
-                className={cn(btn, c.sync ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}
+                className={[btn, c.sync ? sx(paint.s8) : sx(paint.s9)].filter(Boolean).join(" ")}
               >
-                <Sync className="size-3.5" />
+                <Sync className={sx(paint.s10)} />
                 {!tiny && "Sync"}
               </ToolbarPrimitive.Button>
             </Tip>
@@ -203,9 +518,9 @@ export function CompareBar({ wsKey, tab }: { wsKey: string; tab: WsTab }) {
 
 function Keys({ label, keys }: { label: string; keys: string }) {
   return (
-    <span className="flex items-center gap-2">
+    <span className={sx(paint.s11)}>
       {label}
-      <span className="text-muted-foreground">{platformKeys(keys)}</span>
+      <span className={sx(paint.s12)}>{platformKeys(keys)}</span>
     </span>
   );
 }
@@ -246,18 +561,18 @@ function Side({ wsKey, tab, i, pane, focused, shown, other, stats, preview, tiny
     const Icon = state === "gone" ? ArchiveIcon : CloudOffIcon;
     const why = state === "gone" ? `${label} was archived` : `${ref?.box ?? splitKey(key).box} is offline`;
     return (
-      <div role="status" className={cn("-m-1 flex min-w-0 items-center gap-2 overflow-hidden p-1 text-muted-foreground text-xs", right && "justify-end")}>
-        <Icon className="size-3.5 shrink-0" aria-hidden />
+      <div role="status" className={[sx(paint.s13), right && sx(paint.s14)].filter(Boolean).join(" ")}>
+        <Icon className={sx(paint.s15)} aria-hidden />
         <Tip label={`${why}, so ${other} shows alone. Pick another worktree to compare it with, or close the tab.`} side="bottom">
-          <span className="truncate">{why}</span>
+          <span className={sx(paint.s16)}>{why}</span>
         </Tip>
-        <span className="sr-only">, so {other} shows alone</span>
-        <ToolbarPrimitive.Button className={cn(btn, "text-foreground hover:bg-accent")} onClick={() => openWorktreePicker({ kind: "compare", from: i === 0 ? c.b : c.a, replace: { key: wsKey, tab: tab.id } })}>
+        <span className={sx(paint.s17)}>, so {other} shows alone</span>
+        <ToolbarPrimitive.Button className={[btn, sx(paint.s18)].filter(Boolean).join(" ")} onClick={() => openWorktreePicker({ kind: "compare", from: i === 0 ? c.b : c.a, replace: { key: wsKey, tab: tab.id } })}>
           Compare with…
         </ToolbarPrimitive.Button>
         <Tip label="Close this Compare tab" side="bottom">
-          <ToolbarPrimitive.Button aria-label="Close this Compare tab" className={cn(btn, "w-7 justify-center px-0 hover:bg-accent hover:text-foreground")} onClick={() => closeCompare(wsKey, tab.id)}>
-            <XIcon className="size-3.5" />
+          <ToolbarPrimitive.Button aria-label="Close this Compare tab" className={[btn, sx(paint.s19)].filter(Boolean).join(" ")} onClick={() => closeCompare(wsKey, tab.id)}>
+            <XIcon className={sx(paint.s20)} />
           </ToolbarPrimitive.Button>
         </Tip>
       </div>
@@ -269,24 +584,24 @@ function Side({ wsKey, tab, i, pane, focused, shown, other, stats, preview, tiny
         aria-label={`${label}, ${where} side${focused ? ", focused" : ""}${state === "away" ? `, ${ref?.box} is offline` : ""}`}
         aria-pressed={focused}
         onClick={() => focusPane(wsKey, tab.id, pane)}
-        className={cn(btn, "h-6 min-w-0 gap-1 px-1.5 font-medium text-[11px]", tiny ? "max-w-32" : "max-w-48")}
+        className={[btn, sx(paint.s21), tiny ? sx(paint.s22) : sx(paint.s23)].filter(Boolean).join(" ")}
         style={focused ? { background: tone, color: "var(--background)" } : { background: `color-mix(in oklab, ${tone} 15%, transparent)`, color: tone }}
       >
-        <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: focused ? "var(--background)" : tone }} />
-        <span className="truncate">{label}</span>
+        <span aria-hidden className={sx(paint.s24)} style={{ background: focused ? "var(--background)" : tone }} />
+        <span className={sx(paint.s25)}>{label}</span>
         {/* Its box, unless its name already says it (the same repository on two). */}
-        {ref && !tiny && !label.endsWith(` · ${ref.box}`) && <span className="shrink-0 font-mono text-[10px]">{ref.box}</span>}
+        {ref && !tiny && !label.endsWith(` · ${ref.box}`) && <span className={sx(paint.s26)}>{ref.box}</span>}
       </ToolbarPrimitive.Button>
     </Tip>
   );
   const facts = (
     <>
-      {agent && agent !== "idle" && agent !== "exited" && <StateGlyph state={agent} className="size-3" />}
+      {agent && agent !== "idle" && agent !== "exited" && <StateGlyph state={agent} className={sx(paint.s27)} />}
       {preview ? (
         <Tip label="How long its page took to load, from asking to the load event" side="bottom">
-          <span className={cn("shrink-0 tabular-nums", faster ? "text-success-foreground" : "text-muted-foreground")}>
+          <span className={[sx(paint.s28), faster ? sx(paint.s29) : sx(paint.s30)].filter(Boolean).join(" ")}>
             {ms?.since ? (
-              <span className="flex items-center gap-1">
+              <span className={sx(paint.s31)}>
                 <Spinner  size="sm"/> loading
               </span>
             ) : ms?.ms !== undefined ? (
@@ -299,12 +614,12 @@ function Side({ wsKey, tab, i, pane, focused, shown, other, stats, preview, tiny
       ) : (
         stats &&
         stat && (
-          <span className="min-w-0 truncate text-muted-foreground tabular-nums">
+          <span className={sx(paint.s32)}>
             {stat.files === 0 ? (
               "no changes"
             ) : (
               <>
-                {stat.files} {stat.files === 1 ? "file" : "files"} · <span className="text-success-foreground">+{stat.added.toLocaleString()}</span> <span className="text-destructive-foreground">−{stat.removed.toLocaleString()}</span>
+                {stat.files} {stat.files === 1 ? "file" : "files"} · <span className={sx(paint.s33)}>+{stat.added.toLocaleString()}</span> <span className={sx(paint.s34)}>−{stat.removed.toLocaleString()}</span>
               </>
             )}
           </span>
@@ -313,9 +628,9 @@ function Side({ wsKey, tab, i, pane, focused, shown, other, stats, preview, tiny
     </>
   );
   return (
-    <div className={cn("-m-1 flex min-w-0 items-center gap-2 overflow-hidden p-1 text-xs", right && "flex-row-reverse")}>
+    <div className={[sx(paint.s35), right && sx(paint.s36)].filter(Boolean).join(" ")}>
       {chip}
-      {tiny ? null : right ? <span className="flex min-w-0 flex-row-reverse items-center gap-2">{facts}</span> : facts}
+      {tiny ? null : right ? <span className={sx(paint.s37)}>{facts}</span> : facts}
     </div>
   );
 }
@@ -328,19 +643,19 @@ export function EmptySide({ owner, tab, pane, label }: { owner: string; tab: str
   const presets = useMemo(() => (ref ? agentPresets(ref.box, ref.location).slice(0, 3) : []), [ref]);
   if (label === "Diff")
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-sm">
-        <FileDiffIcon className="size-5 text-muted-foreground" />
-        <p className="font-medium">The Diff plugin is off</p>
-        <p className="max-w-xs text-muted-foreground text-xs">Turn it on in Settings → Plugins to compare the two diffs here.</p>
+      <div className={sx(paint.s38)}>
+        <FileDiffIcon className={sx(paint.s39)} />
+        <p className={sx(paint.s40)}>The Diff plugin is off</p>
+        <p className={[sx(paint.s41), sx(paint.s47)].filter(Boolean).join(" ")}>Turn it on in Settings → Plugins to compare the two diffs here.</p>
       </div>
     );
   const start = (command: string, what: string) => void startSession(command, { kind: "replace", tab, pane }, what, owner);
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm">
-      <BotIcon className="size-5 text-muted-foreground" />
-      <p className="font-medium">{name} has no agent running</p>
-      <p className="max-w-xs text-muted-foreground text-xs">Start one here to compare its chat; its Diff and Preview lanes work without one.</p>
-      <div className="flex flex-wrap justify-center gap-2">
+    <div className={sx(paint.s42)}>
+      <BotIcon className={sx(paint.s43)} />
+      <p className={sx(paint.s44)}>{name} has no agent running</p>
+      <p className={[sx(paint.s45), sx(paint.s47)].filter(Boolean).join(" ")}>Start one here to compare its chat; its Diff and Preview lanes work without one.</p>
+      <div className={sx(paint.s46)}>
         {presets.map((p) => (
           <Button key={p.id} size="sm" variant="outline" onClick={() => start(p.command, p.name)}>
             <AgentIcon agent={p.id} />

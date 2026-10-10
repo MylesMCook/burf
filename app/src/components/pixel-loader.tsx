@@ -1,8 +1,34 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState } from "react";
 
-import { cn } from "@/lib/utils";
 import "@/components/conversation/conversation.css";
 import "@/components/pixel-loader.css";
+
+const paint = stylex.create({
+  s0: {
+    "display": "inline-flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s1: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s2: {
+    "flexShrink": 0,
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "0.92em",
+    "fontVariantNumeric": "tabular-nums",
+    "opacity": 0.8,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // PixelLoader is Burf's wait: a 3×3 grid of pixels with a chevron of light
 // driving across it, in the dithered harbour's grain, beside what is
@@ -21,7 +47,7 @@ const DELAYS = Array.from({ length: 9 }, (_, i) => ((i % 3) + Math.abs(Math.floo
 
 export function PixelGrid({ className }: { className?: string }) {
   return (
-    <span aria-hidden className={cn("px-grid", className)}>
+    <span aria-hidden className={["px-grid", className].filter(Boolean).join(" ")}>
       {DELAYS.map((d, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: nine fixed cells.
         <i key={i} style={{ animationDelay: `${d}ms` }} />
@@ -47,10 +73,10 @@ export function PixelLoader({ label, since, className }: { label: string; since?
   }, []);
   const ms = now - start;
   return (
-    <span role="status" className={cn("inline-flex min-w-0 items-center gap-2.5 text-muted-foreground", className)}>
+    <span role="status" className={[sx(paint.s0), className].filter(Boolean).join(" ")}>
       <PixelGrid />
-      <span className="cv-shimmer min-w-0 truncate">{label}</span>
-      {ms >= 2000 && <span className="shrink-0 font-mono text-[0.92em] tabular-nums opacity-80">{elapsedWords(ms)}</span>}
+      <span className={[sx(paint.s1), "cv-shimmer"].filter(Boolean).join(" ")}>{label}</span>
+      {ms >= 2000 && <span className={sx(paint.s2)}>{elapsedWords(ms)}</span>}
     </span>
   );
 }

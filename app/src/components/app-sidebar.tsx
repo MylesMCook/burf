@@ -9,7 +9,8 @@ import {
   ServerIcon,
   SettingsIcon,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { NotificationBell } from "@/components/notifications/notification-center";
 import { newSection } from "@/components/sidebar/actions";
@@ -27,9 +28,163 @@ import { useLocalComputer } from "@/lib/local-computer";
 import { useStore } from "@/lib/store";
 import { SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN } from "@/lib/sidebar-width";
 import { WhatsNewNudge } from "@/components/whats-new/whats-new-dialog";
-import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { platformKeys } from "@/lib/platform";
+import { color, radius } from "@/styles/tokens.stylex";
+
+const styles = stylex.create({
+  aside: {
+    containerType: "inline-size",
+    containerName: "side",
+    position: "relative",
+    display: "flex",
+    flexShrink: 0,
+    flexDirection: "column",
+    borderRightWidth: 1,
+    borderRightStyle: "solid",
+    borderRightColor: color.sidebarBorder,
+    backgroundColor: color.sidebar,
+    color: color.sidebarForeground,
+  },
+  drag: {
+    display: "flex",
+    height: 40,
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingLeft: 8,
+    paddingRight: 8,
+  },
+  searchWrap: { paddingLeft: 8, paddingRight: 8, paddingBottom: 4 },
+  search: {
+    display: "flex",
+    height: 28,
+    width: "100%",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: color.sidebarBorder,
+    backgroundColor: { default: "color-mix(in oklab, var(--background) 50%, transparent)", ":hover": color.sidebarAccent },
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 13,
+    color: color.mutedForeground,
+  },
+  icon35: { width: 14, height: 14, flexShrink: 0 },
+  icon4: { width: 16, height: 16, flexShrink: 0 },
+  grow: { flexGrow: 1, flexShrink: 1, flexBasis: "0%", textAlign: "left" },
+  kbd: { height: 18, fontSize: 10 },
+  projectsHead: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 16,
+    paddingRight: 8,
+    paddingBottom: 4,
+    paddingLeft: 12,
+  },
+  gone: { display: "none" },
+  label: { fontWeight: 500, fontSize: 11, color: color.mutedForeground },
+  iconBtn: {
+    display: "inline-flex",
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    color: { default: color.mutedForeground, ":hover": color.foreground },
+    backgroundColor: { default: "transparent", ":hover": color.sidebarAccent, "[data-popup-open]": color.sidebarAccent },
+    ":not(#\\#) svg": { width: 14, height: 14 },
+  },
+  hint: { marginLeft: "auto", color: color.mutedForeground, fontSize: 12 },
+  foot: {
+    display: "flex",
+    height: 36,
+    flexShrink: 0,
+    alignItems: "center",
+    gap: 4,
+    borderTopWidth: 1,
+    borderTopStyle: "solid",
+    borderTopColor: color.sidebarBorder,
+    paddingLeft: 8,
+    paddingRight: 8,
+  },
+  settings: {
+    display: "inline-flex",
+    height: 26,
+    alignItems: "center",
+    gap: 6,
+    borderRadius: radius.md,
+    paddingLeft: 6,
+    paddingRight: 6,
+    fontSize: 12,
+    color: { default: color.mutedForeground, ":hover": color.foreground },
+    backgroundColor: { default: "transparent", ":hover": color.sidebarAccent },
+  },
+  settingsOn: { color: color.foreground },
+  collapse: {
+    display: "inline-flex",
+    width: 26,
+    height: 26,
+    marginLeft: "auto",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    color: { default: color.mutedForeground, ":hover": color.foreground },
+    backgroundColor: { default: "transparent", ":hover": color.sidebarAccent },
+  },
+  local: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: radius.md,
+    textAlign: "left",
+    fontSize: 12,
+    color: { default: color.mutedForeground, ":hover": color.foreground },
+    backgroundColor: { default: "transparent", ":hover": color.sidebarAccent },
+  },
+  localWide: { width: "100%", marginBottom: 8, paddingTop: 8, paddingBottom: 8, paddingLeft: 8, paddingRight: 8 },
+  localCompact: { width: 32, height: 32, justifyContent: "center" },
+  localOn: { backgroundColor: color.sidebarAccent, color: color.foreground },
+  localText: { minWidth: 0 },
+  localName: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  localSub: { display: "block", fontSize: 10, color: color.mutedForeground },
+  rail: {
+    position: "relative",
+    display: "flex",
+    width: 76,
+    flexShrink: 0,
+    flexDirection: "column",
+    alignItems: "center",
+    borderRightWidth: 1,
+    borderRightStyle: "solid",
+    borderRightColor: color.sidebarBorder,
+    backgroundColor: color.sidebar,
+  },
+  railDrag: { height: 40, width: "100%", flexShrink: 0 },
+  railCol: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4 },
+  railBody: { marginTop: 8, minHeight: 0, width: "100%", flexGrow: 1, flexShrink: 1, flexBasis: "0%" },
+  railFoot: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, paddingTop: 4, paddingBottom: 8 },
+  railBtn: {
+    position: "relative",
+    display: "inline-flex",
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    color: { default: color.mutedForeground, ":hover": color.foreground },
+    backgroundColor: { default: "transparent", ":hover": color.sidebarAccent, "[data-popup-open]": color.sidebarAccent },
+    ":not(#\\#) svg": { width: 16, height: 16 },
+  },
+  railOn: { backgroundColor: color.sidebarAccent, color: color.foreground },
+  badge: { position: "absolute", top: 2, right: 2, width: 8, height: 8, borderRadius: radius.full },
+  badgeLoud: { backgroundColor: color.warning },
+  badgeQuiet: { backgroundColor: "color-mix(in oklab, var(--muted-foreground) 70%, transparent)" },
+});
 
 // The sidebar is always open on a desktop window; coss ui's menu pieces only
 // need to know that.
@@ -56,6 +211,7 @@ export function AppSidebar() {
 
   if (collapsed) return <Rail />;
 
+  const frame = stylex.props(styles.aside);
   return (
     <SidebarContext.Provider value={context}>
       {/* Its width is --sidebar-w (prefs), or --sidebar-live as a drag
@@ -65,41 +221,41 @@ export function AppSidebar() {
       <aside
         aria-label="Sidebar"
         data-testid="sidebar"
-        style={{ width: `clamp(${SIDEBAR_MIN}px, var(--sidebar-live, var(--sidebar-w, ${SIDEBAR_DEFAULT}px)), max(${SIDEBAR_DEFAULT}px, min(${SIDEBAR_MAX}px, 40vw)))` }}
-        className="@container/side relative flex shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground"
+        {...frame}
+        style={{ ...frame.style, width: `clamp(${SIDEBAR_MIN}px, var(--sidebar-live, var(--sidebar-w, ${SIDEBAR_DEFAULT}px)), max(${SIDEBAR_DEFAULT}px, min(${SIDEBAR_MAX}px, 40vw)))` }}
       >
         <SidebarResizeHandle />
         {/* Room for the macOS traffic lights; the strip drags the window. */}
-        <div data-tauri-drag-region className="flex h-10 shrink-0 items-center justify-end px-2">
+        <div data-tauri-drag-region {...stylex.props(styles.drag)}>
           <NotificationBell />
         </div>
 
-        <div className="px-2 pb-1">
+        <div {...stylex.props(styles.searchWrap)}>
           <button
             type="button"
             onClick={() => useStore.getState().setPaletteOpen(true)}
-            className="mb-1.5 flex h-7 w-full items-center gap-2 rounded-lg border border-sidebar-border bg-background/50 px-2 text-[13px] text-muted-foreground hover:bg-sidebar-accent"
+            {...stylex.props(styles.search)}
           >
-            <SearchIcon className="size-3.5" />
-            <span className="flex-1 text-left">Search</span>
-            <span className="h-4.5 text-[10px]"><Kbd>⌘K</Kbd></span>
+            <SearchIcon {...stylex.props(styles.icon35)} />
+            <span {...stylex.props(styles.grow)}>Search</span>
+            <span {...stylex.props(styles.kbd)}><Kbd>⌘K</Kbd></span>
           </button>
           <PlacesNav />
         </div>
 
-        <div className={cn("flex items-center justify-between pt-4 pr-2 pb-1 pl-3", noBoxes && "hidden")}>
-          <span className="font-medium text-[11px] text-muted-foreground">Projects</span>
+        <div {...stylex.props(styles.projectsHead, noBoxes && styles.gone)}>
+          <span {...stylex.props(styles.label)}>Projects</span>
           <Menu>
             <MenuTrigger
-              render={<button type="button" aria-label="Projects options" className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent" />}
+              render={<button type="button" aria-label="Projects options" {...stylex.props(styles.iconBtn)} />}
             >
-              <EllipsisIcon className="size-3.5" />
+              <EllipsisIcon />
             </MenuTrigger>
             <MenuPopup align="end" width={menuWidths.w52}>
               <MenuItem onClick={() => useStore.getState().openNewWorktree()}>
                 <GitBranchPlusIcon />
                 New task…
-                <span className="ml-auto text-muted-foreground text-xs">{platformKeys("⌘N")}</span>
+                <span {...stylex.props(styles.hint)}>{platformKeys("⌘N")}</span>
               </MenuItem>
               <MenuItem onClick={() => useStore.getState().openAddLocation()}>
                 <FolderPlusIcon />
@@ -133,13 +289,13 @@ export function AppSidebar() {
         </div>
 
         {/* One context menu and one tooltip for every row in it. */}
-        <RowLayer className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+        <RowLayer layout="projects">
           <LocalComputerLink />
           <Projects prefs={prefs} update={update} />
         </RowLayer>
 
         <WhatsNewNudge />
-        <div className="flex h-9 shrink-0 items-center gap-1 border-sidebar-border border-t px-2">
+        <div {...stylex.props(styles.foot)}>
           <Tip label="⇧-click for Developer settings" side="top" align="start">
             <button
               type="button"
@@ -147,9 +303,9 @@ export function AppSidebar() {
               aria-current={view.kind === "settings" ? "page" : undefined}
               // Shift-click goes straight to Developer.
               onClick={(e) => setView({ kind: "settings", section: e.shiftKey ? "developer" : undefined })}
-              className={cn("inline-flex h-6.5 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground text-xs hover:bg-sidebar-accent hover:text-foreground", view.kind === "settings" && "text-foreground")}
+              {...stylex.props(styles.settings, view.kind === "settings" && styles.settingsOn)}
             >
-              <SettingsIcon className="size-3.5" />
+              <SettingsIcon {...stylex.props(styles.icon35)} />
               Settings
             </button>
           </Tip>
@@ -158,9 +314,9 @@ export function AppSidebar() {
               type="button"
               aria-label="Hide the sidebar"
               onClick={() => usePrefs.setState({ sidebarCollapsed: true })}
-              className="ml-auto inline-flex size-6.5 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              {...stylex.props(styles.collapse)}
             >
-              <PanelLeftCloseIcon className="size-3.5" />
+              <PanelLeftCloseIcon {...stylex.props(styles.icon35)} />
             </button>
           </Tip>
         </div>
@@ -177,9 +333,9 @@ function LocalComputerLink({ compact = false }: { compact?: boolean }) {
     <Tip label={`This computer: ${local.name}`} side="right">
       <button type="button" data-testid="nav-local" aria-label={`This computer: ${local.name}`} aria-current={active ? "page" : undefined}
         onClick={() => useStore.getState().setView({ kind: "local" })}
-        className={cn("flex items-center gap-2 rounded-md text-left text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground", compact ? "size-8 justify-center" : "mb-2 w-full px-2 py-2", active && "bg-sidebar-accent text-foreground")}>
-        <MonitorIcon className="size-3.5 shrink-0" />
-        {!compact && <span className="min-w-0"><span className="block truncate">{local.name}</span><span className="block text-[10px] text-muted-foreground">This computer</span></span>}
+        {...stylex.props(styles.local, compact ? styles.localCompact : styles.localWide, active && styles.localOn)}>
+        <MonitorIcon {...stylex.props(styles.icon35)} />
+        {!compact && <span {...stylex.props(styles.localText)}><span {...stylex.props(styles.localName)}>{local.name}</span><span {...stylex.props(styles.localSub)}>This computer</span></span>}
       </button>
     </Tip>
   );
@@ -193,25 +349,25 @@ function Rail() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const { pinned, more } = useArrangedNav();
-  const item = (label: string, icon: React.ReactNode, active: boolean, onClick: () => void, badge?: { count: number; loud?: boolean }) => (
+  const item = (label: string, icon: ReactNode, active: boolean, onClick: () => void, badge?: { count: number; loud?: boolean }) => (
     <Tip label={label} side="right">
       <button
         type="button"
         aria-label={label}
         onClick={onClick}
-        className={cn("relative inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground [&_svg]:size-4", active && "bg-sidebar-accent text-foreground")}
+        {...stylex.props(styles.railBtn, active && styles.railOn)}
       >
         {icon}
         {/* Amber only when something needs you, as in the sidebar. */}
-        {badge?.count ? <span className={cn("absolute top-0.5 right-0.5 size-2 rounded-full", badge.loud ? "bg-warning" : "bg-muted-foreground/70")} /> : null}
+        {badge?.count ? <span {...stylex.props(styles.badge, badge.loud ? styles.badgeLoud : styles.badgeQuiet)} /> : null}
       </button>
     </Tip>
   );
   return (
-    <aside aria-label="Sidebar" data-testid="sidebar-rail" className="relative flex w-19 shrink-0 flex-col items-center border-sidebar-border border-r bg-sidebar">
+    <aside aria-label="Sidebar" data-testid="sidebar-rail" {...stylex.props(styles.rail)}>
       <SidebarResizeHandle folded />
-      <div data-tauri-drag-region className="h-10 w-full shrink-0" />
-      <div className="flex flex-col items-center gap-1">
+      <div data-tauri-drag-region {...stylex.props(styles.railDrag)} />
+      <div {...stylex.props(styles.railCol)}>
         {item("Search (⌘K)", <SearchIcon />, false, () => useStore.getState().setPaletteOpen(true))}
         <NotificationBell size="rail" />
         <LocalComputerLink compact />
@@ -225,14 +381,11 @@ function Rail() {
                 <button
                   type="button"
                   aria-label="More"
-                  className={cn(
-                    "inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent",
-                    more.some((n) => n.active) && "bg-sidebar-accent text-foreground",
-                  )}
+                  {...stylex.props(styles.railBtn, more.some((n) => n.active) && styles.railOn)}
                 />
               }
             >
-              <EllipsisIcon className="size-4" />
+              <EllipsisIcon />
             </MenuTrigger>
           </Tip>
           <MenuPopup side="right" align="start" width={menuWidths.w72}>
@@ -240,10 +393,10 @@ function Rail() {
           </MenuPopup>
         </Menu>
       </div>
-      <div className="mt-2 min-h-0 w-full flex-1">
+      <div {...stylex.props(styles.railBody)}>
         <RailAgents />
       </div>
-      <div className="flex flex-col items-center gap-1 pt-1 pb-2">
+      <div {...stylex.props(styles.railFoot)}>
         {item("Settings", <SettingsIcon />, view.kind === "settings", () => setView({ kind: "settings" }))}
         {item("Show the sidebar (⌘\\)", <PanelLeftOpenIcon />, false, () => usePrefs.setState({ sidebarCollapsed: false }))}
       </div>

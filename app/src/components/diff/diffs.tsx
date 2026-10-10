@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 // The diff renderer, @pierre/diffs (diffs.com): Shiki highlighting in two
 // workers, themed to the app. This module and its chunks load the first
 // time something shows a diff (a Diff panel, an edit opened in a chat),
@@ -11,6 +12,18 @@ import { type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, us
 import { useActiveTheme } from "@/hooks/use-theme";
 import { syntaxThemes } from "@/themes/apply";
 import { useFollow } from "@/components/workspace/compare-sync";
+
+const paint = stylex.create({
+  s0: {
+    "height": "100%",
+    "minHeight": "0px",
+    "overflow": "auto",
+    "overscrollBehavior": "contain",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export type { FileDiffMetadata };
 
@@ -277,7 +290,7 @@ function Files({ items, layout, wrap, dark, jump, onActive, renderHeader }: View
   return (
     <CodeView
       ref={ref}
-      className="berth-diff-view h-full min-h-0 overflow-auto overscroll-contain"
+      className={[sx(paint.s0), "berth-diff-view"].filter(Boolean).join(" ")}
       items={viewItems}
       options={options}
       renderCustomHeader={header}

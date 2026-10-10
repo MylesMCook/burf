@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { RotateCwIcon, ServerIcon } from "lucide-react";
 
 import { Scene } from "@/components/art/scenes";
@@ -8,9 +9,105 @@ import { agentLabel, restartCommand } from "@/lib/derive";
 import { retryLine } from "@/lib/net";
 import { tryNow, useAway } from "@/lib/reconnect";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { useWorkspaces } from "@/lib/workspaces";
 import { useTitleAt } from "@/lib/worktree-names";
+
+const paint = stylex.create({
+  s0: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "padding": "24px",
+  },
+  s1: {
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "textAlign": "center",
+  },
+  s2: {
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--popover) 95%, transparent)",
+    "paddingLeft": "32px",
+    "paddingRight": "32px",
+    "paddingTop": "24px",
+    "paddingBottom": "20px",
+    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
+  },
+  s3: {
+    "marginBottom": "16px",
+    "color": "color-mix(in oklab, var(--muted-foreground) 80%, transparent)",
+  },
+  s4: {
+    "marginTop": "4px",
+    "maxWidth": "100%",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s5: {
+    "marginTop": "16px",
+    "display": "flex",
+    "gap": "8px",
+  },
+  s6: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s7: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "6px",
+  },
+  s8: {
+    "flexShrink": 0,
+  },
+  s9: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 48%, transparent)",
+  },
+  s10: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "color-mix(in oklab, var(--foreground) 72%, transparent)",
+  },
+  s11: {
+    "marginBottom": "4px",
+    "display": "block",
+    "fontWeight": 500,
+    "color": "color-mix(in oklab, var(--foreground) 72%, transparent)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s12: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+
+  s13: {
+    maxWidth: "24rem",
+  },
+  s14: {
+    maxWidth: "20rem",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The states a terminal pane shows when there is nothing to attach to: the
 // session ended, or its box is out of reach. Each is a small drawing, one
@@ -18,12 +115,12 @@ import { useTitleAt } from "@/lib/worktree-names";
 
 function PaneState({ art, title, detail, children, panel }: { art: React.ReactNode; title: React.ReactNode; detail?: React.ReactNode; children?: React.ReactNode; panel?: boolean }) {
   return (
-    <div className="absolute inset-0 flex items-center justify-center p-6">
-      <div className={cn("flex max-w-sm flex-col items-center text-center", panel && "rounded-xl border bg-popover/95 px-8 pt-6 pb-5 shadow-lg/5")}>
-        <div className="mb-4 text-muted-foreground/80">{art}</div>
+    <div className={sx(paint.s0)}>
+      <div className={[[sx(paint.s1), sx(paint.s13)].filter(Boolean).join(" "), panel && sx(paint.s2)].filter(Boolean).join(" ")}>
+        <div className={sx(paint.s3)}>{art}</div>
         {title}
-        {detail && <div className="mt-1 max-w-full text-muted-foreground text-xs">{detail}</div>}
-        {children && <div className="mt-4 flex gap-2">{children}</div>}
+        {detail && <div className={sx(paint.s4)}>{detail}</div>}
+        {children && <div className={sx(paint.s5)}>{children}</div>}
       </div>
     </div>
   );
@@ -42,16 +139,16 @@ export function SessionEnded({ box, session, agent, command, wsKey, tab, pane, o
       title={
         // Named as its tab named it; the session's id is for the curious.
         <Tip label={`${session} on ${box}`}>
-          <p className="font-medium text-sm">{agent ? `${label} has ended` : "The shell has ended"}</p>
+          <p className={sx(paint.s6)}>{agent ? `${label} has ended` : "The shell has ended"}</p>
         </Tip>
       }
       detail={
-        <p className="flex min-w-0 items-center justify-center gap-1.5">
-          <span className="shrink-0">{where ? `${where} on ${box}` : `on ${box}`}</span>
+        <p className={sx(paint.s7)}>
+          <span className={sx(paint.s8)}>{where ? `${where} on ${box}` : `on ${box}`}</span>
           {command && (
             <>
-              <span className="text-muted-foreground/48">·</span>
-              <code className="min-w-0 truncate font-mono text-[11px] text-foreground/72">{command}</code>
+              <span className={sx(paint.s9)}>·</span>
+              <code className={sx(paint.s10)}>{command}</code>
             </>
           )}
         </p>
@@ -74,7 +171,7 @@ export function RetryLine({ box, className }: { box: string; className?: string 
   const line = retryLine(useAway(box));
   if (!line) return null;
   return (
-    <span data-testid="retry-line" aria-live="polite" className={cn("mb-1 block font-medium text-foreground/72 tabular-nums", className)}>
+    <span data-testid="retry-line" aria-live="polite" className={[sx(paint.s11), className].filter(Boolean).join(" ")}>
       {line}
     </span>
   );
@@ -92,11 +189,11 @@ export function BoxOffline({ box, state, onRetry }: { box: string; state?: strin
     <PaneState
       panel
       art={<Scene name="offline" width={128} />}
-      title={<p className="font-medium text-sm">{title}</p>}
+      title={<p className={sx(paint.s12)}>{title}</p>}
       detail={
         <>
           {state !== "untrusted" && <RetryLine box={box} />}
-          <p className="max-w-xs">{detail}</p>
+          <p className={sx(paint.s14)}>{detail}</p>
         </>
       }
     >

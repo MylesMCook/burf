@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { MessagePrimitive, useAui, useAuiState, type ThreadMessageLike, type TextMessagePartProps } from "@assistant-ui/react";
 import { createContext, useContext, type PropsWithChildren, type ReactNode } from "react";
 
@@ -6,6 +7,36 @@ import { ToolGroupRoot, ToolGroupTrigger, ToolGroupContent } from "@/components/
 import { MarkdownText } from "@/components/assistant-ui/elements/markdown-text";
 import type { ThreadTurn } from "@/lib/chat-thread";
 import type { TranscriptItem } from "@/lib/transcript";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+    "gap": "8px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+  },
+  s1: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+  },
+  s2: {
+    "whiteSpace": "pre-wrap",
+    "overflowWrap": "break-word",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "whiteSpace": "pre-wrap",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Burf supplies the turns and the controls; assistant-ui draws the thread.
 
@@ -63,9 +94,9 @@ function Message() {
   if (custom?.own) return <MessagePrimitive.Root><MessagePrimitive.Parts /></MessagePrimitive.Root>;
   if (!custom?.report) return <AssistantMessage />;
   return (
-    <section aria-label="From Burf" className="flex min-w-0 flex-col gap-2 px-2">
-      <h3 className="text-xs font-medium text-muted-foreground">Burf · work this chat started</h3>
-      {extras.report?.(custom.report, custom.text ?? "") ?? <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">{custom.text}</p>}
+    <section aria-label="From Burf" className={sx(paint.s0)}>
+      <h3 className={sx(paint.s1)}>Burf · work this chat started</h3>
+      {extras.report?.(custom.report, custom.text ?? "") ?? <p className={sx(paint.s2)}>{custom.text}</p>}
     </section>
   );
 }
@@ -90,7 +121,7 @@ function Text(props: TextMessagePartProps) {
   const item = useTranscriptItem();
   return <TranscriptText item={item}><MarkdownText {...props} containerProps={item?.kind === "text" ? { "data-status": item.live ? "running" : "complete" } : undefined} /></TranscriptText>;
 }
-function UserText({ text }: TextMessagePartProps) { return <TranscriptText item={useTranscriptItem()} user><span className="whitespace-pre-wrap">{text}</span></TranscriptText>; }
+function UserText({ text }: TextMessagePartProps) { return <TranscriptText item={useTranscriptItem()} user><span className={sx(paint.s3)}>{text}</span></TranscriptText>; }
 
 const components = { UserMessage, UserText, Text, AssistantMessage: Message, ToolGroup: CallsWithArtifacts };
 

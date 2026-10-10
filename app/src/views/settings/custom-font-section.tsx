@@ -1,10 +1,17 @@
 import { useRef, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { SimpleSelect } from "@/components/simple-select";
+import { color } from "@/styles/tokens.stylex";
 import { Button } from "@/components/ui/button";
 import { addCustomFont, removeCustomFont, useCustomFonts } from "@/lib/custom-fonts";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { SettingsGroup, SettingsRow } from "@/views/settings/rows";
+
+const styles = stylex.create({
+  file: { display: "none" },
+  status: { paddingLeft: 16, paddingRight: 16, paddingTop: 12, paddingBottom: 12, fontSize: 14, color: color.mutedForeground },
+});
 
 export function CustomFontSettings() {
   const fonts = usePrefs((p) => p.customFonts);
@@ -38,7 +45,7 @@ export function CustomFontSettings() {
         type="file"
         accept=".woff,.woff2"
         aria-label="Font file"
-        className="hidden"
+        {...stylex.props(styles.file)}
         disabled={busy}
         onChange={(e) => {
           const picked = e.currentTarget.files?.[0];
@@ -63,7 +70,7 @@ export function CustomFontSettings() {
           ))}
         </ul>
       )}
-      {message && <p role="status" className="px-4 py-3 text-sm text-muted-foreground">{message}</p>}
+      {message && <p role="status" {...stylex.props(styles.status)}>{message}</p>}
     </SettingsGroup>
   );
 }

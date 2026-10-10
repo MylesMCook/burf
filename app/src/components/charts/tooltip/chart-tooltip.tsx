@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { motion, useSpring } from "motion/react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -21,6 +22,33 @@ import { TooltipBox } from "./tooltip-box";
 import { TooltipContent, type TooltipRow } from "./tooltip-content";
 import { TooltipDot } from "./tooltip-dot";
 import { TooltipIndicator } from "./tooltip-indicator";
+
+const paint = stylex.create({
+  s0: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+  },
+  s1: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+  },
+  s2: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "zIndex": 50,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface ChartTooltipProps {
   /** Whether to show the date pill at bottom. Default: true */
@@ -258,7 +286,7 @@ const ChartTooltipInner = memo(function ChartTooltipInner({
       {showCrosshair && (
         <svg
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
+          className={sx(paint.s0)}
           height="100%"
           width="100%"
         >
@@ -287,7 +315,7 @@ const ChartTooltipInner = memo(function ChartTooltipInner({
       {showDots && visible && !isHorizontal && (
         <svg
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
+          className={sx(paint.s1)}
           height="100%"
           width="100%"
         >
@@ -417,7 +445,7 @@ function DatePillTrackerInner({
 
   return (
     <motion.div
-      className="pointer-events-none absolute z-50"
+      className={sx(paint.s2)}
       style={{
         left: discreteInteraction ? xWithMargin : animatedX,
         transform: "translateX(-50%)",

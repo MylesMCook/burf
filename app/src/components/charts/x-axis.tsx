@@ -1,12 +1,41 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { memo, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@/lib/utils";
 import { useChart, useChartStable } from "./chart-context";
 import { shortDateFmt } from "./chart-formatters";
 import { DEFAULT_Y_DOMAIN_TWEEN_MS } from "./chart-phase";
 import { LINE_LOADING_PULSE_EASE } from "./line-loading-timing";
+
+const paint = stylex.create({
+  s0: {
+    "position": "absolute",
+  },
+  s1: {
+    "whiteSpace": "nowrap",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)",
+  },
+  s3: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+  },
+
+  s4: {
+    color: "var(--chart-label)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const X_AXIS_POSITION_TWEEN_MS = DEFAULT_Y_DOMAIN_TWEEN_MS;
 
@@ -64,7 +93,7 @@ function XAxisLabel({
 
   return (
     <div
-      className="absolute"
+      className={sx(paint.s0)}
       style={{
         left: x,
         bottom: 12,
@@ -77,7 +106,7 @@ function XAxisLabel({
       }}
     >
       <span
-        className={cn("whitespace-nowrap text-chart-label text-xs")}
+        className={[sx(paint.s1), sx(paint.s4)].filter(Boolean).join(" ")}
         style={{
           opacity,
           transition: "opacity 0.4s ease-in-out",
@@ -644,7 +673,7 @@ const XAxisInner = memo(function XAxisInner({
       : null;
 
   return createPortal(
-    <div className="pointer-events-none absolute inset-0">
+    <div className={sx(paint.s3)}>
       {labelsToShow.map((item) => (
         <XAxisLabel
           animatePosition={xDomain == null}

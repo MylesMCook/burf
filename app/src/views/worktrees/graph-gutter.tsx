@@ -1,6 +1,17 @@
+import * as stylex from "@stylexjs/stylex";
 import type { CSSProperties } from "react";
 
 import type { GraphRow } from "@/views/worktrees/commit-graph";
+
+const paint = stylex.create({
+  s0: {
+    "flexShrink": 0,
+    "overflow": "visible",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Rows have one height, so each row's slice of the graph meets the next.
 // One line per commit, like `git log --graph --oneline`; the height follows
@@ -36,7 +47,7 @@ export function GraphGutter({ row, lanes, height, highlight }: { row: GraphRow; 
   const color = laneColor(row.color);
   const behind = row.side === "behind";
   return (
-    <svg width={gutterWidth(lanes)} height={height} className="shrink-0 overflow-visible" aria-hidden>
+    <svg width={gutterWidth(lanes)} height={height} className={sx(paint.s0)} aria-hidden>
       {row.edges.map((e, i) => {
         const y1 = e.start === "top" ? 0 : dotY;
         const y2 = e.end === "bottom" ? height : dotY;

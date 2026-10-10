@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, GitPullRequestIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -10,7 +11,6 @@ import { ago } from "@/lib/format";
 import { useNotifications } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
 import { useSessionTitle } from "@/hooks/use-session-name";
-import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 import { ViewHeader } from "@/views/view-header";
 import { type ApproveMode, ApproveDialog, DiscardDialog, SendBackDialog } from "@/views/review/review-actions";
@@ -20,6 +20,229 @@ import { allRuns, useRuns } from "@/lib/runs";
 import { markReviewed, type ReviewEntry, refreshReview, reviewName, useReview, useReviewName, visibleEntries, watchReview } from "@/views/review/review-store";
 import { Tip } from "@/components/tip";
 import { BoxError, NeedsUpdate } from "@/components/upgrade-box";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "0px",
+    "flexDirection": "column",
+  },
+  s1: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s2: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s3: {
+    "display": "flex",
+    "width": "320px",
+    "flexShrink": 0,
+    "flexDirection": "column",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+  },
+  s4: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+    "padding": "8px",
+  },
+  s5: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "10px",
+    "overflow": "hidden",
+    "whiteSpace": "nowrap",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s6: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s7: {
+    "height": "16px",
+    "minWidth": "16px",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontSize": "10px",
+  },
+  s8: {
+    "display": "flex",
+    "flexShrink": 0,
+    "flexDirection": "column",
+    "gap": "4px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 30%, transparent)",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s9: {
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "fontWeight": 500,
+  },
+  s11: {
+    "display": "flex",
+    "width": "100%",
+    "flexDirection": "column",
+    "gap": "4px",
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "var(--row-pad)",
+    "paddingBottom": "var(--row-pad)",
+    "textAlign": "left",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s12: {
+    "backgroundColor": {
+      "default": "var(--accent)",
+      ":hover": "var(--accent)",
+    },
+  },
+  s13: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s14: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "13px",
+  },
+  s15: {
+    "flexShrink": 0,
+    "fontSize": "11px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s16: {
+    "color": "var(--warning-foreground)",
+  },
+  s17: {
+    "color": "var(--muted-foreground)",
+  },
+  s18: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "paddingLeft": "22px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s19: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+    "overflow": "hidden",
+    "whiteSpace": "nowrap",
+    "paddingLeft": "22px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s20: {
+    "fontFamily": "var(--font-mono)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s21: {
+    "color": "var(--success-foreground)",
+  },
+  s22: {
+    "color": "var(--destructive-foreground)",
+  },
+  s23: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  s24: {
+    "color": "var(--success-foreground)",
+  },
+  s25: {
+    "color": "var(--destructive-foreground)",
+  },
+  s26: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s27: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s28: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  s29: {
+    "width": "12px",
+    "height": "12px",
+  },
+
+  s30: {
+    "@media (max-width: 1279px)": {
+      width: 256,
+    },
+  },
+  s31: {
+    "@media (max-width: 1279px)": {
+      display: "none",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type Dialog = { kind: "approve"; mode: ApproveMode } | { kind: "send" } | { kind: "discard" };
 
@@ -124,13 +347,13 @@ export function ReviewView() {
   }, [entries, index, selected, actions, dialog, compare]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className={sx(paint.s0)}>
       <ViewHeader
         title="Review"
         description="Agents' finished work on every box, to approve, send back or discard."
         actions={
           <Button size="sm" variant="ghost" onClick={() => void refreshReview()} disabled={loading} aria-label="Refresh">
-            <RefreshCwIcon className={cn(loading && "animate-spin")} />
+            <RefreshCwIcon className={loading ? "burf-spin" : undefined} />
             Refresh
           </Button>
         }
@@ -147,18 +370,18 @@ export function ReviewView() {
           }}
         />
       ) : !loaded ? (
-        <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
+        <div className={sx(paint.s1)}>
           <Spinner  size="lg"/> Reading each box's worktrees…
         </div>
       ) : entries.length === 0 ? null : (
-        <div className="flex min-h-0 flex-1">
-          <aside aria-label="Work to review" className="flex w-80 shrink-0 flex-col border-r max-xl:w-64">
-            <ul className="min-h-0 flex-1 overflow-y-auto p-2" aria-label="Work to review">
+        <div className={sx(paint.s2)}>
+          <aside aria-label="Work to review" className={[sx(paint.s3), sx(paint.s30)].filter(Boolean).join(" ")}>
+            <ul className={sx(paint.s4)} aria-label="Work to review">
               {entries.map((e) => (
                 <Row key={e.key} entry={e} active={e.key === selected?.key} onSelect={() => setSelectedKey(e.key)} onOpen={() => void focusSession(e.box, e.session)} />
               ))}
             </ul>
-            <footer className="flex shrink-0 items-center gap-2.5 overflow-hidden whitespace-nowrap border-t px-3 py-2 text-[11px] text-muted-foreground">
+            <footer className={sx(paint.s5)}>
               {(
                 [
                   ["J K", "move"],
@@ -167,9 +390,9 @@ export function ReviewView() {
                   ["D", "discard"],
                 ] as const
               ).map(([keys, label]) => (
-                <span key={label} className={cn("inline-flex items-center gap-1", label === "discard" && "max-xl:hidden")}>
+                <span key={label} className={[sx(paint.s6), label === "discard" && sx(paint.s31)].filter(Boolean).join(" ")}>
                   {keys.split(" ").map((k) => (
-                    <span className="h-4 min-w-4 px-1 text-[10px]"><Kbd key={k}>
+                    <span className={sx(paint.s7)}><Kbd key={k}>
                       {k}
                     </Kbd></span>
                   ))}
@@ -192,10 +415,10 @@ function Notices({ outdated, errors }: { outdated: string[]; errors: Record<stri
   const failing = Object.entries(errors);
   if (!outdated.length && !failing.length) return null;
   return (
-    <div className="flex shrink-0 flex-col gap-1 border-b bg-muted/30 px-6 py-2 text-xs">
+    <div className={sx(paint.s8)}>
       {outdated.map((box) => (
-        <NeedsUpdate key={box} box={box} className="py-1.5 text-xs">
-          <span className="font-medium">{box}</span> runs an older berthd without Review. Update it to include its agents' work here.
+        <NeedsUpdate key={box} box={box} className={sx(paint.s9)}>
+          <span className={sx(paint.s10)}>{box}</span> runs an older berthd without Review. Update it to include its agents' work here.
         </NeedsUpdate>
       ))}
       {failing.map(([box, msg]) => (
@@ -222,41 +445,38 @@ function Row({ entry, active, onSelect, onOpen }: { entry: ReviewEntry; active: 
         onClick={onSelect}
         onDoubleClick={onOpen}
         aria-current={active || undefined}
-        className={cn(
-          "flex w-full flex-col gap-1 rounded-lg px-3 py-row-pad text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring",
-          active && "bg-accent hover:bg-accent",
-        )}
+        className={[sx(paint.s11), active && sx(paint.s12)].filter(Boolean).join(" ")}
       >
-        <span className="flex min-w-0 items-center gap-2">
+        <span className={sx(paint.s13)}>
           <AgentIcon agent={entry.agent} />
-          <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{work ?? name}</span>
-          <span className={cn("shrink-0 text-[11px] tabular-nums", waiting ? "text-warning-foreground" : "text-muted-foreground")}>{waiting ? "needs you" : ago(entry.state_since)}</span>
+          <span className={sx(paint.s14)}>{work ?? name}</span>
+          <span className={[sx(paint.s15), waiting ? sx(paint.s16) : sx(paint.s17)].filter(Boolean).join(" ")}>{waiting ? "needs you" : ago(entry.state_since)}</span>
         </span>
-        <span className="truncate pl-5.5 text-[11px] text-muted-foreground">
+        <span className={sx(paint.s18)}>
           {work && `${name} · `}
           {entry.box} · {entry.location}
           {entry.branch && <span> · {entry.branch}</span>}
         </span>
-        <span className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap pl-5.5 text-[11px] text-muted-foreground">
+        <span className={sx(paint.s19)}>
           <span>
             {files} file{files === 1 ? "" : "s"}
           </span>
-          <span className="font-mono tabular-nums">
-            <span className="text-success-foreground">+{added}</span> <span className="text-destructive-foreground">−{removed}</span>
+          <span className={sx(paint.s20)}>
+            <span className={sx(paint.s21)}>+{added}</span> <span className={sx(paint.s22)}>−{removed}</span>
           </span>
           {!entry.files.length && entry.base_ahead > 0 && <span>committed</span>}
           {run && run.status !== "running" && (
             <Tip label={`Flow ${run.flow} ${run.status}`}>
-              <span className={cn("inline-flex items-center gap-0.5", run.status === "succeeded" ? "text-success-foreground" : "text-destructive-foreground")}>
-                {run.status === "succeeded" ? <CheckIcon aria-label="passed" className="size-3" /> : <XIcon aria-label="failed" className="size-3" />}
+              <span className={[sx(paint.s23), run.status === "succeeded" ? sx(paint.s24) : sx(paint.s25)].filter(Boolean).join(" ")}>
+                {run.status === "succeeded" ? <CheckIcon aria-label="passed" className={sx(paint.s26)} /> : <XIcon aria-label="failed" className={sx(paint.s27)} />}
                 check
               </span>
             </Tip>
           )}
           {pr && (
             <Tip label={pr.title}>
-              <span className="inline-flex items-center gap-0.5">
-                <GitPullRequestIcon aria-label="Pull request" className="size-3" />#{pr.number}
+              <span className={sx(paint.s28)}>
+                <GitPullRequestIcon aria-label="Pull request" className={sx(paint.s29)} />#{pr.number}
               </span>
             </Tip>
           )}

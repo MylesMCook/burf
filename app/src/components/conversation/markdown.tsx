@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CopyIcon } from "lucide-react";
 import { micromark } from "micromark";
 import { gfm, gfmHtml } from "micromark-extension-gfm";
@@ -8,7 +9,55 @@ import { Tip } from "@/components/tip";
 import { copyText } from "@/lib/clipboard";
 import { caretAfter } from "@/lib/draft-text";
 import { openUrl } from "@/lib/open-url";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+  },
+  s1: {
+    "marginTop": "4px",
+    "display": "flex",
+    "height": "24px",
+    "opacity": {
+      "default": 0,
+      ":focus-within": 1,
+    },
+    "transitionProperty": "opacity",
+    "transitionDuration": "150ms",
+    ":is(.group\\/md:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s2: {
+    "visibility": "hidden",
+  },
+  s3: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s4: {
+    "width": "14px",
+    "height": "14px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Markdown draws an agent's reply as the agent wrote it: headings, lists,
 // tables, code, bold and links, as its terminal does. micromark escapes any
@@ -73,7 +122,7 @@ export const Markdown = memo(function Markdown({ text, copy = true, draft = fals
   const body = useRef<HTMLDivElement>(null);
   useCodeHighlight(body, html);
   return (
-    <div className="group/md relative cv-in" data-draft={draft ? "" : undefined} aria-busy={draft || undefined} aria-description={draft ? "Still being written: as the agent's screen shows it" : undefined}>
+    <div className={[sx(paint.s0), "group/md cv-in"].filter(Boolean).join(" ")} data-draft={draft ? "" : undefined} aria-busy={draft || undefined} aria-description={draft ? "Still being written: as the agent's screen shows it" : undefined}>
       {draft && clipped && (
         <p className="cv-clipped">
           <span aria-hidden>…</span> Its start is above the agent's screen: the whole reply shows once it's written
@@ -105,10 +154,10 @@ export const Markdown = memo(function Markdown({ text, copy = true, draft = fals
         }}
       />
       {copy && (
-        <div className={cn("mt-1 flex h-6 opacity-0 transition-opacity focus-within:opacity-100 group-hover/md:opacity-100", draft && "invisible")} aria-hidden={draft || undefined}>
+        <div className={[sx(paint.s1), draft && sx(paint.s2)].filter(Boolean).join(" ")} aria-hidden={draft || undefined}>
           <Tip label="Copy as Markdown">
-            <button type="button" aria-label="Copy reply" onClick={() => void copyText(text, "Copied the reply")} className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-              <CopyIcon className="size-3.5" />
+            <button type="button" aria-label="Copy reply" onClick={() => void copyText(text, "Copied the reply")} className={sx(paint.s3)}>
+              <CopyIcon className={sx(paint.s4)} />
             </button>
           </Tip>
         </div>

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { AlertTriangleIcon, CheckIcon, CornerDownLeftIcon, GitMergeIcon, PauseIcon, PlayIcon, SendIcon, SquareIcon, Trash2Icon, XIcon, ArchiveIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
@@ -8,12 +9,161 @@ import { Spinner } from "@/components/ui/spinner";
 import { agentOf } from "@/lib/derive";
 import { openBroadcast } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import type { SyncMode } from "@/lib/worktrees";
 import { SyncButton } from "@/views/worktrees/sync-button";
 import { type BulkAction, actionLabel, type BulkSummary, type RowProgress, skipReason } from "@/views/worktrees/use-bulk";
 import { openWorktree, type Row } from "@/views/worktrees/use-worktrees";
 import { liftToasts } from "@/hooks/lift-toasts";
+import { color, radius } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "left": 0,
+    "right": 0,
+    "bottom": "16px",
+    "display": "flex",
+    "justifyContent": "center",
+  },
+  s1: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s2: {
+    "width": "16px",
+    "height": "16px",
+    "color": "var(--warning)",
+  },
+  s3: {
+    "width": "16px",
+    "height": "16px",
+    "color": "var(--success)",
+  },
+  s4: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s5: {
+    "maxHeight": "224px",
+    "overflowY": "auto",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s7: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s8: {
+    "fontWeight": 500,
+  },
+  s9: {
+    "marginLeft": "8px",
+  },
+  s10: {
+    "color": "var(--warning-foreground)",
+  },
+  s11: {
+    "color": "var(--destructive-foreground)",
+  },
+  s12: {
+    "marginTop": "2px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s13: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s14: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "left": 0,
+    "right": 0,
+    "bottom": "16px",
+    "display": "flex",
+    "justifyContent": "center",
+  },
+  s15: {
+    "flexDirection": "row",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+  },
+  s16: {
+    "paddingRight": "4px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s17: {
+    "height": "20px",
+    "width": "1px",
+    "backgroundColor": "var(--border)",
+  },
+  s18: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s19: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s20: {
+    "color": "var(--destructive-foreground)",
+  },
+  s21: {
+    "height": "20px",
+    "width": "1px",
+    "backgroundColor": "var(--border)",
+  },
+  s22: {
+    "display": "inline-flex",
+  },
+
+  s23: {
+    pointerEvents: "auto",
+    display: "flex",
+    maxWidth: "calc(100%-2rem)",
+    flexDirection: "column",
+    gap: 8,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: color.border,
+    backgroundColor: color.popover,
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    boxShadow: "0 10px 15px -3px color-mix(in oklab, var(--foreground) 10%, transparent), 0 4px 6px -4px color-mix(in oklab, var(--foreground) 10%, transparent)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // BulkBar floats over the table: what you can do with the selection, then
 // how it is going, then what happened.
@@ -53,7 +203,7 @@ export function BulkBar({
   const running = summary && !summary.done;
   if (!selected.length && !summary) return null;
 
-  const shell = "pointer-events-auto flex max-w-[calc(100%-2rem)] flex-col gap-2 rounded-xl border bg-popover px-3 py-2 shadow-lg/10";
+  const shell = (sx(paint.s23) ?? "");
 
   if (summary && summary.action.kind !== "delete") {
     const states = summary.rows.map((r) => progress[r.key]);
@@ -61,11 +211,11 @@ export function BulkBar({
     const done = count("ok") + count("failed") + count("conflict") + count("skipped");
     const problems = summary.rows.filter((r) => progress[r.key]?.state === "failed" || progress[r.key]?.state === "conflict");
     return (
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+      <div className={sx(paint.s0)}>
         <div ref={liftToasts} className={shell} role="status" aria-live="polite">
-          <div className="flex items-center gap-3 text-sm">
-            {running ? <Spinner  size="lg"/> : problems.length ? <AlertTriangleIcon className="size-4 text-warning" /> : <CheckIcon className="size-4 text-success" />}
-            <span className="tabular-nums">
+          <div className={sx(paint.s1)}>
+            {running ? <Spinner  size="lg"/> : problems.length ? <AlertTriangleIcon className={sx(paint.s2)} /> : <CheckIcon className={sx(paint.s3)} />}
+            <span className={sx(paint.s4)}>
               {running
                 ? `${actionLabel(summary.action)}: ${done} of ${summary.rows.length}`
                 : [
@@ -93,20 +243,20 @@ export function BulkBar({
             )}
           </div>
           {details && !running && (
-            <ul className="max-h-56 divide-y overflow-y-auto border-t text-xs">
+            <ul className={sx(paint.s5)}>
               {problems.map((r) => {
                 const p = progress[r.key]!;
                 const agents = (boxes[r.box]?.sessions ?? []).filter((x) => x.dir === r.path && !x.exited && agentOf(x));
                 const sync = summary.action.kind === "sync" ? summary.action : undefined;
                 return (
-                  <li key={r.key} className="flex items-start gap-3 py-2">
-                    <div className="min-w-0 flex-1">
-                      <span className="font-medium">{r.name}</span>
-                      <span className={cn("ml-2", p.state === "conflict" ? "text-warning-foreground" : "text-destructive-foreground")}>{p.state === "conflict" ? "conflicts, left as it was" : p.message}</span>
-                      {p.conflicts && <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{p.conflicts.join(", ")}</div>}
+                  <li key={r.key} className={sx(paint.s6)}>
+                    <div className={sx(paint.s7)}>
+                      <span className={sx(paint.s8)}>{r.name}</span>
+                      <span className={[sx(paint.s9), p.state === "conflict" ? sx(paint.s10) : sx(paint.s11)].filter(Boolean).join(" ")}>{p.state === "conflict" ? "conflicts, left as it was" : p.message}</span>
+                      {p.conflicts && <div className={sx(paint.s12)}>{p.conflicts.join(", ")}</div>}
                     </div>
                     {/* What to do about it, without leaving the table. */}
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div className={sx(paint.s13)}>
                       {sync && p.state === "conflict" && sync.mode === "rebase" && (
                         <Button size="xs" variant="ghost" onClick={() => onRetry({ ...sync, mode: "merge" }, [r])}>
                           <GitMergeIcon />
@@ -160,10 +310,10 @@ export function BulkBar({
   const toResume = eligible({ kind: "resume" });
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-      <div ref={liftToasts} className={cn(shell, "flex-row flex-wrap items-center")}>
-        <span className="pr-1 text-sm tabular-nums">{selected.length} selected</span>
-        <span className="h-5 w-px bg-border" />
+    <div className={sx(paint.s14)}>
+      <div ref={liftToasts} className={[shell, sx(paint.s15)].filter(Boolean).join(" ")}>
+        <span className={sx(paint.s16)}>{selected.length} selected</span>
+        <span className={sx(paint.s17)} />
         <SyncButton
           size="xs"
           count={counted(toSync)}
@@ -174,14 +324,14 @@ export function BulkBar({
           <Button size="xs" variant="outline" onClick={onPause}>
             <PauseIcon />
             Pause
-            {counted(toPause) !== undefined && <span className="tabular-nums">{toPause}</span>}
+            {counted(toPause) !== undefined && <span className={sx(paint.s18)}>{toPause}</span>}
           </Button>
         )}
         {anyPaused && (
           <Button size="xs" variant="outline" onClick={onResume}>
             <PlayIcon />
             Resume
-            {counted(toResume) !== undefined && <span className="tabular-nums">{toResume}</span>}
+            {counted(toResume) !== undefined && <span className={sx(paint.s19)}>{toResume}</span>}
           </Button>
         )}
         <Hint text={agents.length ? `Send one prompt to ${agents.length} agent${agents.length === 1 ? "" : "s"}` : "No agents in these worktrees"}>
@@ -203,12 +353,12 @@ export function BulkBar({
           </Button>
         </Hint>
         <Hint text={deletable ? (deletable < selected.length ? `Main checkouts are skipped (${selected.length - deletable})` : undefined) : "Main checkouts can't be deleted"}>
-          <span className="text-destructive-foreground"><Button size="xs" variant="outline"  disabled={!deletable} onClick={onDelete}>
+          <span className={sx(paint.s20)}><Button size="xs" variant="outline"  disabled={!deletable} onClick={onDelete}>
             <Trash2Icon />
             {counted(deletable) !== undefined ? `Delete ${deletable}…` : "Delete…"}
           </Button></span>
         </Hint>
-        <span className="h-5 w-px bg-border" />
+        <span className={sx(paint.s21)} />
         <Button size="xs" variant="ghost" onClick={onClear}>
           Clear
           <Kbd>Esc</Kbd>
@@ -223,7 +373,7 @@ export function BulkBar({
 function Hint({ text, children }: { text?: string; children: ReactNode }) {
   return (
     <Tip label={text}>
-      <span className="inline-flex">{children}</span>
+      <span className={sx(paint.s22)}>{children}</span>
     </Tip>
   );
 }

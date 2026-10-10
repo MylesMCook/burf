@@ -8,6 +8,7 @@ import type * as React from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { color, radius } from "@/styles/tokens.stylex";
 
+
 const sm = "@media (min-width: 640px)";
 const still = "@media (prefers-reduced-motion: reduce)";
 
@@ -162,6 +163,30 @@ const styles = stylex.create({
     paddingLeft: 0,
     paddingRight: 0,
   },
+  pill: { borderRadius: radius.full },
+  toneMuted: {
+    color: { default: color.mutedForeground, ":hover": color.foreground, ":active": color.foreground },
+  },
+  toneDestructive: {
+    color: { default: color.destructive, ":hover": color.destructive, ":active": color.destructive },
+  },
+  wash: {
+    backgroundColor: {
+      default: "transparent",
+      ":hover": "color-mix(in oklab, var(--muted-foreground) 15%, transparent)",
+      ":active": "color-mix(in oklab, var(--muted-foreground) 15%, transparent)",
+    },
+  },
+  remove: {
+    borderColor: "transparent",
+    backgroundColor: {
+      default: "color-mix(in oklab, black 50%, transparent)",
+      ":hover": "color-mix(in oklab, black 70%, transparent)",
+      ":active": "color-mix(in oklab, black 70%, transparent)",
+    },
+    color: { default: "white", ":hover": "white", ":active": "white" },
+    boxShadow: { default: "none", ":focus-visible": "0 0 0 1px var(--background), 0 0 0 3px var(--ring)" },
+  },
 });
 
 export type ButtonVariant = "default" | "destructive" | "destructive-outline" | "ghost" | "link" | "outline" | "secondary";
@@ -205,6 +230,13 @@ export interface ButtonProps extends Omit<useRender.ComponentProps<"button">, "c
   align?: "center" | "start";
   /** Fixed 28px square. Sidebar trigger. */
   square?: 7;
+  /** Circle. Composer send and dictation. */
+  shape?: "pill";
+  tone?: "muted" | "destructive";
+  /** Quiet hover wash. Add-attachment. */
+  wash?: boolean;
+  /** Dark scrim on an attachment tile. */
+  look?: "remove";
   /** Hook classes such as `aui-*`. Concatenated with the StyleX class, never a utility. */
   marker?: string;
 }
@@ -219,6 +251,10 @@ export function Button({
   fill = false,
   align = "center",
   square,
+  shape,
+  tone,
+  wash = false,
+  look,
   marker,
   disabled: disabledProp,
   ...props
@@ -232,6 +268,11 @@ export function Button({
     muted && styles.muted,
     align === "start" && styles.alignStart,
     square === 7 && styles.square7,
+    shape === "pill" && styles.pill,
+    tone === "muted" && styles.toneMuted,
+    tone === "destructive" && styles.toneDestructive,
+    wash && styles.wash,
+    look === "remove" && styles.remove,
     fill && styles.fill,
   );
   const visual = marker

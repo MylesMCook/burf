@@ -1,10 +1,36 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { motion } from "motion/react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@/lib/utils";
 import { useChart, useChartStable } from "./chart-context";
+
+const paint = stylex.create({
+  s0: {
+    "position": "absolute",
+  },
+  s1: {
+    "whiteSpace": "nowrap",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+  },
+
+  s3: {
+    color: "var(--chart-label)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface BarXAxisProps {
   /** Width of the date ticker box for fade calculation. Default: 50 */
@@ -46,7 +72,7 @@ function BarXAxisLabel({
   // Zero-width container approach for perfect centering
   return (
     <div
-      className="absolute"
+      className={sx(paint.s0)}
       style={{
         left: x,
         bottom: 12,
@@ -57,7 +83,7 @@ function BarXAxisLabel({
     >
       <motion.span
         animate={{ opacity }}
-        className={cn("whitespace-nowrap text-chart-label text-xs")}
+        className={[sx(paint.s1), sx(paint.s3)].filter(Boolean).join(" ")}
         initial={{ opacity: 1 }}
         transition={{ duration: 0.4, ease: "easeInOut" }}
       >
@@ -132,7 +158,7 @@ const BarXAxisInner = memo(function BarXAxisInner({
   const crosshairX = tooltipData ? tooltipData.x + margin.left : null;
 
   return createPortal(
-    <div className="pointer-events-none absolute inset-0">
+    <div className={sx(paint.s2)}>
       {labelsToShow.map((item) => (
         <BarXAxisLabel
           crosshairX={crosshairX}

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowLeftRightIcon, PanelBottomIcon, PanelLeftIcon, PanelRightIcon, PanelTopIcon } from "lucide-react";
 import { createPortal } from "react-dom";
 import { create } from "zustand";
@@ -5,8 +6,141 @@ import { create } from "zustand";
 import { startSession } from "@/lib/actions";
 import { bounds, layout, leaf, leaves, movePane, place, type Rect, type Side, sideAt, swap } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
-import { cn } from "@/lib/utils";
 import { addGroup, bringSession, leadAgent, moveInto, moveTab, paneBeside, paneToTab, splitKey, tabIntoPane, useWorkspaces } from "@/lib/workspaces";
+
+const paint = stylex.create({
+  s0: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "zIndex": 30,
+  },
+  s1: {
+    "position": "absolute",
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "padding": "4px",
+    "transitionDuration": "100ms",
+    "transitionTimingFunction": "cubic-bezier(0, 0, 0.2, 1)",
+  },
+  s2: {
+    "display": "flex",
+    "width": "100%",
+    "height": "100%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 2,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--info) 70%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--info) 14%, transparent)",
+    "boxShadow": "inset 0 0 0 1px var(--background)",
+  },
+  s3: {
+    "display": "flex",
+    "maxWidth": "calc(100%-16px)",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--info) 40%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--background) 95%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": "var(--foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 8%, transparent)",
+  },
+  s4: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--info)",
+  },
+  s5: {
+    "flexShrink": 0,
+    "fontWeight": 500,
+  },
+  s6: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+    "color": "var(--muted-foreground)",
+  },
+  s7: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s8: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "zIndex": 10,
+    "width": "2px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--info)",
+  },
+  s9: {
+    "pointerEvents": "none",
+    "position": "fixed",
+    "zIndex": NaN,
+    "display": "flex",
+    "height": "28px",
+    "maxWidth": "240px",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--popover)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "color": "var(--popover-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
+  },
+  s10: {
+    "opacity": 0.75,
+  },
+  s11: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+
+  s12: {
+    transitionProperty: "left, top, width, height",
+  },
+  s13: {
+    top: 6,
+    bottom: 6,
+    translate: "-50%",
+  },
+  s14: {
+    userSelect: "none",
+    ":not(#\\#) *": {
+      cursor: "grabbing !important",
+    },
+    ":not(#\\#) iframe": {
+      pointerEvents: "none",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Dragging a tab from the strip, or a pane by its header, as in VS Code. Over
 // a pane of the tab showing, the nearest edge splits that pane and the drop
@@ -49,7 +183,7 @@ export const useTabDrag = create<DragState>(() => ({ label: "", x: 0, y: 0 }));
 const THRESHOLD = 5;
 // While dragging, nothing under the pointer (a terminal, a frame) shows its
 // own cursor or takes the pointer.
-const BODY = ["select-none", "[&_*]:cursor-grabbing!", "[&_iframe]:pointer-events-none"];
+const BODY = [sx(paint.s14)];
 
 // armDrag starts watching a press on a tab, a pane header or a sidebar
 // row. Buttons and fields inside it (the tab's ×, a header's actions) never
@@ -251,20 +385,20 @@ export function DropOverlay() {
   if (!dragging) return null;
   const Icon = target ? ICONS[target.side] : undefined;
   return (
-    <div data-berth-overlay="" className="pointer-events-none absolute inset-0 z-30">
+    <div data-berth-overlay="" className={sx(paint.s0)}>
       {target && Icon && (
         <div
-          className="absolute flex items-center justify-center p-1 transition-[left,top,width,height] duration-100 ease-out"
+          className={[sx(paint.s1), sx(paint.s12)].filter(Boolean).join(" ")}
           style={{ left: pct(target.rect.x), top: pct(target.rect.y), width: pct(target.rect.w), height: pct(target.rect.h) }}
         >
-          <div className="flex size-full items-center justify-center rounded-lg border-2 border-info/70 bg-info/14 shadow-[inset_0_0_0_1px_var(--background)]">
-            <span className="flex max-w-[calc(100%-16px)] items-center gap-1.5 rounded-md border border-info/40 bg-background/95 px-2 py-1 text-foreground text-xs shadow-sm">
-              <Icon className="size-3.5 shrink-0 text-info" />
-              <span className="shrink-0 font-medium">{target.label}</span>
-              <span className="flex min-w-0 items-center gap-1 text-muted-foreground">
+          <div className={sx(paint.s2)}>
+            <span className={sx(paint.s3)}>
+              <Icon className={sx(paint.s4)} />
+              <span className={sx(paint.s5)}>{target.label}</span>
+              <span className={sx(paint.s6)}>
                 <span aria-hidden>·</span>
                 {icon}
-                <span className="truncate">{label}</span>
+                <span className={sx(paint.s7)}>{label}</span>
               </span>
             </span>
           </div>
@@ -279,7 +413,7 @@ export function DropOverlay() {
 export function StripMarker() {
   const x = useTabDrag((s) => (s.target?.kind === "strip" || s.target?.kind === "group" ? s.target.x : undefined));
   if (x === undefined) return null;
-  return <span aria-hidden className="pointer-events-none absolute inset-y-1.5 z-10 w-0.5 -translate-x-1/2 rounded-full bg-info" style={{ left: Math.max(1, x) }} />;
+  return <span aria-hidden className={[sx(paint.s8), sx(paint.s13)].filter(Boolean).join(" ")} style={{ left: Math.max(1, x) }} />;
 }
 
 // DragGhost follows the pointer with what is being dragged. Over a pane the
@@ -289,12 +423,12 @@ export function DragGhost() {
   if (!s.source || s.target?.kind === "pane") return null;
   return createPortal(
     <div
-      className={cn("pointer-events-none fixed z-[1000] flex h-7 max-w-60 items-center gap-1.5 rounded-md border bg-popover px-2.5 text-popover-foreground text-xs shadow-lg/10", !s.target && "opacity-75")}
+      className={[sx(paint.s9), !s.target && sx(paint.s10)].filter(Boolean).join(" ")}
       // Near the window's right edge it hangs to the pointer's left instead.
       style={s.x > window.innerWidth - 260 ? { right: window.innerWidth - s.x + 12, top: s.y + 14 } : { left: s.x + 12, top: s.y + 14 }}
     >
       {s.icon}
-      <span className="min-w-0 truncate">{s.label}</span>
+      <span className={sx(paint.s11)}>{s.label}</span>
     </div>,
     document.body,
   );

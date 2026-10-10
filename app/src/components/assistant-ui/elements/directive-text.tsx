@@ -1,7 +1,13 @@
 "use client";
 
 import type { FC } from "react";
+import * as stylex from "@stylexjs/stylex";
+
 import { Badge } from "@/components/ui/badge";
+
+const styles = stylex.create({
+  text: { whiteSpace: "pre-wrap" },
+});
 
 type IconComponent = FC<{ className?: string }>;
 
@@ -46,7 +52,7 @@ export function createDirectiveText(
         {segments.map((seg, i) => {
           if (seg.kind === "text") {
             return (
-              <span key={i} className="whitespace-pre-wrap">
+              <span key={i} {...stylex.props(styles.text)}>
                 {seg.text}
               </span>
             );

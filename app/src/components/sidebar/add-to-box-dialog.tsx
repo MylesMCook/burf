@@ -1,6 +1,7 @@
 import { CheckIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
+import * as stylex from "@stylexjs/stylex";
 
 import { type Option, SimpleSelect } from "@/components/simple-select";
 import { Button } from "@/components/ui/button";
@@ -12,9 +13,30 @@ import type { Location } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import type { Project } from "@/lib/project-groups";
 import { scheduleRefresh, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { boxLoad } from "@/components/sidebar/box-load";
 import { ErrorText } from "@/components/error-note";
+import { color, font, radius } from "@/styles/tokens.stylex";
+
+const styles = stylex.create({
+  empty: { color: color.mutedForeground, fontSize: 14 },
+  mono: { fontFamily: font.mono },
+  log: {
+    maxHeight: 224,
+    minHeight: 96,
+    overflow: "auto",
+    borderRadius: radius.md,
+    backgroundColor: "color-mix(in oklab, var(--muted) 60%, transparent)",
+    padding: 12,
+    fontFamily: font.mono,
+    fontSize: 11,
+    lineHeight: 1.625,
+    whiteSpace: "pre-wrap",
+  },
+  done: { display: "flex", alignItems: "center", gap: 6, fontSize: 14 },
+  check: { width: 16, height: 16, color: color.success },
+  error: { color: "var(--destructive-foreground)", fontSize: 14 },
+  retry: { minWidth: 96, display: "inline-flex" },
+});
 
 // Add to box clones a project's repository onto a box that does not have it
 // yet, with git's progress as it goes. The new copy joins the project by its remote.
@@ -107,7 +129,7 @@ function Body({ project }: { project: Project }) {
       <DialogPanel stack={4}>
         {phase === "form" ? (
           candidates.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Every online box already has {project.name}.</p>
+            <p {...stylex.props(styles.empty)}>Every online box already has {project.name}.</p>
           ) : (
             <>
               <Field>
@@ -118,22 +140,22 @@ function Body({ project }: { project: Project }) {
                 <FieldLabel>Into folder</FieldLabel>
                 <Input value={parent} mono onChange={(e) => setParent(e.target.value)} />
                 <FieldDescription truncate>
-                  Clones <span className="font-mono">{project.remote}</span>
+                  Clones <span {...stylex.props(styles.mono)}>{project.remote}</span>
                 </FieldDescription>
               </Field>
             </>
           )
         ) : (
           <>
-            <pre ref={log} className="max-h-56 min-h-24 overflow-auto rounded-md bg-muted/60 p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap">
+            <pre ref={log} {...stylex.props(styles.log)}>
               {lines.join("\n") || "Starting…"}
             </pre>
             {phase === "done" && (
-              <p className="flex items-center gap-1.5 text-sm">
-                <CheckIcon className="size-4 text-success" /> {project.name} is on {box}.
+              <p {...stylex.props(styles.done)}>
+                <CheckIcon {...stylex.props(styles.check)} /> {project.name} is on {box}.
               </p>
             )}
-            {error && <ErrorText className="text-destructive-foreground text-sm" text={error} />}
+            {error && <div {...stylex.props(styles.error)}><ErrorText text={error} /></div>}
           </>
         )}
       </DialogPanel>
@@ -145,7 +167,7 @@ function Body({ project }: { project: Project }) {
             <DialogClose render={<Button variant="ghost" />} onClick={() => abort.current?.abort()}>
               {busy ? "Stop" : "Cancel"}
             </DialogClose>
-            <span className={cn(phase === "failed" && "min-w-24")}><Button  loading={busy} disabled={!box || !project.remote || candidates.length === 0} onClick={() => void run()}>
+            <span {...stylex.props(phase === "failed" && styles.retry)}><Button loading={busy} disabled={!box || !project.remote || candidates.length === 0} onClick={() => void run()}>
               {phase === "failed" ? "Try again" : `Clone to ${box || "box"}`}
             </Button></span>
           </>

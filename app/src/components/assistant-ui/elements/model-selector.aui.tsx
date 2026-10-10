@@ -2,6 +2,7 @@
 
 import { Tip } from "@/components/tip";
 import { memo, useEffect } from "react";
+import * as stylex from "@stylexjs/stylex";
 import { useAui } from "@assistant-ui/react";
 import {
   ModelSelectorRoot,
@@ -23,7 +24,6 @@ import {
 
 export {
   DEFAULT_EFFORT_OPTIONS,
-  modelSelectorTriggerVariants,
   resolveModelEffort,
   useModelSelectorEfforts,
   ModelSelectorRoot,
@@ -79,12 +79,16 @@ function ModelSelectorModelContext() {
   return null;
 }
 
+const hug = stylex.create({
+  hug: { display: "inline-flex", flexShrink: 0 },
+});
+
 const ModelSelectorImpl = ({
   searchable,
   variant,
   size,
+  shape,
   align,
-  className,
   triggerProps, tooltip, effortLabel, effortDisabled,
   ...rootProps
 }: ModelSelectorProps & { triggerProps?: ModelSelectorTriggerProps; tooltip?: string; effortLabel?: string; effortDisabled?: boolean }) => {
@@ -93,11 +97,11 @@ const ModelSelectorImpl = ({
       <ModelSelectorModelContext />
       {/* The tip's trigger is a span around the picker's own trigger: one
           element cannot be the trigger of both a tooltip and a popup. */}
-      <Tip label={tooltip}><span className="inline-flex shrink-0"><ModelSelectorTrigger
+      <Tip label={tooltip}><span {...stylex.props(hug.hug)}><ModelSelectorTrigger
         {...triggerProps}
         variant={variant}
         size={size}
-        className={className}
+        shape={shape}
       /></span></Tip>
       <ModelSelectorContent
         {...(align !== undefined ? { align } : {})}

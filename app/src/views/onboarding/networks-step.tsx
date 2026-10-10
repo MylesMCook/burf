@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ExternalLinkIcon, NetworkIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -9,8 +10,134 @@ import { laptopApi, type NetworkInfo } from "@/lib/api";
 import { plainError } from "@/lib/errors";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { ErrorText } from "@/components/error-note";
+
+const paint = stylex.create({
+  s0: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "20px",
+    },
+  },
+  s1: {
+    "color": "var(--destructive-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s2: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s3: {
+    "marginBottom": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s5: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s6: {
+    "width": "16px",
+    "height": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s7: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s8: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s9: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s10: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingTop": "20px",
+  },
+  s11: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s12: {
+    "marginTop": "2px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s13: {
+    "marginTop": "12px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s14: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "color": "var(--muted-foreground)",
+  },
+  s15: {
+    "marginTop": "12px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s16: {
+    "marginTop": "8px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s17: {
+    "marginTop": "8px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+
+  s18: {
+    ":not(#\\#) > :not(:last-child)": {
+      borderBottomColor: "color-mix(in oklab, var(--border) 70%, transparent)",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // NetworksStep reaches boxes on a tailnet this computer is not part of, such
 // as a personal one while the Mac is on work's: Burf joins it with its own
@@ -26,24 +153,24 @@ export function NetworksStep({ onPick }: { onPick(network: string): void }) {
   }, [client]);
 
   return (
-    <div className="space-y-5">
-      {error && <ErrorText className="text-destructive-foreground text-sm" text={error} />}
+    <div className={sx(paint.s0)}>
+      {error && <ErrorText className={sx(paint.s1)} text={error} />}
       {networks === undefined && !error ? (
-        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+        <div className={sx(paint.s2)}>
           <Spinner  size="lg"/> Loading…
         </div>
       ) : (
         networks &&
         networks.length > 0 && (
           <div>
-            <div className="mb-2 text-muted-foreground text-xs">Joined</div>
-            <ul className="divide-y divide-border/70 rounded-xl border">
+            <div className={sx(paint.s3)}>Joined</div>
+            <ul className={[sx(paint.s4), sx(paint.s18)].filter(Boolean).join(" ")}>
               {networks.map((n) => (
-                <li key={n.name} className="flex items-center gap-3 px-3.5 py-2.5">
-                  <NetworkIcon className="size-4 text-muted-foreground" />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm">{n.name}</div>
-                    <div className="truncate text-[11px] text-muted-foreground">
+                <li key={n.name} className={sx(paint.s5)}>
+                  <NetworkIcon className={sx(paint.s6)} />
+                  <div className={sx(paint.s7)}>
+                    <div className={sx(paint.s8)}>{n.name}</div>
+                    <div className={sx(paint.s9)}>
                       {n.tailnet ?? n.state}
                       {n.ips?.[0] ? ` · ${n.ips[0]}` : ""}
                     </div>
@@ -97,13 +224,13 @@ function SignIn({ existing, onJoined }: { existing: string[]; onJoined(network: 
   };
 
   return (
-    <div className="border-t pt-5">
-      <div className="text-sm">Sign in to a tailnet</div>
-      <p className="mt-0.5 text-muted-foreground text-xs">Name it however you like; it's how Burf refers to that tailnet. A Tailscale sign-in page opens in your browser.</p>
+    <div className={sx(paint.s10)}>
+      <div className={sx(paint.s11)}>Sign in to a tailnet</div>
+      <p className={sx(paint.s12)}>Name it however you like; it's how Burf refers to that tailnet. A Tailscale sign-in page opens in your browser.</p>
       {state === "waiting" ? (
-        <div className="mt-3 flex items-center gap-3 text-sm">
+        <div className={sx(paint.s13)}>
           <Spinner  size="lg"/>
-          <span className="min-w-0 flex-1 text-muted-foreground">{url ? "Waiting for you to approve the sign-in in your browser…" : "Starting…"}</span>
+          <span className={sx(paint.s14)}>{url ? "Waiting for you to approve the sign-in in your browser…" : "Starting…"}</span>
           {url && (
             <Button size="xs" variant="ghost" onClick={() => void openUrl(url)}>
               <ExternalLinkIcon /> Open again
@@ -122,7 +249,7 @@ function SignIn({ existing, onJoined }: { existing: string[]; onJoined(network: 
         </div>
       ) : (
         <form
-          className="mt-3 flex items-center gap-2"
+          className={sx(paint.s15)}
           onSubmit={(e) => {
             e.preventDefault();
             void start();
@@ -136,8 +263,8 @@ function SignIn({ existing, onJoined }: { existing: string[]; onJoined(network: 
           </Tip>
         </form>
       )}
-      {duplicate && state !== "waiting" && <p className="mt-2 text-destructive-foreground text-xs">Burf already joined a tailnet called {name.trim()}. Browse it above, or pick another name.</p>}
-      {error && <p className={cn("mt-2 text-destructive-foreground text-xs")}>{error}</p>}
+      {duplicate && state !== "waiting" && <p className={sx(paint.s16)}>Burf already joined a tailnet called {name.trim()}. Browse it above, or pick another name.</p>}
+      {error && <p className={sx(paint.s17)}>{error}</p>}
     </div>
   );
 }

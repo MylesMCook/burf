@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { type AgentPreset, type BerthPluginContext, type Project, useStorage } from "@berth/plugin";
 import {
   AgentIcon,
@@ -17,12 +18,307 @@ import {
   Skeleton,
   Spinner,
   Textarea,
-  cn,
 } from "@berth/plugin/ui";
 import { useEffect, useState } from "react";
 
 import * as gh from "./gh";
 import { type Run, loadDetail, runnerOf } from "./store";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s1: {
+    "gap": "6px",
+    "paddingBottom": "12px",
+  },
+  s2: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "16px",
+    "lineHeight": "24px",
+  },
+  s3: {
+    "width": "16px",
+    "height": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "overflow": "hidden",
+    "display": "-webkit-box",
+    "WebkitLineClamp": 2,
+    "WebkitBoxOrient": "vertical",
+    "fontSize": "13px",
+  },
+  s5: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "20px",
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--warning) 30%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 8%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "marginTop": "1px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--warning)",
+  },
+  s8: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s9: {
+    "fontWeight": 500,
+  },
+  s10: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s11: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s12: {
+    "height": "28px",
+    "width": "224px",
+    "borderRadius": "var(--radius-lg)",
+  },
+  s13: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s14: {
+    "display": "block",
+  },
+  s15: {
+    "position": "relative",
+  },
+  s16: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s17: {
+    "position": "absolute",
+    "right": "8px",
+    "width": "14px",
+    "height": "14px",
+  },
+  s18: {
+    "height": "160px",
+    "width": "100%",
+    "borderRadius": "var(--radius-lg)",
+  },
+  s19: {
+    "minHeight": "160px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    ":not(#\\#) textarea": {
+      "maxHeight": "45vh",
+    },
+  },
+  s20: {
+    "minHeight": "128px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s21: {
+    "display": "flex",
+    "flexDirection": "column",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "fontSize": "13px",
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s22: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "10px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s23: {
+    "width": "48px",
+    "flexShrink": 0,
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s24: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s25: {
+    "whiteSpace": "pre-wrap",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 8%, transparent)",
+    "padding": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--destructive)",
+  },
+  s26: {
+    "alignItems": "center",
+    "justifyContent": {
+      "@media (min-width: 640px)": {
+        "default": "space-between",
+      },
+    },
+  },
+  s27: {
+    "display": {
+      "default": "none",
+      "@media (min-width: 640px)": {
+        "default": "flex",
+      },
+    },
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "alignItems": {
+      "@media (min-width: 640px)": {
+        "default": "center",
+      },
+    },
+    "gap": {
+      "@media (min-width: 640px)": {
+        "default": "6px",
+      },
+    },
+  },
+  s28: {
+    "display": "flex",
+    "gap": "8px",
+  },
+  s29: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s30: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s31: {
+    "marginLeft": "4px",
+    "height": "18px",
+    "backgroundColor": "color-mix(in oklab, var(--primary-foreground) 15%, transparent)",
+    "fontSize": "10px",
+    "color": "var(--primary-foreground)",
+  },
+  s32: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "6px",
+  },
+  s33: {
+    "fontWeight": 500,
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s34: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s35: {
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--muted)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s36: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+  },
+  s37: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s38: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--success)",
+  },
+  s39: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s40: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--destructive)",
+  },
+  s41: {
+    "maxWidth": "45%",
+    "flexShrink": 0,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+  },
+  s42: {
+    "color": "var(--destructive)",
+  },
+  s43: {
+    "color": "var(--muted-foreground)",
+  },
+  s44: {
+    "fontFamily": "var(--font-mono)",
+  },
+  q46: {
+    "top": "50%",
+    "transform": "translateY(-50%)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The sheet behind "Start an agent": for one issue, a worktree named by the
 // box's resolver, a box, an agent and the first prompt, all editable; for
@@ -53,7 +349,7 @@ export function StartSheet({ berth, targets, onClose, onStarted }: { berth: Bert
   const open = targets.length > 0;
   return (
     <Sheet open={open} onOpenChange={(o: boolean) => !o && onClose()}>
-      <SheetPopup side="right" className="max-w-lg">
+      <SheetPopup side="right" width="lg">
         {open && <StartForm key={targets.map((t) => `${t.repo}#${t.number}`).join(",")} berth={berth} targets={targets} onClose={onClose} onStarted={onStarted} />}
       </SheetPopup>
     </Sheet>
@@ -233,20 +529,20 @@ function StartForm({ berth, targets, onClose, onStarted }: { berth: BerthPluginC
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col" onKeyDown={onKeyDown}>
-      <SheetHeader className="gap-1.5 pb-3">
-        <SheetTitle className="flex items-center gap-2 text-base">
-          <Icon name="Bot" className="size-4 text-muted-foreground" />
+    <div className={sx(paint.s0)} onKeyDown={onKeyDown}>
+      <SheetHeader className={sx(paint.s1)}>
+        <SheetTitle className={sx(paint.s2)}>
+          <Icon name="Bot" className={sx(paint.s3)} />
           {single ? `Start an agent on #${single.number}` : `Start ${targets.length} agents`}
         </SheetTitle>
-        <SheetDescription className="line-clamp-2 text-[13px]">{single ? single.title : project ? `One worktree and agent per issue in ${project.name}, one after another.` : "One worktree and agent per issue, each on its project's default box."}</SheetDescription>
+        <SheetDescription className={sx(paint.s4)}>{single ? single.title : project ? `One worktree and agent per issue in ${project.name}, one after another.` : "One worktree and agent per issue, each on its project's default box."}</SheetDescription>
       </SheetHeader>
-      <SheetPanel className="flex flex-col gap-5">
+      <SheetPanel className={sx(paint.s5)}>
         {single && single.runs.length > 0 && (
-          <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/8 px-3 py-2 text-xs">
-            <Icon name="TriangleAlert" className="mt-px size-3.5 shrink-0 text-warning" />
-            <span className="min-w-0 flex-1">
-              <b className="font-medium">{single.runs[0].worktree}</b> on {single.runs[0].box} is already for this issue. This makes another worktree beside it.
+          <div className={sx(paint.s6)}>
+            <Icon name="TriangleAlert" className={sx(paint.s7)} />
+            <span className={sx(paint.s8)}>
+              <b className={sx(paint.s9)}>{single.runs[0].worktree}</b> on {single.runs[0].box} is already for this issue. This makes another worktree beside it.
             </span>
           </div>
         )}
@@ -257,7 +553,7 @@ function StartForm({ berth, targets, onClose, onStarted }: { berth: BerthPluginC
               label="Box"
               value={box}
               onChange={setBox}
-              options={online.map((m) => ({ value: m.box, label: m.box, icon: <Icon name="Server" className="size-3.5" /> }))}
+              options={online.map((m) => ({ value: m.box, label: m.box, icon: <Icon name="Server" className={sx(paint.s10)} /> }))}
             />
           </Field>
         )}
@@ -267,10 +563,10 @@ function StartForm({ berth, targets, onClose, onStarted }: { berth: BerthPluginC
             presets.length ? (
               <AgentPicker presets={presets} value={agent} onChange={(id: string) => !steps && setAgent(id)} />
             ) : (
-              <p className="text-muted-foreground text-xs">{infoBox} has no agents installed.</p>
+              <p className={sx(paint.s11)}>{infoBox} has no agents installed.</p>
             )
           ) : (
-            <Skeleton className="h-7 w-56 rounded-lg" />
+            <Skeleton className={sx(paint.s12)} />
           )}
         </Field>
 
@@ -280,19 +576,19 @@ function StartForm({ berth, targets, onClose, onStarted }: { berth: BerthPluginC
             hint={
               resolution ? (
                 <>
-                  Branch <span className="font-mono">{nameEdited ? name.trim() : resolution.branch}</span>
+                  Branch <span className={sx(paint.s13)}>{nameEdited ? name.trim() : resolution.branch}</span>
                   {resolution.exists && !nameEdited ? ", which already exists: the worktree checks it out." : ` from ${resolution.base || member?.location.default_branch || "the default branch"}.`}
-                  {resolution.note && <span className="block">{resolution.note}</span>}
+                  {resolution.note && <span className={sx(paint.s14)}>{resolution.note}</span>}
                 </>
               ) : (
                 "Asking the box what to call it…"
               )
             }
           >
-            <div className="relative">
+            <div className={sx(paint.s15)}>
               <Input
                 size="sm"
-                className="font-mono"
+                className={sx(paint.s16)}
                 value={name}
                 disabled={!resolution}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -300,7 +596,7 @@ function StartForm({ berth, targets, onClose, onStarted }: { berth: BerthPluginC
                   setNameEdited(true);
                 }}
               />
-              {!resolution && <Spinner className="absolute top-1/2 right-2 size-3.5 -translate-y-1/2" />}
+              {!resolution && <Spinner className={[sx(paint.s17), sx(paint.q46)].filter(Boolean).join(" ")} />}
             </div>
           </Field>
         )}
@@ -317,10 +613,10 @@ function StartForm({ berth, targets, onClose, onStarted }: { berth: BerthPluginC
         >
           {single ? (
             prompt === undefined ? (
-              <Skeleton className="h-40 w-full rounded-lg" />
+              <Skeleton className={sx(paint.s18)} />
             ) : (
               <Textarea
-                className="min-h-40 font-mono text-xs [&_textarea]:max-h-[45vh]"
+                className={sx(paint.s19)}
                 value={prompt}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                   setPrompt(e.target.value);
@@ -329,38 +625,38 @@ function StartForm({ berth, targets, onClose, onStarted }: { berth: BerthPluginC
               />
             )
           ) : (
-            <Textarea className="min-h-32 font-mono text-xs" disabled={!!steps} value={template} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setTemplate(e.target.value)} />
+            <Textarea className={sx(paint.s20)} disabled={!!steps} value={template} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setTemplate(e.target.value)} />
           )}
         </Field>
 
         {!single && (
-          <ol className="flex flex-col divide-y rounded-lg border text-[13px]">
+          <ol className={sx(paint.s21)}>
             {targets.map((t, i) => (
-              <li key={`${t.repo}#${t.number}`} className="flex items-center gap-2.5 px-3 py-2">
+              <li key={`${t.repo}#${t.number}`} className={sx(paint.s22)}>
                 <StepIcon step={steps?.[i]} />
-                <span className="w-12 shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums">#{t.number}</span>
-                <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                <span className={sx(paint.s23)}>#{t.number}</span>
+                <span className={sx(paint.s24)}>{t.title}</span>
                 <StepNote step={steps?.[i]} pending={!steps && t.runs.length ? `has ${t.runs[0].worktree}` : undefined} />
               </li>
             ))}
           </ol>
         )}
 
-        {error && <pre className="whitespace-pre-wrap rounded-md bg-destructive/8 p-2 font-mono text-[11px] text-destructive">{error}</pre>}
+        {error && <pre className={sx(paint.s25)}>{error}</pre>}
       </SheetPanel>
-      <SheetFooter className="items-center sm:justify-between">
-        <span className="hidden text-muted-foreground text-xs sm:flex sm:items-center sm:gap-1.5">
+      <SheetFooter className={sx(paint.s26)}>
+        <span className={sx(paint.s27)}>
           {finished ? summary(steps!) : agent && <><AgentIcon agent={agent} /> {single ? `${agentName} opens in a new tab` : `${agentName} on each, one at a time`}</>}
         </span>
-        <div className="flex gap-2">
+        <div className={sx(paint.s28)}>
           <Button variant="ghost" size="sm" onClick={onClose}>
             {finished ? "Close" : "Cancel"}
           </Button>
           {!finished && (
             <Button size="sm" onClick={() => void start()} disabled={!ready}>
-              {busy ? <Spinner className="size-3.5" /> : <Icon name="Play" className="size-3.5" />}
+              {busy ? <Spinner className={sx(paint.s29)} /> : <Icon name="Play" className={sx(paint.s30)} />}
               {single ? "Start agent" : `Start ${targets.length}`}
-              <Kbd className="ml-1 h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground">⌘↵</Kbd>
+              <Kbd className={sx(paint.s31)}>⌘↵</Kbd>
             </Button>
           )}
         </div>
@@ -371,28 +667,28 @@ function StartForm({ berth, targets, onClose, onStarted }: { berth: BerthPluginC
 
 function Field({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="font-medium text-xs">{label}</span>
+    <div className={sx(paint.s32)}>
+      <span className={sx(paint.s33)}>{label}</span>
       {children}
-      {hint && <span className="text-muted-foreground text-xs">{hint}</span>}
+      {hint && <span className={sx(paint.s34)}>{hint}</span>}
     </div>
   );
 }
 
-const Code = ({ children }: { children: React.ReactNode }) => <code className="rounded bg-muted px-1 font-mono text-[11px]">{children}</code>;
+const Code = ({ children }: { children: React.ReactNode }) => <code className={sx(paint.s35)}>{children}</code>;
 
 function StepIcon({ step }: { step?: Step }) {
-  if (!step || step.state === "waiting") return <Icon name="Circle" className="size-3.5 shrink-0 text-muted-foreground/50" />;
-  if (step.state === "working") return <Spinner className="size-3.5 shrink-0" />;
-  if (step.state === "started") return <Icon name="CircleCheck" className="size-3.5 shrink-0 text-success" />;
-  if (step.state === "skipped") return <Icon name="CircleMinus" className="size-3.5 shrink-0 text-muted-foreground" />;
-  return <Icon name="CircleX" className="size-3.5 shrink-0 text-destructive" />;
+  if (!step || step.state === "waiting") return <Icon name="Circle" className={sx(paint.s36)} />;
+  if (step.state === "working") return <Spinner className={sx(paint.s37)} />;
+  if (step.state === "started") return <Icon name="CircleCheck" className={sx(paint.s38)} />;
+  if (step.state === "skipped") return <Icon name="CircleMinus" className={sx(paint.s39)} />;
+  return <Icon name="CircleX" className={sx(paint.s40)} />;
 }
 
 function StepNote({ step, pending }: { step?: Step; pending?: string }) {
   const text = !step ? pending : step.state === "working" ? step.what : step.state === "started" ? step.worktree : step.state === "skipped" || step.state === "failed" ? step.why : undefined;
   if (!text) return null;
-  return <span className={cn("max-w-[45%] shrink-0 truncate text-[11px]", step?.state === "failed" ? "text-destructive" : "text-muted-foreground", step?.state === "started" && "font-mono")} title={text}>{text}</span>;
+  return <span className={[sx(paint.s41), step?.state === "failed" ? sx(paint.s42) : sx(paint.s43), step?.state === "started" && sx(paint.s44)].filter(Boolean).join(" ")} title={text}>{text}</span>;
 }
 
 function summary(steps: Step[]) {

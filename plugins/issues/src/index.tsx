@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { type Project, type ScreenProps, type Session, definePlugin, useCurrentWorktree, useProjects, useSessions, useStorage } from "@berth/plugin";
 import {
   Button,
@@ -24,7 +25,6 @@ import {
   TooltipPopup,
   TooltipTrigger,
   ViewHeader,
-  cn,
 } from "@berth/plugin/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -32,6 +32,551 @@ import { Avatar, Detail, LabelChip, PrIcon, Problem, type Row, StatePill } from 
 import * as gh from "./gh";
 import { StartSheet, type Target } from "./start-sheet";
 import { type Run, askRefresh, isGitHubProject, listOf, loadList, refreshCount, runnerOf, runsByIssue, useIssuesStore } from "./store";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s1: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s2: {
+    "marginBottom": "8px",
+    "width": "24px",
+    "height": "24px",
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "display": "flex",
+    "flexShrink": 0,
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s4: {
+    "position": "relative",
+  },
+  s5: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "left": "8px",
+    "zIndex": 10,
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s6: {
+    "width": "208px",
+    ":not(#\\#) input": {
+      "paddingLeft": "28px",
+    },
+  },
+  s7: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "right": "6px",
+    "height": "18px",
+    "fontSize": "10px",
+  },
+  s8: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s9: {
+    "fontSize": "11px",
+  },
+  s10: {
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+  },
+  s11: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s12: {
+    "display": "flex",
+    "flexShrink": 0,
+    "flexWrap": "wrap",
+    "columnGap": "16px",
+    "rowGap": "4px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 30%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s13: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s14: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s15: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s16: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s17: {
+    "display": "flex",
+    "width": "25rem",
+    "flexShrink": 0,
+    "flexDirection": "column",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+  },
+  s18: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+    "padding": "8px",
+  },
+  s19: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "padding": "4px",
+  },
+  s20: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+  },
+  s21: {
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s22: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "32px",
+    "paddingBottom": "32px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s23: {
+    "marginLeft": "4px",
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+    "textDecoration": {
+      ":hover": "underline",
+    },
+  },
+  s24: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s25: {
+    "fontWeight": 500,
+  },
+  s26: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  s27: {
+    "marginLeft": "auto",
+  },
+  s28: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s29: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "10px",
+    "overflow": "hidden",
+    "whiteSpace": "nowrap",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s30: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s31: {
+    "height": "16px",
+    "minWidth": "16px",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontSize": "10px",
+  },
+  s32: {
+    "marginLeft": "auto",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s33: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+  },
+  s34: {
+    "display": "grid",
+    "height": "100%",
+    "placeItems": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s35: {
+    "display": "flex",
+    "width": "100%",
+    "cursor": "default",
+    "gap": "10px",
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "left",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    },
+  },
+  s36: {
+    "backgroundColor": {
+      "default": "var(--accent)",
+      ":hover": "var(--accent)",
+    },
+  },
+  s37: {
+    "position": "relative",
+    "marginTop": "3px",
+    "display": "grid",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "placeItems": "center",
+  },
+  s38: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--success)",
+  },
+  s39: {
+    "display": "none",
+  },
+  s40: {
+    ":is(.group:hover &)": {
+      "display": "none",
+    },
+  },
+  s41: {
+    "display": "none",
+  },
+  s42: {
+    "display": "flex",
+  },
+  s43: {
+    ":is(.group:hover &)": {
+      "display": "flex",
+    },
+  },
+  s44: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "gap": "4px",
+  },
+  s45: {
+    "overflow": "hidden",
+    "display": "-webkit-box",
+    "WebkitLineClamp": 2,
+    "WebkitBoxOrient": "vertical",
+    "fontWeight": 500,
+    "fontSize": "13px",
+    "lineHeight": "1.375",
+  },
+  s46: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s47: {
+    "flexShrink": 0,
+    "fontFamily": "var(--font-mono)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s48: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s49: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+    "overflow": "hidden",
+  },
+  s50: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": {
+      "default": "var(--background)",
+      ":hover": "var(--accent)",
+    },
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+  },
+  s51: {
+    "maxWidth": "112px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s52: {
+    "flexShrink": 0,
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s53: {
+    "display": "flex",
+    "flexShrink": 0,
+    "flexDirection": "column",
+    "alignItems": "flex-end",
+    "gap": "6px",
+    "paddingTop": "1px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s54: {
+    "display": "flex",
+  },
+  s55: {
+    "width": "16px",
+    "height": "16px",
+    "fontSize": "8px",
+    "boxShadow": "0 0 0 2px var(--background)",
+  },
+  s56: {
+    "boxShadow": "0 0 0 2px color-mix(in oklab, var(--primary) 60%, transparent)",
+  },
+  s57: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s58: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  s59: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "2px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s60: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s61: {
+    "display": "flex",
+    "gap": "10px",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s62: {
+    "marginTop": "2px",
+    "width": "14px",
+    "height": "14px",
+    "borderRadius": "999px",
+  },
+  s63: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "gap": "6px",
+  },
+  s64: {
+    "height": "14px",
+  },
+  s65: {
+    "height": "12px",
+  },
+  s66: {
+    "maxWidth": "224px",
+  },
+  s67: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s68: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s69: {
+    "width": "12px",
+    "height": "12px",
+    "opacity": 0.6,
+  },
+  s70: {
+    "minWidth": "224px",
+  },
+  s71: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s72: {
+    "marginLeft": "auto",
+    "width": "14px",
+    "height": "14px",
+  },
+  s73: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s74: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+  },
+  s75: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s76: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s77: {
+    "marginLeft": "auto",
+    "width": "14px",
+    "height": "14px",
+  },
+  s78: {
+    "color": "var(--muted-foreground)",
+  },
+  s79: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s80: {
+    "marginLeft": "auto",
+    "width": "14px",
+    "height": "14px",
+  },
+  q81: {
+    "width": {
+      "@media (max-width: 1279px)": {
+        "default": "21rem",
+      },
+    },
+  },
+  q82: {
+    "top": "50%",
+    "transform": "translateY(-50%)",
+  },
+  q83: {
+    "top": "50%",
+    "transform": "translateY(-50%)",
+  },
+  q84: {
+    "width": "80%",
+  },
+  q85: {
+    "width": "40%",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Issues: the open GitHub issues of a project (or of every project), read
 // with gh on the project's box, and an agent on any of them in one step: a
@@ -194,7 +739,7 @@ function IssuesScreen({ berth }: ScreenProps) {
   const busyRuns = useMemo(() => [...runs.values()].filter((rs) => rs[0]?.session && rs[0].session.agent_state !== "finished").length, [runs]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className={sx(paint.s0)}>
       {boxes.map((b) => (
         <SessionFeed key={b} box={b} onSessions={onSessions} />
       ))}
@@ -206,7 +751,7 @@ function IssuesScreen({ berth }: ScreenProps) {
             <ProjectPicker projects={projects} scope={scope} onChange={(id) => (setStored(id), setChecked(new Set()))} />
             <Tooltip>
               <TooltipTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Refresh" onClick={refresh} disabled={!shown.length} />}>
-                <Icon name="RefreshCw" className={cn("size-3.5", loading && shown.length > 0 && "animate-spin")} />
+                <Icon name="RefreshCw" className={[sx(paint.s1), loading && shown.length > 0 && "burf-spin"].filter(Boolean).join(" ")} />
               </TooltipTrigger>
               <TooltipPopup>Refresh</TooltipPopup>
             </Tooltip>
@@ -217,25 +762,25 @@ function IssuesScreen({ berth }: ScreenProps) {
       {projects.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <Icon name="CircleDot" className="mb-2 size-6 text-muted-foreground" />
+            <Icon name="CircleDot" className={sx(paint.s2)} />
             <EmptyTitle>No GitHub projects yet</EmptyTitle>
             <EmptyDescription>Add a repository whose origin is on GitHub to a box, and its open issues show up here.</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
         <>
-          <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2">
-            <div className="relative">
-              <Icon name="Search" className="pointer-events-none absolute top-1/2 left-2 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <div className={sx(paint.s3)}>
+            <div className={sx(paint.s4)}>
+              <Icon name="Search" className={[sx(paint.s5), sx(paint.q82)].filter(Boolean).join(" ")} />
               <Input
                 ref={search}
                 size="sm"
-                className="w-52 [&_input]:pl-7"
+                className={sx(paint.s6)}
                 placeholder="Search issues"
                 value={query}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
               />
-              {!query && <Kbd className="pointer-events-none absolute top-1/2 right-1.5 h-4.5 -translate-y-1/2 text-[10px]">/</Kbd>}
+              {!query && <Kbd className={[sx(paint.s7), sx(paint.q83)].filter(Boolean).join(" ")}>/</Kbd>}
             </div>
             <PickOne
               label="Assignee"
@@ -250,48 +795,48 @@ function IssuesScreen({ berth }: ScreenProps) {
             <SortMenu sort={sort} onChange={setSort} />
             {/* The labels wrap rather than scroll out of sight: a hidden
                 scrollbar cut the last ones off with no sign of more. */}
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+            <div className={sx(paint.s8)}>
               {labelCounts.slice(0, 10).map((l) => (
-                <FilterChip key={l.name} className="text-[11px]" pressed={labels.includes(l.name)} onPressedChange={(on: boolean) => setLabels((ls) => (on ? [...ls, l.name] : ls.filter((x) => x !== l.name)))}>
-                  <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: `#${l.color}` }} />
-                  <span className="truncate">{l.name}</span>
+                <FilterChip key={l.name} className={sx(paint.s9)} pressed={labels.includes(l.name)} onPressedChange={(on: boolean) => setLabels((ls) => (on ? [...ls, l.name] : ls.filter((x) => x !== l.name)))}>
+                  <span className={sx(paint.s10)} style={{ backgroundColor: `#${l.color}` }} />
+                  <span className={sx(paint.s11)}>{l.name}</span>
                 </FilterChip>
               ))}
             </div>
           </div>
 
           {problems.length > 0 && scope === ALL && rows.length > 0 && (
-            <div className="flex shrink-0 flex-wrap gap-x-4 gap-y-1 border-b bg-muted/30 px-4 py-1.5 text-muted-foreground text-xs">
+            <div className={sx(paint.s12)}>
               {problems.map(({ project, load }) => (
-                <span key={project.id} className="inline-flex items-center gap-1.5">
-                  <Icon name="Info" className="size-3" />
-                  <b className="font-medium text-foreground">{project.name}</b> {problemShort(load.problem)}
+                <span key={project.id} className={sx(paint.s13)}>
+                  <Icon name="Info" className={sx(paint.s14)} />
+                  <b className={sx(paint.s15)}>{project.name}</b> {problemShort(load.problem)}
                 </span>
               ))}
             </div>
           )}
 
-          <div className="flex min-h-0 flex-1">
-            <aside className="flex w-[25rem] shrink-0 flex-col border-r max-xl:w-[21rem]">
-              <ul className="min-h-0 flex-1 overflow-y-auto p-2" aria-label="Open issues">
+          <div className={sx(paint.s16)}>
+            <aside className={[sx(paint.s17), sx(paint.q81)].filter(Boolean).join(" ")}>
+              <ul className={sx(paint.s18)} aria-label="Open issues">
                 {rows.length === 0 && loading ? (
                   Array.from({ length: 7 }, (_, i) => <RowSkeleton key={i} />)
                 ) : rows.length === 0 && problems.length > 0 ? (
-                  <div className="flex flex-col gap-2 p-1">
+                  <div className={sx(paint.s19)}>
                     {problems.map(({ project, load }) => (
-                      <div key={project.id} className="flex flex-col gap-1">
-                        {scope === ALL && <span className="px-1 font-medium text-[11px] text-muted-foreground">{project.name}</span>}
+                      <div key={project.id} className={sx(paint.s20)}>
+                        {scope === ALL && <span className={sx(paint.s21)}>{project.name}</span>}
                         <Problem problem={load.problem} box={runnerOf(project)?.box} />
                       </div>
                     ))}
                   </div>
                 ) : filtered.length === 0 ? (
-                  <p className="px-3 py-8 text-center text-muted-foreground text-xs">
+                  <p className={sx(paint.s22)}>
                     {rows.length === 0 ? "No open issues. Nice." : "No issues match."}
                     {rows.length > 0 && (
                       <button
                         type="button"
-                        className="ml-1 font-medium text-foreground hover:underline"
+                        className={sx(paint.s23)}
                         onClick={() => {
                           setQuery("");
                           setLabels([]);
@@ -321,18 +866,18 @@ function IssuesScreen({ berth }: ScreenProps) {
                 )}
               </ul>
               {checkedRows.length > 0 ? (
-                <footer className="flex shrink-0 items-center gap-2 border-t bg-muted/40 px-3 py-2 text-xs">
-                  <span className="font-medium">{checkedRows.length} selected</span>
-                  <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => setChecked(new Set())}>
+                <footer className={sx(paint.s24)}>
+                  <span className={sx(paint.s25)}>{checkedRows.length} selected</span>
+                  <button type="button" className={sx(paint.s26)} onClick={() => setChecked(new Set())}>
                     Clear
                   </button>
-                  <Button size="xs" className="ml-auto" onClick={() => startOn(checkedRows)}>
-                    <Icon name="Bot" className="size-3.5" />
+                  <Button size="xs" className={sx(paint.s27)} onClick={() => startOn(checkedRows)}>
+                    <Icon name="Bot" className={sx(paint.s28)} />
                     Start {checkedRows.length} agent{checkedRows.length === 1 ? "" : "s"}
                   </Button>
                 </footer>
               ) : (
-                <footer className="flex shrink-0 items-center gap-2.5 overflow-hidden whitespace-nowrap border-t px-3 py-2 text-[11px] text-muted-foreground">
+                <footer className={sx(paint.s29)}>
                   {(
                     [
                       ["J K", "move"],
@@ -341,27 +886,27 @@ function IssuesScreen({ berth }: ScreenProps) {
                       ["O", "GitHub"],
                     ] as const
                   ).map(([k, label]) => (
-                    <span key={label} className="inline-flex items-center gap-1">
+                    <span key={label} className={sx(paint.s30)}>
                       {k.split(" ").map((x) => (
-                        <Kbd key={x} className="h-4 min-w-4 px-1 text-[10px]">
+                        <Kbd key={x} className={sx(paint.s31)}>
                           {x}
                         </Kbd>
                       ))}
                       {label}
                     </span>
                   ))}
-                  <span className="ml-auto tabular-nums">
+                  <span className={sx(paint.s32)}>
                     {filtered.length === rows.length ? `${rows.length}` : `${filtered.length} of ${rows.length}`}
                     {total > rows.length ? ` · ${total} open` : ""}
                   </span>
                 </footer>
               )}
             </aside>
-            <section className="min-w-0 flex-1 overflow-y-auto">
+            <section className={sx(paint.s33)}>
               {selected ? (
                 <Detail key={selected.key} berth={berth} row={selected} runs={runs.get(selected.key) ?? []} viewer={viewer} onStart={() => startOn([selected])} />
               ) : (
-                <div className="grid h-full place-items-center text-muted-foreground text-xs">{loading ? "" : "Pick an issue to read it."}</div>
+                <div className={sx(paint.s34)}>{loading ? "" : "Pick an issue to read it."}</div>
               )}
             </section>
           </div>
@@ -413,67 +958,64 @@ function IssueRow({
         onClick={onSelect}
         onKeyDown={undefined}
         aria-current={active || undefined}
-        className={cn(
-          "group flex w-full cursor-default gap-2.5 rounded-lg px-2.5 py-2 text-left outline-none hover:bg-accent/50",
-          active && "bg-accent hover:bg-accent",
-        )}
+        className={[[sx(paint.s35), "group"].filter(Boolean).join(" "), active && sx(paint.s36)].filter(Boolean).join(" ")}
       >
-        <span className="relative mt-[3px] grid size-4 shrink-0 place-items-center">
-          <Icon name="CircleDot" className={cn("size-3.5 text-success", (selecting || checked) && "hidden", "group-hover:hidden")} />
+        <span className={sx(paint.s37)}>
+          <Icon name="CircleDot" className={[sx(paint.s38), (selecting || checked) && sx(paint.s39), sx(paint.s40)].filter(Boolean).join(" ")} />
           {/* biome-ignore lint/a11y/noStaticElementInteractions: stops the row's click. */}
-          <span className={cn("hidden", (selecting || checked) && "flex", "group-hover:flex")} onClick={(e) => e.stopPropagation()} onKeyDown={undefined}>
+          <span className={[sx(paint.s41), (selecting || checked) && sx(paint.s42), sx(paint.s43)].filter(Boolean).join(" ")} onClick={(e) => e.stopPropagation()} onKeyDown={undefined}>
             <Checkbox checked={checked} onCheckedChange={onCheck} aria-label={`Select #${row.number}`} />
           </span>
         </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="line-clamp-2 font-medium text-[13px] leading-snug">{row.title}</span>
-          <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="shrink-0 font-mono tabular-nums">{showRepo ? `${row.repo.split("/")[1]}#${row.number}` : `#${row.number}`}</span>
-            <span className="truncate">
+        <span className={sx(paint.s44)}>
+          <span className={sx(paint.s45)}>{row.title}</span>
+          <span className={sx(paint.s46)}>
+            <span className={sx(paint.s47)}>{showRepo ? `${row.repo.split("/")[1]}#${row.number}` : `#${row.number}`}</span>
+            <span className={sx(paint.s48)}>
               · {gh.since(row.updatedAt)} · {row.author ?? "ghost"}
             </span>
           </span>
           {(row.labels.length > 0 || run) && (
-            <span className="flex min-w-0 items-center gap-1 overflow-hidden">
+            <span className={sx(paint.s49)}>
               {run && (
                 // biome-ignore lint/a11y/useKeyWithClickEvents: the issue's own keys reach it.
                 <Tip label={`${run.worktree} on ${run.box}: open it`}>
                   <span
-                    className="inline-flex shrink-0 items-center gap-1 rounded-full border bg-background px-1.5 py-px hover:bg-accent"
+                    className={sx(paint.s50)}
                     onClick={(e) => {
                       e.stopPropagation();
                       onOpenRun(run);
                     }}
                   >
                     <StatePill run={run} compact />
-                    <span className="max-w-28 truncate text-[11px] text-muted-foreground">{run.session ? run.box : run.worktree}</span>
+                    <span className={sx(paint.s51)}>{run.session ? run.box : run.worktree}</span>
                   </span>
                 </Tip>
               )}
               {row.labels.slice(0, 3).map((l) => (
                 <LabelChip key={l.name} label={l} />
               ))}
-              {row.labels.length > 3 && <span className="shrink-0 text-[10px] text-muted-foreground">+{row.labels.length - 3}</span>}
+              {row.labels.length > 3 && <span className={sx(paint.s52)}>+{row.labels.length - 3}</span>}
             </span>
           )}
         </span>
-        <span className="flex shrink-0 flex-col items-end gap-1.5 pt-px text-[11px] text-muted-foreground">
-          <span className="flex -space-x-1">
+        <span className={sx(paint.s53)}>
+          <span className={[sx(paint.s54), "-space-x-1"].filter(Boolean).join(" ")}>
             {row.assignees.slice(0, 2).map((a) => (
-              <Avatar key={a} login={a} className={cn("size-4 text-[8px] ring-2 ring-background", a === viewer && "ring-primary/60")} />
+              <Avatar key={a} login={a} className={[sx(paint.s55), a === viewer && sx(paint.s56)].filter(Boolean).join(" ")} />
             ))}
           </span>
-          <span className="flex items-center gap-2">
+          <span className={sx(paint.s57)}>
             {openPR && (
               <Tip label={`#${openPR.number} ${openPR.state.toLowerCase()}`}>
-                <span role="img" aria-label={`Pull request #${openPR.number} ${openPR.state.toLowerCase()}`} className="inline-flex items-center gap-0.5">
+                <span role="img" aria-label={`Pull request #${openPR.number} ${openPR.state.toLowerCase()}`} className={sx(paint.s58)}>
                   <PrIcon pr={openPR} />
                 </span>
               </Tip>
             )}
             {row.comments > 0 && (
-              <span className="inline-flex items-center gap-0.5 tabular-nums">
-                <Icon name="MessageSquare" className="size-3" />
+              <span className={sx(paint.s59)}>
+                <Icon name="MessageSquare" className={sx(paint.s60)} />
                 {row.comments}
               </span>
             )}
@@ -486,11 +1028,11 @@ function IssueRow({
 
 function RowSkeleton() {
   return (
-    <li className="flex gap-2.5 px-2.5 py-2.5">
-      <Skeleton className="mt-0.5 size-3.5 rounded-full" />
-      <div className="flex flex-1 flex-col gap-1.5">
-        <Skeleton className="h-3.5 w-4/5" />
-        <Skeleton className="h-3 w-2/5" />
+    <li className={sx(paint.s61)}>
+      <Skeleton className={sx(paint.s62)} />
+      <div className={sx(paint.s63)}>
+        <Skeleton className={[sx(paint.s64), sx(paint.q84)].filter(Boolean).join(" ")} />
+        <Skeleton className={[sx(paint.s65), sx(paint.q85)].filter(Boolean).join(" ")} />
       </div>
     </li>
   );
@@ -501,28 +1043,28 @@ function ProjectPicker({ projects, scope, onChange }: { projects: Project[]; sco
   if (projects.length === 0) return null;
   return (
     <Menu>
-      <MenuTrigger render={<Button size="sm" variant="outline" className="max-w-56" />}>
-        <Icon name={current ? "FolderGit2" : "Layers"} className="size-3.5" />
-        <span className="truncate">{current ? current.name : "All projects"}</span>
-        <Icon name="ChevronsUpDown" className="size-3 opacity-60" />
+      <MenuTrigger render={<Button size="sm" variant="outline" className={sx(paint.s66)} />}>
+        <Icon name={current ? "FolderGit2" : "Layers"} className={sx(paint.s67)} />
+        <span className={sx(paint.s68)}>{current ? current.name : "All projects"}</span>
+        <Icon name="ChevronsUpDown" className={sx(paint.s69)} />
       </MenuTrigger>
-      <MenuPopup align="end" className="min-w-56">
+      <MenuPopup align="end" className={sx(paint.s70)}>
         <MenuItem onClick={() => onChange(ALL)}>
-          <Icon name="Layers" className="size-3.5" />
+          <Icon name="Layers" className={sx(paint.s71)} />
           All projects
-          {scope === ALL && <Icon name="Check" className="ml-auto size-3.5" />}
+          {scope === ALL && <Icon name="Check" className={sx(paint.s72)} />}
         </MenuItem>
         <MenuSeparator />
         <MenuGroup>
           <MenuGroupLabel>Projects on GitHub</MenuGroupLabel>
           {projects.map((p) => (
             <MenuItem key={p.id} onClick={() => onChange(p.id)}>
-              <Icon name="FolderGit2" className="size-3.5" />
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate">{p.name}</span>
-                <span className="truncate text-[11px] text-muted-foreground">{p.slug}</span>
+              <Icon name="FolderGit2" className={sx(paint.s73)} />
+              <span className={sx(paint.s74)}>
+                <span className={sx(paint.s75)}>{p.name}</span>
+                <span className={sx(paint.s76)}>{p.slug}</span>
               </span>
-              {scope === p.id && <Icon name="Check" className="ml-auto size-3.5" />}
+              {scope === p.id && <Icon name="Check" className={sx(paint.s77)} />}
             </MenuItem>
           ))}
         </MenuGroup>
@@ -536,15 +1078,15 @@ const SORTS: Record<Sort, string> = { updated: "Recently updated", newest: "Newe
 function SortMenu({ sort, onChange }: { sort: Sort; onChange(s: Sort): void }) {
   return (
     <Menu>
-      <MenuTrigger render={<Button size="sm" variant="ghost" className="text-muted-foreground" />}>
-        <Icon name="ArrowDownWideNarrow" className="size-3.5" />
+      <MenuTrigger render={<Button size="sm" variant="ghost" className={sx(paint.s78)} />}>
+        <Icon name="ArrowDownWideNarrow" className={sx(paint.s79)} />
         {SORTS[sort]}
       </MenuTrigger>
       <MenuPopup align="start">
         {(Object.keys(SORTS) as Sort[]).map((s) => (
           <MenuItem key={s} onClick={() => onChange(s)}>
             {SORTS[s]}
-            {s === sort && <Icon name="Check" className="ml-auto size-3.5" />}
+            {s === sort && <Icon name="Check" className={sx(paint.s80)} />}
           </MenuItem>
         ))}
       </MenuPopup>

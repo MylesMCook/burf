@@ -10,14 +10,98 @@ import {
 } from "react";
 import { ChevronDownIcon, LoaderIcon } from "lucide-react";
 import { useScrollLock } from "@assistant-ui/react";
+import * as stylex from "@stylexjs/stylex";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+
+import { mark, shimmer, spinFast } from "./surfaces";
 
 const ANIMATION_DURATION = 200;
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const childIn = stylex.keyframes({
+  from: { opacity: 0, transform: "translateY(-4px)", filter: "blur(2px)" },
+  to: { opacity: 1, transform: "translateY(0)", filter: "blur(0)" },
+});
+
+const styles = stylex.create({
+  loader: { width: 12, height: 12, flexShrink: 0 },
+  label: {
+    display: "inline-block",
+    textAlign: "start",
+    fontSize: 12,
+    lineHeight: 1,
+    fontWeight: {
+      default: 500,
+      ":is([data-variant=ghost] &)": 400,
+    },
+    flexGrow: {
+      default: 0,
+      ":is([data-variant=outline] &)": 1,
+      ":is([data-variant=muted] &)": 1,
+    },
+  },
+  chevron: {
+    width: 12,
+    height: 12,
+    flexShrink: 0,
+    transform: {
+      default: "rotate(-90deg)",
+      ":is([data-open] > &)": "rotate(0deg)",
+      ":is([data-panel-open] > &)": "rotate(0deg)",
+      ":is([data-state=open] > &)": "rotate(0deg)",
+    },
+    transitionProperty: "transform",
+    transitionDuration: { default: "var(--animation-duration, 200ms)", [still]: "0s" },
+    transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+  },
+  list: {
+    display: "flex",
+    flexDirection: "column",
+    marginTop: {
+      default: 8,
+      ":is([data-variant=ghost] &)": 4,
+      ":is([data-variant=outline] &)": 12,
+      ":is([data-variant=muted] &)": 12,
+    },
+    gap: { default: 8, ":is([data-variant=ghost] &)": 4 },
+    borderTopWidth: {
+      default: 0,
+      ":is([data-variant=outline] &)": 1,
+      ":is([data-variant=muted] &)": 1,
+    },
+    borderTopStyle: "solid",
+    borderTopColor: "var(--border)",
+    paddingLeft: {
+      default: 0,
+      ":is([data-variant=outline] &)": 16,
+      ":is([data-variant=muted] &)": 16,
+    },
+    paddingRight: {
+      default: 0,
+      ":is([data-variant=outline] &)": 16,
+      ":is([data-variant=muted] &)": 16,
+    },
+    paddingTop: {
+      default: 0,
+      ":is([data-variant=outline] &)": 12,
+      ":is([data-variant=muted] &)": 12,
+    },
+    ":not(#\\#) > *": {
+      animationName: { default: childIn, [still]: "none" },
+      animationDuration: "var(--animation-duration, 200ms)",
+      animationTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+      animationFillMode: "both",
+    },
+    ":not(#\\#) > *:nth-child(2)": { animationDelay: "40ms" },
+    ":not(#\\#) > *:nth-child(3)": { animationDelay: "80ms" },
+    ":not(#\\#) > *:nth-child(4)": { animationDelay: "120ms" },
+    ":not(#\\#) > *:nth-child(n+5)": { animationDelay: "160ms" },
+  },
+});
 
 export type ToolGroupRootProps = Omit<
   React.ComponentProps<typeof Collapsible>,
@@ -99,30 +183,18 @@ function ToolGroupTrigger({
       {active && (
         <LoaderIcon
           data-slot="tool-group-trigger-loader"
-          className="aui-tool-group-trigger-loader size-3 shrink-0 animate-spin [animation-duration:0.6s]"
+          {...mark("aui-tool-group-trigger-loader", styles.loader, spinFast)}
         />
       )}
       <span
         data-slot="tool-group-trigger-label"
-        className={cn(
-          "aui-tool-group-trigger-label-wrapper inline-block text-start text-xs leading-none font-medium",
-          "group-data-[variant=ghost]/tool-group-root:font-normal",
-          "group-data-[variant=outline]/tool-group-root:grow",
-          "group-data-[variant=muted]/tool-group-root:grow",
-          active && "shimmer motion-reduce:animate-none",
-        )}
+        {...mark("aui-tool-group-trigger-label-wrapper", styles.label, active && shimmer)}
       >
         {label}
       </span>
       <ChevronDownIcon
         data-slot="tool-group-trigger-chevron"
-        className={cn(
-          "aui-tool-group-trigger-chevron size-3 shrink-0",
-          "transition-transform duration-(--animation-duration) ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
-          "-rotate-90",
-          "group-data-open/trigger:rotate-0",
-          "group-data-panel-open/trigger:rotate-0",
-        )}
+        {...mark("aui-tool-group-trigger-chevron", styles.chevron)}
       />
     </CollapsibleTrigger>
   );
@@ -139,22 +211,7 @@ function ToolGroupContent({
       text="sm"
       {...props}
     >
-      <div
-        className={cn(
-          "mt-2 flex flex-col gap-2",
-          "group-data-[variant=ghost]/tool-group-root:mt-1 group-data-[variant=ghost]/tool-group-root:gap-1",
-          "group-data-[variant=outline]/tool-group-root:mt-3 group-data-[variant=outline]/tool-group-root:border-t group-data-[variant=outline]/tool-group-root:px-4 group-data-[variant=outline]/tool-group-root:pt-3",
-          "group-data-[variant=muted]/tool-group-root:mt-3 group-data-[variant=muted]/tool-group-root:border-t group-data-[variant=muted]/tool-group-root:px-4 group-data-[variant=muted]/tool-group-root:pt-3",
-          "[&>*]:animate-in [&>*]:fade-in-0 [&>*]:blur-in-[2px] [&>*]:slide-in-from-top-1 [&>*]:animation-duration-(--animation-duration) [&>*]:ease-[cubic-bezier(0.32,0.72,0,1)]",
-          "[&>*]:motion-reduce:animate-none",
-          "[&>*:nth-child(2)]:[animation-delay:40ms]",
-          "[&>*:nth-child(3)]:[animation-delay:80ms]",
-          "[&>*:nth-child(4)]:[animation-delay:120ms]",
-          "[&>*:nth-child(n+5)]:[animation-delay:160ms]",
-        )}
-      >
-        {children}
-      </div>
+      <div {...mark(undefined, styles.list)}>{children}</div>
     </CollapsibleContent>
   );
 }

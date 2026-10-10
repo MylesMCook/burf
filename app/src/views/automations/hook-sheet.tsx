@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ShieldIcon, ZapIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -7,10 +8,231 @@ import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPop
 import { Textarea } from "@/components/ui/textarea";
 import type { Hook } from "@/lib/api";
 import { plainError } from "@/lib/errors";
-import { cn } from "@/lib/utils";
 import { ALWAYS_ENV, catalogFor, describe, envName } from "@/views/automations/catalog";
 import { LAPTOP } from "@/views/automations/use-hooks";
 import { ErrorText } from "@/components/error-note";
+
+const paint = stylex.create({
+  s0: {
+    "marginTop": "6px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s1: {
+    "marginTop": "6px",
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "marginTop": "2px",
+    "width": "12px",
+    "height": "12px",
+    "flexShrink": 0,
+    "color": "var(--warning)",
+  },
+  s3: {
+    "marginTop": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "marginTop": "6px",
+    "display": "flex",
+    "flexWrap": "wrap",
+    "gap": "4px",
+  },
+  s5: {
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--border)",
+      ":hover": "color-mix(in oklab, var(--ring) 40%, transparent)",
+    },
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  s6: {
+    "display": "grid",
+    "gridTemplateColumns": "8rem 1fr",
+    "gap": "12px",
+  },
+  s7: {
+    "marginTop": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s8: {
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--destructive) 30%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 8%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s9: {
+    "marginBottom": "6px",
+    "fontWeight": 500,
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "10px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s11: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--warning)",
+  },
+  s12: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s13: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s14: {
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s15: {
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s16: {
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s17: {
+    "maxHeight": "240px",
+    "overflowY": "auto",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s18: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s19: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--warning)",
+  },
+  s20: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s21: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "10px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "textAlign": "left",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s23: {
+    "backgroundColor": "var(--accent)",
+  },
+  s24: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s25: {
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s26: {
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s27: {
+    "flexShrink": 0,
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // A valid "on": an event, a prefix like worktree.*, *, or before: one of those.
 const VALID_ON = /^(before:)?(\*|[a-z][a-z0-9-]*\.(\*|[a-z][a-z0-9.-]*))$/;
@@ -83,10 +305,10 @@ export function HookSheet({ editing, onSave, onClose }: { editing?: Editing; onS
           <section>
             <Label>When</Label>
             <EventPicker machine={machine} value={hook.on} onChange={(on) => setHook({ ...hook, on })} />
-            {hook.on && !onValid && <p className="mt-1.5 text-destructive-foreground text-xs">Use an event like agent.finished, a prefix like worktree.*, *, or before: one of those.</p>}
+            {hook.on && !onValid && <p className={sx(paint.s0)}>Use an event like agent.finished, a prefix like worktree.*, *, or before: one of those.</p>}
             {d.gate && onValid && (
-              <p className="mt-1.5 flex items-start gap-1.5 text-muted-foreground text-xs">
-                <ShieldIcon className="mt-0.5 size-3 shrink-0 text-warning" />A gate: it runs first, and exiting non-zero stops the action. What it prints is the reason shown.
+              <p className={sx(paint.s1)}>
+                <ShieldIcon className={sx(paint.s2)} />A gate: it runs first, and exiting non-zero stops the action. What it prints is the reason shown.
               </p>
             )}
           </section>
@@ -102,17 +324,17 @@ export function HookSheet({ editing, onSave, onClose }: { editing?: Editing; onS
               mono text="xs" span="script"
               spellCheck={false}
             />
-            <p className="mt-2 text-muted-foreground text-xs">Through /bin/sh, with the event as JSON on stdin. Click to insert:</p>
-            <div className="mt-1.5 flex flex-wrap gap-1">
+            <p className={sx(paint.s3)}>Through /bin/sh, with the event as JSON on stdin. Click to insert:</p>
+            <div className={sx(paint.s4)}>
               {[...d.fields.map(envName), ...ALWAYS_ENV].map((v) => (
-                <button key={v} type="button" onClick={() => insert(`"$${v}"`)} className="rounded-md border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground hover:border-ring/40 hover:text-foreground">
+                <button key={v} type="button" onClick={() => insert(`"$${v}"`)} className={sx(paint.s5)}>
                   ${v}
                 </button>
               ))}
             </div>
           </section>
 
-          <section className="grid grid-cols-[8rem_1fr] gap-3">
+          <section className={sx(paint.s6)}>
             <div>
               <Label>Timeout</Label>
               <Input value={hook.timeout ?? ""} onChange={(e) => setHook({ ...hook, timeout: e.target.value })} placeholder={d.gate ? "30s" : "1m"} mono text="xs" />
@@ -120,11 +342,11 @@ export function HookSheet({ editing, onSave, onClose }: { editing?: Editing; onS
             <div>
               <Label>Integration (optional)</Label>
               <Input value={hook.tool ?? ""} onChange={(e) => setHook({ ...hook, tool: e.target.value })} placeholder="e.g. slack" mono text="xs" />
-              <p className="mt-1 text-muted-foreground text-xs">Skips events this integration caused, so two integrations can't loop.</p>
+              <p className={sx(paint.s7)}>Skips events this integration caused, so two integrations can't loop.</p>
             </div>
           </section>
 
-          {error && <ErrorText className="rounded-lg border border-destructive/30 bg-destructive/8 px-3 py-2 text-destructive-foreground text-xs" text={error} />}
+          {error && <ErrorText className={sx(paint.s8)} text={error} />}
         </SheetPanel>
         <SheetFooter>
           <Button variant="ghost" onClick={onClose}>
@@ -140,7 +362,7 @@ export function HookSheet({ editing, onSave, onClose }: { editing?: Editing; onS
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <div className="mb-1.5 font-medium text-xs">{children}</div>;
+  return <div className={sx(paint.s9)}>{children}</div>;
 }
 
 // EventPicker is a filterable list of what this machine can follow. Typing
@@ -158,11 +380,11 @@ function EventPicker({ machine, value, onChange }: { machine: string; value: str
   if (!picking && value) {
     const d = describe(value);
     return (
-      <div className="flex items-center gap-2.5 rounded-lg border px-3 py-2">
-        {d.gate ? <ShieldIcon className="size-3.5 shrink-0 text-warning" /> : <ZapIcon className="size-3.5 shrink-0 text-muted-foreground" />}
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm">{d.label}</span>
-          <code className="block truncate font-mono text-[11px] text-muted-foreground">{value}</code>
+      <div className={sx(paint.s10)}>
+        {d.gate ? <ShieldIcon className={sx(paint.s11)} /> : <ZapIcon className={sx(paint.s12)} />}
+        <span className={sx(paint.s13)}>
+          <span className={sx(paint.s14)}>{d.label}</span>
+          <code className={sx(paint.s15)}>{value}</code>
         </span>
         <Button size="xs" variant="outline" onClick={() => setPicking(true)}>
           Change
@@ -175,7 +397,7 @@ function EventPicker({ machine, value, onChange }: { machine: string; value: str
   const custom = q && VALID_ON.test(q) && !entries.some((e) => e.on === q);
 
   return (
-    <div className="overflow-hidden rounded-lg border">
+    <div className={sx(paint.s16)}>
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -191,22 +413,22 @@ function EventPicker({ machine, value, onChange }: { machine: string; value: str
         unstyled
         plain="line"
       />
-      <ul className="max-h-60 overflow-y-auto py-1" role="listbox">
+      <ul className={sx(paint.s17)} role="listbox">
         {custom && (
-          <Row selected={value === q} onPick={() => pick(q)} icon={<ZapIcon className="size-3.5 text-muted-foreground" />} label={describe(q).label} on={q} />
+          <Row selected={value === q} onPick={() => pick(q)} icon={<ZapIcon className={sx(paint.s18)} />} label={describe(q).label} on={q} />
         )}
         {shown.map((e) => (
           <Row
             key={e.on}
             selected={value === e.on}
             onPick={() => pick(e.on)}
-            icon={e.gate ? <ShieldIcon className="size-3.5 text-warning" /> : <ZapIcon className="size-3.5 text-muted-foreground" />}
+            icon={e.gate ? <ShieldIcon className={sx(paint.s19)} /> : <ZapIcon className={sx(paint.s20)} />}
             label={e.label}
             on={e.on}
             hint={e.hint}
           />
         ))}
-        {!custom && shown.length === 0 && <li className="px-3 py-2 text-muted-foreground text-xs">Nothing matches. A valid pattern can be typed and kept with Enter.</li>}
+        {!custom && shown.length === 0 && <li className={sx(paint.s21)}>Nothing matches. A valid pattern can be typed and kept with Enter.</li>}
       </ul>
     </div>
   );
@@ -215,13 +437,13 @@ function EventPicker({ machine, value, onChange }: { machine: string; value: str
 function Row({ selected, onPick, icon, label, on, hint }: { selected: boolean; onPick(): void; icon: React.ReactNode; label: string; on: string; hint?: string }) {
   return (
     <li>
-      <button type="button" role="option" aria-selected={selected} onClick={onPick} className={cn("flex w-full items-center gap-2.5 px-3 py-1.5 text-left hover:bg-accent", selected && "bg-accent")}>
+      <button type="button" role="option" aria-selected={selected} onClick={onPick} className={[sx(paint.s22), selected && sx(paint.s23)].filter(Boolean).join(" ")}>
         {icon}
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm">{label}</span>
-          {hint && <span className="block truncate text-muted-foreground text-xs">{hint}</span>}
+        <span className={sx(paint.s24)}>
+          <span className={sx(paint.s25)}>{label}</span>
+          {hint && <span className={sx(paint.s26)}>{hint}</span>}
         </span>
-        <code className="shrink-0 font-mono text-[11px] text-muted-foreground">{on}</code>
+        <code className={sx(paint.s27)}>{on}</code>
       </button>
     </li>
   );

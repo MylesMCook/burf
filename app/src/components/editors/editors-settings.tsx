@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckCircle2Icon, CodeXmlIcon, RefreshCwIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -11,9 +12,159 @@ import { errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
 import { isMac } from "@/lib/platform";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { Code, SettingsGroup, SettingsRow } from "@/views/settings/rows";
 import { ErrorText } from "@/components/error-note";
+
+const paint = stylex.create({
+  s0: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s1: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s2: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s3: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s5: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "12px",
+  },
+  s6: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s7: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s8: {
+    "marginTop": "2px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s9: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "color": "var(--success-foreground)",
+  },
+  s10: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s11: {
+    "marginTop": "12px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "8px",
+    },
+  },
+  s12: {
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s13: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s14: {
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "textTransform": "uppercase",
+    "letterSpacing": "0.025em",
+  },
+  s15: {
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 10%, transparent)",
+    "color": "var(--destructive-foreground)",
+  },
+  s16: {
+    "backgroundColor": "var(--muted)",
+    "color": "var(--muted-foreground)",
+  },
+  s17: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s18: {
+    "overflowX": "auto",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "lineHeight": "1.625",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s19: {
+    "color": "var(--success-foreground)",
+  },
+  s20: {
+    "color": "var(--destructive-foreground)",
+  },
+  s21: {
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // EditorsSettings is Settings → Boxes' editor part: which editor opens
 // worktrees, and the SSH hosts editors use to reach boxes. Burf shows the
@@ -71,9 +222,9 @@ export function EditorsSettings() {
         </Button>
       }
     >
-      {error && <ErrorText className="px-4 py-3 text-destructive-foreground text-sm" text={error} />}
+      {error && <ErrorText className={sx(paint.s0)} text={error} />}
       {!editors && !error && (
-        <div className="flex items-center gap-2 px-4 py-3 text-muted-foreground text-sm">
+        <div className={sx(paint.s1)}>
           <Spinner  size="md"/> Looking for editors…
         </div>
       )}
@@ -84,25 +235,25 @@ export function EditorsSettings() {
               label="Preferred editor"
               value={chosen?.id ?? ""}
               onChange={setPreferredEditor}
-              options={installed.map((e) => ({ value: e.id, label: e.name, icon: <CodeXmlIcon className="size-3.5" /> }))}
+              options={installed.map((e) => ({ value: e.id, label: e.name, icon: <CodeXmlIcon className={sx(paint.s2)} /> }))}
             />
           )}
         </SettingsRow>
       )}
       {chosen && !chosen.lines && (
-        <p className="px-4 py-2 text-muted-foreground text-xs">
+        <p className={sx(paint.s3)}>
           {chosen.cli ? `${chosen.name} opens files without their line over SSH links.` : `${chosen.name}'s command line tool isn't installed, so files open as their folder. Install it from ${chosen.name}'s command palette.`}
         </p>
       )}
       {plan && remote.length > 0 && (
-        <div className="px-4 py-3">
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="text-sm">SSH hosts for editors</div>
-              <div className="mt-0.5 text-muted-foreground text-xs leading-relaxed">
+        <div className={sx(paint.s4)}>
+          <div className={sx(paint.s5)}>
+            <div className={sx(paint.s6)}>
+              <div className={sx(paint.s7)}>SSH hosts for editors</div>
+              <div className={sx(paint.s8)}>
                 {ready ? (
-                  <span className="inline-flex items-center gap-1 text-success-foreground">
-                    <CheckCircle2Icon className="size-3.5" /> Configuration saved for {remote.map((h) => h.host).join(", ")}. SSH authentication is checked when you connect.
+                  <span className={sx(paint.s9)}>
+                    <CheckCircle2Icon className={sx(paint.s10)} /> Configuration saved for {remote.map((h) => h.host).join(", ")}. SSH authentication is checked when you connect.
                   </span>
                 ) : (
                   <>
@@ -118,16 +269,16 @@ export function EditorsSettings() {
             )}
           </div>
           {!ready && (
-            <div className="mt-3 space-y-2">
+            <div className={sx(paint.s11)}>
               {plan.changes.map((c) => (
-                <div key={c.path} className="overflow-hidden rounded-lg border">
-                  <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-1.5 font-mono text-[11px]">
-                    <span className={cn("rounded px-1.5 py-px uppercase tracking-wide", c.action === "remove" ? "bg-destructive/10 text-destructive-foreground" : "bg-muted text-muted-foreground")}>{c.action}</span>
-                    <span className="min-w-0 truncate">{c.path}</span>
+                <div key={c.path} className={sx(paint.s12)}>
+                  <div className={sx(paint.s13)}>
+                    <span className={[sx(paint.s14), c.action === "remove" ? sx(paint.s15) : sx(paint.s16)].filter(Boolean).join(" ")}>{c.action}</span>
+                    <span className={sx(paint.s17)}>{c.path}</span>
                   </div>
-                  <pre tabIndex={0} className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
+                  <pre tabIndex={0} className={sx(paint.s18)}>
                     {c.diff.trimEnd().split("\n").map((l, i) => (
-                      <div key={i} className={cn(l.startsWith("+ ") && "text-success-foreground", l.startsWith("- ") && "text-destructive-foreground", l.startsWith("  ") && "text-muted-foreground")}>
+                      <div key={i} className={[l.startsWith("+ ") && sx(paint.s19), l.startsWith("- ") && sx(paint.s20), l.startsWith("  ") && sx(paint.s21)].filter(Boolean).join(" ")}>
                         {l || " "}
                       </div>
                     ))}

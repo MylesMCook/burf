@@ -1,19 +1,6 @@
+import * as stylex from "@stylexjs/stylex";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import {
-  ArrowRightIcon,
-  CheckIcon,
-  ChevronRightIcon,
-  CircleIcon,
-  CopyIcon,
-  KeyRoundIcon,
-  LaptopIcon,
-  MinusIcon,
-  RotateCwIcon,
-  ServerIcon,
-  ShieldCheckIcon,
-  SquareTerminalIcon,
-  XIcon,
-} from "lucide-react";
+import { ArrowRightIcon, CheckIcon, ChevronRightIcon, CircleIcon, CopyIcon, KeyRoundIcon, LaptopIcon, MinusIcon, RotateCwIcon, ServerIcon, ShieldCheckIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -32,8 +19,957 @@ import { openUrl } from "@/lib/open-url";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { createTerminal, type TermHandle } from "@/lib/terminal";
-import { cn } from "@/lib/utils";
 import { FailurePanel } from "@/views/onboarding/ssh-setup";
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "position": "fixed",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "zIndex": 50,
+    "backgroundColor": "var(--background)",
+  },
+  s1: {
+    "position": "fixed",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "zIndex": 50,
+    "display": "flex",
+    "flexDirection": "column",
+    "backgroundColor": "var(--background)",
+    "color": "var(--foreground)",
+    "outline": "none",
+  },
+  s2: {
+    "display": "flex",
+    "height": "56px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "12px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "20px",
+    "paddingRight": "20px",
+  },
+  s3: {
+    "display": "flex",
+    "width": "32px",
+    "height": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s5: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 600,
+    "fontSize": "15px",
+    "lineHeight": "1.25",
+  },
+  s6: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s8: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+  },
+  s9: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "display": "grid",
+    "width": "100%",
+    "columnGap": "40px",
+    "rowGap": "32px",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "28px",
+    "paddingBottom": "40px",
+  },
+  s10: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s11: {
+    "marginTop": "2px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s12: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "gap": "8px",
+  },
+  s13: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s14: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s15: {
+    "marginTop": "8px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s16: {
+    "marginTop": "12px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s17: {
+    "marginTop": "12px",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--card)",
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s18: {
+    "flexShrink": 0,
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--background) 95%, transparent)",
+  },
+  s19: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "display": "flex",
+    "width": "100%",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s20: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s21: {
+    "marginTop": "2px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s22: {
+    "color": "var(--foreground)",
+  },
+  s23: {
+    "marginTop": "12px",
+    "height": "200px",
+  },
+  s24: {
+    "marginTop": "12px",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--card)",
+  },
+  s25: {
+    "display": "flex",
+    "cursor": "pointer",
+    "alignItems": "flex-start",
+    "gap": "10px",
+    "borderBottomWidth": {
+      "default": 1,
+      ":last-child": 0,
+    },
+    "borderBottomStyle": {
+      "default": "solid",
+      ":last-child": "solid",
+    },
+    "borderBottomColor": {
+      "default": "var(--border)",
+      ":last-child": "var(--border)",
+    },
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 40%, transparent)",
+    },
+  },
+  s26: {
+    "backgroundColor": "color-mix(in oklab, var(--accent) 30%, transparent)",
+  },
+  s27: {
+    "cursor": "default",
+    "backgroundColor": {
+      ":hover": "transparent",
+    },
+  },
+  s28: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s29: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "fontSize": "13px",
+  },
+  s30: {
+    "marginTop": "2px",
+    "display": "block",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.375",
+  },
+  s31: {
+    "marginTop": "10px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s32: {
+    "color": "var(--foreground)",
+  },
+  s33: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11.5px",
+  },
+  s34: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "flex-start",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+    "textAlign": "left",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 30%, transparent)",
+      ":focus-visible": "color-mix(in oklab, var(--accent) 40%, transparent)",
+    },
+  },
+  s35: {
+    "marginTop": "1px",
+    "display": "flex",
+    "width": "20px",
+    "height": "20px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s36: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s37: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "8px",
+    "rowGap": "4px",
+  },
+  s38: {
+    "fontWeight": 500,
+    "fontSize": "13px",
+  },
+  s39: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s40: {
+    "marginTop": "2px",
+    "display": "block",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s41: {
+    "marginTop": "2px",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s42: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s43: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s44: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s45: {
+    "width": "14px",
+    "height": "14px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s46: {
+    "transform": "rotate(90deg)",
+  },
+  s47: {
+    "marginLeft": "48px",
+    "marginRight": "16px",
+    "marginBottom": "12px",
+    "overflowX": "auto",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": {
+      "default": "light-dark(color-mix(in oklab, var(--muted) 60%, transparent), color-mix(in oklab, var(--input) 24%, transparent))",
+    },
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s48: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s49: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s50: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s51: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s52: {
+    "flexDirection": "column",
+  },
+  s53: {
+    "flexDirection": "row",
+  },
+  s54: {
+    "flexShrink": 0,
+    "overflowY": "auto",
+  },
+  s55: {
+    "maxHeight": "38%",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+  },
+  s56: {
+    "width": "320px",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+  },
+  s57: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingBottom": "16px",
+  },
+  s58: {
+    "marginLeft": "16px",
+    "marginRight": "16px",
+    "marginTop": "8px",
+    "marginBottom": "16px",
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "6px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingTop": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s59: {
+    "marginTop": "2px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s60: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingBottom": "16px",
+  },
+  s61: {
+    "display": "flex",
+    "minHeight": "0px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s62: {
+    "display": "flex",
+    "width": "20px",
+    "height": "20px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s63: {
+    "borderColor": "var(--success)",
+    "backgroundColor": "var(--success)",
+    "color": "#fff",
+  },
+  s64: {
+    "borderColor": "var(--destructive)",
+    "backgroundColor": "var(--destructive)",
+    "color": "#fff",
+  },
+  s65: {
+    "borderColor": "color-mix(in oklab, var(--foreground) 40%, transparent)",
+  },
+  s66: {
+    "borderStyle": "dashed",
+    "color": "var(--muted-foreground)",
+  },
+  s67: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 60%, transparent)",
+  },
+  s68: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s69: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s70: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s71: {
+    "width": "6px",
+    "height": "6px",
+    "fill": "currentColor",
+  },
+  s72: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s73: {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(2, minmax(0, 1fr))",
+    "columnGap": "8px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s74: {
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s75: {
+    "backgroundColor": "color-mix(in oklab, var(--accent) 50%, transparent)",
+  },
+  s76: {
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 6%, transparent)",
+  },
+  s77: {
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+  },
+  s78: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "10px",
+  },
+  s79: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "13px",
+  },
+  s80: {
+    "color": "var(--muted-foreground)",
+  },
+  s81: {
+    "color": "var(--muted-foreground)",
+  },
+  s82: {
+    "fontWeight": 500,
+  },
+  s83: {
+    "width": "12px",
+    "height": "12px",
+    "flexShrink": 0,
+    "color": "var(--warning-foreground)",
+  },
+  s84: {
+    "marginTop": "2px",
+    "marginLeft": "30px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "color": "var(--warning-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s85: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s86: {
+    "marginTop": "2px",
+    "marginLeft": "30px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s87: {
+    "marginTop": "6px",
+    "marginLeft": "30px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "8px",
+    },
+  },
+  s88: {
+    "gridColumn": "span 2 / span 2",
+  },
+  s89: {
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s90: {
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": {
+      "default": "light-dark(color-mix(in oklab, var(--muted) 40%, transparent), color-mix(in oklab, var(--input) 16%, transparent))",
+    },
+  },
+  s91: {
+    "display": "block",
+    "overflowX": "auto",
+    "whiteSpace": "pre",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11.5px",
+    "lineHeight": "1.625",
+  },
+  s92: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s93: {
+    "display": "flex",
+    "flexShrink": 0,
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--success) 6%, transparent)",
+    "paddingLeft": "20px",
+    "paddingRight": "20px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s94: {
+    "display": "flex",
+    "width": "32px",
+    "height": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--success)",
+    "color": "#fff",
+  },
+  s95: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s96: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s97: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s98: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s99: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s100: {
+    "fontWeight": 500,
+  },
+  s101: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s102: {
+    "fontWeight": 500,
+  },
+  s103: {
+    "fontWeight": 500,
+  },
+  s104: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s105: {
+    "textDecoration": {
+      "default": "underline",
+      ":hover": "none",
+    },
+  },
+  s106: {
+    "color": "var(--muted-foreground)",
+  },
+  s107: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "10px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "20px",
+    "paddingRight": "20px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s108: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s109: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "lineHeight": "1.625",
+  },
+  s110: {
+    "position": "relative",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s111: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "overflow": "hidden",
+    "paddingTop": "12px",
+    "paddingBottom": "8px",
+    ":not(#\\#) canvas": {
+      "display": "block",
+    },
+  },
+  s112: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+  },
+  s113: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+  },
+  s114: {
+    "position": "fixed",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "zIndex": 50,
+    "backgroundColor": "var(--background)",
+  },
+  s115: {
+    "position": "fixed",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "zIndex": 50,
+    "display": "flex",
+    "flexDirection": "column",
+    "backgroundColor": "var(--background)",
+    "color": "var(--foreground)",
+    "outline": "none",
+  },
+  s116: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s117: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+  },
+  s118: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "width": "100%",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "32px",
+    "paddingBottom": "40px",
+  },
+  s119: {
+    "color": "var(--destructive-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s120: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s121: {
+    "flexShrink": 0,
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+  },
+  s122: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "justifyContent": "flex-end",
+    "gap": "12px",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s123: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s124: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s125: {
+    "width": "300px",
+    "flexShrink": 0,
+    "overflowY": "auto",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+  },
+  s126: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s127: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "4px",
+  },
+  s128: {
+    "position": "relative",
+    "minHeight": "0px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s129: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "overflow": "hidden",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "8px",
+    ":not(#\\#) canvas": {
+      "display": "block",
+    },
+  },
+
+  s130: {
+    maxWidth: "72rem",
+    "@media (min-width: 1100px)": {
+      gridTemplateColumns: "340px 1fr",
+    },
+  },
+  s131: {
+    maxWidth: "72rem",
+  },
+  s132: {
+    flexBasis: 320,
+  },
+  s133: {
+    flexBasis: 288,
+  },
+  s134: {
+    textUnderlineOffset: 2,
+  },
+  s135: {
+    maxWidth: "28rem",
+  },
+  s136: {
+    backgroundColor: "color-mix(in oklab, var(--warning) 8%, transparent)",
+    color: color.foreground,
+  },
+  s137: {
+    backgroundColor: "color-mix(in oklab, var(--info) 8%, transparent)",
+    color: color.foreground,
+  },
+  s138: {
+    backgroundColor: "color-mix(in oklab, var(--destructive) 6%, transparent)",
+  },
+  s139: {
+    height: "100%",
+    width: "100%",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The guided install: adding a box over SSH as one flow the person can see
 // through. First the plan, in words, with the exact commands a click away
@@ -86,8 +1022,8 @@ export function GuidedInstall({ target, onClose, onReady, readyLabel }: { target
       }}
     >
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-background" />
-        <DialogPrimitive.Popup aria-label={`Set up ${target?.host ?? "a box"}`} data-testid="guided-install" data-stage={stage} className="fixed inset-0 z-50 flex flex-col bg-background text-foreground outline-none">
+        <DialogPrimitive.Backdrop className={sx(paint.s0)} />
+        <DialogPrimitive.Popup aria-label={`Set up ${target?.host ?? "a box"}`} data-testid="guided-install" data-stage={stage} className={sx(paint.s1)}>
           {target && stage === "plan" && <PlanStage target={target} agents={agents} onAgents={setAgents} onStart={start} onClose={onClose} />}
           {target && stage === "run" && (
             <RunStage
@@ -143,11 +1079,11 @@ function useInstallPlan(host: string, agents: string[]) {
 
 function Header({ icon, title, sub, right }: { icon: ReactNode; title: ReactNode; sub?: ReactNode; right?: ReactNode }) {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b px-5" data-tauri-drag-region>
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted/50 text-muted-foreground">{icon}</span>
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate font-semibold text-[15px] leading-tight">{title}</h1>
-        {sub && <p className="truncate text-muted-foreground text-xs">{sub}</p>}
+    <header className={sx(paint.s2)} data-tauri-drag-region>
+      <span className={sx(paint.s3)}>{icon}</span>
+      <div className={sx(paint.s4)}>
+        <h1 className={sx(paint.s5)}>{title}</h1>
+        {sub && <p className={sx(paint.s6)}>{sub}</p>}
       </div>
       {right}
     </header>
@@ -176,36 +1112,36 @@ function PlanStage({ target, agents, onAgents, onStart, onClose }: { target: Ins
   return (
     <>
       <Header
-        icon={<ServerIcon className="size-4" />}
+        icon={<ServerIcon className={sx(paint.s7)} />}
         title={`Set up ${target.host}`}
         sub="Burf installs what this box needs, in a terminal here. Nothing runs until you start it."
         right={<CloseButton onClick={onClose} />}
       />
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto grid w-full max-w-6xl gap-x-10 gap-y-8 px-6 pt-7 pb-10 min-[1100px]:grid-cols-[340px_1fr]">
+      <div className={sx(paint.s8)}>
+        <div className={[sx(paint.s9), sx(paint.s130)].filter(Boolean).join(" ")}>
           <section aria-labelledby="agents-heading" data-testid="install-agents">
-            <h2 id="agents-heading" className="font-medium text-sm">
+            <h2 id="agents-heading" className={sx(paint.s10)}>
               Agents
             </h2>
-            <p className="mt-0.5 text-muted-foreground text-xs leading-relaxed">Installed on the box without sudo. You sign in to each the first time it starts.</p>
+            <p className={sx(paint.s11)}>Installed on the box without sudo. You sign in to each the first time it starts.</p>
             <AgentPicker choices={plan?.agents ?? []} value={agents} onChange={onAgents} />
           </section>
 
           <section aria-labelledby="plan-heading">
-            <div className="flex items-baseline gap-2">
-              <h2 id="plan-heading" className="font-medium text-sm">
+            <div className={sx(paint.s12)}>
+              <h2 id="plan-heading" className={sx(paint.s13)}>
                 What will run
               </h2>
-              {plan && <span className="text-muted-foreground text-xs">{plan.steps.length} steps · each is skipped if the box already has it</span>}
+              {plan && <span className={sx(paint.s14)}>{plan.steps.length} steps · each is skipped if the box already has it</span>}
             </div>
-            {error && <p className="mt-2 text-destructive-foreground text-sm">{error}</p>}
+            {error && <p className={sx(paint.s15)}>{error}</p>}
             {!plan && !error && (
-              <p className="mt-3 flex items-center gap-2 text-muted-foreground text-sm">
+              <p className={sx(paint.s16)}>
                 <Spinner  size="md"/> Reading the plan…
               </p>
             )}
             {plan && (
-              <ol data-testid="install-plan" className="mt-3 divide-y overflow-hidden rounded-xl border bg-card">
+              <ol data-testid="install-plan" className={sx(paint.s17)}>
                 {plan.steps.map((s, i) => (
                   <PlanRow key={s.id} step={s} n={i + 1} bundledTmux={plan.tmux.bundled} />
                 ))}
@@ -214,14 +1150,14 @@ function PlanStage({ target, agents, onAgents, onStart, onClose }: { target: Ins
           </section>
         </div>
       </div>
-      <footer className="shrink-0 border-t bg-background/95">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 px-6 py-3">
-          <p className="flex min-w-0 flex-1 basis-80 items-start gap-2 text-muted-foreground text-xs leading-relaxed">
-            <KeyRoundIcon className="mt-0.5 size-3.5 shrink-0" />
+      <footer className={sx(paint.s18)}>
+        <div className={[sx(paint.s19), sx(paint.s131)].filter(Boolean).join(" ")}>
+          <p className={[sx(paint.s20), sx(paint.s132)].filter(Boolean).join(" ")}>
+            <KeyRoundIcon className={sx(paint.s21)} />
             <span>
               {sudo.length > 0 ? (
                 <>
-                  <span className="text-foreground">{sudo.length === 1 ? "One step" : `${sudo.length} steps`} may ask for your password.</span> sudo asks on the box, in the terminal; Burf never sees it or keeps it.
+                  <span className={sx(paint.s22)}>{sudo.length === 1 ? "One step" : `${sudo.length} steps`} may ask for your password.</span> sudo asks on the box, in the terminal; Burf never sees it or keeps it.
                 </>
               ) : (
                 "Nothing here needs your password."
@@ -241,12 +1177,12 @@ function PlanStage({ target, agents, onAgents, onStart, onClose }: { target: Ins
 }
 
 function AgentPicker({ choices, value, onChange, installed = [] }: { choices: AgentChoice[]; value: string[]; onChange(ids: string[]): void; installed?: string[] }) {
-  if (!choices.length) return <div className="mt-3 h-[200px]" />;
+  if (!choices.length) return <div className={sx(paint.s23)} />;
   const offered = choices.filter((a) => a.offered || installed.includes(a.id));
   const left = choices.filter((a) => !a.offered && !installed.includes(a.id));
   return (
     <>
-      <div className="mt-3 overflow-hidden rounded-xl border bg-card">
+      <div className={sx(paint.s24)}>
         {offered.map((a) => {
           const done = installed.includes(a.id);
           const on = done || value.includes(a.id);
@@ -255,7 +1191,7 @@ function AgentPicker({ choices, value, onChange, installed = [] }: { choices: Ag
               key={a.id}
               data-testid={`agent-${a.id}`}
               data-checked={on || undefined}
-              className={cn("flex cursor-pointer items-start gap-2.5 border-b px-3 py-2.5 transition-colors last:border-b-0 hover:bg-accent/40", on && "bg-accent/30", done && "cursor-default hover:bg-transparent")}
+              className={[sx(paint.s25), on && sx(paint.s26), done && sx(paint.s27)].filter(Boolean).join(" ")}
             >
               <Checkbox
                 offset
@@ -264,8 +1200,8 @@ function AgentPicker({ choices, value, onChange, installed = [] }: { choices: Ag
                 onCheckedChange={(c) => onChange(c ? [...value.filter((v) => v !== a.id), a.id].sort((x, y) => order(x) - order(y)) : value.filter((v) => v !== a.id))}
                 aria-label={a.name}
               />
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1.5 text-[13px]">
+              <span className={sx(paint.s28)}>
+                <span className={sx(paint.s29)}>
                   {a.name}
                   {a.default && (
                     <Badge variant="secondary" size="sm">
@@ -273,15 +1209,15 @@ function AgentPicker({ choices, value, onChange, installed = [] }: { choices: Ag
                     </Badge>
                   )}
                 </span>
-                <span className="mt-0.5 block text-muted-foreground text-xs leading-snug">{done ? "Installed on this box" : a.verified}</span>
+                <span className={sx(paint.s30)}>{done ? "Installed on this box" : a.verified}</span>
               </span>
             </label>
           );
         })}
       </div>
       {left.map((a) => (
-        <p key={a.id} data-testid={`agent-${a.id}`} className="mt-2.5 text-muted-foreground text-xs leading-relaxed">
-          <span className="text-foreground">{a.name}</span> isn't installed by Burf: {a.why}. <code className="font-mono text-[11.5px]">{a.install}</code>
+        <p key={a.id} data-testid={`agent-${a.id}`} className={sx(paint.s31)}>
+          <span className={sx(paint.s32)}>{a.name}</span> isn't installed by Burf: {a.why}. <code className={sx(paint.s33)}>{a.install}</code>
         </p>
       ))}
     </>
@@ -296,32 +1232,32 @@ function PlanRow({ step, n, bundledTmux }: { step: InstallPlanStep; n: number; b
   const detail = step.id === "tools" && bundledTmux ? `${step.detail} Burf brings its own tmux, so tmux needs no sudo.` : step.detail;
   return (
     <li data-testid={`plan-${step.id}`} className="group">
-      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="flex w-full items-start gap-3 px-4 py-2.5 text-left outline-none hover:bg-accent/30 focus-visible:bg-accent/40">
-        <span aria-hidden className="mt-px flex size-5 shrink-0 items-center justify-center rounded-full border font-mono text-[10px] text-muted-foreground">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className={sx(paint.s34)}>
+        <span aria-hidden className={sx(paint.s35)}>
           {n}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="font-medium text-[13px]">{step.title}</span>
+        <span className={sx(paint.s36)}>
+          <span className={sx(paint.s37)}>
+            <span className={sx(paint.s38)}>{step.title}</span>
             {step.sudo && (
               <Badge variant="warning" size="sm" data-testid="sudo-badge">
                 <KeyRoundIcon /> sudo
               </Badge>
             )}
-            {step.sudo && step.when && <span className="text-muted-foreground text-xs">{step.when}</span>}
+            {step.sudo && step.when && <span className={sx(paint.s39)}>{step.when}</span>}
           </span>
-          {detail && <span className="mt-0.5 block text-muted-foreground text-xs leading-relaxed">{detail}</span>}
+          {detail && <span className={sx(paint.s40)}>{detail}</span>}
         </span>
-        <span className="mt-0.5 flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
-          <span className="flex items-center gap-1">
-            {step.where === "laptop" ? <LaptopIcon className="size-3" /> : <ServerIcon className="size-3" />}
+        <span className={sx(paint.s41)}>
+          <span className={sx(paint.s42)}>
+            {step.where === "laptop" ? <LaptopIcon className={sx(paint.s43)} /> : <ServerIcon className={sx(paint.s44)} />}
             {step.where === "laptop" ? "this computer" : "the box"}
           </span>
-          <ChevronRightIcon aria-label={open ? "Hide the commands" : "Show the commands"} className={cn("size-3.5 transition-transform", open && "rotate-90")} />
+          <ChevronRightIcon aria-label={open ? "Hide the commands" : "Show the commands"} className={[sx(paint.s45), open && sx(paint.s46)].filter(Boolean).join(" ")} />
         </span>
       </button>
       {open && (
-        <pre data-testid={`plan-commands-${step.id}`} className="mx-4 mb-3 ml-12 overflow-x-auto rounded-md bg-muted/60 px-3 py-2 font-mono text-[12px] leading-relaxed dark:bg-input/24">
+        <pre data-testid={`plan-commands-${step.id}`} className={sx(paint.s47)}>
           {step.commands.join("\n")}
         </pre>
       )}
@@ -565,7 +1501,7 @@ function RunStage({
       <CheckIcon /> Ready
     </Badge>
   ) : busy ? (
-    <span data-testid="install-status" className="flex items-center gap-1.5 text-muted-foreground text-xs">
+    <span data-testid="install-status" className={sx(paint.s48)}>
       <Spinner  size="sm"/> Installing
     </span>
   ) : run.state === "failed" ? (
@@ -577,11 +1513,11 @@ function RunStage({
   return (
     <>
       <Header
-        icon={<SquareTerminalIcon className="size-4" />}
+        icon={<SquareTerminalIcon className={sx(paint.s49)} />}
         title={ready ? `${run.box} is ready` : `Setting up ${target.host}`}
         sub={ready ? `Paired with this computer. Burf no longer needs SSH for it.` : "You type in the terminal: press Enter to start, and your password when sudo asks."}
         right={
-          <div className="flex items-center gap-2">
+          <div className={sx(paint.s50)}>
             {status}
             {busy && (
               <Button size="sm" variant="outline" onClick={run.stop}>
@@ -592,29 +1528,29 @@ function RunStage({
           </div>
         }
       />
-      <div className={cn("flex min-h-0 flex-1", narrow ? "flex-col" : "flex-row")}>
-        <aside className={cn("shrink-0 overflow-y-auto", narrow ? "max-h-[38%] border-b" : "w-[320px] border-r")}>
+      <div className={[sx(paint.s51), narrow ? sx(paint.s52) : sx(paint.s53)].filter(Boolean).join(" ")}>
+        <aside className={[sx(paint.s54), narrow ? sx(paint.s55) : sx(paint.s56)].filter(Boolean).join(" ")}>
           <StepList steps={run.steps} narrow={narrow} onRetry={(from) => retry(from)} busy={busy} waiting={run.waiting} />
           {run.failure && run.state === "failed" && (
-            <div className="px-4 pb-4">
+            <div className={sx(paint.s57)}>
               <FailurePanel failure={run.failure} identity={identity} setIdentity={setIdentity} onRetry={(trust) => retry(undefined, trust)} />
             </div>
           )}
           {!narrow && (
-            <p className="mx-4 mt-2 mb-4 flex items-start gap-1.5 border-t pt-3 text-muted-foreground text-xs leading-relaxed">
-              <ShieldCheckIcon className="mt-0.5 size-3.5 shrink-0" />
+            <p className={sx(paint.s58)}>
+              <ShieldCheckIcon className={sx(paint.s59)} />
               <span>What you type goes to {target.host.split("@").pop()} through this terminal, and nowhere else. Burf doesn't keep it.</span>
             </p>
           )}
           {run.state === "failed" && !failed && !run.failure && (
-            <div className="px-4 pb-4">
+            <div className={sx(paint.s60)}>
               <Button size="sm" variant="outline" onClick={() => retry()}>
                 <RotateCwIcon /> Start again
               </Button>
             </div>
           )}
         </aside>
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <section className={sx(paint.s61)}>
           <Banner run={run} ready={ready} readyLabel={readyLabel} onReady={() => run.box && onReady(run.box)} onBack={onBack} agents={agents} />
           <InstallTerminal run={run} />
         </section>
@@ -626,25 +1562,18 @@ function RunStage({
 export function StepIcon({ state }: { state: StepState }) {
   return (
     <span
-      className={cn(
-        "flex size-5 shrink-0 items-center justify-center rounded-full border",
-        state === "done" && "border-success bg-success text-white",
-        state === "fail" && "border-destructive bg-destructive text-white",
-        state === "running" && "border-foreground/40",
-        state === "skip" && "border-dashed text-muted-foreground",
-        state === "todo" && "text-muted-foreground/60",
-      )}
+      className={[sx(paint.s62), state === "done" && sx(paint.s63), state === "fail" && sx(paint.s64), state === "running" && sx(paint.s65), state === "skip" && sx(paint.s66), state === "todo" && sx(paint.s67)].filter(Boolean).join(" ")}
     >
       {state === "done" ? (
-        <CheckIcon className="size-3" strokeWidth={3} />
+        <CheckIcon className={sx(paint.s68)} strokeWidth={3} />
       ) : state === "fail" ? (
-        <XIcon className="size-3" strokeWidth={3} />
+        <XIcon className={sx(paint.s69)} strokeWidth={3} />
       ) : state === "running" ? (
         <Spinner  size="sm"/>
       ) : state === "skip" ? (
-        <MinusIcon className="size-3" />
+        <MinusIcon className={sx(paint.s70)} />
       ) : (
-        <CircleIcon className="size-1.5 fill-current" />
+        <CircleIcon className={sx(paint.s71)} />
       )}
     </span>
   );
@@ -652,28 +1581,28 @@ export function StepIcon({ state }: { state: StepState }) {
 
 function StepList({ steps, narrow, onRetry, busy, waiting }: { steps: StepRow[]; narrow: boolean; onRetry(from: string): void; busy: boolean; waiting?: InstallRun["waiting"] }) {
   return (
-    <ol data-testid="install-steps" className={cn("px-2 py-3", narrow && "grid grid-cols-2 gap-x-2 py-2")}>
+    <ol data-testid="install-steps" className={[sx(paint.s72), narrow && sx(paint.s73)].filter(Boolean).join(" ")}>
       {steps.map((s) => (
-        <li key={s.id} data-testid={`step-${s.id}`} data-state={s.state} className={cn("rounded-lg px-2.5 py-2", s.state === "running" && "bg-accent/50", s.state === "fail" && "bg-destructive/6", narrow && "py-1.5")}>
-          <div className="flex items-center gap-2.5">
+        <li key={s.id} data-testid={`step-${s.id}`} data-state={s.state} className={[sx(paint.s74), s.state === "running" && sx(paint.s75), s.state === "fail" && sx(paint.s76), narrow && sx(paint.s77)].filter(Boolean).join(" ")}>
+          <div className={sx(paint.s78)}>
             <StepIcon state={s.state} />
-            <span className={cn("min-w-0 flex-1 truncate text-[13px]", s.state === "todo" && "text-muted-foreground", s.state === "skip" && "text-muted-foreground", s.state === "running" && "font-medium")}>{s.title}</span>
+            <span className={[sx(paint.s79), s.state === "todo" && sx(paint.s80), s.state === "skip" && sx(paint.s81), s.state === "running" && sx(paint.s82)].filter(Boolean).join(" ")}>{s.title}</span>
             {s.sudo && s.state !== "skip" && (
               <Tip label="sudo asks for your password on the box, if it needs to">
-                <KeyRoundIcon aria-label="needs sudo" className="size-3 shrink-0 text-warning-foreground" />
+                <KeyRoundIcon aria-label="needs sudo" className={sx(paint.s83)} />
               </Tip>
             )}
           </div>
           {s.state === "running" && waiting === "password" ? (
-            <p data-testid="step-waiting" className="mt-0.5 ml-7.5 flex items-center gap-1 text-warning-foreground text-xs">
-              <KeyRoundIcon className="size-3" /> Waiting for your password
+            <p data-testid="step-waiting" className={sx(paint.s84)}>
+              <KeyRoundIcon className={sx(paint.s85)} /> Waiting for your password
             </p>
           ) : (
-            s.message && s.state !== "fail" && !narrow && <p className="mt-0.5 ml-7.5 truncate text-muted-foreground text-xs">{s.message}</p>
+            s.message && s.state !== "fail" && !narrow && <p className={sx(paint.s86)}>{s.message}</p>
           )}
           {s.state === "fail" && (
-            <div className={cn("mt-1.5 ml-7.5 space-y-2", narrow && "col-span-2")}>
-              {s.message && <p className="text-destructive-foreground text-xs leading-relaxed">{s.message}</p>}
+            <div className={[sx(paint.s87), narrow && sx(paint.s88)].filter(Boolean).join(" ")}>
+              {s.message && <p className={sx(paint.s89)}>{s.message}</p>}
               {s.command && <CommandLine command={s.command} onRun={() => onRetry(s.id)} />}
               {!busy && (
                 <Button size="xs" data-testid={`retry-${s.id}`} onClick={() => onRetry(s.id === "connect" ? "connect" : s.id)}>
@@ -693,9 +1622,9 @@ function StepList({ steps, narrow, onRetry, busy, waiting }: { steps: StepRow[];
 export function CommandLine({ command, onRun }: { command: string; onRun?: () => void }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div data-testid="command-line" className="overflow-hidden rounded-md border bg-muted/40 dark:bg-input/16">
-      <code className="block overflow-x-auto whitespace-pre px-2.5 py-1.5 font-mono text-[11.5px] leading-relaxed">{command}</code>
-      <div className="flex items-center gap-1 border-t px-1 py-1">
+    <div data-testid="command-line" className={sx(paint.s90)}>
+      <code className={sx(paint.s91)}>{command}</code>
+      <div className={sx(paint.s92)}>
         <Button
           size="xs"
           variant="ghost"
@@ -728,13 +1657,13 @@ function Banner({ run, ready, readyLabel, onReady, onBack, agents }: { run: Inst
   }, [ready]);
   if (ready)
     return (
-      <div data-testid="install-ready" className="flex shrink-0 flex-wrap items-center gap-3 border-b bg-success/6 px-5 py-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success text-white">
-          <CheckIcon className="size-4" strokeWidth={3} />
+      <div data-testid="install-ready" className={sx(paint.s93)}>
+        <span className={sx(paint.s94)}>
+          <CheckIcon className={sx(paint.s95)} strokeWidth={3} />
         </span>
-        <div className="min-w-0 flex-1 basis-72">
-          <p className="font-medium text-sm">Ready</p>
-          <p className="text-muted-foreground text-xs">
+        <div className={[sx(paint.s96), sx(paint.s133)].filter(Boolean).join(" ")}>
+          <p className={sx(paint.s97)}>Ready</p>
+          <p className={sx(paint.s98)}>
             {run.box} runs berthd{agents.length ? `, with ${agentNames(agents)}` : ""}.{agents.includes("claude") ? " Claude Code asks you to sign in the first time it starts, right in the chat." : agents.length ? " Each agent asks you to sign in the first time it starts." : ""}
           </p>
         </div>
@@ -747,28 +1676,28 @@ function Banner({ run, ready, readyLabel, onReady, onBack, agents }: { run: Inst
   let text: ReactNode = "Connecting…";
   let tone = "";
   if (run.waiting === "password") {
-    icon = <KeyRoundIcon className="size-3.5" />;
-    tone = "bg-warning/8 text-foreground";
+    icon = <KeyRoundIcon className={sx(paint.s99)} />;
+    tone = (sx(paint.s136) ?? "");
     text = (
       <>
-        <span className="font-medium">sudo is asking for your password on the box.</span> Type it in the terminal and press <Kbd>↵</Kbd>; nothing shows as you type. Burf never sees it.
+        <span className={sx(paint.s100)}>sudo is asking for your password on the box.</span> Type it in the terminal and press <Kbd>↵</Kbd>; nothing shows as you type. Burf never sees it.
       </>
     );
   } else if (run.waiting === "enter") {
-    icon = <SquareTerminalIcon className="size-3.5" />;
-    tone = "bg-info/8 text-foreground";
+    icon = <SquareTerminalIcon className={sx(paint.s101)} />;
+    tone = (sx(paint.s137) ?? "");
     text = (
       <>
-        <span className="font-medium">Check the plan in the terminal, then press</span> <Kbd>↵</Kbd> <span className="font-medium">there to start.</span>
+        <span className={sx(paint.s102)}>Check the plan in the terminal, then press</span> <Kbd>↵</Kbd> <span className={sx(paint.s103)}>there to start.</span>
       </>
     );
   } else if (run.state === "failed") {
-    icon = <XIcon className="size-3.5" />;
-    tone = "bg-destructive/6";
+    icon = <XIcon className={sx(paint.s104)} />;
+    tone = (sx(paint.s138) ?? "");
     text = (
       <>
         Stopped. The terminal says why; fix it if it's on the box, then retry from the step that failed. The steps before it are kept.{" "}
-        <button type="button" className="underline underline-offset-2 hover:no-underline" onClick={onBack}>
+        <button type="button" className={[sx(paint.s105), sx(paint.s134)].filter(Boolean).join(" ")} onClick={onBack}>
           Back to the plan
         </button>
       </>
@@ -778,7 +1707,7 @@ function Banner({ run, ready, readyLabel, onReady, onBack, agents }: { run: Inst
     if (i >= 0)
       text = (
         <>
-          <span className="text-muted-foreground">
+          <span className={sx(paint.s106)}>
             Step {i + 1} of {run.steps.length}
           </span>{" "}
           · {run.steps[i].title}
@@ -786,9 +1715,9 @@ function Banner({ run, ready, readyLabel, onReady, onBack, agents }: { run: Inst
       );
   }
   return (
-    <div data-testid="install-banner" data-waiting={run.waiting ?? ""} aria-live="polite" className={cn("flex shrink-0 items-center gap-2.5 border-b px-5 py-2.5 text-sm", tone)}>
-      <span className="shrink-0 text-muted-foreground">{icon}</span>
-      <p className="min-w-0 flex-1 leading-relaxed">{text}</p>
+    <div data-testid="install-banner" data-waiting={run.waiting ?? ""} aria-live="polite" className={[sx(paint.s107), tone].filter(Boolean).join(" ")}>
+      <span className={sx(paint.s108)}>{icon}</span>
+      <p className={sx(paint.s109)}>{text}</p>
     </div>
   );
 }
@@ -813,7 +1742,7 @@ export function InstallTerminal({ run, className, fontSize }: { run: InstallRun;
     let disposed = false;
     let t: TermHandle | undefined;
     const mount = document.createElement("div");
-    mount.className = "h-full w-full";
+    mount.className = sx(paint.s139);
     host.current!.appendChild(mount);
     void createTerminal(mount, theme.terminal, fontSize ? { ...prefs, fontSize } : prefs).then((made) => {
       if (disposed) {
@@ -858,8 +1787,8 @@ export function InstallTerminal({ run, className, fontSize }: { run: InstallRun;
   }, [term, run.state, run.waiting]);
 
   return (
-    <div className={cn("relative min-h-0 flex-1", className)} style={{ background: theme.terminal.background }} onMouseDown={() => term?.focus()}>
-      <div ref={host} data-terminal data-testid="install-terminal" className={cn("absolute inset-0 overflow-hidden pt-3 pb-2 [&_canvas]:block", fontSize ? "px-3" : "px-4")} />
+    <div className={[sx(paint.s110), className].filter(Boolean).join(" ")} style={{ background: theme.terminal.background }} onMouseDown={() => term?.focus()}>
+      <div ref={host} data-terminal data-testid="install-terminal" className={[sx(paint.s111), fontSize ? sx(paint.s112) : sx(paint.s113)].filter(Boolean).join(" ")} />
     </div>
   );
 }
@@ -938,16 +1867,16 @@ export function AddAgents({ box, open, onClose }: { box: string; open: boolean; 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(o) => !o && (stage !== "run" || state !== "running") && onClose()}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-background" />
-        <DialogPrimitive.Popup data-testid="add-agents" data-stage={stage} className="fixed inset-0 z-50 flex flex-col bg-background text-foreground outline-none">
+        <DialogPrimitive.Backdrop className={sx(paint.s114)} />
+        <DialogPrimitive.Popup data-testid="add-agents" data-stage={stage} className={sx(paint.s115)}>
           {stage === "pick" ? (
             <>
-              <Header icon={<ServerIcon className="size-4" />} title={`Add agents to ${box}`} sub="Into ~/.local/bin on the box, without sudo, with Burf's hooks and skills." right={<CloseButton onClick={onClose} />} />
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                <div className="mx-auto w-full max-w-md px-6 pt-8 pb-10">
-                  {error && <p className="text-destructive-foreground text-sm">{error}</p>}
+              <Header icon={<ServerIcon className={sx(paint.s116)} />} title={`Add agents to ${box}`} sub="Into ~/.local/bin on the box, without sudo, with Burf's hooks and skills." right={<CloseButton onClick={onClose} />} />
+              <div className={sx(paint.s117)}>
+                <div className={[sx(paint.s118), sx(paint.s135)].filter(Boolean).join(" ")}>
+                  {error && <p className={sx(paint.s119)}>{error}</p>}
                   {!have && !error && (
-                    <p className="flex items-center gap-2 text-muted-foreground text-sm">
+                    <p className={sx(paint.s120)}>
                       <Spinner  size="md"/> Asking {box}…
                     </p>
                   )}
@@ -961,8 +1890,8 @@ export function AddAgents({ box, open, onClose }: { box: string; open: boolean; 
                   )}
                 </div>
               </div>
-              <footer className="shrink-0 border-t">
-                <div className="mx-auto flex w-full max-w-md items-center justify-end gap-3 px-6 py-3">
+              <footer className={sx(paint.s121)}>
+                <div className={[sx(paint.s122), sx(paint.s135)].filter(Boolean).join(" ")}>
                   <Button variant="ghost" onClick={onClose}>
                     Cancel
                   </Button>
@@ -975,17 +1904,17 @@ export function AddAgents({ box, open, onClose }: { box: string; open: boolean; 
           ) : (
             <>
               <Header
-                icon={<SquareTerminalIcon className="size-4" />}
+                icon={<SquareTerminalIcon className={sx(paint.s123)} />}
                 title={state === "done" ? `${agentNames(picked)} on ${box}` : `Adding agents to ${box}`}
                 sub={state === "done" ? "Each asks you to sign in the first time it starts." : "No password needed: nothing here uses sudo."}
                 right={<CloseButton onClick={onClose} disabled={state === "running"} />}
               />
-              <div className="flex min-h-0 flex-1">
-                <aside className="w-[300px] shrink-0 overflow-y-auto border-r">
+              <div className={sx(paint.s124)}>
+                <aside className={sx(paint.s125)}>
                   <StepList steps={steps} narrow={false} busy={state === "running"} onRetry={() => void run()} />
-                  {error && <p className="px-4 text-destructive-foreground text-xs leading-relaxed">{error}</p>}
+                  {error && <p className={sx(paint.s126)}>{error}</p>}
                   {state === "done" && (
-                    <div className="px-4 pt-1">
+                    <div className={sx(paint.s127)}>
                       <Button size="sm" data-testid="add-agents-done" onClick={onClose}>
                         <CheckIcon /> Done
                       </Button>
@@ -1010,7 +1939,7 @@ function OutputTerminal({ term, pending }: { term: React.RefObject<TermHandle | 
     let t: TermHandle | undefined;
     let disposed = false;
     const mount = document.createElement("div");
-    mount.className = "h-full w-full";
+    mount.className = sx(paint.s139);
     host.current!.appendChild(mount);
     void createTerminal(mount, theme.terminal, prefs).then((made) => {
       if (disposed) return made.dispose();
@@ -1031,8 +1960,8 @@ function OutputTerminal({ term, pending }: { term: React.RefObject<TermHandle | 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme.id]);
   return (
-    <div className="relative min-h-0 min-w-0 flex-1" style={{ background: theme.terminal.background }}>
-      <div ref={host} data-testid="add-agents-terminal" className="absolute inset-0 overflow-hidden px-4 pt-3 pb-2 [&_canvas]:block" />
+    <div className={sx(paint.s128)} style={{ background: theme.terminal.background }}>
+      <div ref={host} data-testid="add-agents-terminal" className={sx(paint.s129)} />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, CircleAlertIcon, HandIcon, RepeatIcon, CircleStopIcon, XIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 
@@ -8,8 +9,179 @@ import { useSessionName } from "@/hooks/use-session-name";
 import { dismissLoop, isLive, type Loop, useLoops } from "@/lib/loops";
 import { allRuns, type BoxRun, dismissRun, runs as runsApi, useRuns } from "@/lib/runs";
 import { load, save } from "@/lib/storage";
-import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
+
+const paint = stylex.create({
+  s0: {
+    "position": "fixed",
+    "zIndex": 40,
+  },
+  s1: {
+    "borderRadius": "999px",
+    "backgroundColor": "var(--popover)",
+    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
+  },
+  s2: {
+    "position": "fixed",
+    "zIndex": 40,
+    "display": "flex",
+    "maxHeight": "50vh",
+    "width": "352px",
+    "flexDirection": "column",
+    "gap": "8px",
+    "overflowY": "auto",
+  },
+  s3: {
+    "alignSelf": "flex-end",
+    "backgroundColor": "color-mix(in oklab, var(--popover) 80%, transparent)",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s4: {
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--popover)",
+    "padding": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
+  },
+  s5: {
+    "borderColor": "color-mix(in oklab, var(--warning) 60%, transparent)",
+  },
+  s6: {
+    "borderColor": "color-mix(in oklab, var(--success) 40%, transparent)",
+  },
+  s7: {
+    "borderColor": "color-mix(in oklab, var(--destructive) 40%, transparent)",
+  },
+  s8: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s9: {
+    "fontWeight": 500,
+  },
+  s10: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s11: {
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--muted)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s12: {
+    "marginLeft": "auto",
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s13: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s14: {
+    "marginTop": "4px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s15: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s16: {
+    "marginTop": "4px",
+    "fontSize": "13px",
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+  },
+  s17: {
+    "marginTop": "6px",
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s18: {
+    "width": "12px",
+    "height": "12px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s19: {
+    "transform": "rotate(90deg)",
+  },
+  s20: {
+    "marginTop": "6px",
+    "maxHeight": "160px",
+    "overflow": "auto",
+    "whiteSpace": "pre-wrap",
+    "borderRadius": "var(--radius-lg)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 72%, transparent)",
+    "padding": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "lineHeight": "1.375",
+  },
+  s21: {
+    "marginTop": "10px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s22: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--success)",
+  },
+  s23: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--warning)",
+  },
+  s24: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s25: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--destructive)",
+  },
+
+  s26: {
+    backdropFilter: "blur(4px)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const phases: Record<Loop["phase"], string> = {
   prompting: "Prompting",
@@ -97,8 +269,8 @@ export function LoopsPanel() {
   // page's own controls; it opens again on a click, or when a loop needs you.
   if (folded && !loops.some((l) => l.outcome === "needs-you")) {
     return (
-      <div ref={ref} style={{ bottom, right: `calc(${GAP}px + var(--berth-dock-w, 0px))` }} className="fixed z-40" role="region" aria-label="Loops">
-        <span className="rounded-full bg-popover shadow-lg/5"><Button size="sm" variant="outline"  onClick={() => setFolded(false)} aria-expanded={false}>
+      <div ref={ref} style={{ bottom, right: `calc(${GAP}px + var(--berth-dock-w, 0px))` }} className={sx(paint.s0)} role="region" aria-label="Loops">
+        <span className={sx(paint.s1)}><Button size="sm" variant="outline"  onClick={() => setFolded(false)} aria-expanded={false}>
           {live ? <Spinner  size="md"/> : <RepeatIcon />}
           {`${loops.length} loop${loops.length === 1 ? "" : "s"}${live ? ` · ${live} running` : ""}`}
           <ChevronUpIcon />
@@ -107,11 +279,11 @@ export function LoopsPanel() {
     );
   }
   return (
-    <div ref={ref} style={{ bottom, right: `calc(${GAP}px + var(--berth-dock-w, 0px))` }} className="fixed z-40 flex max-h-[50vh] w-88 flex-col gap-2 overflow-y-auto" role="region" aria-label="Loops">
+    <div ref={ref} style={{ bottom, right: `calc(${GAP}px + var(--berth-dock-w, 0px))` }} className={sx(paint.s2)} role="region" aria-label="Loops">
       {loops.map((l) => (
         <LoopCard key={l.id} loop={l} />
       ))}
-      <span className="self-end bg-popover/80 shadow-xs/5 backdrop-blur-sm"><Button size="xs" variant="ghost"  onClick={() => setFolded(true)} aria-expanded muted>
+      <span className={[sx(paint.s3), sx(paint.s26)].filter(Boolean).join(" ")}><Button size="xs" variant="ghost"  onClick={() => setFolded(true)} aria-expanded muted>
         <ChevronDownIcon />
         Fold
       </Button></span>
@@ -169,54 +341,49 @@ function LoopCard({ loop: l }: { loop: Loop }) {
   const said = detail(l).split(l.session).join(agent);
   return (
     <div
-      className={cn(
-        "rounded-xl border bg-popover p-3 text-sm shadow-lg/5",
-        l.outcome === "needs-you" && "border-warning/60",
-        l.outcome === "passed" && "border-success/40",
-        (l.outcome === "failed" || l.outcome === "error" || l.outcome === "exited" || l.outcome === "timed-out") && "border-destructive/40",
-      )}
+      className={[sx(paint.s4), l.outcome === "needs-you" && sx(paint.s5), l.outcome === "passed" && sx(paint.s6), (l.outcome === "failed" || l.outcome === "error" || l.outcome === "exited" || l.outcome === "timed-out") && sx(paint.s7)].filter(Boolean).join(" ")}
     >
-      <div className="flex items-center gap-2">
+      <div className={sx(paint.s8)}>
         <StatusIcon loop={l} />
-        <span className="font-medium">{live ? phases[l.phase] : outcomes[l.outcome!]}</span>
-        <span className="text-muted-foreground text-xs tabular-nums">
+        <span className={sx(paint.s9)}>{live ? phases[l.phase] : outcomes[l.outcome!]}</span>
+        <span className={sx(paint.s10)}>
           Round {l.round}
           {l.max > 0 && ` of ${l.max}`}
         </span>
         {l.runId && (
           <Tip label={`Runs on ${l.box} (${l.runId}): it keeps going if the app quits`}>
-            <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">on {l.box}</span>
+            <span className={sx(paint.s11)}>on {l.box}</span>
           </Tip>
         )}
         {!live && (
           <Tip label="Dismiss">
-            <button type="button" className="ml-auto inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Dismiss"
+            <button type="button" className={sx(paint.s12)} aria-label="Dismiss"
               onClick={() => {
                 dismissLoop(l.id);
                 if (l.runId) dismissRun(l.box, l.runId);
               }}
             >
-              <XIcon className="size-3.5" />
+              <XIcon className={sx(paint.s13)} />
             </button>
           </Tip>
         )}
       </div>
       <Tip label={`Session ${l.session} on ${l.box}`} align="start">
-        <p className="mt-1 truncate text-muted-foreground text-xs">
-          {name} · <span className="font-mono">{l.check}</span>
+        <p className={sx(paint.s14)}>
+          {name} · <span className={sx(paint.s15)}>{l.check}</span>
         </p>
       </Tip>
-      <p className="mt-1 text-[13px] text-foreground/80">{said}</p>
+      <p className={sx(paint.s16)}>{said}</p>
       {l.output !== undefined && (
         <>
-          <button type="button" className="mt-1.5 inline-flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground" aria-expanded={open} onClick={() => setOpen(!open)}>
-            <ChevronRightIcon className={cn("size-3 transition-transform", open && "rotate-90")} />
+          <button type="button" className={sx(paint.s17)} aria-expanded={open} onClick={() => setOpen(!open)}>
+            <ChevronRightIcon className={[sx(paint.s18), open && sx(paint.s19)].filter(Boolean).join(" ")} />
             Last check exited {l.exitCode}
           </button>
-          {open && <pre className="mt-1.5 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/72 p-2 font-mono text-[11px] leading-snug">{l.output.trim() || "(no output)"}</pre>}
+          {open && <pre className={sx(paint.s20)}>{l.output.trim() || "(no output)"}</pre>}
         </>
       )}
-      <div className="mt-2.5 flex items-center gap-1.5">
+      <div className={sx(paint.s21)}>
         <Button size="xs" variant="outline" onClick={() => void focusSession(l.box, l.session)}>
           Open session
         </Button>
@@ -233,8 +400,8 @@ function LoopCard({ loop: l }: { loop: Loop }) {
 
 function StatusIcon({ loop: l }: { loop: Loop }) {
   if (isLive(l)) return <Spinner  size="md"/>;
-  if (l.outcome === "passed") return <CheckIcon className="size-3.5 text-success" />;
-  if (l.outcome === "needs-you") return <HandIcon className="size-3.5 text-warning" />;
-  if (l.outcome === "cancelled") return <RepeatIcon className="size-3.5 text-muted-foreground" />;
-  return <CircleAlertIcon className="size-3.5 text-destructive" />;
+  if (l.outcome === "passed") return <CheckIcon className={sx(paint.s22)} />;
+  if (l.outcome === "needs-you") return <HandIcon className={sx(paint.s23)} />;
+  if (l.outcome === "cancelled") return <RepeatIcon className={sx(paint.s24)} />;
+  return <CircleAlertIcon className={sx(paint.s25)} />;
 }

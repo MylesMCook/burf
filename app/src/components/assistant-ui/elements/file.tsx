@@ -1,7 +1,7 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { memo, type FC } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
 import {
   FileIcon,
   FileTextIcon,
@@ -12,30 +12,159 @@ import {
   DownloadIcon,
 } from "lucide-react";
 import type { FileMessagePartComponent } from "@assistant-ui/react";
-import { cn } from "@/lib/utils";
 import { AudioPlayer, VideoPlayer } from "./media-player";
 
-const fileVariants = cva(
-  "aui-file-root inline-flex items-center gap-3 rounded-lg transition-colors",
-  {
-    variants: {
-      variant: {
-        outline: "border-border hover:bg-muted/50 border",
-        ghost: "hover:bg-muted/50",
-        muted: "bg-muted/50 hover:bg-muted/70",
-      },
-      size: {
-        sm: "px-2.5 py-1.5 text-xs",
-        default: "px-3 py-2 text-sm",
-        lg: "px-4 py-3 text-base",
-      },
+const paint = stylex.create({
+  s0: {
+    "borderColor": "var(--border)",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--muted) 50%, transparent)",
     },
-    defaultVariants: {
-      variant: "outline",
-      size: "default",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+  },
+  s1: {
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--muted) 50%, transparent)",
     },
   },
-);
+  s2: {
+    "backgroundColor": {
+      "default": "color-mix(in oklab, var(--muted) 50%, transparent)",
+      ":hover": "color-mix(in oklab, var(--muted) 70%, transparent)",
+    },
+  },
+  s3: {
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s5: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "fontSize": "16px",
+    "lineHeight": "24px",
+  },
+  s6: {
+    "color": "var(--muted-foreground)",
+    "flexShrink": 0,
+  },
+  s7: {
+    "width": "20px",
+    "height": "20px",
+  },
+  s8: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+  },
+  s9: {
+    "color": "var(--muted-foreground)",
+    "flexShrink": 0,
+  },
+  s10: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--accent-foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-md)",
+    "padding": "4px",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+  },
+  s11: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s12: {
+    "width": "100%",
+  },
+  s13: {
+    "display": "flex",
+    "width": "100%",
+    "flexDirection": "column",
+    "gap": "8px",
+    "maxWidth": "576px",
+  },
+  s14: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "justifyContent": "flex-end",
+    "gap": "8px",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+  },
+  s15: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "fontSize": "11px",
+  },
+  s16: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s17: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s18: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderRadius": "var(--radius-lg)",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
+
+type FileVariant = "outline" | "ghost" | "muted";
+type FileSize = "sm" | "default" | "lg";
+
+function fileRootClass(
+  variant: FileVariant | null | undefined,
+  size: FileSize | null | undefined,
+) {
+  return [
+    "aui-file-root",
+    sx(
+      paint.s18,
+      variant === "ghost" ? paint.s1 : variant === "muted" ? paint.s2 : paint.s0,
+      size === "sm" ? paint.s3 : size === "lg" ? paint.s5 : paint.s4,
+    ),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 function getMimeTypeIcon(mimeType: string): FC<{ className?: string }> {
   const type = mimeType.toLowerCase();
@@ -147,8 +276,10 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export type FileRootProps = React.ComponentProps<"div"> &
-  VariantProps<typeof fileVariants>;
+export type FileRootProps = React.ComponentProps<"div"> & {
+  variant?: FileVariant | null | undefined;
+  size?: FileSize | null | undefined;
+};
 
 function FileRoot({
   className,
@@ -162,7 +293,7 @@ function FileRoot({
       data-slot="file-root"
       data-variant={variant}
       data-size={size}
-      className={cn(fileVariants({ variant, size, className }))}
+      className={[fileRootClass(variant, size), className].filter(Boolean).join(" ")}
       {...props}
     >
       {children}
@@ -185,11 +316,11 @@ function FileIconDisplay({
   return (
     <span
       data-slot="file-icon"
-      className={cn("text-muted-foreground shrink-0", className)}
+      className={[sx(paint.s6), className].filter(Boolean).join(" ")}
       {...props}
     >
       {/* eslint-disable-next-line react-hooks/static-components -- The helper only selects module-level icon components. */}
-      {children ?? <IconComponent className="size-5" />}
+      {children ?? <IconComponent className={sx(paint.s7)} />}
     </span>
   );
 }
@@ -202,7 +333,7 @@ function FileName({
   return (
     <span
       data-slot="file-name"
-      className={cn("min-w-0 flex-1 truncate font-medium", className)}
+      className={[sx(paint.s8), className].filter(Boolean).join(" ")}
       {...props}
     >
       {children || "Unnamed file"}
@@ -218,7 +349,7 @@ function FileSize({ bytes, className, ...props }: FileSizeProps) {
   return (
     <span
       data-slot="file-size"
-      className={cn("text-muted-foreground shrink-0", className)}
+      className={[sx(paint.s9), className].filter(Boolean).join(" ")}
       {...props}
     >
       {formatFileSize(bytes)}
@@ -253,14 +384,11 @@ function FileDownload({
       href={href}
       download={filename || "download"}
       {...(kind === "url" && { target: "_blank", rel: "noopener noreferrer" })}
-      className={cn(
-        "text-muted-foreground hover:bg-accent hover:text-accent-foreground shrink-0 rounded-md p-1 transition-colors",
-        className,
-      )}
+      className={[sx(paint.s10), className].filter(Boolean).join(" ")}
       aria-label={!children ? `Download ${filename || "file"}` : undefined}
       {...props}
     >
-      {children || <DownloadIcon className="size-4" />}
+      {children || <DownloadIcon className={sx(paint.s11)} />}
     </a>
   );
 }
@@ -295,7 +423,7 @@ function FilePlayer({
   }
 
   return (
-    <div data-slot="file-player" className={cn("w-full", className)} {...props}>
+    <div data-slot="file-player" className={[sx(paint.s12), className].filter(Boolean).join(" ")} {...props}>
       {normalizedMimeType.startsWith("audio/") ? (
         <AudioPlayer src={src} title={filename} />
       ) : (
@@ -321,20 +449,20 @@ const FileImpl: FileMessagePartComponent = ({
 
   if (mediaSource && isMedia) {
     return (
-      <div className="flex w-full max-w-xl flex-col gap-2">
+      <div className={sx(paint.s13)}>
         <FilePlayer
           data={data}
           mimeType={mimeType}
           {...(filename !== undefined && { filename })}
           {...(sourceType !== undefined && { sourceType })}
         />
-        <div className="flex min-w-0 items-center justify-end gap-2 px-1">
+        <div className={sx(paint.s14)}>
           {showSize && (
             <FileSize
               bytes={
                 kind === "data-uri" ? getDataUrlSize(data) : getBase64Size(data)
               }
-              className="text-foreground/45 text-[11px]"
+              className={sx(paint.s15)}
             />
           )}
           <FileDownload
@@ -351,14 +479,14 @@ const FileImpl: FileMessagePartComponent = ({
   return (
     <FileRoot>
       <FileIconDisplay mimeType={mimeType} />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <div className={sx(paint.s16)}>
         <FileName>{filename}</FileName>
         {showSize && (
           <FileSize
             bytes={
               kind === "data-uri" ? getDataUrlSize(data) : getBase64Size(data)
             }
-            className="text-xs"
+            className={sx(paint.s17)}
           />
         )}
       </div>
@@ -397,7 +525,6 @@ export {
   FileSize,
   FileDownload,
   FilePlayer,
-  fileVariants,
   getMimeTypeIcon,
   getFileDataKind,
   getBase64Size,

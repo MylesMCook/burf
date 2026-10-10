@@ -1,7 +1,111 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { motion, useSpring } from "motion/react";
 import { memo, useMemo, useRef } from "react";
+
+const paint = stylex.create({
+  s0: {
+    "overflow": "hidden",
+    "borderRadius": "999px",
+    "backgroundColor": {
+      "default": "light-dark(#18181b, #f4f4f5)",
+    },
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": {
+      "default": "light-dark(#fff, #18181b)",
+    },
+    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
+  },
+  s1: {
+    "display": "flex",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s2: {
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s3: {
+    "overflow": "hidden",
+    "borderRadius": "999px",
+    "backgroundColor": {
+      "default": "light-dark(#18181b, #f4f4f5)",
+    },
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": {
+      "default": "light-dark(#fff, #18181b)",
+    },
+    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
+  },
+  s4: {
+    "position": "relative",
+    "height": "24px",
+    "overflow": "hidden",
+  },
+  s5: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "4px",
+  },
+  s6: {
+    "position": "relative",
+    "height": "24px",
+    "overflow": "hidden",
+  },
+  s7: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s8: {
+    "display": "flex",
+    "height": "24px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s9: {
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s10: {
+    "position": "relative",
+    "height": "24px",
+    "overflow": "hidden",
+  },
+  s11: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s12: {
+    "display": "flex",
+    "height": "24px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s13: {
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const TICKER_ITEM_HEIGHT = 24;
 /** Full scroll stacks are skipped above this count — single label + instant updates. */
@@ -20,9 +124,9 @@ const DateTickerCompact = memo(function DateTickerCompact({
   const label = labels[currentIndex] ?? labels[0] ?? "";
 
   return (
-    <div className="overflow-hidden rounded-full bg-zinc-900 px-4 py-1 text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
-      <div className="flex h-6 items-center justify-center">
-        <span className="whitespace-nowrap font-medium text-sm">{label}</span>
+    <div className={sx(paint.s0)}>
+      <div className={sx(paint.s1)}>
+        <span className={sx(paint.s2)}>{label}</span>
       </div>
     </div>
   );
@@ -93,18 +197,18 @@ const DateTickerInner = memo(function DateTickerInner({
   }
 
   return (
-    <div className="overflow-hidden rounded-full bg-zinc-900 px-4 py-1 text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
-      <div className="relative h-6 overflow-hidden">
-        <div className="flex items-center justify-center gap-1">
+    <div className={sx(paint.s3)}>
+      <div className={sx(paint.s4)}>
+        <div className={sx(paint.s5)}>
           {/* Month stack */}
-          <div className="relative h-6 overflow-hidden">
-            <motion.div className="flex flex-col" style={{ y: monthY }}>
+          <div className={sx(paint.s6)}>
+            <motion.div className={sx(paint.s7)} style={{ y: monthY }}>
               {monthSegments.map((segment) => (
                 <div
-                  className="flex h-6 shrink-0 items-center justify-center"
+                  className={sx(paint.s8)}
                   key={segment.key}
                 >
-                  <span className="whitespace-nowrap font-medium text-sm">
+                  <span className={sx(paint.s9)}>
                     {segment.month}
                   </span>
                 </div>
@@ -113,14 +217,14 @@ const DateTickerInner = memo(function DateTickerInner({
           </div>
 
           {/* Day stack */}
-          <div className="relative h-6 overflow-hidden">
-            <motion.div className="flex flex-col" style={{ y: dayY }}>
+          <div className={sx(paint.s10)}>
+            <motion.div className={sx(paint.s11)} style={{ y: dayY }}>
               {parsedLabels.map((label) => (
                 <div
-                  className="flex h-6 shrink-0 items-center justify-center"
+                  className={sx(paint.s12)}
                   key={label.key}
                 >
-                  <span className="whitespace-nowrap font-medium text-sm">
+                  <span className={sx(paint.s13)}>
                     {label.day}
                   </span>
                 </div>

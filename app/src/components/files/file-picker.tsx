@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ClockIcon, SearchIcon } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
@@ -11,9 +12,252 @@ import { rank } from "@/lib/file-match";
 import { filesApi, type How, loadTouched, openFile, setPickerOpen, type TouchedFile, useFiles } from "@/lib/files";
 import { explain } from "@/lib/errors";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { useHereKey, useHereRef } from "@/lib/workspaces";
 import { focusNewPane } from "@/lib/focus-home";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "56px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "10px",
+    "paddingLeft": "20px",
+    "paddingRight": "20px",
+  },
+  s1: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "opacity": 0.8,
+  },
+  s2: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "transparent",
+    "fontSize": "16px",
+    "lineHeight": "24px",
+    "outline": "none",
+    "color": {
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 80%, transparent)",
+    },
+  },
+  s3: {
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 60%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "display": "flex",
+    "minHeight": "0px",
+    "minWidth": "0px",
+    "flexDirection": "column",
+  },
+  s5: {
+    "width": "24rem",
+    "flexShrink": 0,
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+  },
+  s6: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s7: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s8: {
+    "display": "flex",
+    "height": "100%",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s9: {
+    "height": "100%",
+  },
+  s10: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s11: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s12: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s13: {
+    "marginLeft": "auto",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  s14: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s15: {
+    "marginLeft": "auto",
+  },
+  s16: {
+    "height": "100%",
+    "minHeight": "0px",
+    "overflowY": "auto",
+    "overscrollBehavior": "contain",
+    "padding": "8px",
+    "scrollbarWidth": "thin",
+  },
+  s17: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "32px",
+    "paddingBottom": "32px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s18: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s19: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s20: {
+    "backgroundColor": "transparent",
+    "fontWeight": 600,
+    "color": "var(--foreground)",
+    "textDecoration": "underline",
+  },
+  s21: {
+    "display": "flex",
+    "minHeight": "32px",
+    "cursor": "default",
+    "userSelect": "none",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-sm)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s22: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--accent-foreground)",
+  },
+  s23: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s24: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "baseline",
+    "gap": "8px",
+  },
+  s25: {
+    "flexShrink": 0,
+    "color": "var(--foreground)",
+  },
+  s26: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s27: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s28: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s29: {
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--success) 12%, transparent)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontWeight": 500,
+    "fontFamily": "var(--font-sans)",
+    "fontSize": "10px",
+    "color": "var(--success-foreground)",
+  },
+  s30: {
+    "color": "var(--success-foreground)",
+  },
+  s31: {
+    "color": "var(--destructive-foreground)",
+  },
+  s32: {
+    "width": "12px",
+    "height": "12px",
+    "flexShrink": 0,
+    "color": "color-mix(in oklab, var(--muted-foreground) 70%, transparent)",
+  },
+
+  s33: {
+    ":is([role=group] + *)": {
+      marginTop: 8,
+    },
+  },
+  s34: {
+    textDecorationColor: "color-mix(in oklab, var(--foreground) 35%, transparent)",
+    textUnderlineOffset: 3,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The preview, with the editor, is its own chunk.
 const Preview = lazy(() => import("@/components/files/file-preview"));
@@ -177,8 +421,8 @@ function Picker() {
 
   return (
     <CommandDialogPopup size={preview ? "preview" : "files"} data-testid="file-picker" aria-label="Go to file">
-      <div className="flex h-14 shrink-0 items-center gap-2.5 px-5">
-        <SearchIcon className="size-4 shrink-0 text-muted-foreground opacity-80" />
+      <div className={sx(paint.s0)}>
+        <SearchIcon className={sx(paint.s1)} />
         <input
           autoFocus
           value={query}
@@ -192,35 +436,35 @@ function Picker() {
           aria-expanded
           spellCheck={false}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground/80"
+          className={sx(paint.s2)}
         />
         {searching && <Spinner  size="md" muted/>}
-        {ref && <span className="shrink-0 rounded-md border bg-muted/60 px-1.5 py-px font-mono text-[11px] text-muted-foreground">{ref.box}</span>}
+        {ref && <span className={sx(paint.s3)}>{ref.box}</span>}
       </div>
       <CommandPanel grow={preview}>
-        <div className={cn("flex min-h-0 min-w-0 flex-col", preview ? "w-[24rem] shrink-0 border-r" : "flex-1")}>
+        <div className={[sx(paint.s4), preview ? sx(paint.s5) : sx(paint.s6)].filter(Boolean).join(" ")}>
           <Results groups={groups} at={at} setAt={setAt} choose={choose} listRef={list} empty={!ws ? "Open a worktree first: ⌘P finds files in the one in front." : error ? error : q ? (searching ? "" : "No file matches.") : touched ? "Type a file's name." : ""} />
         </div>
-        {preview && <div className="min-w-0 flex-1">{current ? <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner  size="lg" muted/></div>}><Preview ws={ws!} path={current.path} /></Suspense> : <div className="h-full" />}</div>}
+        {preview && <div className={sx(paint.s7)}>{current ? <Suspense fallback={<div className={sx(paint.s8)}><Spinner  size="lg" muted/></div>}><Preview ws={ws!} path={current.path} /></Suspense> : <div className={sx(paint.s9)} />}</div>}
       </CommandPanel>
       <CommandFooter align="start" gap={4}>
-        <span className="flex items-center gap-1">
+        <span className={sx(paint.s10)}>
           <Kbd>↵</Kbd> open
         </span>
-        <span className="flex items-center gap-1">
+        <span className={sx(paint.s11)}>
           <Kbd>⌥↵</Kbd> split
         </span>
-        <span className="flex items-center gap-1">
+        <span className={sx(paint.s12)}>
           <Kbd>⌘↵</Kbd> {editor}
         </span>
         {/* Past the box's 20,000-file list (internal/box/commands.go): the
             search covers those, plus what the agents touched. */}
         {q && found?.truncated && (
-          <span className="ml-auto truncate text-muted-foreground" data-testid="file-picker-truncated">
+          <span className={sx(paint.s13)} data-testid="file-picker-truncated">
             Searching the first 20,000 files
           </span>
         )}
-        <span className={cn("flex items-center gap-1", !(q && found?.truncated) && "ml-auto")}>
+        <span className={[sx(paint.s14), !(q && found?.truncated) && sx(paint.s15)].filter(Boolean).join(" ")}>
           <Kbd>esc</Kbd> close
         </span>
       </CommandFooter>
@@ -231,12 +475,12 @@ function Picker() {
 function Results({ groups, at, setAt, choose, listRef, empty }: { groups: Group[]; at: number; setAt(i: number): void; choose(e: Entry, how: How): void; listRef: React.RefObject<HTMLDivElement | null>; empty: string }) {
   let i = -1;
   return (
-    <div ref={listRef} id="file-picker-list" role="listbox" aria-label="Files" className="h-full min-h-0 overflow-y-auto overscroll-contain p-2 [scrollbar-width:thin]">
-      {!groups.length && empty && <p className="px-2 py-8 text-center text-muted-foreground text-sm">{empty}</p>}
+    <div ref={listRef} id="file-picker-list" role="listbox" aria-label="Files" className={sx(paint.s16)}>
+      {!groups.length && empty && <p className={sx(paint.s17)}>{empty}</p>}
       {groups.map((g) => (
-        <div key={g.id} role="group" aria-label={g.label} className="[[role=group]+&]:mt-2">
-          <div className="flex items-center gap-1.5 px-2 py-1.5 font-medium text-muted-foreground text-xs">
-            {g.id === "agent" && <AgentIcon agent={g.agent} className="size-3" />}
+        <div key={g.id} role="group" aria-label={g.label} className={sx(paint.s33)}>
+          <div className={sx(paint.s18)}>
+            {g.id === "agent" && <AgentIcon agent={g.agent} className={sx(paint.s19)} />}
             {g.label}
           </div>
           {g.items.map((e) => {
@@ -262,7 +506,7 @@ function Marked({ text, hits, offset, className }: { text: string; hits: number[
     if (!run) return;
     out.push(
       on ? (
-        <mark key={k} className="bg-transparent font-semibold text-foreground underline decoration-foreground/35 underline-offset-[3px]">
+        <mark key={k} className={[sx(paint.s20), sx(paint.s34)].filter(Boolean).join(" ")}>
           {run}
         </mark>
       ) : (
@@ -297,22 +541,22 @@ function Row({ e, index, active, onHover, onPick, grouped }: { e: Entry; index: 
       data-path={e.path}
       onMouseMove={onHover}
       onClick={(ev) => onPick(ev.metaKey || ev.ctrlKey ? "external" : ev.altKey ? "split" : "tab")}
-      className={cn("flex min-h-8 cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm", active && "bg-accent text-accent-foreground")}
+      className={[sx(paint.s21), active && sx(paint.s22)].filter(Boolean).join(" ")}
     >
-      <FileGlyph path={e.path} className="size-4" />
-      <span className="flex min-w-0 flex-1 items-baseline gap-2">
-        <Marked text={name} hits={e.hits} offset={slash + 1} className="shrink-0 text-foreground" />
-        {dir && <Marked text={dir} hits={e.hits} offset={0} className="min-w-0 truncate text-muted-foreground text-xs" />}
+      <FileGlyph path={e.path} className={sx(paint.s23)} />
+      <span className={sx(paint.s24)}>
+        <Marked text={name} hits={e.hits} offset={slash + 1} className={sx(paint.s25)} />
+        {dir && <Marked text={dir} hits={e.hits} offset={0} className={sx(paint.s26)} />}
       </span>
-      {t && !grouped && <AgentIcon agent={t.agent} className="size-3" />}
+      {t && !grouped && <AgentIcon agent={t.agent} className={sx(paint.s27)} />}
       {t && (
-        <span className="flex shrink-0 items-center gap-1.5 font-mono text-[11px] tabular-nums">
-          {t.created && <span className="rounded bg-success/12 px-1 font-medium font-sans text-[10px] text-success-foreground">new</span>}
-          <span className="text-success-foreground">+{t.added}</span>
-          {t.removed > 0 && <span className="text-destructive-foreground">−{t.removed}</span>}
+        <span className={sx(paint.s28)}>
+          {t.created && <span className={sx(paint.s29)}>new</span>}
+          <span className={sx(paint.s30)}>+{t.added}</span>
+          {t.removed > 0 && <span className={sx(paint.s31)}>−{t.removed}</span>}
         </span>
       )}
-      {!t && e.recent && <ClockIcon aria-label="Opened lately" className="size-3 shrink-0 text-muted-foreground/70" />}
+      {!t && e.recent && <ClockIcon aria-label="Opened lately" className={sx(paint.s32)} />}
     </div>
   );
 }

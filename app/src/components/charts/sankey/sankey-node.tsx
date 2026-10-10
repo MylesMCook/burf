@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import type { SankeyNode as SankeyNodeType } from "d3-sankey";
 import { motion, type Transition } from "motion/react";
 import { type ReactNode, useCallback, useMemo } from "react";
@@ -10,6 +11,21 @@ import {
   type SankeyNodeDatum,
   useSankey,
 } from "./sankey-context";
+
+const paint = stylex.create({
+  s0: {
+    "fill": "var(--foreground)",
+    "fontWeight": 500,
+    "fontSize": "13px",
+  },
+  s1: {
+    "fill": "var(--foreground)",
+    "fontSize": "11px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Helper to get node index from link source/target
 type NodeOrIndex = SankeyNodeType<SankeyNodeDatum, SankeyLinkDatum> | number;
@@ -280,7 +296,7 @@ function AnimatedNode({
       {showLabels ? (
         <>
           <NodeLabel
-            className="fill-foreground font-medium text-[13px]"
+            className={sx(paint.s0)}
             key={`name-${index}-${revealEpoch}`}
             layout={labelLayouts.name}
             opacity={nameOpacity}
@@ -290,7 +306,7 @@ function AnimatedNode({
           </NodeLabel>
           {labelLayouts.value ? (
             <NodeLabel
-              className="fill-foreground text-[11px]"
+              className={sx(paint.s1)}
               key={`value-${index}-${revealEpoch}`}
               layout={labelLayouts.value}
               opacity={valueOpacity}

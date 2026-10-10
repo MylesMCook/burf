@@ -13,6 +13,7 @@
 //   node scripts/build-plugins.mjs           build once
 //   node scripts/build-plugins.mjs --watch   rebuild on change
 import { context, build } from "esbuild";
+import stylex from "@stylexjs/unplugin/esbuild";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, extname, join, resolve } from "node:path";
 
@@ -78,6 +79,12 @@ const entryImports = {
   },
 };
 
+const stylexPlugin = stylex({
+  runtimeInjection: true,
+  treeshakeCompensation: true,
+  unstable_moduleResolution: { type: "commonJS", rootDir: resolve(import.meta.dirname, "..") },
+});
+
 const index = [];
 for (const m of manifests) {
   const { dir, builtin, ...manifest } = m;
@@ -95,6 +102,7 @@ for (const m of manifests) {
     outfile: join(target, "index.js"),
     nodePaths,
     logLevel: "warning",
+    plugins: [stylexPlugin],
   };
   const lazy = await lazyEntries(join(root, dir, "src", "lazy"));
   const lazyOptions = lazy.length && {
@@ -115,7 +123,7 @@ for (const m of manifests) {
       "@berth/plugin": join(shims, "berth-plugin.js"),
       "@berth/plugin/ui": join(shims, "berth-plugin-ui.js"),
     },
-    plugins: [noWasm, entryImports],
+    plugins: [stylexPlugin, noWasm, entryImports],
     nodePaths,
     logLevel: "warning",
   };

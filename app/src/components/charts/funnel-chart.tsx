@@ -1,16 +1,9 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import type { Transition } from "motion/react";
 import { motion, useReducedMotion, useTransform } from "motion/react";
-import {
-  type CSSProperties,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { cn } from "@/lib/utils";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useEnterComplete } from "./use-enter-complete";
 import { useMountProgress } from "./use-mount-progress";
 
@@ -111,6 +104,303 @@ export interface FunnelChartProps {
 // ─── Defaults ───────────────────────────────────────────────────────
 
 import { intFmt } from "./chart-formatters";
+
+const paint = stylex.create({
+  s0: {
+    "pointerEvents": "none",
+    "position": "relative",
+    "flexShrink": 0,
+    "overflow": "visible",
+  },
+  s1: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "overflow": "visible",
+  },
+  s2: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "height": "100%",
+    "width": "100%",
+    "overflow": "visible",
+  },
+  s3: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "overflow": "visible",
+  },
+  s4: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "height": "100%",
+    "width": "100%",
+    "overflow": "visible",
+  },
+  s5: {
+    "pointerEvents": "none",
+    "position": "relative",
+    "flexShrink": 0,
+    "overflow": "visible",
+  },
+  s6: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "overflow": "visible",
+  },
+  s7: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "height": "100%",
+    "width": "100%",
+    "overflow": "visible",
+  },
+  s8: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "overflow": "visible",
+  },
+  s9: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "height": "100%",
+    "width": "100%",
+    "overflow": "visible",
+  },
+  s10: {
+    "whiteSpace": "nowrap",
+    "fontWeight": 600,
+    "color": "var(--foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s11: {
+    "borderRadius": "999px",
+    "backgroundColor": "var(--foreground)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontWeight": 700,
+    "color": "var(--background)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 8%, transparent)",
+  },
+  s12: {
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s13: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+  },
+  s14: {
+    "flexDirection": "column",
+    "alignItems": "center",
+  },
+  s15: {
+    "flexDirection": "row",
+    "alignItems": "center",
+  },
+  s16: {
+    "display": "flex",
+    "height": "16%",
+    "alignItems": "flex-end",
+    "justifyContent": "center",
+    "paddingBottom": "4px",
+  },
+  s17: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s18: {
+    "display": "flex",
+    "height": "16%",
+    "alignItems": "flex-start",
+    "justifyContent": "center",
+    "paddingTop": "4px",
+  },
+  s19: {
+    "display": "flex",
+    "width": "16%",
+    "alignItems": "center",
+    "justifyContent": "flex-end",
+    "paddingRight": "8px",
+  },
+  s20: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s21: {
+    "display": "flex",
+    "width": "16%",
+    "alignItems": "center",
+    "justifyContent": "flex-start",
+    "paddingLeft": "8px",
+  },
+  s22: {
+    "justifyContent": "flex-start",
+  },
+  s23: {
+    "justifyContent": "center",
+  },
+  s24: {
+    "justifyContent": "flex-end",
+  },
+  s25: {
+    "alignItems": "flex-start",
+  },
+  s26: {
+    "alignItems": "center",
+  },
+  s27: {
+    "alignItems": "flex-end",
+  },
+  s28: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+  },
+  s29: {
+    "display": "flex",
+    "gap": "6px",
+  },
+  s30: {
+    "position": "relative",
+    "width": "100%",
+    "userSelect": "none",
+    "overflow": "visible",
+  },
+  s31: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "height": "100%",
+    "width": "100%",
+  },
+  s32: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "overflow": "visible",
+  },
+  s33: {
+    "flexDirection": "row",
+  },
+  s34: {
+    "flexDirection": "column",
+  },
+  s35: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "height": "100%",
+    "width": "100%",
+  },
+  s36: {
+    "position": "absolute",
+    "cursor": "pointer",
+  },
+  n0: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+  },
+  n1: {
+    "flexDirection": "column",
+    "alignItems": "center",
+  },
+  n2: {
+    "flexDirection": "row",
+    "alignItems": "center",
+  },
+  n3: {
+    "display": "flex",
+    "gap": "6px",
+  },
+  n4: {
+    "flexDirection": "column",
+  },
+  n5: {
+    "flexDirection": "row",
+  },
+
+  s37: {
+    justifyContent: "flex-start",
+  },
+  s38: {
+    justifyContent: "center",
+  },
+  s39: {
+    justifyContent: "flex-end",
+  },
+  s40: {
+    alignItems: "flex-start",
+  },
+  s41: {
+    alignItems: "center",
+  },
+  s42: {
+    alignItems: "flex-end",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const fmtPct = (p: number) => `${Math.round(p)}%`;
 const fmtVal = intFmt;
@@ -257,7 +547,7 @@ function HSegment({
   return (
     <motion.div
       animate={{ opacity: dimmed ? 0.4 : 1 }}
-      className="pointer-events-none relative shrink-0 overflow-visible"
+      className={sx(paint.s0)}
       style={{
         width: segW,
         height: fullH,
@@ -266,10 +556,10 @@ function HSegment({
       transition={{ opacity: { duration: 0.15 } }}
     >
       {enterComplete ? (
-        <div className="absolute inset-0 overflow-visible">
+        <div className={sx(paint.s1)}>
           <svg
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full overflow-visible"
+            className={sx(paint.s2)}
             preserveAspectRatio="none"
             role="presentation"
             viewBox={`0 0 ${segW} ${fullH}`}
@@ -318,7 +608,7 @@ function HSegment({
         </div>
       ) : (
         <motion.div
-          className="absolute inset-0 overflow-visible"
+          className={sx(paint.s3)}
           style={{
             scaleX: entranceScaleX,
             scaleY: entranceScaleY,
@@ -327,7 +617,7 @@ function HSegment({
         >
           <svg
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full overflow-visible"
+            className={sx(paint.s4)}
             preserveAspectRatio="none"
             role="presentation"
             viewBox={`0 0 ${segW} ${fullH}`}
@@ -468,7 +758,7 @@ function VSegment({
   return (
     <motion.div
       animate={{ opacity: dimmed ? 0.4 : 1 }}
-      className="pointer-events-none relative shrink-0 overflow-visible"
+      className={sx(paint.s5)}
       style={{
         width: fullW,
         height: segH,
@@ -477,10 +767,10 @@ function VSegment({
       transition={{ opacity: { duration: 0.15 } }}
     >
       {enterComplete ? (
-        <div className="absolute inset-0 overflow-visible">
+        <div className={sx(paint.s6)}>
           <svg
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full overflow-visible"
+            className={sx(paint.s7)}
             preserveAspectRatio="none"
             role="presentation"
             viewBox={`0 0 ${fullW} ${segH}`}
@@ -529,7 +819,7 @@ function VSegment({
         </div>
       ) : (
         <motion.div
-          className="absolute inset-0 overflow-visible"
+          className={sx(paint.s8)}
           style={{
             scaleY: entranceScaleY,
             scaleX: entranceScaleX,
@@ -538,7 +828,7 @@ function VSegment({
         >
           <svg
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full overflow-visible"
+            className={sx(paint.s9)}
             preserveAspectRatio="none"
             role="presentation"
             viewBox={`0 0 ${fullW} ${segH}`}
@@ -627,17 +917,17 @@ function SegmentLabel({
   const still = useReducedMotion();
 
   const valueEl = showValues && (
-    <span className="whitespace-nowrap font-semibold text-foreground text-sm">
+    <span className={sx(paint.s10)}>
       {display}
     </span>
   );
   const pctEl = showPercentage && (
-    <span className="rounded-full bg-foreground px-3 py-1 font-bold text-background text-xs shadow-sm">
+    <span className={sx(paint.s11)}>
       {formatPercentage(pct)}
     </span>
   );
   const labelEl = showLabels && (
-    <span className="whitespace-nowrap font-medium text-muted-foreground text-xs">
+    <span className={sx(paint.s12)}>
       {stage.label}
     </span>
   );
@@ -647,10 +937,7 @@ function SegmentLabel({
     return (
       <motion.div
         animate={{ opacity: 1 }}
-        className={cn(
-          "absolute inset-0 flex",
-          isHorizontal ? "flex-col items-center" : "flex-row items-center"
-        )}
+        className={[sx(paint.s13), isHorizontal ? sx(paint.s14) : sx(paint.s15)].filter(Boolean).join(" ")}
         initial={still ? false : { opacity: 0 }}
         transition={{
           delay: index * staggerDelay + 0.25,
@@ -660,25 +947,25 @@ function SegmentLabel({
       >
         {isHorizontal ? (
           <>
-            <div className="flex h-[16%] items-end justify-center pb-1">
+            <div className={sx(paint.s16)}>
               {valueEl}
             </div>
-            <div className="flex flex-1 items-center justify-center">
+            <div className={sx(paint.s17)}>
               {pctEl}
             </div>
-            <div className="flex h-[16%] items-start justify-center pt-1">
+            <div className={sx(paint.s18)}>
               {labelEl}
             </div>
           </>
         ) : (
           <>
-            <div className="flex w-[16%] items-center justify-end pr-2">
+            <div className={sx(paint.s19)}>
               {valueEl}
             </div>
-            <div className="flex flex-1 items-center justify-center">
+            <div className={sx(paint.s20)}>
               {pctEl}
             </div>
-            <div className="flex w-[16%] items-center justify-start pl-2">
+            <div className={sx(paint.s21)}>
               {labelEl}
             </div>
           </>
@@ -694,14 +981,14 @@ function SegmentLabel({
 
   // Map align to flexbox alignment on the cross axes
   const justifyMap = {
-    start: "justify-start",
-    center: "justify-center",
-    end: "justify-end",
+    start: (sx(paint.s37) ?? ""),
+    center: (sx(paint.s38) ?? ""),
+    end: (sx(paint.s39) ?? ""),
   } as const;
   const itemsMap = {
-    start: "items-start",
-    center: "items-center",
-    end: "items-end",
+    start: (sx(paint.s40) ?? ""),
+    center: (sx(paint.s41) ?? ""),
+    end: (sx(paint.s42) ?? ""),
   } as const;
 
   // The outer container uses the chart orientation to position the group,
@@ -709,14 +996,7 @@ function SegmentLabel({
   return (
     <motion.div
       animate={{ opacity: 1 }}
-      className={cn(
-        "absolute inset-0 flex",
-        // For horizontal funnel, align controls vertical placement
-        // For vertical funnel, align controls horizontal placement
-        isHorizontal
-          ? cn("flex-col items-center", justifyMap[align])
-          : cn("flex-row items-center", justifyMap[align])
-      )}
+      className={[sx(paint.n0), isHorizontal ? [sx(paint.n1), justifyMap[align]].filter(Boolean).join(" ") : [sx(paint.n2), justifyMap[align]].filter(Boolean).join(" ")].filter(Boolean).join(" ")}
       initial={still ? false : { opacity: 0 }}
       style={{
         padding: isHorizontal ? "8% 0" : "0 8%",
@@ -728,12 +1008,7 @@ function SegmentLabel({
       }}
     >
       <div
-        className={cn(
-          "flex gap-1.5",
-          isVerticalStack
-            ? cn("flex-col", itemsMap[isHorizontal ? "center" : align])
-            : cn("flex-row", itemsMap.center)
-        )}
+        className={[sx(paint.n3), isVerticalStack ? [sx(paint.n4), itemsMap[isHorizontal ? "center" : align]].filter(Boolean).join(" ") : [sx(paint.n5), itemsMap.center].filter(Boolean).join(" ")].filter(Boolean).join(" ")}
       >
         {valueEl}
         {pctEl}
@@ -837,7 +1112,7 @@ export function FunnelChart({
 
   return (
     <div
-      className={cn("relative w-full select-none overflow-visible", className)}
+      className={[sx(paint.s30), className].filter(Boolean).join(" ")}
       ref={ref}
       style={{
         aspectRatio: horiz ? "2.2 / 1" : "1 / 1.8",
@@ -850,7 +1125,7 @@ export function FunnelChart({
           {gridEnabled && (
             <svg
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 h-full w-full"
+              className={sx(paint.s31)}
               preserveAspectRatio="none"
               role="presentation"
               viewBox={`0 0 ${W} ${H}`}
@@ -891,10 +1166,7 @@ export function FunnelChart({
 
           {/* Segments container — overflow-visible so hover scale is not clipped */}
           <div
-            className={cn(
-              "absolute inset-0 flex overflow-visible",
-              horiz ? "flex-row" : "flex-col"
-            )}
+            className={[sx(paint.s32), horiz ? sx(paint.s33) : sx(paint.s34)].filter(Boolean).join(" ")}
             style={{ gap }}
           >
             {data.map((stage, i) => {
@@ -949,7 +1221,7 @@ export function FunnelChart({
           {gridEnabled && showGridLines && (
             <svg
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 h-full w-full"
+              className={sx(paint.s35)}
               preserveAspectRatio="none"
               role="presentation"
               viewBox={`0 0 ${W} ${H}`}
@@ -1012,7 +1284,7 @@ export function FunnelChart({
             return (
               <motion.div
                 animate={{ opacity: isDimmed ? 0.4 : 1 }}
-                className="absolute cursor-pointer"
+                className={sx(paint.s36)}
                 key={`lbl-${stage.label}`}
                 onMouseEnter={() => setHoveredIndex(i)}
                 onMouseLeave={() => setHoveredIndex(null)}

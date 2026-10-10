@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ShieldAlertIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -7,6 +8,55 @@ import { toastManager } from "@/components/ui/toast";
 import { flowsApi, type LocationConfig, type RepoConfig, type RepoTrust } from "@/lib/flows";
 import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
+
+const paint = stylex.create({
+  s0: {
+    "maxHeight": "224px",
+    "overflowY": "auto",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--background) 60%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s1: {
+    "display": "flex",
+    "gap": "12px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+  },
+  s2: {
+    "width": "144px",
+    "flexShrink": 0,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "whiteSpace": "pre-wrap",
+    "wordBreak": "break-all",
+    "color": "var(--foreground)",
+  },
+  s4: {
+    "display": "flex",
+    "gap": "8px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // A repository's committed .berth/config.json runs on the box: its setup
 // script, services, hooks, flows, environment and agent commands. The box
@@ -28,11 +78,11 @@ export function RepoWants({ wants }: { wants: RepoConfig }) {
   for (const [k, v] of Object.entries(wants.env ?? {})) rows.push([`env ${k}`, v]);
   if (!rows.length) return null;
   return (
-    <dl className="max-h-56 overflow-y-auto rounded-lg border bg-background/60 px-3 py-2 font-mono text-xs">
+    <dl className={sx(paint.s0)}>
       {rows.map(([k, v], i) => (
-        <div key={i} className="flex gap-3 py-0.5">
-          <dt className="w-36 shrink-0 truncate text-muted-foreground">{k}</dt>
-          <dd className="min-w-0 flex-1 whitespace-pre-wrap break-all text-foreground">{v}</dd>
+        <div key={i} className={sx(paint.s1)}>
+          <dt className={sx(paint.s2)}>{k}</dt>
+          <dd className={sx(paint.s3)}>{v}</dd>
         </div>
       ))}
     </dl>
@@ -80,7 +130,7 @@ export function RepoTrustBanner({ box, location, config, onChanged }: { box: str
       <AlertDescription>
         <p>{intro(t)} Trust it only if you trust everyone who can commit to it.</p>
         <RepoWants wants={t.wants} />
-        <div className="flex gap-2">
+        <div className={sx(paint.s4)}>
           <Button size="sm" onClick={() => void trust()} loading={busy}>
             Trust and run it
           </Button>

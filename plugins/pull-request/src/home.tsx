@@ -1,8 +1,213 @@
+import * as stylex from "@stylexjs/stylex";
 import { type BerthPluginContext, type HomeWidgetProps, type Project, useBerth, useProjects, useWidgetData } from "@berth/plugin";
-import { Button, Icon, Tip, WidgetEmpty, WidgetRow, WidgetSkeleton, cn } from "@berth/plugin/ui";
+import { Button, Icon, Tip, WidgetEmpty, WidgetRow, WidgetSkeleton } from "@berth/plugin/ui";
 import { useMemo } from "react";
 
 import { quote, since } from "./gh";
+
+const paint = stylex.create({
+  s0: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s1: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "color": "var(--success)",
+  },
+  s2: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s3: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "color": "var(--destructive)",
+  },
+  s4: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s5: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s6: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s7: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s8: {
+    "color": "var(--muted-foreground)",
+  },
+  s9: {
+    "color": "var(--success)",
+  },
+  s10: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s11: {
+    "flexShrink": 0,
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s12: {
+    "width": "64px",
+    "flexShrink": 0,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "textAlign": "right",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s13: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s14: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "fontSize": "11px",
+    "color": "var(--warning-foreground)",
+  },
+  s15: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingBottom": "2px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s16: {
+    "paddingTop": "6px",
+  },
+  s17: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s18: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+    "gap": "2px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+  },
+  s19: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "10px",
+    "borderRadius": "var(--radius-sm)",
+    "textAlign": "left",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s20: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--destructive)",
+  },
+  s21: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s22: {
+    "fontWeight": 500,
+  },
+  s23: {
+    "color": "var(--muted-foreground)",
+  },
+  s24: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s25: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "24px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s26: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  s27: {
+    "height": "20px",
+    "borderRadius": "5px",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontSize": "11px",
+  },
+  s28: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  q29: {
+    "display": {
+      "@container (max-width: 300px)": {
+        "default": "none",
+      },
+    },
+  },
+  q30: {
+    "display": {
+      "@container (max-width: 360px)": {
+        "default": "none",
+      },
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Home widgets: your pull requests and the ones waiting on your review, in
 // one GraphQL search with gh; and CI that failed on the branches of your
@@ -118,27 +323,27 @@ export function usePRCount() {
 const DECISION: Record<string, string> = { APPROVED: "Approved", CHANGES_REQUESTED: "Changes", REVIEW_REQUIRED: "In review" };
 
 function Checks({ state }: { state?: string | null }) {
-  if (!state) return <span className="size-3.5 shrink-0" />;
+  if (!state) return <span className={sx(paint.s0)} />;
   if (state === "SUCCESS")
     return (
       <Tip label="Checks pass">
-        <span className="inline-flex shrink-0 text-success" role="img" aria-label="Checks pass">
-          <Icon name="Check" className="size-3.5" />
+        <span className={sx(paint.s1)} role="img" aria-label="Checks pass">
+          <Icon name="Check" className={sx(paint.s2)} />
         </span>
       </Tip>
     );
   if (state === "FAILURE" || state === "ERROR")
     return (
       <Tip label="Checks fail">
-        <span className="inline-flex shrink-0 text-destructive" role="img" aria-label="Checks fail">
-          <Icon name="CircleX" className="size-3.5" />
+        <span className={sx(paint.s3)} role="img" aria-label="Checks fail">
+          <Icon name="CircleX" className={sx(paint.s4)} />
         </span>
       </Tip>
     );
   return (
     <Tip label="Checks running">
-      <span className="inline-flex shrink-0 text-muted-foreground" role="img" aria-label="Checks running">
-        <Icon name="CircleDashed" className="size-3.5" />
+      <span className={sx(paint.s5)} role="img" aria-label="Checks running">
+        <Icon name="CircleDashed" className={sx(paint.s6)} />
       </span>
     </Tip>
   );
@@ -158,20 +363,20 @@ export function PullRequestsWidget({ berth, size }: HomeWidgetProps) {
   const mine = data.mine.slice(0, Math.max(0, room - review.length - (data.review.length ? 1 : 0) - 1));
   const row = (p: HomePR, queue: boolean) => (
     <WidgetRow key={p.url} onClick={() => berth.openUrl(p.url)} label={`${p.title}, ${p.repository.nameWithOwner} #${p.number}`}>
-      <Icon name={p.isDraft ? "GitPullRequestDraft" : "GitPullRequest"} className={cn("size-3.5 shrink-0", p.isDraft ? "text-muted-foreground" : "text-success")} />
-      <span className="min-w-0 flex-1 truncate">{p.title}</span>
-      <span className="shrink-0 font-mono text-[11px] text-muted-foreground @max-[300px]:hidden">
+      <Icon name={p.isDraft ? "GitPullRequestDraft" : "GitPullRequest"} className={[sx(paint.s7), p.isDraft ? sx(paint.s8) : sx(paint.s9)].filter(Boolean).join(" ")} />
+      <span className={sx(paint.s10)}>{p.title}</span>
+      <span className={[sx(paint.s11), sx(paint.q29)].filter(Boolean).join(" ")}>
         {p.repository.nameWithOwner.split("/")[1]}#{p.number}
       </span>
       <Checks state={p.commits?.nodes[0]?.commit.statusCheckRollup?.state} />
-      <span className="w-16 shrink-0 truncate text-right text-muted-foreground text-xs @max-[360px]:hidden">{queue ? (p.author?.login ?? "") : p.isDraft ? "Draft" : (DECISION[p.reviewDecision ?? ""] ?? since(p.updatedAt))}</span>
+      <span className={[sx(paint.s12), sx(paint.q30)].filter(Boolean).join(" ")}>{queue ? (p.author?.login ?? "") : p.isDraft ? "Draft" : (DECISION[p.reviewDecision ?? ""] ?? since(p.updatedAt))}</span>
     </WidgetRow>
   );
   return (
-    <div className="flex flex-col">
-      {review.length > 0 && <p className="px-2 pt-0.5 pb-0.5 text-[11px] text-warning-foreground">Waiting on your review · {data.reviewCount}</p>}
+    <div className={sx(paint.s13)}>
+      {review.length > 0 && <p className={sx(paint.s14)}>Waiting on your review · {data.reviewCount}</p>}
       {review.map((p) => row(p, true))}
-      {mine.length > 0 && <p className={cn("px-2 pb-0.5 text-[11px] text-muted-foreground", review.length && "pt-1.5")}>Yours · {data.mineCount}</p>}
+      {mine.length > 0 && <p className={[sx(paint.s15), review.length && sx(paint.s16)].filter(Boolean).join(" ")}>Yours · {data.mineCount}</p>}
       {mine.map((p) => row(p, false))}
     </div>
   );
@@ -222,29 +427,29 @@ export function CiWidget({ berth, size }: HomeWidgetProps) {
   if (!data.length) return <WidgetEmpty scene="calm" title="CI is green" hint={`The latest runs on your ${targets.reduce((n, t) => n + t.branches.length, 0)} worktree branches passed.`} />;
   const shown = data.slice(0, tall ? 6 : size === "s" ? 2 : 2);
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className={sx(paint.s17)}>
       {shown.map((f) => (
-        <div key={f.run.databaseId} className="group/row flex min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 hover:bg-accent/60">
-          <button type="button" onClick={() => berth.openUrl(f.run.url)} className="flex min-w-0 items-center gap-2.5 rounded-sm text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <Icon name="CircleX" className="size-3.5 shrink-0 text-destructive" />
-            <span className="min-w-0 flex-1 truncate">
-              <span className="font-medium">{f.run.workflowName}</span>
-              <span className="text-muted-foreground">
+        <div key={f.run.databaseId} className={[sx(paint.s18), "group/row"].filter(Boolean).join(" ")}>
+          <button type="button" onClick={() => berth.openUrl(f.run.url)} className={sx(paint.s19)}>
+            <Icon name="CircleX" className={sx(paint.s20)} />
+            <span className={sx(paint.s21)}>
+              <span className={sx(paint.s22)}>{f.run.workflowName}</span>
+              <span className={sx(paint.s23)}>
                 {" "}
                 · {f.repo} / {f.run.headBranch}
               </span>
             </span>
-            <span className="shrink-0 text-muted-foreground text-xs">{since(f.run.createdAt).replace(" ago", "")}</span>
+            <span className={sx(paint.s24)}>{since(f.run.createdAt).replace(" ago", "")}</span>
           </button>
-          <span className="flex min-w-0 items-center gap-2 pl-6 text-xs">
-            <span className="min-w-0 flex-1 truncate text-muted-foreground">{f.run.displayTitle}</span>
-            <Button size="xs" variant="outline" className="h-5 rounded-[5px] px-1.5 text-[11px]" onClick={() => berth.openUrl(f.run.url)} aria-label={`Open the ${f.run.workflowName} run on ${f.run.headBranch}`}>
+          <span className={sx(paint.s25)}>
+            <span className={sx(paint.s26)}>{f.run.displayTitle}</span>
+            <Button size="xs" variant="outline" className={sx(paint.s27)} onClick={() => berth.openUrl(f.run.url)} aria-label={`Open the ${f.run.workflowName} run on ${f.run.headBranch}`}>
               Logs
             </Button>
           </span>
         </div>
       ))}
-      {data.length > shown.length && <p className="px-2 text-muted-foreground text-xs">+{data.length - shown.length} more failing</p>}
+      {data.length > shown.length && <p className={sx(paint.s28)}>+{data.length - shown.length} more failing</p>}
     </div>
   );
 }

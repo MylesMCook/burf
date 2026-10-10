@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { memo, useCallback, useRef, useState } from "react";
 import {
   AlertCircleIcon,
@@ -27,13 +28,317 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { fadeIn, riseIn, shimmer, spinFast } from "./surfaces";
 import { Textarea } from "@/components/ui/textarea";
 
-const ANIMATION_DURATION = 200;
+const paint = stylex.create({
+  s0: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s1: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+  },
+  s2: {
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "animationDuration": "0.6s",
+  },
+  s4: {
+    "display": "inline-block",
+    "lineHeight": "1",
+    "textAlign": "start",
+  },
+  s5: {
+    "color": "var(--muted-foreground)",
+    "textDecoration": "line-through",
+  },
+  s6: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+  },
+  s7: {
+    "transform": "rotate(-90deg)",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+    "transitionTimingFunction": "linear",
+  },
+  s8: {
+    ":is(.group\\/trigger:is([data-state=open], [data-open]) &)": {
+      "transform": "rotate(0deg)",
+    },
+  },
+  s9: {
+    ":is(.group\\/trigger:is([data-state=panel-open], [data-panel-open]) &)": {
+      "transform": "rotate(0deg)",
+    },
+  },
+  s10: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "paddingInlineStart": "24px",
+    "paddingTop": "4px",
+    "paddingBottom": "8px",
+    "transitionTimingFunction": "linear",
+  },
+  s11: {
+    ":is(.group\\/collapsible-content:is([data-state=open], [data-open]) &)": {},
+  },
+  s12: {
+    ":is(.group\\/collapsible-content:is([data-state=closed], [data-closed]) &)": {},
+  },
+  s13: {
+    ":is(.group\\/collapsible-content:is([data-state=closed], [data-closed]) &)": {},
+    ":is(.group\\/collapsible-content:is([data-state=open], [data-open]) &)": {},
+  },
+  s14: {
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+    "color": "color-mix(in oklab, var(--foreground) 90%, transparent)",
+    "borderRadius": "var(--radius-md)",
+    "padding": "10px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "whiteSpace": "pre-wrap",
+  },
+  s15: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+  },
+  s16: {
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+    "color": "color-mix(in oklab, var(--foreground) 90%, transparent)",
+    "marginTop": "4px",
+    "borderRadius": "var(--radius-md)",
+    "padding": "10px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "whiteSpace": "pre-wrap",
+  },
+  s17: {
+    "color": "var(--muted-foreground)",
+    "fontWeight": 600,
+  },
+  s18: {
+    "color": "var(--muted-foreground)",
+    "whiteSpace": "pre-line",
+  },
+  s19: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "6px",
+    "paddingTop": "4px",
+  },
+  s20: {
+    "color": "var(--muted-foreground)",
+    "whiteSpace": "pre-line",
+  },
+  s21: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s22: {
+    "color": "var(--muted-foreground)",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s23: {
+    "fontWeight": 500,
+  },
+  s24: {
+    "color": "var(--muted-foreground)",
+  },
+  s25: {
+    "whiteSpace": "pre-line",
+  },
+  s26: {
+    "color": "var(--muted-foreground)",
+  },
+  s27: {
+    "color": "var(--muted-foreground)",
+    "whiteSpace": "pre-line",
+  },
+  s28: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+  },
+  s29: {
+    "color": "var(--foreground)",
+    "whiteSpace": "pre-line",
+  },
+  s30: {
+    "color": "var(--muted-foreground)",
+    "marginInlineEnd": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+    "textTransform": "uppercase",
+  },
+  s31: {
+    "display": "flex",
+    "gap": "8px",
+  },
+  s32: {
+    "flexDirection": "column",
+    "alignItems": "stretch",
+  },
+  s33: {
+    "flexWrap": "wrap",
+    "alignItems": "center",
+  },
+  s34: {
+    "height": "auto",
+    "flexDirection": "column",
+    "alignItems": "flex-start",
+    "gap": "2px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "whiteSpace": "normal",
+    "textAlign": "start",
+  },
+  s35: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 400,
+    "opacity": 0.8,
+  },
+  s36: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s37: {
+    "color": "var(--foreground)",
+    "whiteSpace": "pre-line",
+  },
+  s38: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "paddingTop": "4px",
+  },
+  s39: {
+    "color": "var(--destructive)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "whiteSpace": "pre-line",
+  },
+  s40: {
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "flex-start",
+    "gap": "8px",
+  },
+  s41: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s42: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "12px",
+    "paddingTop": "4px",
+  },
+  s43: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "paddingTop": "4px",
+  },
+  s44: {
+    "fontWeight": 600,
+  },
+  s45: {
+    "color": "var(--muted-foreground)",
+    "whiteSpace": "pre-line",
+  },
+  s46: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+  },
+  s47: {
+    "backgroundColor": "var(--muted)",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s48: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s49: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "paddingTop": "4px",
+  },
+  s50: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s51: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "paddingTop": "4px",
+  },
+  s52: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s53: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "paddingTop": "4px",
+  },
+  s54: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s55: {
+    "opacity": 0.6,
+  },
+  s56: {
+    "transform": {
+      "default": "scale(1)",
+      ":active": "scale(0.98)",
+    },
+    "transitionProperty": "transform",
+    "transitionDuration": {
+      "default": "150ms",
+      "@media (prefers-reduced-motion: reduce)": "0s",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
-const pressable = "active:scale-[0.98]";
+const ANIMATION_DURATION = 200;
 
 export type ToolFallbackRootProps = Omit<
   React.ComponentProps<typeof Collapsible>,
@@ -116,10 +421,7 @@ function ToolFallbackDuration({
   return (
     <span
       data-slot="tool-fallback-duration"
-      className={cn(
-        "aui-tool-fallback-duration text-muted-foreground text-xs tabular-nums",
-        className,
-      )}
+      className={[[sx(paint.s0), "aui-tool-fallback-duration"].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
       {...props}
     >
       {formatToolDuration(elapsedMs)}
@@ -159,32 +461,18 @@ function ToolFallbackTrigger({
     >
       <Icon
         data-slot="tool-fallback-trigger-icon"
-        className={cn(
-          "aui-tool-fallback-trigger-icon size-4 shrink-0",
-          isCancelled && "text-muted-foreground",
-          isRunning && "animate-spin [animation-duration:0.6s]",
-        )}
+        className={["aui-tool-fallback-trigger-icon", sx(paint.s1, isCancelled && paint.s2, isRunning && spinFast)].filter(Boolean).join(" ")}
       />
       <span
         data-slot="tool-fallback-trigger-label"
-        className={cn(
-          "aui-tool-fallback-trigger-label-wrapper inline-block text-start leading-none",
-          isCancelled && "text-muted-foreground line-through",
-          isRunning && "shimmer motion-reduce:animate-none",
-        )}
+        className={["aui-tool-fallback-trigger-label-wrapper", sx(paint.s4, isCancelled && paint.s5, isRunning && shimmer)].filter(Boolean).join(" ")}
       >
         {label}: <b>{toolName}</b>
       </span>
       <ToolFallbackDuration />
       <ChevronDownIcon
         data-slot="tool-fallback-trigger-chevron"
-        className={cn(
-          "aui-tool-fallback-trigger-chevron size-4 shrink-0",
-          "transition-transform duration-(--animation-duration) ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
-          "-rotate-90",
-          "group-data-open/trigger:rotate-0",
-          "group-data-panel-open/trigger:rotate-0",
-        )}
+        className={["aui-tool-fallback-trigger-chevron", sx(paint.s6, paint.s7, paint.s8, paint.s9)].filter(Boolean).join(" ")}
       />
     </CollapsibleTrigger>
   );
@@ -202,12 +490,7 @@ function ToolFallbackContent({
       {...props}
     >
       <div
-        className={cn(
-          "flex flex-col gap-2 ps-6 pt-1 pb-2 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none",
-          "group-data-open/collapsible-content:animate-in group-data-open/collapsible-content:fade-in-0 group-data-open/collapsible-content:blur-in-[2px] group-data-open/collapsible-content:slide-in-from-top-1",
-          "group-data-closed/collapsible-content:animate-out group-data-closed/collapsible-content:fade-out-0 group-data-closed/collapsible-content:blur-out-[2px] group-data-closed/collapsible-content:slide-out-to-top-1",
-          "group-data-closed/collapsible-content:animation-duration-(--animation-duration) group-data-open/collapsible-content:animation-duration-(--animation-duration)",
-        )}
+        className={sx(paint.s10, fadeIn, riseIn, paint.s13)}
       >
         {children}
       </div>
@@ -227,10 +510,10 @@ function ToolFallbackArgs({
   return (
     <div
       data-slot="tool-fallback-args"
-      className={cn("aui-tool-fallback-args", className)}
+      className={["aui-tool-fallback-args", className].filter(Boolean).join(" ")}
       {...props}
     >
-      <pre className="aui-tool-fallback-args-value bg-muted/50 text-foreground/90 rounded-md p-2.5 text-xs whitespace-pre-wrap">
+      <pre className={[sx(paint.s14), "aui-tool-fallback-args-value"].filter(Boolean).join(" ")}>
         {argsText}
       </pre>
     </div>
@@ -266,13 +549,13 @@ function ToolFallbackResult({
   return (
     <div
       data-slot="tool-fallback-result"
-      className={cn("aui-tool-fallback-result", className)}
+      className={["aui-tool-fallback-result", className].filter(Boolean).join(" ")}
       {...props}
     >
-      <p className="aui-tool-fallback-result-header text-muted-foreground text-xs font-medium">
+      <p className={[sx(paint.s15), "aui-tool-fallback-result-header"].filter(Boolean).join(" ")}>
         Result:
       </p>
-      <pre className="aui-tool-fallback-result-content bg-muted/50 text-foreground/90 mt-1 rounded-md p-2.5 text-xs whitespace-pre-wrap">
+      <pre className={[sx(paint.s16), "aui-tool-fallback-result-content"].filter(Boolean).join(" ")}>
         {formatUnknownValue(result, 2)}
       </pre>
     </div>
@@ -300,13 +583,13 @@ function ToolFallbackError({
   return (
     <div
       data-slot="tool-fallback-error"
-      className={cn("aui-tool-fallback-error", className)}
+      className={["aui-tool-fallback-error", className].filter(Boolean).join(" ")}
       {...props}
     >
-      <p className="aui-tool-fallback-error-header text-muted-foreground font-semibold">
+      <p className={[sx(paint.s17), "aui-tool-fallback-error-header"].filter(Boolean).join(" ")}>
         {headerText}
       </p>
-      <p className="aui-tool-fallback-error-reason text-muted-foreground whitespace-pre-line">
+      <p className={[sx(paint.s18), "aui-tool-fallback-error-reason"].filter(Boolean).join(" ")}>
         {errorText}
       </p>
     </div>
@@ -439,22 +722,19 @@ function ToolFallbackApprovalReceipt({
     <div
       data-slot="tool-fallback-approval-receipt"
       data-outcome={receipt.outcome}
-      className={cn(
-        "aui-tool-fallback-approval-receipt flex flex-col gap-1.5 pt-1",
-        className,
-      )}
+      className={[[sx(paint.s19), "aui-tool-fallback-approval-receipt"].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
       {...props}
     >
       {approval.prompt ? (
-        <p className="aui-tool-fallback-approval-prompt text-muted-foreground whitespace-pre-line">
+        <p className={[sx(paint.s20), "aui-tool-fallback-approval-prompt"].filter(Boolean).join(" ")}>
           {approval.prompt}
         </p>
       ) : null}
-      <p className="aui-tool-fallback-approval-receipt-label flex items-center gap-1.5">
-        <Icon aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
-        <span className="font-medium">{receipt.label}</span>
+      <p className={[sx(paint.s21), "aui-tool-fallback-approval-receipt-label"].filter(Boolean).join(" ")}>
+        <Icon aria-hidden className={sx(paint.s22)} />
+        <span className={sx(paint.s23)}>{receipt.label}</span>
         {receipt.option !== undefined ? (
-          <span className="text-muted-foreground">· {receipt.option}</span>
+          <span className={sx(paint.s24)}>· {receipt.option}</span>
         ) : null}
       </p>
       {approval.answers &&
@@ -469,9 +749,9 @@ function ToolFallbackApprovalReceipt({
           return (
             <p
               key={question.id}
-              className="aui-tool-fallback-approval-receipt-answer whitespace-pre-line"
+              className={[sx(paint.s25), "aui-tool-fallback-approval-receipt-answer"].filter(Boolean).join(" ")}
             >
-              <span className="text-muted-foreground">
+              <span className={sx(paint.s26)}>
                 {question.header ?? question.prompt}
               </span>{" "}
               · {labels.join(", ")}
@@ -481,7 +761,7 @@ function ToolFallbackApprovalReceipt({
       {notes.map((text) => (
         <p
           key={text}
-          className="aui-tool-fallback-approval-receipt-note text-muted-foreground whitespace-pre-line"
+          className={[sx(paint.s27), "aui-tool-fallback-approval-receipt-note"].filter(Boolean).join(" ")}
         >
           {text}
         </p>
@@ -559,11 +839,11 @@ function ToolFallbackApprovalQuestions({
             role="group"
             aria-label={question.prompt}
             data-slot="tool-fallback-approval-question"
-            className="aui-tool-fallback-approval-question flex flex-col gap-2"
+            className={[sx(paint.s28), "aui-tool-fallback-approval-question"].filter(Boolean).join(" ")}
           >
-            <p className="aui-tool-fallback-approval-question-prompt text-foreground whitespace-pre-line">
+            <p className={[sx(paint.s29), "aui-tool-fallback-approval-question-prompt"].filter(Boolean).join(" ")}>
               {question.header ? (
-                <span className="text-muted-foreground me-1.5 text-xs font-medium uppercase">
+                <span className={sx(paint.s30)}>
                   {question.header}
                 </span>
               ) : null}
@@ -571,21 +851,12 @@ function ToolFallbackApprovalQuestions({
             </p>
             {question.options && question.options.length > 0 ? (
               <div
-                className={cn(
-                  "flex gap-2",
-                  described
-                    ? "flex-col items-stretch"
-                    : "flex-wrap items-center",
-                )}
+                className={[sx(paint.s31), described ? sx(paint.s32) : sx(paint.s33)].filter(Boolean).join(" ")}
               >
                 {question.options.map((option) => {
                   const pressed = chosen.includes(option.id);
                   return (
-                    <span className={cn(
-                        pressable,
-                        described &&
-                          "h-auto flex-col items-start gap-0.5 py-2 text-start whitespace-normal",
-                      )}><Button
+                    <span className={sx(paint.s56, described && paint.s34)}><Button
                       key={option.id}
                       size="sm"
                       variant={pressed ? "default" : "outline"}
@@ -595,7 +866,7 @@ function ToolFallbackApprovalQuestions({
                       disabled={locked}>
                       <span>{option.label}</span>
                       {option.description ? (
-                        <span className="text-xs font-normal opacity-80">
+                        <span className={sx(paint.s35)}>
                           {option.description}
                         </span>
                       ) : null}
@@ -624,8 +895,8 @@ function ToolFallbackApprovalQuestions({
           </div>
         );
       })}
-      <div className="flex items-center gap-2">
-        <span className={pressable}><Button
+      <div className={sx(paint.s36)}>
+        <span className={sx(paint.s56)}><Button
           size="sm"
           
           onClick={send}
@@ -633,7 +904,7 @@ function ToolFallbackApprovalQuestions({
           Send
         </Button></span>
         {dismissible ? (
-          <span className={pressable}><Button
+          <span className={sx(paint.s56)}><Button
             size="sm"
             variant="outline"
             
@@ -702,7 +973,7 @@ function ToolFallbackApprovalImpl({
   if (!offersInterruptAction(status, approval, interrupt)) return null;
 
   const promptText = approval?.prompt ? (
-    <p className="aui-tool-fallback-approval-prompt text-foreground whitespace-pre-line">
+    <p className={[sx(paint.s37), "aui-tool-fallback-approval-prompt"].filter(Boolean).join(" ")}>
       {approval.prompt}
     </p>
   ) : null;
@@ -712,10 +983,7 @@ function ToolFallbackApprovalImpl({
       promptText && (
         <div
           data-slot="tool-fallback-approval"
-          className={cn(
-            "aui-tool-fallback-approval flex flex-col gap-2 pt-1",
-            className,
-          )}
+          className={[[sx(paint.s38), "aui-tool-fallback-approval"].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
           {...props}
         >
           {promptText}
@@ -817,7 +1085,7 @@ function ToolFallbackApprovalImpl({
     question && respondToApproval != null && approval?.dismissible === true;
 
   const dismissButton = dismissible ? (
-    <span className={pressable}><Button
+    <span className={sx(paint.s56)}><Button
       size="sm"
       variant="outline"
       
@@ -830,14 +1098,14 @@ function ToolFallbackApprovalImpl({
   const errorText = error ? (
     <p
       role="alert"
-      className="aui-tool-fallback-approval-error text-destructive text-xs whitespace-pre-line"
+      className={[sx(paint.s39), "aui-tool-fallback-approval-error"].filter(Boolean).join(" ")}
     >
       {error}
     </p>
   ) : null;
 
   const answerField = acceptsText ? (
-    <div className="aui-tool-fallback-approval-answer flex flex-col items-start gap-2">
+    <div className={[sx(paint.s40), "aui-tool-fallback-approval-answer"].filter(Boolean).join(" ")}>
       <Textarea
         value={answer}
         onChange={(event) => setAnswer(event.target.value)}
@@ -848,8 +1116,8 @@ function ToolFallbackApprovalImpl({
         }
       />
       {question && (
-        <div className="flex items-center gap-2">
-          <span className={pressable}><Button
+        <div className={sx(paint.s41)}>
+          <span className={sx(paint.s56)}><Button
             size="sm"
             
             onClick={submitAnswer}
@@ -866,10 +1134,7 @@ function ToolFallbackApprovalImpl({
     return (
       <div
         data-slot="tool-fallback-approval"
-        className={cn(
-          "aui-tool-fallback-approval flex flex-col gap-3 pt-1",
-          className,
-        )}
+        className={[[sx(paint.s42), "aui-tool-fallback-approval"].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
         {...props}
       >
         {promptText}
@@ -893,40 +1158,37 @@ function ToolFallbackApprovalImpl({
     return (
       <div
         data-slot="tool-fallback-approval-confirm"
-        className={cn(
-          "aui-tool-fallback-approval-confirm flex flex-col gap-2 pt-1",
-          className,
-        )}
+        className={[[sx(paint.s43), "aui-tool-fallback-approval-confirm"].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
         {...props}
       >
-        <p className="aui-tool-fallback-approval-confirm-title font-semibold">
+        <p className={[sx(paint.s44), "aui-tool-fallback-approval-confirm-title"].filter(Boolean).join(" ")}>
           {confirmMeta?.title ?? `${approvalOptionLabel(confirming)}?`}
         </p>
         {confirmDescription && (
-          <p className="aui-tool-fallback-approval-confirm-description text-muted-foreground whitespace-pre-line">
+          <p className={[sx(paint.s45), "aui-tool-fallback-approval-confirm-description"].filter(Boolean).join(" ")}>
             {confirmDescription}
           </p>
         )}
         {confirming.grants && confirming.grants.length > 0 && (
-          <ul className="aui-tool-fallback-approval-confirm-grants flex flex-col gap-1">
+          <ul className={[sx(paint.s46), "aui-tool-fallback-approval-confirm-grants"].filter(Boolean).join(" ")}>
             {confirming.grants.map((grant) => (
               <li key={grant}>
-                <code className="aui-tool-fallback-approval-confirm-grant bg-muted rounded px-1.5 py-0.5 text-xs">
+                <code className={[sx(paint.s47), "aui-tool-fallback-approval-confirm-grant"].filter(Boolean).join(" ")}>
                   {grant}
                 </code>
               </li>
             ))}
           </ul>
         )}
-        <div className="flex items-center gap-2">
-          <span className={pressable}><Button
+        <div className={sx(paint.s48)}>
+          <span className={sx(paint.s56)}><Button
             size="sm"
             
             onClick={() => respondWithOption(confirming)}
             disabled={locked}>
             Confirm
           </Button></span>
-          <span className={pressable}><Button
+          <span className={sx(paint.s56)}><Button
             size="sm"
             variant="outline"
             
@@ -948,17 +1210,14 @@ function ToolFallbackApprovalImpl({
     return (
       <div
         data-slot="tool-fallback-approval"
-        className={cn(
-          "aui-tool-fallback-approval flex flex-col gap-2 pt-1",
-          className,
-        )}
+        className={[[sx(paint.s49), "aui-tool-fallback-approval"].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
         {...props}
       >
         {promptText}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className={sx(paint.s50)}>
           {[...allowOptions, ...customOptions, ...rejectOptions].map(
             (option) => (
-              <span className={pressable}><Button
+              <span className={sx(paint.s56)}><Button
                 key={option.id}
                 size="sm"
                 variant={option === allowOptions[0] ? "default" : "outline"}
@@ -970,7 +1229,7 @@ function ToolFallbackApprovalImpl({
             ),
           )}
           {rejectOptions.length === 0 && !question && (
-            <span className={pressable}><Button
+            <span className={sx(paint.s56)}><Button
               size="sm"
               variant="outline"
               
@@ -993,16 +1252,13 @@ function ToolFallbackApprovalImpl({
     return (
       <div
         data-slot="tool-fallback-approval"
-        className={cn(
-          "aui-tool-fallback-approval flex flex-col gap-2 pt-1",
-          className,
-        )}
+        className={[[sx(paint.s51), "aui-tool-fallback-approval"].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
         {...props}
       >
         {promptText}
         {answerField}
         {!acceptsText && dismissButton && (
-          <div className="flex items-center gap-2">{dismissButton}</div>
+          <div className={sx(paint.s52)}>{dismissButton}</div>
         )}
         {errorText}
       </div>
@@ -1012,22 +1268,19 @@ function ToolFallbackApprovalImpl({
   return (
     <div
       data-slot="tool-fallback-approval"
-      className={cn(
-        "aui-tool-fallback-approval flex flex-col gap-2 pt-1",
-        className,
-      )}
+      className={[[sx(paint.s53), "aui-tool-fallback-approval"].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
       {...props}
     >
       {promptText}
-      <div className="flex items-center gap-2">
-        <span className={pressable}><Button
+      <div className={sx(paint.s54)}>
+        <span className={sx(paint.s56)}><Button
           size="sm"
           
           onClick={() => respond(true)}
           disabled={locked}>
           Allow
         </Button></span>
-        <span className={pressable}><Button
+        <span className={sx(paint.s56)}><Button
           size="sm"
           variant="outline"
           
@@ -1074,7 +1327,7 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
         <ToolFallbackError status={status} />
         <ToolFallbackArgs
           argsText={argsText}
-          className={cn(isCancelled && "opacity-60")}
+          className={isCancelled ? sx(paint.s55) : undefined}
         />
         {(shouldRenderApproval || isSettled(approval)) && (
           <ToolFallbackApproval

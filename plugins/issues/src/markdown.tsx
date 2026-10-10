@@ -1,7 +1,182 @@
-import { Icon, Tip, cn } from "@berth/plugin/ui";
+import * as stylex from "@stylexjs/stylex";
+import { Icon, Tip } from "@berth/plugin/ui";
 import type { ReactNode } from "react";
 
 import { stripComments } from "./gh";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "12px",
+    "fontSize": "13px",
+    "lineHeight": "1.625",
+    "overflowWrap": "anywhere",
+  },
+  s1: {
+    "overflowX": "auto",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "1.5",
+  },
+  s2: {
+    "fontWeight": 600,
+  },
+  s3: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingBottom": "4px",
+  },
+  s4: {
+    "borderColor": "var(--border)",
+  },
+  s5: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "borderLeftWidth": 2,
+    "borderLeftStyle": "solid",
+    "borderLeftColor": "var(--border)",
+    "paddingLeft": "12px",
+    "color": "var(--muted-foreground)",
+  },
+  s6: {
+    "overflowX": "auto",
+  },
+  s7: {
+    "width": "100%",
+    "fontSize": "12px",
+  },
+  s8: {
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "textAlign": "left",
+    "fontWeight": 500,
+  },
+  s9: {
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "verticalAlign": "top",
+  },
+  s10: {
+    "whiteSpace": "pre-line",
+  },
+  s11: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+    "paddingLeft": "20px",
+  },
+  s12: {
+    "listStyleType": "decimal",
+  },
+  s13: {
+    "listStyleType": "disc",
+  },
+  s14: {
+    "marginLeft": "calc(20px * -1)",
+    "listStyleType": "none",
+  },
+  s15: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "8px",
+  },
+  s16: {
+    "marginTop": "3px",
+    "display": "grid",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "placeItems": "center",
+    "borderRadius": "4px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s17: {
+    "borderColor": "var(--primary)",
+    "backgroundColor": "var(--primary)",
+    "color": "var(--primary-foreground)",
+  },
+  s18: {
+    "width": "10px",
+    "height": "10px",
+  },
+  s19: {
+    "color": "var(--muted-foreground)",
+    "textDecoration": "line-through",
+  },
+  s20: {
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--muted)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+  },
+  s21: {
+    "fontWeight": 600,
+  },
+  s22: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s23: {
+    "wordBreak": "break-all",
+    "fontFamily": "var(--font-mono)",
+  },
+  s24: {
+    "display": "inline-flex",
+    "alignItems": "baseline",
+    "gap": "4px",
+    "color": "var(--info-foreground)",
+    "textDecoration": {
+      ":hover": "underline",
+    },
+  },
+  s25: {
+    "width": "12px",
+    "height": "12px",
+    "alignSelf": "center",
+  },
+  q26: {
+    "borderCollapse": "collapse",
+  },
+  q27: {
+    "textDecorationColor": "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+  },
+  q29: {
+    "textUnderlineOffset": "2px",
+  },
+  h15: { fontSize: "15px" },
+  h13: { fontSize: "13px" },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // A small GitHub-flavoured Markdown renderer for issue bodies and comments.
 // It builds React elements and never sets HTML, so whatever an issue says is
@@ -15,7 +190,7 @@ interface Ctx {
 
 export function Markdown({ source, repo, onLink, className }: { source: string; repo: string; onLink(url: string): void; className?: string }) {
   const ctx = { repo, onLink };
-  return <div className={cn("flex flex-col gap-3 text-[13px] leading-relaxed [overflow-wrap:anywhere]", className)}>{blocks(clean(source), ctx)}</div>;
+  return <div className={[sx(paint.s0), className].filter(Boolean).join(" ")}>{blocks(clean(source), ctx)}</div>;
 }
 
 // clean drops comments and turns the little HTML GitHub bodies use into
@@ -53,7 +228,7 @@ function blocks(src: string, ctx: Ctx): ReactNode[] {
       while (i < lines.length && !lines[i].trimStart().startsWith(f[1])) code.push(lines[i++]);
       i++;
       out.push(
-        <pre key={key++} className="overflow-x-auto rounded-md border bg-muted/50 px-3 py-2 font-mono text-[12px] leading-normal">
+        <pre key={key++} className={sx(paint.s1)}>
           <code>{code.join("\n")}</code>
         </pre>,
       );
@@ -61,9 +236,9 @@ function blocks(src: string, ctx: Ctx): ReactNode[] {
     }
     const h = heading.exec(line);
     if (h) {
-      const size = h[1].length <= 2 ? "text-[15px]" : "text-[13px]";
+      const size = h[1].length <= 2 ? sx(paint.h15) : sx(paint.h13);
       out.push(
-        <p key={key++} role="heading" aria-level={h[1].length} className={cn("font-semibold", size, h[1].length <= 2 && "border-b pb-1")}>
+        <p key={key++} role="heading" aria-level={h[1].length} className={[sx(paint.s2), size, h[1].length <= 2 && sx(paint.s3)].filter(Boolean).join(" ")}>
           {inline(h[2], ctx)}
         </p>,
       );
@@ -71,7 +246,7 @@ function blocks(src: string, ctx: Ctx): ReactNode[] {
       continue;
     }
     if (rule.test(line)) {
-      out.push(<hr key={key++} className="border-border" />);
+      out.push(<hr key={key++} className={sx(paint.s4)} />);
       i++;
       continue;
     }
@@ -79,7 +254,7 @@ function blocks(src: string, ctx: Ctx): ReactNode[] {
       const q: string[] = [];
       while (i < lines.length && lines[i].trim() && quoteLine.test(lines[i])) q.push(quoteLine.exec(lines[i++])![1]);
       out.push(
-        <blockquote key={key++} className="flex flex-col gap-2 border-l-2 pl-3 text-muted-foreground">
+        <blockquote key={key++} className={sx(paint.s5)}>
           {blocks(q.join("\n"), ctx)}
         </blockquote>,
       );
@@ -90,12 +265,12 @@ function blocks(src: string, ctx: Ctx): ReactNode[] {
       i += 2;
       while (i < lines.length && lines[i].includes("|") && lines[i].trim()) rows.push(cells(lines[i++]));
       out.push(
-        <div key={key++} className="overflow-x-auto">
-          <table className="w-full border-collapse text-[12px]">
+        <div key={key++} className={sx(paint.s6)}>
+          <table className={[sx(paint.s7), sx(paint.q26)].filter(Boolean).join(" ")}>
             <thead>
               <tr>
                 {rows[0].map((c, j) => (
-                  <th key={j} className="border px-2 py-1 text-left font-medium">
+                  <th key={j} className={sx(paint.s8)}>
                     {inline(c, ctx)}
                   </th>
                 ))}
@@ -105,7 +280,7 @@ function blocks(src: string, ctx: Ctx): ReactNode[] {
               {rows.slice(1).map((r, ri) => (
                 <tr key={ri}>
                   {r.map((c, j) => (
-                    <td key={j} className="border px-2 py-1 align-top">
+                    <td key={j} className={sx(paint.s9)}>
                       {inline(c, ctx)}
                     </td>
                   ))}
@@ -134,7 +309,7 @@ function blocks(src: string, ctx: Ctx): ReactNode[] {
     const para: string[] = [];
     while (i < lines.length && lines[i].trim() && !fence.test(lines[i]) && !heading.test(lines[i]) && !quoteLine.test(lines[i]) && !(para.length && item.test(lines[i]))) para.push(lines[i++]);
     out.push(
-      <p key={key++} className="whitespace-pre-line">
+      <p key={key++} className={sx(paint.s10)}>
         {inline(para.join("\n"), ctx)}
       </p>,
     );
@@ -154,17 +329,17 @@ function list(items: { depth: number; ordered: boolean; text: string }[], ctx: C
   const ordered = items[0]?.ordered;
   const Tag = ordered ? "ol" : "ul";
   return (
-    <Tag key={key} className={cn("flex flex-col gap-1 pl-5", ordered ? "list-decimal" : "list-disc")}>
+    <Tag key={key} className={[sx(paint.s11), ordered ? sx(paint.s12) : sx(paint.s13)].filter(Boolean).join(" ")}>
       {items.map((it, j) => {
         const task = /^\[([ xX])\]\s+(.*)$/.exec(it.text);
         return (
-          <li key={j} style={{ marginLeft: `${it.depth * 1.1}rem` }} className={cn(task && "-ml-5 list-none")}>
+          <li key={j} style={{ marginLeft: `${it.depth * 1.1}rem` }} className={task ? sx(paint.s14) : undefined}>
             {task ? (
-              <span className="flex items-start gap-2">
-                <span className={cn("mt-[3px] grid size-3.5 shrink-0 place-items-center rounded-[4px] border", task[1] !== " " && "border-primary bg-primary text-primary-foreground")}>
-                  {task[1] !== " " && <Icon name="Check" className="size-2.5" />}
+              <span className={sx(paint.s15)}>
+                <span className={[sx(paint.s16), task[1] !== " " && sx(paint.s17)].filter(Boolean).join(" ")}>
+                  {task[1] !== " " && <Icon name="Check" className={sx(paint.s18)} />}
                 </span>
-                <span className={cn(task[1] !== " " && "text-muted-foreground line-through decoration-muted-foreground/50")}>{inline(task[2], ctx)}</span>
+                <span className={task[1] !== " " ? [sx(paint.s19), sx(paint.q27)].filter(Boolean).join(" ") : undefined}>{inline(task[2], ctx)}</span>
               </span>
             ) : (
               inline(it.text, ctx)
@@ -194,7 +369,7 @@ function inline(text: string, ctx: Ctx): ReactNode[] {
     const k = key++;
     if (m[2] !== undefined) {
       out.push(
-        <code key={k} className="rounded bg-muted px-1 py-px font-mono text-[12px]">
+        <code key={k} className={sx(paint.s20)}>
           {m[2].trim()}
         </code>,
       );
@@ -205,7 +380,7 @@ function inline(text: string, ctx: Ctx): ReactNode[] {
       out.push(safe(m[6]) ? <Link key={k} url={m[6]} ctx={ctx}>{inline(m[5], ctx)}</Link> : <span key={k}>{inline(m[5], ctx)}</span>);
     } else if (m[7] !== undefined || m[8] !== undefined) {
       out.push(
-        <strong key={k} className="font-semibold">
+        <strong key={k} className={sx(paint.s21)}>
           {inline(m[7] ?? m[8], ctx)}
         </strong>,
       );
@@ -227,7 +402,7 @@ function inline(text: string, ctx: Ctx): ReactNode[] {
       );
     } else if (m[14] !== undefined) {
       out.push(
-        <span key={k} className="font-medium text-foreground">
+        <span key={k} className={sx(paint.s22)}>
           @{m[14]}
         </span>,
       );
@@ -245,16 +420,16 @@ function shortUrl(url: string) {
 
 function Link({ url, ctx, icon, children }: { url: string; ctx: Ctx; icon?: string; children: ReactNode }) {
   return (
-    <Tip label={<span className="break-all font-mono">{url}</span>} className="max-w-md">
+    <Tip label={<span className={sx(paint.s23)}>{url}</span>} width="md">
       <a
         href={url}
         onClick={(e) => {
           e.preventDefault();
           ctx.onLink(url);
         }}
-        className="inline-flex items-baseline gap-1 text-info-foreground underline-offset-2 hover:underline"
+        className={[sx(paint.s24), sx(paint.q29)].filter(Boolean).join(" ")}
       >
-        {icon && <Icon name={icon} className="size-3 self-center" />}
+        {icon && <Icon name={icon} className={sx(paint.s25)} />}
         {children}
       </a>
     </Tip>

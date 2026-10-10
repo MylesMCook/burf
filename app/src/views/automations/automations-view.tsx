@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { PlusIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -17,6 +18,59 @@ import { RunsTab } from "@/views/automations/flows/runs-tab";
 import { useFlows } from "@/views/automations/flows/use-flows";
 import { useRuns } from "@/views/automations/flows/use-runs";
 import { ShellHooks } from "@/views/automations/shell-hooks";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "flexDirection": "column",
+  },
+  s1: {
+    "flexShrink": 0,
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+  },
+  s2: {
+    "marginLeft": "6px",
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--primary)",
+  },
+  s3: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+  },
+  s4: {
+    "height": "100%",
+    "overflowY": "auto",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "20px",
+    "paddingBottom": "48px",
+  },
+  s5: {
+    "height": "100%",
+    "overflowY": "auto",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "20px",
+    "paddingBottom": "48px",
+  },
+  s6: {
+    "height": "100%",
+    "paddingTop": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type Tab = "flows" | "runs" | "hooks";
 
@@ -115,7 +169,7 @@ export function AutomationsView() {
   const nameOf = (box: string, scope: string, id: string) => byBox[box]?.flows?.find((f) => f.scope === scope && f.flow.id === id)?.flow.name ?? id;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className={sx(paint.s0)}>
       <ViewHeader
         title="Automations"
         description="Steps that run on a box when something happens there."
@@ -129,31 +183,31 @@ export function AutomationsView() {
         }
       />
       <Tabs value={tab} onValueChange={(v) => pickTab(v as Tab)} fill>
-        <div className="shrink-0 border-b px-6">
+        <div className={sx(paint.s1)}>
           <TabsList variant="underline" bleed>
             <TabsTab value="flows" data-focus-home="">
               Flows
             </TabsTab>
             <TabsTab value="runs">
               Runs
-              {runs.some((r) => r.status === "running") && <span className="ml-1.5 size-1.5 animate-pulse rounded-full bg-primary" />}
+              {runs.some((r) => r.status === "running") && <span className={[sx(paint.s2), "burf-pulse"].filter(Boolean).join(" ")} />}
             </TabsTab>
             <TabsTab value="hooks">Advanced: shell hooks</TabsTab>
           </TabsList>
         </div>
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className={sx(paint.s3)}>
           {tab === "flows" && (
-            <div className="h-full overflow-y-auto px-6 pt-5 pb-12">
+            <div className={sx(paint.s4)}>
               <FlowList boxes={boxes} byBox={byBox} projects={projects} lastRun={lastRun} onEdit={open} onToggle={(box, f, on) => void setEnabled(box, f, on)} onNew={create} onStarter={(st) => createHere(st)} />
             </div>
           )}
           {tab === "runs" && (
-            <div className="h-full overflow-y-auto px-6 pt-5 pb-12">
+            <div className={sx(paint.s5)}>
               <RunsTab runs={runs} boxes={boxes} names={nameOf} />
             </div>
           )}
           {tab === "hooks" && (
-            <div className="h-full pt-4">
+            <div className={sx(paint.s6)}>
               <ShellHooks />
             </div>
           )}

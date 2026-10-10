@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { invoke } from "@tauri-apps/api/core";
 import { BugIcon, ClipboardListIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -15,6 +16,72 @@ import { checkForUpdate, restartToUpdate, updatesSupported, useUpdater } from "@
 import { useAppVersion, useInterfaceVersion } from "@/views/settings/app-version";
 import { hasWhatsNew, openWhatsNew } from "@/lib/whats-new";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
+
+const paint = stylex.create({
+  s0: {
+    "width": "64px",
+    "height": "64px",
+  },
+  s1: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s3: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s5: {
+    "display": "grid",
+    "gridTemplateColumns": "max-content 1fr",
+    "columnGap": "24px",
+    "rowGap": "8px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "display": "contents",
+  },
+  s7: {
+    "textAlign": "left",
+    "color": "color-mix(in oklab, var(--foreground) 90%, transparent)",
+    "textDecoration": {
+      ":hover": "underline",
+    },
+    "textUnderlineOffset": "2px",
+  },
+  s8: {
+    "color": "var(--muted-foreground)",
+  },
+  s9: {
+    "minWidth": "96px",
+  },
+  s10: {
+    "minWidth": "96px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const DOCS: [path: string, title: string, what: string][] = [
   ["/concepts/architecture", "How Burf works", "The box serves, the laptop connects, and the app is only a view"],
@@ -51,10 +118,10 @@ export function AboutSection() {
 
   return (
     <SettingsPage title="About Burf" description="Agents on your own boxes, watched from here. Closing this window never stops one.">
-      <img src={`${import.meta.env.BASE_URL}branding/burf-app-icon.svg`} alt="Burf" width="64" height="64" className="size-16" />
+      <img src={`${import.meta.env.BASE_URL}branding/burf-app-icon.svg`} alt="Burf" width="64" height="64" className={sx(paint.s0)} />
       <SettingsGroup title="Versions">
         <SettingsRow label="App">
-          <span className="font-mono text-muted-foreground text-xs">{version}</span>
+          <span className={sx(paint.s1)}>{version}</span>
           {hasWhatsNew() && (
             <Button size="xs" variant="outline" data-testid="about-whats-new" onClick={() => openWhatsNew("about")}>
               What's new
@@ -62,7 +129,7 @@ export function AboutSection() {
           )}
         </SettingsRow>
         <SettingsRow label="Interface" description="Reload closes and reopens this window to use the installed interface. Agents keep running.">
-          <span className="font-mono text-muted-foreground text-xs">{interfaceVersion}</span>
+          <span className={sx(paint.s2)}>{interfaceVersion}</span>
           {isTauri() && (
             <Button size="xs" variant="outline" onClick={() => void invoke("restart_app").catch((err) => toastManager.add({ title: "Could not reload interface", description: errorMessage(err), type: "error" }))}>
               Reload interface
@@ -70,13 +137,13 @@ export function AboutSection() {
           )}
         </SettingsRow>
         <SettingsRow label="Laptop agent" description="Holds the connection to every box, the private URLs and forwards.">
-          <span className="font-mono text-muted-foreground text-xs">{agentUrl ? agentEndpointLine(agentUrl, proxy?.port) : "…"}</span>
+          <span className={sx(paint.s3)}>{agentUrl ? agentEndpointLine(agentUrl, proxy?.port) : "…"}</span>
         </SettingsRow>
         {boxes.map((b) => {
           const info = data[b.name]?.info;
           return (
             <SettingsRow key={b.name} label={`berthd on ${b.name}`}>
-              <span className="font-mono text-muted-foreground text-xs">{[info?.build && `build ${info.build}`, info?.os && `${info.os}/${info.arch}`, b.state].filter(Boolean).join(" · ")}</span>
+              <span className={sx(paint.s4)}>{[info?.build && `build ${info.build}`, info?.os && `${info.os}/${info.arch}`, b.state].filter(Boolean).join(" · ")}</span>
             </SettingsRow>
           );
         })}
@@ -84,13 +151,13 @@ export function AboutSection() {
       <UpdatesGroup />
       <HelpGroup />
       <SettingsGroup title="Documentation" description="docs.berthd.app, opened in your browser.">
-        <div className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 px-4 py-3 text-xs">
+        <div className={sx(paint.s5)}>
           {DOCS.map(([path, title, what]) => (
-            <div key={path} className="contents">
-              <button type="button" onClick={() => void openDocs(path)} className="text-left text-foreground/90 underline-offset-2 hover:underline">
+            <div key={path} className={sx(paint.s6)}>
+              <button type="button" onClick={() => void openDocs(path)} className={sx(paint.s7)}>
                 {title}
               </button>
-              <span className="text-muted-foreground">{what}</span>
+              <span className={sx(paint.s8)}>{what}</span>
             </div>
           ))}
         </div>
@@ -155,7 +222,7 @@ function UpdatesGroup() {
   }
   const busy = u.status === "checking" || u.status === "downloading" || u.status === "installing";
   const checkNow = (
-    <span className="min-w-24"><Button size="xs" variant="outline"  loading={u.status === "checking"} disabled={busy} onClick={() => void checkForUpdate({ manual: true })}>
+    <span className={sx(paint.s9)}><Button size="xs" variant="outline"  loading={u.status === "checking"} disabled={busy} onClick={() => void checkForUpdate({ manual: true })}>
       Check now
     </Button></span>
   );
@@ -168,7 +235,7 @@ function UpdatesGroup() {
           <Button size="xs" variant="ghost" onClick={() => void openUrl(`${RELEASES}/tag/v${u.version}`)}>
             What's new
           </Button>
-          <span className="min-w-24"><Button size="xs"  loading={u.status === "installing"} onClick={() => void restartToUpdate()}>
+          <span className={sx(paint.s10)}><Button size="xs"  loading={u.status === "installing"} onClick={() => void restartToUpdate()}>
             Restart to update
           </Button></span>
         </SettingsRow>

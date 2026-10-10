@@ -1,11 +1,344 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { useId, useState, type ComponentProps } from "react";
 import { CheckIcon, CopyIcon, Loader2Icon, XIcon } from "lucide-react";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
-import { cn } from "@/lib/utils";
-import { ghostButton, mono, paper } from "./surfaces";
+import { fadeIn, ghostButton, mono, paper, pulse, spin } from "./surfaces";
 import { clamp, take } from "../utils/range";
+
+const paint = stylex.create({
+  s0: {
+    "color": "color-mix(in oklab, var(--foreground) 70%, transparent)",
+  },
+  s1: {
+    "color": {
+      "default": "light-dark(var(--color-red-600), var(--color-red-400))",
+    },
+  },
+  s2: {
+    "color": {
+      "default": "light-dark(var(--color-emerald-600), var(--color-emerald-400))",
+    },
+  },
+  s3: {
+    "color": {
+      "default": "light-dark(var(--color-amber-600), var(--color-amber-400))",
+    },
+  },
+  s4: {
+    "color": {
+      "default": "light-dark(var(--color-blue-600), var(--color-blue-400))",
+    },
+  },
+  s5: {
+    "color": {
+      "default": "light-dark(var(--color-fuchsia-600), var(--color-fuchsia-400))",
+    },
+  },
+  s6: {
+    "color": {
+      "default": "light-dark(var(--color-cyan-600), var(--color-cyan-400))",
+    },
+  },
+  s7: {
+    "color": "color-mix(in oklab, var(--foreground) 85%, transparent)",
+  },
+  s8: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+  },
+  s9: {
+    "color": {
+      "default": "light-dark(#ef4444, #f87171)",
+    },
+  },
+  s10: {
+    "color": {
+      "default": "light-dark(#10b981, #34d399)",
+    },
+  },
+  s11: {
+    "color": {
+      "default": "light-dark(var(--color-amber-500), var(--color-amber-400))",
+    },
+  },
+  s12: {
+    "color": {
+      "default": "light-dark(#3b82f6, #60a5fa)",
+    },
+  },
+  s13: {
+    "color": {
+      "default": "light-dark(var(--color-fuchsia-500), var(--color-fuchsia-400))",
+    },
+  },
+  s14: {
+    "color": {
+      "default": "light-dark(var(--color-cyan-500), var(--color-cyan-400))",
+    },
+  },
+  s15: {
+    "color": "color-mix(in oklab, var(--foreground) 85%, transparent)",
+  },
+  s16: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 70%, transparent), color-mix(in oklab, var(--foreground) 70%, transparent))",
+    },
+  },
+  s17: {
+    "color": {
+      "default": "#f87171",
+    },
+  },
+  s18: {
+    "color": {
+      "default": "#34d399",
+    },
+  },
+  s19: {
+    "color": {
+      "default": "#fcd34d",
+    },
+  },
+  s20: {
+    "color": {
+      "default": "#60a5fa",
+    },
+  },
+  s21: {
+    "color": {
+      "default": "#e879f9",
+    },
+  },
+  s22: {
+    "color": {
+      "default": "#67e8f3",
+    },
+  },
+  s23: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 90%, transparent), color-mix(in oklab, var(--foreground) 90%, transparent))",
+    },
+  },
+  s24: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 50%, transparent), color-mix(in oklab, var(--foreground) 50%, transparent))",
+    },
+  },
+  s25: {
+    "color": {
+      "default": "#f87171",
+    },
+  },
+  s26: {
+    "color": {
+      "default": "#34d399",
+    },
+  },
+  s27: {
+    "color": {
+      "default": "#fcd34d",
+    },
+  },
+  s28: {
+    "color": {
+      "default": "#60a5fa",
+    },
+  },
+  s29: {
+    "color": {
+      "default": "#e879f9",
+    },
+  },
+  s30: {
+    "color": {
+      "default": "#67e8f3",
+    },
+  },
+  s31: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 90%, transparent), color-mix(in oklab, var(--foreground) 90%, transparent))",
+    },
+  },
+  s32: {
+    "backgroundColor": {
+      "default": "light-dark(var(--foreground), var(--popover))",
+    },
+  },
+  s33: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "space-between",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "6px",
+  },
+  s34: {
+    "minWidth": "0px",
+    "wordBreak": "break-all",
+  },
+  s35: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 90%, transparent), color-mix(in oklab, var(--foreground) 90%, transparent))",
+    },
+  },
+  s36: {
+    "color": "color-mix(in oklab, var(--foreground) 90%, transparent)",
+  },
+  s37: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 40%, transparent), color-mix(in oklab, var(--foreground) 40%, transparent))",
+    },
+  },
+  s38: {
+    "color": "color-mix(in oklab, var(--foreground) 40%, transparent)",
+  },
+  s39: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s40: {
+    "width": "12px",
+    "height": "12px",
+    "color": {
+      "default": "light-dark(var(--color-red-600), var(--color-red-400))",
+    },
+  },
+  s41: {
+    "width": "12px",
+    "height": "12px",
+    "color": "#10b981",
+  },
+  s42: {
+    "color": {
+      "default": "light-dark(var(--color-red-600), var(--color-red-400))",
+    },
+  },
+  s43: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 40%, transparent), color-mix(in oklab, var(--foreground) 40%, transparent))",
+    },
+  },
+  s44: {
+    "color": "color-mix(in oklab, var(--foreground) 40%, transparent)",
+  },
+  s45: {
+    "width": "24px",
+    "height": "24px",
+  },
+  s46: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 45%, transparent), color-mix(in oklab, var(--foreground) 45%, transparent))",
+      ":hover": "light-dark(var(--background), var(--foreground))",
+    },
+  },
+  s47: {
+    "width": "14px",
+    "height": "14px",
+    "color": "#10b981",
+  },
+  s48: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s49: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s50: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 35%, transparent), color-mix(in oklab, var(--foreground) 35%, transparent))",
+    },
+  },
+  s51: {
+    "color": "color-mix(in oklab, var(--foreground) 35%, transparent)",
+  },
+  s52: {
+    "display": "flex",
+    "minHeight": "8.5rem",
+    "flexDirection": "column",
+    "gap": "4px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "4px",
+    "paddingBottom": "14px",
+  },
+  s53: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 55%, transparent), color-mix(in oklab, var(--foreground) 50%, transparent))",
+    },
+  },
+  s54: {
+    "color": "color-mix(in oklab, var(--foreground) 50%, transparent)",
+  },
+  s55: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+  },
+  s56: {
+    "overflowWrap": "break-word",
+    "whiteSpace": "pre-wrap",
+    "transitionDuration": "300ms",
+  },
+  s57: {
+    "color": {
+      "default": "light-dark(var(--color-red-600), var(--color-red-400))",
+    },
+  },
+  s58: {
+    "fontWeight": 700,
+  },
+  s59: {
+    "opacity": 0.6,
+  },
+  s60: {
+    "height": "28px",
+    "alignSelf": "flex-start",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s61: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 45%, transparent), color-mix(in oklab, var(--foreground) 45%, transparent))",
+      ":hover": "light-dark(var(--background), var(--foreground))",
+    },
+  },
+  s62: {
+    "color": {
+      "default": "light-dark(color-mix(in oklab, var(--background) 35%, transparent), color-mix(in oklab, var(--foreground) 35%, transparent))",
+    },
+  },
+  s63: {
+    "color": "color-mix(in oklab, var(--foreground) 35%, transparent)",
+  },
+  s64: {
+    "display": "inline-block",
+    "height": "12px",
+    "width": "6px",
+    "backgroundColor": {
+      "default": "light-dark(color-mix(in oklab, #3b82f6 70%, transparent), color-mix(in oklab, #60a5fa 70%, transparent))",
+    },
+  },
+  s65: {
+    "width": "100%",
+    "maxWidth": "448px",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-2xl)",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export type AnsiColor =
   | 30
@@ -149,42 +482,42 @@ export function parseAnsi(line: string): AnsiSegment[] {
 }
 
 const ansiColor = (color: AnsiColor, ink: boolean) => {
-  const paperColors: Record<AnsiColor, string> = {
-    30: "text-foreground/70",
-    31: "text-red-600 dark:text-red-400",
-    32: "text-emerald-600 dark:text-emerald-400",
-    33: "text-amber-600 dark:text-amber-400",
-    34: "text-blue-600 dark:text-blue-400",
-    35: "text-fuchsia-600 dark:text-fuchsia-400",
-    36: "text-cyan-600 dark:text-cyan-400",
-    37: "text-foreground/85",
-    90: "text-foreground/45",
-    91: "text-red-500 dark:text-red-400",
-    92: "text-emerald-500 dark:text-emerald-400",
-    93: "text-amber-500 dark:text-amber-400",
-    94: "text-blue-500 dark:text-blue-400",
-    95: "text-fuchsia-500 dark:text-fuchsia-400",
-    96: "text-cyan-500 dark:text-cyan-400",
-    97: "text-foreground/85",
-  };
-  const inkColors: Record<AnsiColor, string> = {
-    30: "text-background/70 dark:text-foreground/70",
-    31: "text-red-400 dark:text-red-400",
-    32: "text-emerald-400 dark:text-emerald-400",
-    33: "text-amber-300 dark:text-amber-300",
-    34: "text-blue-400 dark:text-blue-400",
-    35: "text-fuchsia-400 dark:text-fuchsia-400",
-    36: "text-cyan-300 dark:text-cyan-300",
-    37: "text-background/90 dark:text-foreground/90",
-    90: "text-background/50 dark:text-foreground/50",
-    91: "text-red-400 dark:text-red-400",
-    92: "text-emerald-400 dark:text-emerald-400",
-    93: "text-amber-300 dark:text-amber-300",
-    94: "text-blue-400 dark:text-blue-400",
-    95: "text-fuchsia-400 dark:text-fuchsia-400",
-    96: "text-cyan-300 dark:text-cyan-300",
-    97: "text-background/90 dark:text-foreground/90",
-  };
+  const paperColors = {
+    30: paint.s0,
+    31: paint.s1,
+    32: paint.s2,
+    33: paint.s3,
+    34: paint.s4,
+    35: paint.s5,
+    36: paint.s6,
+    37: paint.s7,
+    90: paint.s8,
+    91: paint.s9,
+    92: paint.s10,
+    93: paint.s11,
+    94: paint.s12,
+    95: paint.s13,
+    96: paint.s14,
+    97: paint.s15,
+  } satisfies Record<AnsiColor, object>;
+  const inkColors = {
+    30: paint.s16,
+    31: paint.s17,
+    32: paint.s18,
+    33: paint.s19,
+    34: paint.s20,
+    35: paint.s21,
+    36: paint.s22,
+    37: paint.s23,
+    90: paint.s24,
+    91: paint.s25,
+    92: paint.s26,
+    93: paint.s27,
+    94: paint.s28,
+    95: paint.s29,
+    96: paint.s30,
+    97: paint.s31,
+  } satisfies Record<AnsiColor, object>;
 
   return (ink ? inkColors : paperColors)[color];
 };
@@ -274,31 +607,18 @@ export function TerminalBlock({
 
   return (
     <div
-      className={cn(
-        ink ? "bg-foreground dark:bg-popover" : paper,
-        "w-full max-w-md overflow-hidden rounded-2xl font-mono text-xs",
-        className,
-      )}
+      className={[sx(ink ? paint.s32 : paper, paint.s65), className].filter(Boolean).join(" ")}
       {...props}
       data-slot="terminal-block"
       data-state={state}
     >
-      <div className="flex items-center justify-between gap-3 px-4 pt-3 pb-1.5">
+      <div className={sx(paint.s33)}>
         <span
-          className={cn(
-            "min-w-0 break-all",
-            ink
-              ? "text-background/90 dark:text-foreground/90"
-              : "text-foreground/90",
-          )}
+          className={[sx(paint.s34), ink ? sx(paint.s35) : sx(paint.s36)].filter(Boolean).join(" ")}
         >
           {cwd ? (
             <span
-              className={cn(
-                ink
-                  ? "text-background/40 dark:text-foreground/40"
-                  : "text-foreground/40",
-              )}
+              className={ink ? sx(paint.s37) : sx(paint.s38)}
             >
               {cwd} ${" "}
             </span>
@@ -306,32 +626,20 @@ export function TerminalBlock({
           {command}
         </span>
         {done ? (
-          <div className="flex shrink-0 items-center gap-1">
+          <div className={sx(paint.s39)}>
             {failed ? (
-              <XIcon className="size-3 text-red-600 dark:text-red-400" />
+              <XIcon className={sx(paint.s40)} />
             ) : (
-              <CheckIcon className="size-3 text-emerald-500" />
+              <CheckIcon className={sx(paint.s41)} />
             )}
             <span
-              className={cn(
-                mono,
-                failed
-                  ? "text-red-600 dark:text-red-400"
-                  : ink
-                    ? "text-background/40 dark:text-foreground/40"
-                    : "text-foreground/40",
-              )}
+              className={sx(mono, failed ? paint.s42 : ink ? paint.s43 : paint.s44)}
             >
               exit {exitCode}
             </span>
             {durationMs !== undefined ? (
               <span
-                className={cn(
-                  mono,
-                  ink
-                    ? "text-background/40 dark:text-foreground/40"
-                    : "text-foreground/40",
-                )}
+                className={sx(mono, ink ? paint.s43 : paint.s44)}
               >
                 {formatDuration(durationMs)}
               </span>
@@ -345,65 +653,45 @@ export function TerminalBlock({
                     output.map(({ line }) => plainText(line)).join("\n"),
                   )
                 }
-                className={cn(
-                  ghostButton,
-                  "size-6",
-                  ink &&
-                    "text-background/45 hover:text-background dark:text-foreground/45 dark:hover:text-foreground",
-                )}
+                className={sx(ghostButton, paint.s45, ink && paint.s46)}
               >
                 {isCopied ? (
-                  <CheckIcon className="size-3.5 text-emerald-500" />
+                  <CheckIcon className={sx(paint.s47)} />
                 ) : (
-                  <CopyIcon className="size-3.5" />
+                  <CopyIcon className={sx(paint.s48)} />
                 )}
               </button>
             ) : null}
           </div>
         ) : (
           <Loader2Icon
-            className={cn(
-              "size-3 animate-spin motion-reduce:animate-none",
-              ink
-                ? "text-background/35 dark:text-foreground/35"
-                : "text-foreground/35",
-            )}
+            className={sx(paint.s49, spin, ink ? paint.s50 : paint.s51)}
           />
         )}
       </div>
       <div
-        className={cn(
-          "flex min-h-[8.5rem] flex-col gap-1 px-4 pt-1 pb-3.5",
-          ink
-            ? "text-background/55 dark:text-foreground/50"
-            : "text-foreground/50",
-        )}
+        className={[sx(paint.s52), ink ? sx(paint.s53) : sx(paint.s54)].filter(Boolean).join(" ")}
       >
-        <div id={outputId} className="flex flex-col gap-1">
+        <div id={outputId} className={sx(paint.s55)}>
           {displayedLines.map(({ line, stderr: isStderr }, index) => {
             const isLast = index === revealedLines.length - 1;
             return (
               <div
                 key={`${index}-${line}`}
-                className={cn(
-                  "fade-in animate-in fill-mode-both break-words whitespace-pre-wrap duration-300 motion-reduce:animate-none",
-                  isStderr
-                    ? "text-red-600 dark:text-red-400"
-                    : isLast &&
-                        (ink
-                          ? "text-background/90 dark:text-foreground/90"
-                          : "text-foreground/90"),
+                className={sx(
+                  fadeIn,
+                  paint.s56,
+                  isStderr && paint.s57,
+                  !isStderr && isLast && (ink ? paint.s35 : paint.s36),
                 )}
               >
                 {parseAnsi(line).map((segment, segmentIndex) => (
                   <span
                     key={segmentIndex}
-                    className={cn(
-                      !isStderr &&
-                        segment.color !== undefined &&
-                        ansiColor(segment.color, ink),
-                      segment.bold && "font-bold",
-                      segment.dim && "opacity-60",
+                    className={sx(
+                      !isStderr && segment.color !== undefined && ansiColor(segment.color, ink),
+                      segment.bold && paint.s58,
+                      segment.dim && paint.s59,
                     )}
                   >
                     {segment.text}
@@ -419,24 +707,14 @@ export function TerminalBlock({
             aria-expanded={expanded}
             aria-controls={outputId}
             onClick={() => setExpanded((value) => !value)}
-            className={cn(
-              ghostButton,
-              "h-7 self-start px-2 text-xs",
-              ink &&
-                "text-background/45 hover:text-background dark:text-foreground/45 dark:hover:text-foreground",
-            )}
+            className={sx(ghostButton, paint.s60, ink && paint.s61)}
           >
             {expanded ? "Show less" : `Show all ${revealedLines.length} lines`}
           </button>
         ) : null}
         {truncated ? (
           <span
-            className={cn(
-              mono,
-              ink
-                ? "text-background/35 dark:text-foreground/35"
-                : "text-foreground/35",
-            )}
+            className={sx(mono, ink ? paint.s62 : paint.s63)}
           >
             output truncated
           </span>
@@ -444,7 +722,7 @@ export function TerminalBlock({
         {!done && (
           <span
             aria-hidden
-            className="inline-block h-3 w-1.5 animate-pulse bg-blue-500/70 motion-reduce:animate-none dark:bg-blue-400/70"
+            className={sx(paint.s64, pulse)}
           />
         )}
       </div>

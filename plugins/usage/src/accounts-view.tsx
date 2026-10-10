@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { sessionName, useCurrentWorktree, useSessions, worktreeLocation, type BerthPluginContext, type Location } from "@berth/plugin";
 import {
   Alert,
@@ -18,13 +19,201 @@ import {
   MenuSeparator,
   MenuTrigger,
   Skeleton,
-  cn,
 } from "@berth/plugin/ui";
 import { useState } from "react";
 
 import { ACCOUNT_VAR, runScript, type Account, type Accounts, type Agent } from "./box";
 import { SERIES } from "./chart";
 import { AGENT_NAME, plan } from "./data";
+
+const paint = stylex.create({
+  s0: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "12px",
+    },
+  },
+  s1: {
+    "height": "160px",
+    "width": "100%",
+  },
+  s2: {
+    "height": "160px",
+    "width": "100%",
+  },
+  s3: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "16px",
+    },
+  },
+  s4: {
+    "width": "10px",
+    "height": "10px",
+    "borderRadius": "3px",
+  },
+  s5: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s7: {
+    "marginLeft": "auto",
+  },
+  s8: {
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s9: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s10: {
+    "display": "flex",
+    "width": "32px",
+    "height": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--muted)",
+    "color": "var(--muted-foreground)",
+  },
+  s11: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s12: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s13: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s14: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s15: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s16: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s17: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "24px",
+    "paddingBottom": "24px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s18: {
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s19: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s20: {
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "2px",
+  },
+  s21: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s22: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s23: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s24: {
+    "minWidth": "192px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "4px",
+    },
+  },
+  s25: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s26: {
+    "color": "var(--destructive-foreground)",
+  },
+  s27: {
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Where each agent's account is chosen: the box's env.json, and each
 // project's box-local config. Both only reach sessions started afterwards.
@@ -71,9 +260,9 @@ export function AccountsView({
 
   if (!data || !choices) {
     return (
-      <div className="space-y-3">
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-40 w-full" />
+      <div className={sx(paint.s0)}>
+        <Skeleton className={sx(paint.s1)} />
+        <Skeleton className={sx(paint.s2)} />
       </div>
     );
   }
@@ -153,7 +342,7 @@ export function AccountsView({
       .map(([loc]) => loc);
 
   return (
-    <div className="space-y-4">
+    <div className={sx(paint.s3)}>
       <Alert>
         <Icon name="Info" />
         <AlertDescription>
@@ -167,32 +356,32 @@ export function AccountsView({
         return (
           <Frame key={agent} variant="card">
             <FrameHeader row gap={2} pad="tight">
-              <span className={cn("size-2.5 rounded-[3px]", SERIES[agent].dot)} />
+              <span className={[sx(paint.s4), SERIES[agent].dot].filter(Boolean).join(" ")} />
               <FrameTitle>{AGENT_NAME[agent]}</FrameTitle>
-              <span className="text-muted-foreground text-xs">
-                picked with <code className="font-mono">{ACCOUNT_VAR[agent]}</code>
+              <span className={sx(paint.s5)}>
+                picked with <code className={sx(paint.s6)}>{ACCOUNT_VAR[agent]}</code>
               </span>
-              <Button size="sm" variant="outline" className="ml-auto" onClick={() => setAdding(adding === agent ? undefined : agent)}>
+              <Button size="sm" variant="outline" className={sx(paint.s7)} onClick={() => setAdding(adding === agent ? undefined : agent)}>
                 <Icon name="Plus" />
                 Add account…
               </Button>
             </FrameHeader>
             <FramePanel pad="none">
               {adding === agent && <AddAccount agent={agent} taken={list.map((a) => a.id)} busy={busy === `add:${agent}`} where={here ? `${here.location}/${here.worktree}` : locations[0]?.name} onCancel={() => setAdding(undefined)} onAdd={(name) => void add(agent, name)} />}
-              <ul className="divide-y">
+              <ul className={sx(paint.s8)}>
                 {list.map((a) => {
                   const p = plan(a);
                   const projects = projectAccounts(agent, a);
                   const isBox = onBox?.id === a.id;
                   return (
-                    <li key={a.id} className="flex items-center gap-3 px-4 py-3">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                        <Icon name={a.signed_in ? "UserRound" : "UserRoundX"} className="size-4" />
+                    <li key={a.id} className={sx(paint.s9)}>
+                      <div className={sx(paint.s10)}>
+                        <Icon name={a.signed_in ? "UserRound" : "UserRoundX"} className={sx(paint.s11)} />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-medium text-sm">{a.id === "default" ? "Default" : a.id}</span>
-                          {a.signed_in ? (a.email || !p) && <span className="truncate text-muted-foreground text-sm">{a.email ?? "Signed in"}</span> : <Badge variant="warning" size="sm">Not signed in</Badge>}
+                      <div className={sx(paint.s12)}>
+                        <div className={sx(paint.s13)}>
+                          <span className={sx(paint.s14)}>{a.id === "default" ? "Default" : a.id}</span>
+                          {a.signed_in ? (a.email || !p) && <span className={sx(paint.s15)}>{a.email ?? "Signed in"}</span> : <Badge variant="warning" size="sm">Not signed in</Badge>}
                           {p && (
                             <Badge variant="outline" size="sm">
                               {p.label}
@@ -209,7 +398,7 @@ export function AccountsView({
                             </Badge>
                           ))}
                         </div>
-                        <div className="truncate font-mono text-muted-foreground text-xs">{a.dir.replace(data.home, "~")}</div>
+                        <div className={sx(paint.s16)}>{a.dir.replace(data.home, "~")}</div>
                       </div>
                       {!a.signed_in && (
                         <Button size="sm" variant="outline" onClick={() => void run(`sign:${agent}:${a.id}`, () => signIn(a))}>
@@ -265,20 +454,20 @@ export function AccountsView({
         </FrameHeader>
         <FramePanel pad="none">
           {sessions.length === 0 ? (
-            <p className="px-4 py-6 text-center text-muted-foreground text-sm">No Claude Code or Codex sessions are running on {box}.</p>
+            <p className={sx(paint.s17)}>No Claude Code or Codex sessions are running on {box}.</p>
           ) : (
-            <ul className="divide-y">
+            <ul className={sx(paint.s18)}>
               {sessions.map((s) => {
                 const agent = s.agent as Agent;
                 const env = data.sessions[s.name];
                 const a = accountFor(data.accounts, agent, env?.[ACCOUNT_VAR[agent] as keyof typeof env], data.home);
                 return (
-                  <li key={s.name} className="flex items-center gap-3 px-4 py-2 text-sm">
-                    <span className={cn("size-2 shrink-0 rounded-[2px]", SERIES[agent].dot)} aria-label={AGENT_NAME[agent]} />
-                    <span className="min-w-0 flex-1 truncate">
+                  <li key={s.name} className={sx(paint.s19)}>
+                    <span className={[sx(paint.s20), SERIES[agent].dot].filter(Boolean).join(" ")} aria-label={AGENT_NAME[agent]} />
+                    <span className={sx(paint.s21)}>
                       {sessionName(s, { sessions: all, locations, place: true })}
                     </span>
-                    <span className="truncate text-muted-foreground text-xs">{env ? (a ? `${a.id === "default" ? "Default" : a.id}${a.email ? ` · ${a.email}` : ""}` : (env[ACCOUNT_VAR[agent] as keyof typeof env] ?? "")) : "unknown"}</span>
+                    <span className={sx(paint.s22)}>{env ? (a ? `${a.id === "default" ? "Default" : a.id}${a.email ? ` · ${a.email}` : ""}` : (env[ACCOUNT_VAR[agent] as keyof typeof env] ?? "")) : "unknown"}</span>
                     <Button size="xs" variant="ghost" onClick={() => berth.openTerminal(box, s.name)}>
                       Open
                     </Button>
@@ -298,15 +487,15 @@ function AddAccount({ agent, taken, busy, where, onCancel, onAdd }: { agent: Age
   const problem = !name ? undefined : !NAME.test(name) ? "Lowercase letters, digits and dashes" : taken.includes(name) ? "There's already an account with that name" : undefined;
   return (
     <form
-      className="flex flex-wrap items-start gap-2 border-b bg-muted/40 px-4 py-3"
+      className={sx(paint.s23)}
       onSubmit={(e) => {
         e.preventDefault();
         if (name && !problem) onAdd(name);
       }}
     >
-      <div className="min-w-48 flex-1 space-y-1">
+      <div className={sx(paint.s24)}>
         <Input autoFocus size="sm" placeholder="work, personal…" value={name} onChange={(e: { target: { value: string } }) => setName(e.target.value.trim().toLowerCase())} aria-label="Account name" aria-invalid={Boolean(problem)} />
-        <p className={cn("text-xs", problem ? "text-destructive-foreground" : "text-muted-foreground")}>
+        <p className={[sx(paint.s25), problem ? sx(paint.s26) : sx(paint.s27)].filter(Boolean).join(" ")}>
           {problem ?? `Makes ~/.berth/accounts/${agent}/${name || "<name>"} and opens ${agent === "claude" ? "Claude Code" : "codex login"} with it${where ? ` in ${where}` : ""}, so you can sign in.`}
         </p>
       </div>

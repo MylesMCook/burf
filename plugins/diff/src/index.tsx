@@ -1,8 +1,437 @@
+import * as stylex from "@stylexjs/stylex";
 import { definePlugin, useEvent, useStorage, worktreeLocation, type WorktreePanelProps } from "@berth/plugin";
-import { Button, type DiffFile, type DiffsModule, type DiffViewerItem, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Input, loadDiffs, PickOne, Spinner, Tip, cn } from "@berth/plugin/ui";
+import { Button, type DiffFile, type DiffsModule, type DiffViewerItem, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Input, loadDiffs, PickOne, Spinner, Tip } from "@berth/plugin/ui";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type DiffResult, fetchDiff, type FileStat, LIMIT, type Scope, splitPath, startsCollapsed } from "./git";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "0px",
+    "flexDirection": "column",
+    "backgroundColor": "var(--background)",
+  },
+  s1: {
+    "display": "flex",
+    "height": "40px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s2: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+  },
+  s4: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s5: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s7: {
+    "color": "var(--muted-foreground)",
+  },
+  s8: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--success)",
+  },
+  s9: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--destructive)",
+  },
+  s10: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s11: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s12: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s13: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s14: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s15: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s16: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s17: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s18: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s19: {
+    "whiteSpace": "pre-wrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s20: {
+    "display": "flex",
+    "minHeight": "160px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "padding": "24px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s21: {
+    "color": "var(--success)",
+  },
+  s22: {
+    "color": "var(--destructive)",
+  },
+  s23: {
+    "color": "var(--warning)",
+  },
+  s24: {
+    "color": "var(--info)",
+  },
+  s25: {
+    "color": "var(--info)",
+  },
+  s26: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s27: {
+    "display": "flex",
+    "width": "240px",
+    "flexShrink": 0,
+    "flexDirection": "column",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+  },
+  s28: {
+    "display": "none",
+  },
+  s29: {
+    "flexShrink": 0,
+    "padding": "8px",
+    "paddingBottom": "4px",
+  },
+  s30: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "paddingBottom": "8px",
+  },
+  s31: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s32: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s33: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 8%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "color": "var(--warning-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s34: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s35: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s36: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s37: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s38: {
+    "color": "var(--muted-foreground)",
+  },
+  s39: {
+    "flexShrink": 0,
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s40: {
+    "color": "var(--success)",
+  },
+  s41: {
+    "color": "var(--destructive)",
+  },
+  s42: {
+    "color": "var(--muted-foreground)",
+  },
+  s43: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "textAlign": "left",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+  },
+  s44: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s45: {
+    "cursor": "default",
+    "opacity": 0.5,
+    "backgroundColor": {
+      ":hover": "transparent",
+    },
+  },
+  s46: {
+    "width": "12px",
+    "flexShrink": 0,
+    "textAlign": "center",
+    "fontFamily": "var(--font-mono)",
+    "fontWeight": 600,
+  },
+  s47: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s48: {
+    "marginLeft": "6px",
+    "color": "var(--muted-foreground)",
+  },
+  s49: {
+    "display": "flex",
+    "height": "36px",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontFamily": "var(--font-sans)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s50: {
+    "flexShrink": 0,
+  },
+  s51: {
+    "width": "14px",
+    "height": "14px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s52: {
+    "transform": "rotate(90deg)",
+  },
+  s53: {
+    "width": "12px",
+    "flexShrink": 0,
+    "textAlign": "center",
+    "fontFamily": "var(--font-mono)",
+    "fontWeight": 600,
+  },
+  s54: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "baseline",
+    "gap": "4px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "textAlign": "left",
+    "fontFamily": "var(--font-mono)",
+  },
+  s55: {
+    "cursor": "default",
+  },
+  s56: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  s57: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  s58: {
+    "flexShrink": 0,
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s59: {
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-sm)",
+    "backgroundColor": "var(--muted)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s60: {
+    "marginLeft": "auto",
+  },
+  q61: {
+    "containerType": "inline-size",
+  },
+  q62: {
+    "display": {
+      "@container (max-width: 42rem)": {
+        "default": "none",
+      },
+    },
+  },
+  q63: {
+    "display": {
+      "@container (max-width: 48rem)": {
+        "default": "none",
+      },
+    },
+  },
+  q64: {
+    "display": {
+      "@container (max-width: 42rem)": {
+        "default": "none",
+      },
+    },
+  },
+  q65: {
+    "color": "var(--success)",
+  },
+  q66: {
+    "color": "var(--destructive)",
+  },
+  q67: {
+    "color": "var(--warning)",
+  },
+  q68: {
+    "color": "var(--info)",
+  },
+  q69: {
+    "color": "var(--info)",
+  },
+  q70: {
+    "display": {
+      "@container (max-width: 42rem)": {
+        "default": "none",
+      },
+    },
+  },
+  q71: {
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Diff: the whole of a branch's change in one scrolling view, the way a pull
 // request shows it, drawn with the app's diff renderer (@pierre/diffs,
@@ -119,24 +548,24 @@ function DiffPanel({ berth, box, location, worktree, path, main }: WorktreePanel
   const removed = ok?.files.reduce((n, f) => n + f.removed, 0) ?? 0;
 
   return (
-    <div className="@container flex h-full min-h-0 flex-col bg-background">
-      <header className="flex h-10 shrink-0 items-center gap-2 border-b px-3 text-sm">
-        <Icon name="GitBranch" className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 truncate font-medium">{ok?.branch || (result?.kind === "nobase" ? result.branch : "") || (ok ? "detached HEAD" : "…")}</span>
+    <div className={[sx(paint.s0), sx(paint.q61)].filter(Boolean).join(" ")}>
+      <header className={sx(paint.s1)}>
+        <Icon name="GitBranch" className={sx(paint.s2)} />
+        <span className={sx(paint.s3)}>{ok?.branch || (result?.kind === "nobase" ? result.branch : "") || (ok ? "detached HEAD" : "…")}</span>
         {ok?.base && scope !== "uncommitted" && (
           <Tip label={`Compared with ${ok.base} at ${ok.mergeBase.slice(0, 8)}, where the branch left it`}>
-            <span className="@max-2xl:hidden shrink-0 text-muted-foreground text-xs">vs {ok.base}</span>
+            <span className={[sx(paint.s4), sx(paint.q62)].filter(Boolean).join(" ")}>vs {ok.base}</span>
           </Tip>
         )}
         <PickOne label="What to compare" nudge value={scope} onChange={(v: string) => setScope(v as Scope)} options={SCOPES.map((s) => ({ value: s.value, label: <Tip label={SCOPE_HELP[s.value]}><span>{s.label}</span></Tip> }))} />
-        <span className="ml-auto flex shrink-0 items-center gap-2 text-xs tabular-nums">
+        <span className={sx(paint.s5)}>
           {ok && ok.files.length > 0 && (
-            <span className="@max-3xl:hidden flex items-center gap-2">
-              <span className="text-muted-foreground">
+            <span className={[sx(paint.s6), sx(paint.q63)].filter(Boolean).join(" ")}>
+              <span className={sx(paint.s7)}>
                 {ok.files.length} file{ok.files.length === 1 ? "" : "s"}
               </span>
-              <span className="font-mono text-success">+{added}</span>
-              <span className="font-mono text-destructive">−{removed}</span>
+              <span className={sx(paint.s8)}>+{added}</span>
+              <span className={sx(paint.s9)}>−{removed}</span>
             </span>
           )}
         </span>
@@ -145,23 +574,23 @@ function DiffPanel({ berth, box, location, worktree, path, main }: WorktreePanel
           value={layout}
           onChange={(v: string) => setLayout(v as Layout)}
           options={[
-            { value: "split", label: "Split", icon: <Icon name="columns-2" className="size-3.5" /> },
-            { value: "unified", label: "Unified", icon: <Icon name="rows-2" className="size-3.5" /> },
+            { value: "split", label: "Split", icon: <Icon name="columns-2" className={sx(paint.s10)} /> },
+            { value: "unified", label: "Unified", icon: <Icon name="rows-2" className={sx(paint.s11)} /> },
           ]}
         />
         <Tip label={list ? "Hide the file list" : "Show the file list"}>
-          <Button size="icon-sm" variant="ghost" aria-label="File list" aria-pressed={list} className={cn("@max-2xl:hidden", list && "bg-accent text-foreground")} onClick={() => setList(!list)}>
-            <Icon name="PanelLeft" className="size-3.5" />
+          <Button size="icon-sm" variant="ghost" aria-label="File list" aria-pressed={list} className={[sx(paint.q64), list && sx(paint.s12)].filter(Boolean).join(" ")} onClick={() => setList(!list)}>
+            <Icon name="PanelLeft" className={sx(paint.s13)} />
           </Button>
         </Tip>
         <Tip label={wrap ? "Don't wrap long lines" : "Wrap long lines"}>
-          <Button size="icon-sm" variant="ghost" aria-label="Wrap long lines" aria-pressed={wrap} className={cn(wrap && "bg-accent text-foreground")} onClick={() => setWrap(!wrap)}>
-            <Icon name="WrapText" className="size-3.5" />
+          <Button size="icon-sm" variant="ghost" aria-label="Wrap long lines" aria-pressed={wrap} className={wrap && sx(paint.s14)} onClick={() => setWrap(!wrap)}>
+            <Icon name="WrapText" className={sx(paint.s15)} />
           </Button>
         </Tip>
         <Tip label="Read the diff again">
           <Button size="icon-sm" variant="ghost" aria-label="Refresh" onClick={refresh} disabled={busy && load.state !== "ready"}>
-            {busy ? <Spinner className="size-3.5" /> : <Icon name="RefreshCw" className="size-3.5" />}
+            {busy ? <Spinner className={sx(paint.s16)} /> : <Icon name="RefreshCw" className={sx(paint.s17)} />}
           </Button>
         </Tip>
       </header>
@@ -174,13 +603,13 @@ function Body({ load, scope, setScope, refresh, layout, wrap, list }: { load: Lo
   if (load.state === "loading") {
     return (
       <Centered>
-        <Spinner className="size-4" /> Reading the diff…
+        <Spinner className={sx(paint.s18)} /> Reading the diff…
       </Centered>
     );
   }
   if (load.state === "error") {
     return (
-      <Message title="Couldn't read the diff" detail={<span className="whitespace-pre-wrap font-mono text-xs">{load.message}</span>}>
+      <Message title="Couldn't read the diff" detail={<span className={sx(paint.s19)}>{load.message}</span>}>
         <Button size="sm" variant="outline" onClick={refresh}>
           Try again
         </Button>
@@ -221,7 +650,7 @@ function Body({ load, scope, setScope, refresh, layout, wrap, list }: { load: Lo
 }
 
 function Centered({ children }: { children: ReactNode }) {
-  return <div className="flex min-h-40 flex-1 items-center justify-center gap-2 p-6 text-muted-foreground text-sm">{children}</div>;
+  return <div className={sx(paint.s20)}>{children}</div>;
 }
 
 function Message({ title, detail, children }: { title: string; detail: ReactNode; children?: ReactNode }) {
@@ -239,11 +668,11 @@ function Message({ title, detail, children }: { title: string; detail: ReactNode
 }
 
 const STATUS = {
-  new: { letter: "A", label: "Added", tone: "text-success" },
-  deleted: { letter: "D", label: "Deleted", tone: "text-destructive" },
-  change: { letter: "M", label: "Modified", tone: "text-warning" },
-  "rename-pure": { letter: "R", label: "Renamed", tone: "text-info" },
-  "rename-changed": { letter: "R", label: "Renamed", tone: "text-info" },
+  new: { letter: "A", label: "Added", tone: sx(paint.q65) },
+  deleted: { letter: "D", label: "Deleted", tone: sx(paint.q66) },
+  change: { letter: "M", label: "Modified", tone: sx(paint.q67) },
+  "rename-pure": { letter: "R", label: "Renamed", tone: sx(paint.q68) },
+  "rename-changed": { letter: "R", label: "Renamed", tone: sx(paint.q69) },
 } as const;
 
 interface Entry {
@@ -330,34 +759,34 @@ function Files({ result, scope, layout, wrap, list }: { result: DiffResult & { k
   const shown = filter.trim() ? entries.filter((e) => e.stat.path.toLowerCase().includes(filter.trim().toLowerCase())) : entries;
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className={sx(paint.s26)}>
       {/* A narrow panel gives all its width to the diff. */}
-      <aside className={cn("@max-2xl:hidden flex w-60 shrink-0 flex-col border-r", !list && "hidden")}>
-        <div className="shrink-0 p-2 pb-1">
+      <aside className={[[sx(paint.s27), sx(paint.q70)].filter(Boolean).join(" "), !list && sx(paint.s28)].filter(Boolean).join(" ")}>
+        <div className={sx(paint.s29)}>
           <Input size="sm" value={filter} onChange={(ev: React.ChangeEvent<HTMLInputElement>) => setFilter(ev.target.value)} placeholder={`Filter ${entries.length} file${entries.length === 1 ? "" : "s"}`} aria-label="Filter files" />
         </div>
-        <ul className="min-h-0 flex-1 overflow-y-auto px-1 pb-2">
+        <ul className={sx(paint.s30)}>
           {shown.map((e) => (
             <FileRow key={e.stat.path} entry={e} active={e.stat.path === (active ?? items[0]?.id)} onSelect={() => goTo(e)} />
           ))}
-          {shown.length === 0 && <li className="px-2 py-3 text-muted-foreground text-xs">No file matches.</li>}
+          {shown.length === 0 && <li className={sx(paint.s31)}>No file matches.</li>}
         </ul>
       </aside>
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section className={sx(paint.s32)}>
         {result.truncated && (
-          <p className="flex shrink-0 items-center gap-2 border-b bg-warning/8 px-3 py-1.5 text-warning-foreground text-xs">
-            <Icon name="TriangleAlert" className="size-3.5 shrink-0" />
+          <p className={sx(paint.s33)}>
+            <Icon name="TriangleAlert" className={sx(paint.s34)} />
             The diff is longer than {LIMIT >> 20} MB, so it stops there: {missing} file{missing === 1 ? " isn't" : "s aren't"} shown.
           </p>
         )}
         {!mod ? (
           <Centered>
-            <Spinner className="size-4" />
+            <Spinner className={sx(paint.s35)} />
           </Centered>
         ) : "error" in mod ? (
-          <Message title="Couldn't load the diff viewer" detail={<span className="font-mono text-xs">{mod.error}</span>} />
+          <Message title="Couldn't load the diff viewer" detail={<span className={sx(paint.s36)}>{mod.error}</span>} />
         ) : (
-          <div className="min-h-0 flex-1">
+          <div className={sx(paint.s37)}>
             <mod.value.default
               items={items}
               layout={layout}
@@ -400,10 +829,10 @@ function uniqueEnds(paths: string[]) {
 }
 
 function Counts({ stat }: { stat: FileStat }) {
-  if (stat.binary) return <span className="text-muted-foreground">binary</span>;
+  if (stat.binary) return <span className={sx(paint.s38)}>binary</span>;
   return (
-    <span className="shrink-0 font-mono text-[11px] tabular-nums">
-      <span className="text-success">+{stat.added}</span> <span className="text-destructive">−{stat.removed}</span>
+    <span className={sx(paint.s39)}>
+      <span className={sx(paint.s40)}>+{stat.added}</span> <span className={sx(paint.s41)}>−{stat.removed}</span>
     </span>
   );
 }
@@ -411,7 +840,7 @@ function Counts({ stat }: { stat: FileStat }) {
 function status(e: Entry) {
   if (e.fileDiff) return STATUS[e.fileDiff.type];
   if (e.stat.from) return STATUS["rename-changed"];
-  return { letter: "M", label: "Changed", tone: "text-muted-foreground" };
+  return { letter: "M", label: "Changed", tone: sx(paint.q71) };
 }
 
 function FileRow({ entry, active, onSelect }: { entry: Entry; active: boolean; onSelect(): void }) {
@@ -424,16 +853,12 @@ function FileRow({ entry, active, onSelect }: { entry: Entry; active: boolean; o
           type="button"
           onClick={onSelect}
           aria-current={active || undefined}
-          className={cn(
-            "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs hover:bg-accent/60",
-            active && "bg-accent text-foreground",
-            !fileDiff && "cursor-default opacity-50 hover:bg-transparent",
-          )}
+          className={[sx(paint.s43), active && sx(paint.s44), !fileDiff && sx(paint.s45)].filter(Boolean).join(" ")}
         >
-          <span className={cn("w-3 shrink-0 text-center font-mono font-semibold", s.tone)}>{s.letter}</span>
-          <span className="min-w-0 flex-1 truncate">
+          <span className={[sx(paint.s46), s.tone].filter(Boolean).join(" ")}>{s.letter}</span>
+          <span className={sx(paint.s47)}>
             {label.short}
-            {label.rest && <span className="ml-1.5 text-muted-foreground">{label.rest}</span>}
+            {label.rest && <span className={sx(paint.s48)}>{label.rest}</span>}
           </span>
           <Counts stat={stat} />
         </button>
@@ -449,20 +874,20 @@ function FileHeader({ entry, open, onToggle }: { entry: Entry; open: boolean; on
   const empty = !fileDiff?.hunks.length;
   const note = stat.binary ? "Binary file, not shown" : empty ? (fileDiff?.type === "rename-pure" ? "Renamed, no changes" : "No content changes") : !open && why ? (why === "Large" ? "Large diff, folded" : `${why}, folded`) : undefined;
   return (
-    <div className="flex h-9 items-center gap-2 border-y bg-background px-2 font-sans text-xs">
-      <Button size="icon-xs" variant="ghost" aria-label={open ? "Fold this file" : "Unfold this file"} aria-expanded={open} disabled={empty} onClick={onToggle} className="shrink-0">
-        <Icon name="ChevronRight" className={cn("size-3.5 transition-transform", open && "rotate-90")} />
+    <div className={sx(paint.s49)}>
+      <Button size="icon-xs" variant="ghost" aria-label={open ? "Fold this file" : "Unfold this file"} aria-expanded={open} disabled={empty} onClick={onToggle} className={sx(paint.s50)}>
+        <Icon name="ChevronRight" className={[sx(paint.s51), open && sx(paint.s52)].filter(Boolean).join(" ")} />
       </Button>
       <Tip label={s.label}>
-        <span className={cn("w-3 shrink-0 text-center font-mono font-semibold", s.tone)}>{s.letter}</span>
+        <span className={[sx(paint.s53), s.tone].filter(Boolean).join(" ")}>{s.letter}</span>
       </Tip>
-      <button type="button" onClick={empty ? undefined : onToggle} className={cn("flex min-w-0 items-baseline gap-1 truncate text-left font-mono", empty && "cursor-default")}>
-        {stat.from && <span className="truncate text-muted-foreground">{stat.from} →</span>}
-        {dir && <span className="truncate text-muted-foreground">{dir}/</span>}
-        <span className="shrink-0 font-medium text-foreground">{name}</span>
+      <button type="button" onClick={empty ? undefined : onToggle} className={[sx(paint.s54), empty && sx(paint.s55)].filter(Boolean).join(" ")}>
+        {stat.from && <span className={sx(paint.s56)}>{stat.from} →</span>}
+        {dir && <span className={sx(paint.s57)}>{dir}/</span>}
+        <span className={sx(paint.s58)}>{name}</span>
       </button>
-      {note && <span className="shrink-0 rounded-sm bg-muted px-1.5 py-px text-[11px] text-muted-foreground">{note}</span>}
-      <span className="ml-auto" />
+      {note && <span className={sx(paint.s59)}>{note}</span>}
+      <span className={sx(paint.s60)} />
       <Counts stat={stat} />
     </div>
   );

@@ -1,9 +1,89 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps } from "react";
-import { cn } from "@/lib/utils";
 import { field, mono } from "./surfaces";
 import { announced, pct } from "../utils/range";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "width": "100%",
+    "maxWidth": "384px",
+    "flexDirection": "column",
+    "gap": "10px",
+  },
+  s1: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "justifyContent": "space-between",
+  },
+  s2: {
+    "fontSize": "13.5px",
+    "fontWeight": 500,
+  },
+  s3: {
+    "color": "color-mix(in oklab, var(--foreground) 35%, transparent)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s4: {
+    "display": "flex",
+    "gap": "2px",
+    "borderRadius": "999px",
+    "padding": "2px",
+  },
+  s5: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "borderRadius": "999px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+    "transitionProperty": "background-color, color, scale",
+    "transitionDuration": "150ms",
+  },
+  s6: {
+    "transform": {
+      ":active": "scale(0.97)",
+    },
+  },
+  s7: {
+    "backgroundColor": "var(--background)",
+    "color": "color-mix(in oklab, var(--foreground) 90%, transparent)",
+  },
+  s8: {
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 6%, transparent)",
+    "height": "3px",
+    "width": "100%",
+    "overflow": "hidden",
+    "borderRadius": "999px",
+  },
+  s9: {
+    "display": "block",
+    "height": "100%",
+    "borderRadius": "999px",
+    "backgroundColor": {
+      "default": "light-dark(#3b82f6, #60a5fa)",
+    },
+    "transitionProperty": "width",
+    "transitionDuration": "500ms",
+  },
+  s10: {
+    "color": {
+      "default": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+      ":hover": "color-mix(in oklab, var(--foreground) 70%, transparent)",
+    },
+  },
+  s11: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
@@ -36,28 +116,24 @@ export function ReasoningEffort({
   return (
     <div
       data-slot="reasoning-effort"
-      className={cn("flex w-full max-w-sm flex-col gap-2.5", className)}
+      className={[sx(paint.s0), className].filter(Boolean).join(" ")}
 
       {...props}
     >
-      <div className="flex items-baseline justify-between">
-        <span className="text-[13.5px] font-medium">Thinking</span>
-        <span className={cn(mono, "text-foreground/35 tabular-nums")}>
+      <div className={sx(paint.s1)}>
+        <span className={sx(paint.s2)}>Thinking</span>
+        <span className={sx(mono, paint.s3)}>
           {fmt(spent)} / {fmt(budget)}
         </span>
       </div>
 
-      <div className={cn(field, "flex gap-0.5 rounded-full p-0.5")}>
+      <div className={sx(field, paint.s4)}>
         {levels.map((level) => {
           const active = level.key === selectedKey;
-          const className = cn(
-            "flex-1 rounded-full py-1 text-xs font-medium transition-[background-color,color,scale] duration-150",
-            onSelect && "active:scale-[0.97]",
-            active
-              ? "bg-background text-foreground/90"
-              : onSelect
-                ? "text-foreground/45 hover:text-foreground/70"
-                : "text-foreground/45",
+          const levelClass = sx(
+            paint.s5,
+            Boolean(onSelect) && paint.s6,
+            active ? paint.s7 : onSelect ? paint.s10 : paint.s11,
           );
           return onSelect ? (
             <button
@@ -65,7 +141,7 @@ export function ReasoningEffort({
               type="button"
               aria-pressed={active}
               onClick={() => onSelect(level.key)}
-              className={className}
+              className={levelClass}
             >
               {level.label}
             </button>
@@ -73,7 +149,7 @@ export function ReasoningEffort({
             <span
               key={level.key}
               aria-current={active ? "true" : undefined}
-              className={className}
+              className={levelClass}
             >
               {level.label}
             </span>
@@ -88,10 +164,10 @@ export function ReasoningEffort({
         aria-valuemax={100}
         aria-valuenow={announced(used)}
         aria-valuetext={`${fmt(spent)} of ${fmt(budget)}`}
-        className="bg-foreground/[0.06] h-[3px] w-full overflow-hidden rounded-full"
+        className={sx(paint.s8)}
       >
         <span
-          className="block h-full rounded-full bg-blue-500 transition-[width] duration-500 motion-reduce:transition-none dark:bg-blue-400"
+          className={sx(paint.s9)}
           style={{ width: `${used}%` }}
         />
       </span>

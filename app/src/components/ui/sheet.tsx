@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { color, radius } from "@/styles/tokens.stylex";
 
+
 const sm = "@media (min-width: 640px)";
 const narrow = "@media (max-width: 639px)";
 const still = "@media (prefers-reduced-motion: reduce)";
@@ -80,6 +81,8 @@ const styles = stylex.create({
   shiftX: { translate: "32px 0" },
   shiftXOut: { translate: "-32px 0" },
   widthSm: { maxWidth: "24rem" },
+  widthLg: { maxWidth: "32rem" },
+  widthXl: { maxWidth: { default: "28rem", [sm]: "36rem" } },
   width512: { width: "min(512px, 100vw)", maxWidth: "none" },
   widthHistory: { width: "clamp(20rem, calc(100vw - 46rem), 45rem)", maxWidth: "none" },
   sidebar: {
@@ -160,7 +163,7 @@ const styles = stylex.create({
 });
 
 export type SheetSide = "right" | "left" | "top" | "bottom";
-export type SheetWidth = "sm" | "md" | "512" | "history";
+export type SheetWidth = "sm" | "md" | "lg" | "xl" | "512" | "history";
 export type SheetTone = "default" | "sidebar" | "notices";
 
 const sideStyle = {
@@ -253,6 +256,8 @@ export function SheetPopup({
               start && side === "left" && styles.shiftXOut,
               start && side === "right" && styles.shiftX,
               width === "sm" && styles.widthSm,
+              width === "lg" && styles.widthLg,
+              width === "xl" && styles.widthXl,
               width === "512" && styles.width512,
               width === "history" && styles.widthHistory,
               tone === "sidebar" && styles.sidebar,

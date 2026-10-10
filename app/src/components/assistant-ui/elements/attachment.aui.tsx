@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import {
   type PropsWithChildren,
   useState,
@@ -39,7 +40,187 @@ import {
 } from "@/components/ui/avatar";
 import { TooltipIconButton } from "@/components/assistant-ui/elements/tooltip-icon-button";
 import { useAttachmentSrc } from "@/hooks/use-attachment-src";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "display": "block",
+    "height": "auto",
+    "maxHeight": "80vh",
+    "width": "auto",
+    "maxWidth": "100%",
+    "borderRadius": "var(--radius-sm)",
+    "objectFit": "contain",
+    "transitionProperty": "opacity",
+    "transitionDuration": "300ms",
+  },
+  s1: {
+    "opacity": 1,
+  },
+  s2: {
+    "opacity": 0,
+  },
+  s3: {
+    "cursor": "zoom-in",
+  },
+  s4: {
+    "backgroundColor": "var(--background)",
+    "position": "relative",
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "display": "flex",
+    "maxHeight": "80dvh",
+    "width": "100%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-sm)",
+  },
+  s5: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 80%, transparent)",
+    "width": "24px",
+    "height": "24px",
+    "stroke": "1.5",
+  },
+  s6: {
+    "position": "relative",
+  },
+  s7: {
+    "transitionDuration": "200ms",
+  },
+  s8: {
+    "backgroundColor": {
+      "default": "var(--muted)",
+      ":hover::after": "color-mix(in oklab, var(--foreground) 10%, transparent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 1px var(--ring)",
+      "::after": "light-dark(0 0 0 2px color-mix(in oklab, #000 10%, transparent), 0 0 0 2px color-mix(in oklab, #fff 10%, transparent))",
+    },
+    "position": {
+      "default": "relative",
+      "::after": "absolute",
+    },
+    "width": "56px",
+    "height": "56px",
+    "overflow": "hidden",
+    "borderRadius": {
+      "default": "calc(var(--composer-radius,1rem)-var(--composer-padding,8px))",
+      "::after": "inherit",
+    },
+    "transitionProperty": {
+      "default": "transform",
+      "::after": "color, background-color, border-color",
+    },
+    "transitionDuration": {
+      "default": "150ms",
+      "::after": "150ms",
+    },
+    "outline": "none",
+    "pointerEvents": {
+      "::after": "none",
+    },
+    "top": {
+      "::after": 0,
+    },
+    "right": {
+      "::after": 0,
+    },
+    "bottom": {
+      "::after": 0,
+    },
+    "left": {
+      "::after": 0,
+    },
+  },
+  s9: {
+    "cursor": "zoom-in",
+    "transform": {
+      ":active": "scale(NaN)",
+    },
+  },
+  s10: {
+    "cursor": "default",
+  },
+  s11: {
+    "boxShadow": {
+      "::after": "0 0 0 2px color-mix(in oklab, var(--destructive) 60%, transparent)",
+    },
+  },
+  s12: {
+    "backgroundColor": "color-mix(in oklab, var(--background) 60%, transparent)",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s13: {
+    "color": "var(--muted-foreground)",
+    "width": "16px",
+    "height": "16px",
+  },
+  s14: {
+    "backgroundColor": "color-mix(in oklab, var(--background) 70%, transparent)",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s15: {
+    "color": "var(--destructive)",
+    "width": "16px",
+    "height": "16px",
+  },
+  s16: {
+    "width": "12px",
+    "height": "12px",
+    "stroke": "2.5",
+  },
+  s17: {
+    "gridColumn": "1 / -1",
+    "gridColumnStart": "1",
+    "gridRowStart": "1",
+    "display": {
+      "default": "flex",
+      ":empty": "none",
+    },
+    "width": "100%",
+    "flexDirection": "row",
+    "justifyContent": "flex-end",
+    "gap": "8px",
+  },
+  s18: {
+    "display": {
+      "default": "flex",
+      ":empty": "none",
+    },
+    "width": "100%",
+    "flexDirection": "row",
+    "alignItems": "center",
+    "gap": "8px",
+    "overflowX": "auto",
+  },
+  s19: {
+    "width": "16px",
+    "height": "16px",
+  },
+  q20: {
+    "backdropFilter": "blur(2px)",
+  },
+  q21: {
+    "backdropFilter": "blur(2px)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type AttachmentPreviewProps = {
   src: string;
@@ -52,12 +233,7 @@ const AttachmentPreview: FC<AttachmentPreviewProps> = ({ src, name }) => {
     <img
       src={src}
       alt={`Preview of ${name}`}
-      className={cn(
-        "block h-auto max-h-[80vh] w-auto max-w-full rounded-sm object-contain transition-opacity duration-300 motion-reduce:transition-none",
-        isLoaded
-          ? "aui-attachment-preview-image-loaded opacity-100"
-          : "aui-attachment-preview-image-loading opacity-0",
-      )}
+      className={[sx(paint.s0), isLoaded ? [sx(paint.s1), "aui-attachment-preview-image-loaded"].filter(Boolean).join(" ") : [sx(paint.s2), "aui-attachment-preview-image-loading"].filter(Boolean).join(" ")].filter(Boolean).join(" ")}
       onLoad={() => setIsLoaded(true)}
     />
   );
@@ -78,7 +254,7 @@ const AttachmentPreviewDialog: FC<AttachmentPreviewDialogProps> = ({
   return (
     <Dialog>
       <DialogTrigger
-        className="aui-attachment-preview-trigger cursor-zoom-in"
+        className={[sx(paint.s3), "aui-attachment-preview-trigger"].filter(Boolean).join(" ")}
         render={
           isValidElement(children) ? (
             children
@@ -91,7 +267,7 @@ const AttachmentPreviewDialog: FC<AttachmentPreviewDialogProps> = ({
         <DialogTitle hidden marker="aui-sr-only">
           Preview {name}
         </DialogTitle>
-        <div className="aui-attachment-preview bg-background relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden rounded-sm">
+        <div className={[sx(paint.s4), "aui-attachment-preview"].filter(Boolean).join(" ")}>
           <AttachmentPreview src={src} name={name} />
         </div>
       </DialogContent>
@@ -108,7 +284,7 @@ const AttachmentThumb: FC<{ src: string | undefined }> = ({ src }) => {
         marker="aui-attachment-tile-image"
       />
       <AvatarFallback>
-        <FileText className="aui-attachment-tile-fallback-icon text-muted-foreground/80 size-6 stroke-[1.5]" />
+        <FileText className={[sx(paint.s5), "aui-attachment-tile-fallback-icon"].filter(Boolean).join(" ")} />
       </AvatarFallback>
     </Avatar>
   );
@@ -161,25 +337,14 @@ const AttachmentUI: FC = () => {
     <TooltipProvider>
       <Tooltip>
         <AttachmentPrimitive.Root
-          className={cn(
-            "aui-attachment-root relative",
-            isComposer &&
-              "animate-in fade-in-0 zoom-in-95 duration-200 motion-reduce:animate-none",
-            isImage &&
-              !isComposer &&
-              "aui-attachment-root-message only:*:first:size-24",
-          )}
+          className={[[sx(paint.s6), "aui-attachment-root"].filter(Boolean).join(" "), isComposer && [sx(paint.s7), "burf-fade"].filter(Boolean).join(" "), isImage &&
+              !isComposer && "aui-attachment-root-message only:*:first:size-24"].filter(Boolean).join(" ")}
         >
           <AttachmentPreviewDialog src={src} name={name}>
             <TooltipTrigger
               render={
                 <div
-                className={cn(
-                  "aui-attachment-tile bg-muted hover:after:bg-foreground/10 focus-visible:ring-ring/50 relative size-14 overflow-hidden rounded-[calc(var(--composer-radius,1rem)-var(--composer-padding,8px))] transition-transform outline-none after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:ring-1 after:ring-black/10 after:transition-colors after:ring-inset focus-visible:ring-1 motion-reduce:transition-none dark:after:ring-white/10",
-                  src ? "cursor-zoom-in active:scale-[0.96]" : "cursor-default",
-                  isError &&
-                    "after:ring-destructive/60 dark:after:ring-destructive/60",
-                )}
+                className={[[sx(paint.s8), "aui-attachment-tile"].filter(Boolean).join(" "), src ? sx(paint.s9) : sx(paint.s10), isError && sx(paint.s11)].filter(Boolean).join(" ")}
                 role={src ? "button" : "group"}
                 tabIndex={0}
                 onKeyDown={
@@ -211,17 +376,17 @@ const AttachmentUI: FC = () => {
                 {isUploading && (
                   <div
                     aria-hidden="true"
-                    className="aui-attachment-tile-uploading bg-background/60 animate-in fade-in-0 absolute inset-0 flex items-center justify-center backdrop-blur-[2px] motion-reduce:animate-none"
+                    className={[sx(paint.s12), [sx(paint.q20), "aui-attachment-tile-uploading burf-fade"].filter(Boolean).join(" ")].filter(Boolean).join(" ")}
                   >
-                    <Loader2Icon className="text-muted-foreground size-4 animate-spin" />
+                    <Loader2Icon className={[sx(paint.s13), "burf-spin"].filter(Boolean).join(" ")} />
                   </div>
                 )}
                 {isError && (
                   <div
                     aria-hidden="true"
-                    className="aui-attachment-tile-error bg-background/70 animate-in fade-in-0 absolute inset-0 flex items-center justify-center backdrop-blur-[2px] motion-reduce:animate-none"
+                    className={[sx(paint.s14), [sx(paint.q21), "aui-attachment-tile-error burf-fade"].filter(Boolean).join(" ")].filter(Boolean).join(" ")}
                   >
-                    <AlertCircleIcon className="text-destructive size-4" />
+                    <AlertCircleIcon className={sx(paint.s15)} />
                   </div>
                 )}
             </TooltipTrigger>
@@ -244,10 +409,13 @@ const AttachmentRemove: FC<{ name: string }> = ({ name }) => {
     <AttachmentPrimitive.Remove asChild>
       <TooltipIconButton
         tooltip={`Remove ${name}`}
-        className="aui-attachment-tile-remove absolute end-1 top-1 size-5 rounded-full bg-black/50! text-white after:absolute after:-inset-1.5 hover:bg-black/70! hover:text-white! active:scale-[0.96] motion-reduce:transition-none"
+        marker="aui-attachment-tile-remove"
+        place="remove"
+        box={5}
+        round
         side="top"
       >
-        <XIcon className="aui-attachment-remove-icon size-3 stroke-[2.5]" />
+        <XIcon className={[sx(paint.s16), "aui-attachment-remove-icon"].filter(Boolean).join(" ")} />
       </TooltipIconButton>
     </AttachmentPrimitive.Remove>
   );
@@ -255,7 +423,7 @@ const AttachmentRemove: FC<{ name: string }> = ({ name }) => {
 
 export const UserMessageAttachments: FC = () => {
   return (
-    <div className="aui-user-message-attachments-end col-span-full col-start-1 row-start-1 flex w-full flex-row justify-end gap-2 empty:hidden">
+    <div className={[sx(paint.s17), "aui-user-message-attachments-end"].filter(Boolean).join(" ")}>
       <MessagePrimitive.Attachments>
         {() => <AttachmentUI />}
       </MessagePrimitive.Attachments>
@@ -265,7 +433,7 @@ export const UserMessageAttachments: FC = () => {
 
 export const ComposerAttachments: FC = () => {
   return (
-    <div className="aui-composer-attachments flex w-full flex-row items-center gap-2 overflow-x-auto empty:hidden">
+    <div className={[sx(paint.s18), "aui-composer-attachments"].filter(Boolean).join(" ")}>
       <ComposerPrimitive.Attachments>
         {() => <AttachmentUI />}
       </ComposerPrimitive.Attachments>
@@ -281,10 +449,14 @@ export const ComposerAddAttachment: FC = () => {
         side="bottom"
         variant="ghost"
         size="icon"
-        className="aui-composer-add-attachment text-muted-foreground hover:text-foreground hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30 size-7 rounded-full active:scale-[0.96] motion-reduce:transition-none"
+        marker="aui-composer-add-attachment"
+        box={7}
+        round
+        tone="muted"
+        wash
         aria-label="Add Attachment"
       >
-        <PlusIcon className="aui-attachment-add-icon size-4" />
+        <PlusIcon className={[sx(paint.s19), "aui-attachment-add-icon"].filter(Boolean).join(" ")} />
       </TooltipIconButton>
     </ComposerPrimitive.AddAttachment>
   );

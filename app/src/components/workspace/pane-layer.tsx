@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useRef } from "react";
 
 import { COMPARE_BAR, CompareBar, useSideStates } from "@/components/workspace/compare-view";
@@ -6,8 +7,76 @@ import { Pane } from "@/components/workspace/pane";
 import { DragGhost, DropOverlay } from "@/components/workspace/tab-drag";
 import { shownSides, sides } from "@/lib/compare";
 import { type Divider, layout, mixed } from "@/lib/layout";
-import { cn } from "@/lib/utils";
 import { resizeSplit, useWorkspaces } from "@/lib/workspaces";
+
+const paint = stylex.create({
+  s0: {
+    "position": "absolute",
+    "overflow": "hidden",
+  },
+  s1: {
+    "borderLeftWidth": 1,
+    "borderLeftStyle": "solid",
+    "borderLeftColor": "var(--border)",
+  },
+  s2: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+  },
+  s3: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "overflow": "hidden",
+  },
+  s4: {
+    "position": "absolute",
+    "overflow": "hidden",
+  },
+  s5: {
+    "borderLeftWidth": 1,
+    "borderLeftStyle": "solid",
+    "borderLeftColor": "var(--border)",
+  },
+  s6: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+  },
+  s7: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+  },
+  s8: {
+    "position": "absolute",
+    "zIndex": 10,
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--ring) 40%, transparent)",
+    },
+  },
+  s9: {
+    "cursor": "col-resize",
+  },
+  s10: {
+    "cursor": "row-resize",
+  },
+  s11: {
+    ":not(#\\#) iframe": {
+      pointerEvents: "none",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const pct = (n: number) => `${n * 100}%`;
 
@@ -57,7 +126,7 @@ export function PaneLayer({ showing }: { showing: boolean }) {
                 data-pane-kind={leaf.content.kind}
                 data-compare-side={i}
                 data-pane-focused={on && tab.focus === leaf.id ? "" : undefined}
-                className={cn("absolute overflow-hidden", r && r.x > 0 && "border-l", r && r.y > 0 && "border-t")}
+                className={[sx(paint.s0), r && r.x > 0 && sx(paint.s1), r && r.y > 0 && sx(paint.s2)].filter(Boolean).join(" ")}
                 style={{ left: pct(r?.x ?? 0), width: pct(r?.w ?? 1), top: `calc(${COMPARE_BAR}px + (100% - ${COMPARE_BAR}px) * ${r?.y ?? 0})`, height: `calc((100% - ${COMPARE_BAR}px) * ${r?.h ?? 1})`, display: on ? "block" : "none" }}
               >
                 <Pane wsKey={key} tab={tab.id} pane={leaf} visible={on} focused={tab.focus === leaf.id} split={false} mixed compare={{ tab: tab.id, pane: leaf.id, side: i as 0 | 1, sync: c.sync }} />
@@ -65,7 +134,7 @@ export function PaneLayer({ showing }: { showing: boolean }) {
             );
           }),
           ...(c.parked ?? []).map((leaf) => (
-            <div key={leaf.id} className="absolute inset-0 overflow-hidden" style={{ display: "none" }}>
+            <div key={leaf.id} className={sx(paint.s3)} style={{ display: "none" }}>
               <Pane wsKey={key} tab={tab.id} pane={leaf} visible={false} focused={false} split={false} mixed />
             </div>
           )),
@@ -82,7 +151,7 @@ export function PaneLayer({ showing }: { showing: boolean }) {
             data-pane-kind={leaf.content.kind}
             // Where the keyboard goes home to when what had it closes (lib/focus-home.ts).
             data-pane-focused={visible && tab.focus === leaf.id ? "" : undefined}
-            className={cn("absolute overflow-hidden", rect.x > 0 && "border-l", rect.y > 0 && "border-t")}
+            className={[sx(paint.s4), rect.x > 0 && sx(paint.s5), rect.y > 0 && sx(paint.s6)].filter(Boolean).join(" ")}
             style={{ left: pct(rect.x), top: pct(rect.y), width: pct(rect.w), height: pct(rect.h), display: visible ? "block" : "none" }}
           >
             <Pane wsKey={key} tab={tab.id} pane={leaf} visible={visible} focused={tab.focus === leaf.id} split={split} mixed={several} />
@@ -94,7 +163,7 @@ export function PaneLayer({ showing }: { showing: boolean }) {
   });
 
   return (
-    <div ref={area} data-pane-area className="absolute inset-0" style={{ visibility: showing ? "visible" : "hidden" }}>
+    <div ref={area} data-pane-area className={sx(paint.s7)} style={{ visibility: showing ? "visible" : "hidden" }}>
       {items.sort((a, b) => (String(a.key) < String(b.key) ? -1 : 1))}
       {showing && <DropOverlay />}
       <DragGhost />
@@ -113,7 +182,7 @@ function DividerHandle({ d, area, onRatio }: { d: Divider; area: React.RefObject
     <div
       role="separator"
       aria-orientation={row ? "vertical" : "horizontal"}
-      className={cn("absolute z-10 transition-colors hover:bg-ring/40", row ? "cursor-col-resize" : "cursor-row-resize")}
+      className={[sx(paint.s8), row ? sx(paint.s9) : sx(paint.s10)].filter(Boolean).join(" ")}
       style={style}
       onPointerDown={(e) => {
         const box = area.current?.getBoundingClientRect();
@@ -122,7 +191,7 @@ function DividerHandle({ d, area, onRatio }: { d: Divider; area: React.RefObject
         const el = e.currentTarget;
         el.setPointerCapture(e.pointerId);
         // Iframes would swallow the pointer while dragging over them.
-        document.body.classList.add("[&_iframe]:pointer-events-none");
+        document.body.classList.add(sx(paint.s11));
         const move = (ev: PointerEvent) => {
           const r = row ? ((ev.clientX - box.left) / box.width - d.area.x) / d.area.w : ((ev.clientY - box.top) / box.height - d.area.y) / d.area.h;
           onRatio(r);
@@ -130,7 +199,7 @@ function DividerHandle({ d, area, onRatio }: { d: Divider; area: React.RefObject
         const up = () => {
           el.removeEventListener("pointermove", move);
           el.removeEventListener("pointerup", up);
-          document.body.classList.remove("[&_iframe]:pointer-events-none");
+          document.body.classList.remove(sx(paint.s11));
         };
         el.addEventListener("pointermove", move);
         el.addEventListener("pointerup", up);

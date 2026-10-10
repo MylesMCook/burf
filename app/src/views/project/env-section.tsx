@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, ChevronRightIcon, CircleAlertIcon, EyeIcon, EyeOffIcon, KeyRoundIcon, LoaderIcon, PlusIcon, Trash2Icon, Undo2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -9,8 +10,251 @@ import type { RepoConfig } from "@/lib/flows";
 import { plainError } from "@/lib/errors";
 import { explainSecretError, refProblem } from "@/lib/secret-ref";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { Section, SourceBadge } from "@/views/project/parts";
+
+const paint = stylex.create({
+  s0: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s1: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s2: {
+    "flexShrink": 0,
+  },
+  s3: {
+    "color": {
+      "default": "light-dark(var(--success-foreground), var(--success))",
+    },
+  },
+  s4: {
+    "color": "var(--destructive-foreground)",
+  },
+  s5: {
+    "marginTop": "4px",
+    "overflow": "hidden",
+    "display": "-webkit-box",
+    "WebkitLineClamp": 2,
+    "WebkitBoxOrient": "vertical",
+    "fontSize": "11px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "color": {
+      "default": "light-dark(var(--success-foreground), var(--success))",
+    },
+  },
+  s7: {
+    "color": "var(--destructive-foreground)",
+  },
+  s8: {
+    "color": "var(--warning-foreground)",
+  },
+  s9: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s10: {
+    "color": "var(--destructive-foreground)",
+  },
+  s11: {
+    "color": "var(--warning-foreground)",
+  },
+  s12: {
+    "minWidth": "0px",
+  },
+  s13: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s14: {
+    "minWidth": "0px",
+    "paddingLeft": "10px",
+  },
+  s15: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s16: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s17: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s18: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s19: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s20: {
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s21: {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(0,13rem) minmax(0,1fr) auto 3.5rem",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s22: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s23: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s24: {
+    "display": "flex",
+    "justifyContent": "flex-end",
+  },
+  s25: {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(0,13rem) minmax(0,1fr) auto",
+    "alignItems": "flex-start",
+    "gap": "12px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 20%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s26: {
+    "marginTop": "4px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "11px",
+  },
+  s27: {
+    "minWidth": "0px",
+  },
+  s28: {
+    "marginTop": "4px",
+    "fontSize": "11px",
+  },
+  s29: {
+    "color": "var(--destructive-foreground)",
+  },
+  s30: {
+    "color": "var(--warning-foreground)",
+  },
+  s31: {
+    "display": "flex",
+    "gap": "4px",
+  },
+  s32: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+  },
+  s33: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "left",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s34: {
+    "width": "12px",
+    "height": "12px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s35: {
+    "transform": "rotate(90deg)",
+  },
+  s36: {
+    "display": "grid",
+    "gridTemplateColumns": "auto 1fr",
+    "columnGap": "24px",
+    "rowGap": "4px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingBottom": "12px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s37: {
+    "display": "contents",
+  },
+  s38: {
+    "fontFamily": "var(--font-mono)",
+    "color": "color-mix(in oklab, var(--foreground) 90%, transparent)",
+  },
+  s39: {
+    "color": "var(--muted-foreground)",
+  },
+
+  s40: {
+    ":not(#\\#) > :not(:last-child)": {
+      borderBottomColor: "color-mix(in oklab, var(--border) 70%, transparent)",
+    },
+  },
+  s41: {
+    "@media (max-width: 1200px)": {
+      gridTemplateColumns: "minmax(0,10rem) minmax(0,1fr) auto 3rem",
+      gap: 8,
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const VARIABLES: [string, string][] = [
   ["BERTH_PORT", "The worktree's first port"],
@@ -33,8 +277,8 @@ const REF_HELP = "A secret reference: the box reads it from 1Password (op://vaul
 function RefMark() {
   return (
     <Tip label={REF_HELP}>
-      <span className="inline-flex shrink-0 text-muted-foreground" aria-label="Secret reference">
-        <KeyRoundIcon className="size-3.5" />
+      <span className={sx(paint.s0)} aria-label="Secret reference">
+        <KeyRoundIcon className={sx(paint.s1)} />
       </span>
     </Tip>
   );
@@ -69,13 +313,13 @@ type Tested = ReturnType<typeof useSecretTest>;
 function SecretTestButton({ box, t }: { box: string; t: Tested }) {
   return (
     <Tip label={t.said ? `${t.said}. Test again` : `Ask ${box} to read it now`}>
-      <span className={cn("shrink-0", t.done?.ok && "text-success-foreground dark:text-success", t.done && !t.done.ok && "text-destructive-foreground")}><Button
+      <span className={[sx(paint.s2), t.done?.ok && sx(paint.s3), t.done && !t.done.ok && sx(paint.s4)].filter(Boolean).join(" ")}><Button
         size={t.done ? "icon-xs" : "xs"}
         variant="ghost"
         aria-label={t.done ? `Test again: ${t.said}` : undefined}
         onClick={() => void t.test()}
         disabled={!t.ready || t.testing}>
-        {t.testing ? <LoaderIcon className="animate-spin" /> : t.done?.ok ? <CheckIcon /> : t.done ? <CircleAlertIcon /> : null}
+        {t.testing ? <LoaderIcon className="burf-spin" /> : t.done?.ok ? <CheckIcon /> : t.done ? <CircleAlertIcon /> : null}
         {!t.done && "Test"}
       </Button></span>
     </Tip>
@@ -89,12 +333,7 @@ function Note({ tone, children }: { tone: "ok" | "error" | "warning"; children: 
     <Tip label={children} align="start">
       <p
         aria-live="polite"
-        className={cn(
-          "mt-1 line-clamp-2 text-[11px] leading-4",
-          tone === "ok" && "text-success-foreground dark:text-success",
-          tone === "error" && "text-destructive-foreground",
-          tone === "warning" && "text-warning-foreground",
-        )}
+        className={[sx(paint.s5), tone === "ok" && sx(paint.s6), tone === "error" && sx(paint.s7), tone === "warning" && sx(paint.s8)].filter(Boolean).join(" ")}
       >
         {children}
       </p>
@@ -112,7 +351,7 @@ function RefNotes({ problem, broken, t }: { problem?: string; broken: boolean; t
 // ProblemMark stands where the key mark would for a reference that won't
 // resolve as written.
 function ProblemMark({ broken }: { broken: boolean }) {
-  return <CircleAlertIcon aria-hidden className={cn("size-3.5 shrink-0", broken ? "text-destructive-foreground" : "text-warning-foreground")} />;
+  return <CircleAlertIcon aria-hidden className={[sx(paint.s9), broken ? sx(paint.s10) : sx(paint.s11)].filter(Boolean).join(" ")} />;
 }
 
 // SecretInput hides values whose names look like secrets until asked, so a
@@ -129,8 +368,8 @@ function SecretInput({ name, value, onChange, box }: { name: string; value: stri
   const [shown, setShown] = useState(!SECRET.test(name));
   const t = useSecretTest(box, value);
   return (
-    <div className="min-w-0">
-      <div className="flex min-w-0 items-center gap-1">
+    <div className={sx(paint.s12)}>
+      <div className={sx(paint.s13)}>
         {problem ? <ProblemMark broken={broken} /> : ref && <RefMark />}
         <Input
           value={value}
@@ -161,10 +400,10 @@ function CommittedRef({ value, box }: { value: string; box: string }) {
   const problem = refProblem(value);
   const t = useSecretTest(box, value);
   return (
-    <div className="min-w-0 pl-2.5">
-      <div className="flex min-w-0 items-center gap-1">
+    <div className={sx(paint.s14)}>
+      <div className={sx(paint.s15)}>
         {problem ? <ProblemMark broken /> : <RefMark />}
-        <code className="min-w-0 flex-1 truncate font-mono text-muted-foreground text-xs" title={value}>
+        <code className={sx(paint.s16)} title={value}>
           {value}
         </code>
         {!problem && <SecretTestButton box={box} t={t} />}
@@ -202,7 +441,7 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
       title="Environment"
       description={
         <>
-          Added to everything that runs in a worktree: setup, services, agents, flows. <code className="font-mono">$BERTH_*</code> values are filled in per worktree. A value can name a secret instead, like <code className="font-mono">op://vault/item/field</code>, which the box reads when it needs it.
+          Added to everything that runs in a worktree: setup, services, agents, flows. <code className={sx(paint.s17)}>$BERTH_*</code> values are filled in per worktree. A value can name a secret instead, like <code className={sx(paint.s18)}>op://vault/item/field</code>, which the box reads when it needs it.
         </>
       }
       actions={
@@ -212,16 +451,16 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
         </Button>
       }
     >
-      {keys.length === 0 && !adding && <p className="px-4 py-3 text-muted-foreground text-sm">No variables yet. A common one: DATABASE_URL with $BERTH_WORKTREE_SLUG, so each worktree has its own database.</p>}
+      {keys.length === 0 && !adding && <p className={sx(paint.s19)}>No variables yet. A common one: DATABASE_URL with $BERTH_WORKTREE_SLUG, so each worktree has its own database.</p>}
       {keys.length > 0 && (
-        <div className="divide-y divide-border/70">
+        <div className={[sx(paint.s20), sx(paint.s40)].filter(Boolean).join(" ")}>
           {keys.map((k) => {
             const inRepo = k in committed;
             const mine = k in own;
             const source = mine ? (inRepo ? "override" : "box") : "repo";
             return (
-              <div key={k} className="group grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)_auto_3.5rem] items-center gap-3 px-4 py-2 max-[1200px]:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto_3rem] max-[1200px]:gap-2">
-                <code className="truncate font-mono text-xs" title={k}>
+              <div key={k} className={[sx(paint.s21), [sx(paint.s41), "group"].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
+                <code className={sx(paint.s22)} title={k}>
                   {k}
                 </code>
                 {mine ? (
@@ -229,12 +468,12 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
                 ) : isSecretRef(committed[k]) ? (
                   <CommittedRef value={committed[k]} box={box} />
                 ) : (
-                  <code className="truncate px-2.5 font-mono text-muted-foreground text-xs" title={committed[k]}>
+                  <code className={sx(paint.s23)} title={committed[k]}>
                     {committed[k]}
                   </code>
                 )}
                 <SourceBadge source={source} box={box} />
-                <span className="flex justify-end">
+                <span className={sx(paint.s24)}>
                   {!mine && (
                     <Tip label={`Override on ${box}`}>
                       <Button size="icon-xs" variant="ghost" aria-label={`Override ${k} on ${box}`} onClick={() => put(k, committed[k])}>
@@ -262,7 +501,7 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
       )}
       {adding && (
         <form
-          className="grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)_auto] items-start gap-3 border-t bg-muted/20 px-4 py-2.5"
+          className={sx(paint.s25)}
           onSubmit={(e) => {
             e.preventDefault();
             if (!adding.key || keyError || valueBroken) return;
@@ -272,9 +511,9 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
         >
           <div>
             <Input autoFocus value={adding.key} onChange={(e) => setAdding({ ...adding, key: e.target.value.toUpperCase().replace(/\s/g, "_") })} placeholder="NAME" size="sm" mono text="xs" aria-label="Name" aria-invalid={!!keyError} />
-            {keyError && <p className="mt-1 text-destructive-foreground text-[11px]">{keyError}</p>}
+            {keyError && <p className={sx(paint.s26)}>{keyError}</p>}
           </div>
-          <div className="min-w-0">
+          <div className={sx(paint.s27)}>
             <Input
               value={adding.value}
               onChange={(e) => setAdding({ ...adding, value: e.target.value })}
@@ -286,9 +525,9 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
               spellCheck={false}
               autoComplete="off"
             />
-            {valueProblem && <p className={cn("mt-1 text-[11px]", valueBroken ? "text-destructive-foreground" : "text-warning-foreground")}>{valueProblem}</p>}
+            {valueProblem && <p className={[sx(paint.s28), valueBroken ? sx(paint.s29) : sx(paint.s30)].filter(Boolean).join(" ")}>{valueProblem}</p>}
           </div>
-          <span className="flex gap-1">
+          <span className={sx(paint.s31)}>
             <Button size="sm" type="submit" disabled={!adding.key || !!keyError || valueBroken}>
               Add
             </Button>
@@ -298,19 +537,19 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
           </span>
         </form>
       )}
-      <div className="border-t">
-        <button type="button" onClick={() => setShowVars(!showVars)} className="flex w-full items-center gap-1.5 px-4 py-2 text-left text-muted-foreground text-xs hover:text-foreground">
-          <ChevronRightIcon className={cn("size-3 transition-transform", showVars && "rotate-90")} />
+      <div className={sx(paint.s32)}>
+        <button type="button" onClick={() => setShowVars(!showVars)} className={sx(paint.s33)}>
+          <ChevronRightIcon className={[sx(paint.s34), showVars && sx(paint.s35)].filter(Boolean).join(" ")} />
           Variables you can use
         </button>
         {showVars && (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 px-4 pb-3 text-xs">
+          <dl className={sx(paint.s36)}>
             {VARIABLES.map(([k, v]) => (
-              <div key={k} className="contents">
+              <div key={k} className={sx(paint.s37)}>
                 <dt>
-                  <code className="font-mono text-foreground/90">${k}</code>
+                  <code className={sx(paint.s38)}>${k}</code>
                 </dt>
-                <dd className="text-muted-foreground">{v}</dd>
+                <dd className={sx(paint.s39)}>{v}</dd>
               </div>
             ))}
           </dl>

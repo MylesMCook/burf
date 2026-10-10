@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useMemo } from "react";
 
 import { Tip } from "@/components/tip";
@@ -5,9 +6,65 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { assignTones, labelsFor, NARROW, nameFromKey, TINY, type Tone, toneVar } from "@/lib/groups";
 import { type BoxData, useStore } from "@/lib/store";
 import { shortLabel, worktreeLabel } from "@/lib/worktree-names";
-import { cn } from "@/lib/utils";
 import { usePrefs } from "@/lib/prefs";
 import { groupKeys, onScreenOf, splitKey, useWorkspaces, type WorktreeRef } from "@/lib/workspaces";
+
+const paint = stylex.create({
+  s0: {
+    "display": "inline-block",
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+  },
+  s1: {
+    "display": "inline-flex",
+    "maxWidth": "80px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+  },
+  s2: {
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+  },
+  s3: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s4: {
+    "display": "inline-flex",
+    "height": "18px",
+    "maxWidth": "160px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+  },
+  s5: {
+    "width": "6px",
+    "height": "6px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+  },
+  s6: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type BoxesData = Record<string, BoxData>;
 
@@ -102,7 +159,7 @@ export function useLabels(keys: string[]): string[] {
 export function WtDot({ wsKey, className }: { wsKey?: string; className?: string }) {
   const tone = useTone(wsKey);
   if (!tone) return null;
-  return <span aria-hidden className={cn("inline-block size-2 shrink-0 rounded-full", className)} style={{ background: tone }} />;
+  return <span aria-hidden className={[sx(paint.s0), className].filter(Boolean).join(" ")} style={{ background: tone }} />;
 }
 
 // WtChip names a worktree in its colour: on a pane's header in a tab that
@@ -117,9 +174,9 @@ export function WtChip({ wsKey, className }: { wsKey: string; className?: string
   if (narrow)
     return (
       <Tip label={tip} side="bottom" align="start">
-        <span aria-label={`Pane of ${label}`} className={cn("inline-flex max-w-20 shrink-0 items-center gap-1 font-medium text-[11px]", className)} style={{ color: tone }}>
-          <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: tone }} />
-          <span className="truncate">{label}</span>
+        <span aria-label={`Pane of ${label}`} className={[sx(paint.s1), className].filter(Boolean).join(" ")} style={{ color: tone }}>
+          <span aria-hidden className={sx(paint.s2)} style={{ background: tone }} />
+          <span className={sx(paint.s3)}>{label}</span>
         </span>
       </Tip>
     );
@@ -127,11 +184,11 @@ export function WtChip({ wsKey, className }: { wsKey: string; className?: string
     <Tip label={tip} side="bottom" align="start">
       <span
         aria-label={`Pane of ${label}`}
-        className={cn("inline-flex h-4.5 max-w-40 shrink-0 items-center gap-1 rounded-md px-1.5 font-medium text-[11px]", className)}
+        className={[sx(paint.s4), className].filter(Boolean).join(" ")}
         style={{ background: `color-mix(in oklab, ${tone} 14%, transparent)`, color: tone }}
       >
-        <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: tone }} />
-        <span className="truncate">{label}</span>
+        <span aria-hidden className={sx(paint.s5)} style={{ background: tone }} />
+        <span className={sx(paint.s6)}>{label}</span>
       </span>
     </Tip>
   );

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ChevronDownIcon, RefreshCwIcon } from "lucide-react";
 import { create } from "zustand";
 
@@ -7,6 +8,24 @@ import { Menu, MenuCheckboxItem, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadio
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
 import { load, save } from "@/lib/storage";
 import { SYNC_MODES, type SyncMode } from "@/lib/worktrees";
+
+const paint = stylex.create({
+  s0: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s1: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s2: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The mode the Sync button runs: the one picked last, here and in the bulk
 // bar alike.
@@ -48,7 +67,7 @@ export function SyncButton({
         <TooltipTrigger render={<Button size={size} variant="outline" disabled={disabled || count === 0} onClick={() => onSync(mode)} />}>
           <RefreshCwIcon />
           {short[mode]}
-          {count !== undefined && <span className="tabular-nums">{count}</span>}
+          {count !== undefined && <span className={sx(paint.s0)}>{count}</span>}
         </TooltipTrigger>
         <TooltipPopup>
           Sync with {base} {verb[mode]}
@@ -65,9 +84,9 @@ export function SyncButton({
             <MenuRadioGroup value={mode} onValueChange={(v) => set(v as SyncMode)}>
               {SYNC_MODES.map((m) => (
                 <MenuRadioItem key={m.value} value={m.value} closeOnClick>
-                  <span className="flex flex-col">
+                  <span className={sx(paint.s1)}>
                     <span>{m.label}</span>
-                    <span className="text-muted-foreground text-xs">{m.hint}</span>
+                    <span className={sx(paint.s2)}>{m.hint}</span>
                   </span>
                 </MenuRadioItem>
               ))}

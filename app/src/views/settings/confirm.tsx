@@ -1,7 +1,12 @@
 import { type ReactNode, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogPopup, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
+const styles = stylex.create({
+  slot: { minWidth: 96, display: "inline-flex" },
+});
 
 interface ConfirmProps {
   title: string;
@@ -50,7 +55,7 @@ export function ConfirmButton({ label, disabled, ...props }: ConfirmProps & { la
   const [open, setOpen] = useState(false);
   return (
     <>
-      <span className="min-w-24"><Button size="xs" variant="outline"  disabled={disabled} onClick={() => setOpen(true)}>
+      <span {...stylex.props(styles.slot)}><Button size="xs" variant="outline" disabled={disabled} onClick={() => setOpen(true)}>
         {label}
       </Button></span>
       <ConfirmDialog open={open} onOpenChange={setOpen} {...props} />

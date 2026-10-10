@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { AppWindowIcon, ArchiveIcon, ChartColumnIcon, FileTextIcon, GaugeIcon, LayoutGridIcon, TableIcon, WorkflowIcon, ArrowLeftRightIcon, Columns2Icon, EllipsisIcon, GlobeIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 
@@ -33,9 +34,322 @@ import { useRemoval } from "@/lib/removing";
 import { useStore } from "@/lib/store";
 import { startRenaming } from "@/lib/session-title";
 import { memory, memoryNote } from "@/lib/processes";
-import { cn } from "@/lib/utils";
 import { focusPane, paneBeside, paneToTab, setPaneContent, splitKey, useWorkspaces, useWorktreeRef } from "@/lib/workspaces";
 import { platformKeys } from "@/lib/platform";
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "0px",
+    "flexDirection": "column",
+  },
+  s1: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "left": 0,
+    "right": 0,
+    "top": "0px",
+    "zIndex": 30,
+    "height": "2px",
+  },
+  s2: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s3: {
+    "display": "flex",
+    "height": "28px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "backgroundColor": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    "color": "var(--foreground)",
+    "boxShadow": "inset 0 2px 0 var(--ring)",
+  },
+  s5: {
+    "color": "var(--muted-foreground)",
+  },
+  s6: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "alignItems": "center",
+    "transitionProperty": "opacity",
+    "transitionDuration": "150ms",
+  },
+  s7: {
+    "opacity": 1,
+  },
+  s8: {
+    "opacity": {
+      "default": 0,
+      ":focus-within": 1,
+    },
+    ":is(.group\\/header:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s9: {
+    "position": "relative",
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "transitionProperty": "opacity",
+    "transitionDuration": "150ms",
+  },
+  s10: {
+    "opacity": 0.85,
+  },
+  s11: {
+    "opacity": 0.4,
+  },
+  s12: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s13: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s14: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s15: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "12px",
+    "padding": "24px",
+    "textAlign": "center",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s16: {
+    "fontWeight": 500,
+  },
+  s17: {
+    "alignItems": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s18: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "zIndex": 20,
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "12px",
+    "backgroundColor": "var(--background)",
+    "padding": "24px",
+    "textAlign": "center",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s19: {
+    "width": "20px",
+    "height": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s20: {
+    "fontWeight": 500,
+  },
+  s21: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s23: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s24: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s25: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s26: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s27: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s28: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s29: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s30: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s31: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s32: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s33: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "fontSize": "11px",
+    "color": {
+      "default": "light-dark(var(--warning-foreground), var(--warning))",
+    },
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s34: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s35: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s36: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s37: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s38: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s39: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s40: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s41: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s42: {
+    "color": "var(--muted-foreground)",
+  },
+  s43: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+
+  s44: {
+    maxWidth: "28rem",
+  },
+  s45: {
+    maxWidth: "20rem",
+  },
+  s46: {
+    backgroundColor: { "[data-popup-open]": color.accent },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export { agentLabel };
 
@@ -99,27 +413,27 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
   return (
     <PaneContext.Provider value={info}>
       <CompareSideContext.Provider value={compare}>
-      <div role="region" aria-label={`${paneLabel(c, agent)}, ${worktreeName}`} className="flex h-full min-h-0 flex-col" onMouseDownCapture={focus}>
+      <div role="region" aria-label={`${paneLabel(c, agent)}, ${worktreeName}`} className={sx(paint.s0)} onMouseDownCapture={focus}>
         {/* A Compare tab's side has no header: its focus line is its own. */}
-        {compare && focused && tone && <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-30 h-0.5" style={{ background: tone }} />}
+        {compare && focused && tone && <span aria-hidden className={sx(paint.s1)} style={{ background: tone }} />}
         {split && (
           // Its header drags the pane beside another, or onto the tab strip as
           // a tab of its own (tab-drag.tsx). Zen has no strip: there it only
           // moves beside another pane. In a tab that mixes worktrees, it names
           // the pane's worktree, and the focus line is in that one's colour.
           <div
-            onPointerDown={(e) => armDrag(e, { kind: "pane", key: wsKey, tab, pane: pane.id }, (c.kind === "terminal" && (session?.title?.trim() || c.title)) || paneLabel(c, agent), <PaneIcon content={c} agent={agent} className="size-3" />)}
-            className={cn("group/header flex h-7 shrink-0 items-center gap-1.5 border-b px-2 text-xs", focused ? "bg-accent/50 text-foreground shadow-[inset_0_2px_0_var(--ring)]" : "text-muted-foreground")}
+            onPointerDown={(e) => armDrag(e, { kind: "pane", key: wsKey, tab, pane: pane.id }, (c.kind === "terminal" && (session?.title?.trim() || c.title)) || paneLabel(c, agent), <PaneIcon content={c} agent={agent} className={sx(paint.s2)} />)}
+            className={[[sx(paint.s3), "group/header"].filter(Boolean).join(" "), focused ? sx(paint.s4) : sx(paint.s5)].filter(Boolean).join(" ")}
             style={tone ? { boxShadow: focused ? `inset 0 2px 0 ${tone}` : `inset 0 1px 0 color-mix(in oklab, ${tone} 50%, transparent)` } : undefined}
           >
             {tone && <WtChip wsKey={owner} />}
             <PaneTitle pane={pane} />
-            <div className={cn("ml-auto flex items-center transition-opacity", focused ? "opacity-100" : "opacity-0 group-hover/header:opacity-100 focus-within:opacity-100")}>
+            <div className={[sx(paint.s6), focused ? sx(paint.s7) : sx(paint.s8)].filter(Boolean).join(" ")}>
               <PaneActions wsKey={wsKey} tab={tab} pane={pane} onClose={close} closable focused={focused} />
             </div>
           </div>
         )}
-        <div ref={content} className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
+        <div ref={content} className={[sx(paint.s9), split && !focused && sx(paint.s10), lifted && sx(paint.s11)].filter(Boolean).join(" ")}>
           {gone && <GonePane name={gone} onClose={close} />}
           {c.kind === "remote-chat" && <RemoteChatPane box={c.box} id={c.chat} cwd={c.cwd} agent={c.agent} draft={c.draft} options={c.options} onSaved={(saved) => setPaneContent(wsKey, tab, pane.id, { ...c, ...saved })} />}
           {c.kind === "terminal" && (
@@ -130,12 +444,12 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
           {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} onLoading={compare ? (l) => pageLoading(pane.id, l) : undefined} />}
           {c.kind === "preview" && <PreviewPane url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "preview", url })} />}
           {c.kind === "file" && (
-            <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Spinner  size="lg" muted/></div>}>
+            <Suspense fallback={<div className={sx(paint.s12)}><Spinner  size="lg" muted/></div>}>
               <FilePane path={c.path} owner={owner} visible={visible} onClose={close} />
             </Suspense>
           )}
           {c.kind === "artifact" && (
-            <Suspense fallback={<div className="flex-1" />}>
+            <Suspense fallback={<div className={sx(paint.s13)} />}>
               <ArtifactPane id={c.id} focus={c.focus} />
             </Suspense>
           )}
@@ -143,15 +457,15 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
           {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
           {c.kind === "panel" && <PanelPane wsKey={owner} plugin={c.plugin} panel={c.panel} />}
           {c.kind === "starting" && (
-            <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
+            <div className={sx(paint.s14)}>
               <Spinner  size="lg"/>
               Starting {c.label}…
             </div>
           )}
           {c.kind === "error" && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm">
-              <p className="font-medium">Couldn't start it</p>
-              <ErrorText className="max-w-md items-center text-muted-foreground text-xs" text={c.message} />
+            <div className={sx(paint.s15)}>
+              <p className={sx(paint.s16)}>Couldn't start it</p>
+              <ErrorText className={[sx(paint.s17), sx(paint.s44)].filter(Boolean).join(" ")} text={c.message} />
               <Button size="sm" variant="outline" onClick={close}>
                 Close pane
               </Button>
@@ -178,10 +492,10 @@ function useGuestGone(wsKey: string, pane: Leaf): string | undefined {
 // GonePane stands in for a guest pane whose worktree was archived.
 function GonePane({ name, onClose }: { name: string; onClose(): void }) {
   return (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center text-sm">
-      <ArchiveIcon className="size-5 text-muted-foreground" />
-      <p className="font-medium">{name} was archived</p>
-      <p className="max-w-xs text-muted-foreground text-xs">Its agents stopped with it, so there is nothing left to show here.</p>
+    <div className={sx(paint.s18)}>
+      <ArchiveIcon className={sx(paint.s19)} />
+      <p className={sx(paint.s20)}>{name} was archived</p>
+      <p className={[sx(paint.s21), sx(paint.s45)].filter(Boolean).join(" ")}>Its agents stopped with it, so there is nothing left to show here.</p>
       <Button size="sm" variant="outline" onClick={onClose}>
         Close pane
       </Button>
@@ -220,17 +534,17 @@ export function PaneIcon({ content, agent, className }: { content: Leaf["content
   const c = content;
   const service = useStore((s) => c.kind === "terminal" && !!s.boxes[c.box]?.sessions?.find((x) => x.name === c.session)?.service);
   if (c.kind === "remote-chat") return <AgentIcon agent={c.agent ?? "codex"} className={className} />;
-  if (c.kind === "browser") return <GlobeIcon className={cn("size-3.5 shrink-0", className)} />;
+  if (c.kind === "browser") return <GlobeIcon className={[sx(paint.s22), className].filter(Boolean).join(" ")} />;
   if (c.kind === "file") return <FileGlyph path={c.path} className={className} />;
-  if (c.kind === "preview") return <MonitorSmartphoneIcon className={cn("size-3.5 shrink-0", className)} />;
+  if (c.kind === "preview") return <MonitorSmartphoneIcon className={[sx(paint.s23), className].filter(Boolean).join(" ")} />;
   if (c.kind === "artifact") {
     const Icon = c.id ? (ART_ICONS[c.art ?? ""] ?? ChartColumnIcon) : LayoutGridIcon;
-    return <Icon className={cn("size-3.5 shrink-0", className)} />;
+    return <Icon className={[sx(paint.s24), className].filter(Boolean).join(" ")} />;
   }
-  if (c.kind === "log") return <ScrollTextIcon className={cn("size-3.5 shrink-0", className)} />;
-  if (c.kind === "panel") return <PanelIcon plugin={c.plugin} panel={c.panel} className={cn("size-3.5 shrink-0", className)} />;
-  if (service) return <ServiceIcon className={cn("size-3", className)} />;
-  return <AgentIcon agent={agent ?? (c.kind === "terminal" ? c.agent : undefined)} className={cn("size-3", className)} />;
+  if (c.kind === "log") return <ScrollTextIcon className={[sx(paint.s25), className].filter(Boolean).join(" ")} />;
+  if (c.kind === "panel") return <PanelIcon plugin={c.plugin} panel={c.panel} className={[sx(paint.s26), className].filter(Boolean).join(" ")} />;
+  if (service) return <ServiceIcon className={[sx(paint.s27), className].filter(Boolean).join(" ")} />;
+  return <AgentIcon agent={agent ?? (c.kind === "terminal" ? c.agent : undefined)} className={[sx(paint.s28), className].filter(Boolean).join(" ")} />;
 }
 
 function PaneTitle({ pane }: { pane: Leaf }) {
@@ -252,14 +566,14 @@ function PaneTitle({ pane }: { pane: Leaf }) {
   const near = away ? undefined : memoryNote(session?.usage);
   return (
     <Tip label={c.kind === "terminal" ? `${c.session} on ${c.box}${away ? ` · ${c.box} is offline` : ""}${near ? ` · ${near}` : ""}` : undefined} align="start">
-      <span className="flex min-w-0 items-center gap-1.5">
+      <span className={sx(paint.s29)}>
         <PaneIcon content={c} agent={agent} />
-        <span className="truncate">{label}</span>
-        {secondary && <span className="shrink-0 text-muted-foreground">{secondary}</span>}
-        {state && <StateGlyph state={state} className="size-3" />}
+        <span className={sx(paint.s30)}>{label}</span>
+        {secondary && <span className={sx(paint.s31)}>{secondary}</span>}
+        {state && <StateGlyph state={state} className={sx(paint.s32)} />}
         {near && session?.usage && (
-          <span data-testid="pane-memory" className="flex shrink-0 items-center gap-1 text-[11px] text-warning-foreground tabular-nums dark:text-warning">
-            <GaugeIcon className="size-3" aria-hidden />
+          <span data-testid="pane-memory" className={sx(paint.s33)}>
+            <GaugeIcon className={sx(paint.s34)} aria-hidden />
             {memory(session.usage.memory)} of {memory(session.usage.memory_high ?? 0)}
           </span>
         )}
@@ -302,8 +616,8 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
       )}
       <Menu>
         <Tip label="Pane actions">
-          <MenuTrigger render={<button type="button" aria-label="Pane actions" className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent" />}>
-            <EllipsisIcon className="size-3.5" />
+          <MenuTrigger render={<button type="button" aria-label="Pane actions" className={[sx(paint.s35), sx(paint.s46)].filter(Boolean).join(" ")} />}>
+            <EllipsisIcon className={sx(paint.s36)} />
           </MenuTrigger>
         </Tip>
         <MenuPopup align="end" width={menuWidths.w56}>
@@ -316,19 +630,19 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
           <MenuGroup>
             <MenuGroupLabel>Open beside</MenuGroupLabel>
             <MenuItem onClick={() => void startSession("", beside("row"))}>
-              <span className="flex size-4 items-center justify-center">
+              <span className={sx(paint.s37)}>
                 <AgentIcon />
               </span>
               Shell
             </MenuItem>
             <MenuItem onClick={() => openBrowserAt("", beside("row"))}>
-              <span className="flex size-4 items-center justify-center">
+              <span className={sx(paint.s38)}>
                 <GlobeIcon />
               </span>
               Browser
             </MenuItem>
             <MenuItem onClick={() => openPreviewAt("", beside("row"))}>
-              <span className="flex size-4 items-center justify-center">
+              <span className={sx(paint.s39)}>
                 <MonitorSmartphoneIcon />
               </span>
               Preview
@@ -340,7 +654,7 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
                   openWorktreePicker({ kind: "split" });
                 }}
               >
-                <span className="flex size-4 items-center justify-center">
+                <span className={sx(paint.s40)}>
                   <Columns2Icon />
                 </span>
                 Another worktree…
@@ -389,9 +703,9 @@ function HeaderButton({ label, keys, onClick, children }: { label: string; keys?
   return (
     <Tip
       label={
-        <span className="flex items-center gap-2">
+        <span className={sx(paint.s41)}>
           {label}
-          {keys && <span className="text-muted-foreground">{platformKeys(keys)}</span>}
+          {keys && <span className={sx(paint.s42)}>{platformKeys(keys)}</span>}
         </span>
       }
     >
@@ -399,7 +713,7 @@ function HeaderButton({ label, keys, onClick, children }: { label: string; keys?
         type="button"
         aria-label={label}
         onClick={onClick}
-        className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground [&_svg]:size-3.5"
+        className={sx(paint.s43)}
       >
         {children}
       </button>

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { RefreshCwIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -16,6 +17,47 @@ import { PluginBoundary, pluginContexts } from "@/plugins/plugin-boundary";
 import { screenOwner, usePluginsLoading, useRegistry } from "@/plugins/registry";
 import { PluginPage, ViewHeader, ViewHeaderHost } from "@/views/view-header";
 
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "flexDirection": "column",
+  },
+  s1: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s2: {
+    "display": "flex",
+    "height": "100%",
+    "flexDirection": "column",
+  },
+  s3: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s4: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+  },
+  s5: {
+    "display": "flex",
+    "gap": "8px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
+
 // PluginScreenView lays a plugin's screen out like the app's own views: the
 // strip on top (the plugin's ViewHeader, or its title until it renders one)
 // and, unless it asks to fill the area, one page width below it, so no
@@ -25,9 +67,9 @@ export function PluginScreenView({ screen }: { screen: string }) {
   const owner = useRegistry((s) => s.plugins.find((p) => p.id === screenOwner(screen))?.name);
   if (!entry) {
     return (
-      <div className="flex h-full flex-col">
+      <div className={sx(paint.s0)}>
         <ViewHeader title={owner ?? "Plugin"} />
-        <div className="min-h-0 flex-1">
+        <div className={sx(paint.s1)}>
           <MissingScreen screen={screen} />
         </div>
       </div>
@@ -36,13 +78,13 @@ export function PluginScreenView({ screen }: { screen: string }) {
   const { plugin, item } = entry;
   const body = <item.Component berth={pluginContexts.get(plugin)!} />;
   return (
-    <div className="flex h-full flex-col">
+    <div className={sx(paint.s2)}>
       <ViewHeaderHost key={item.id} fallback={{ title: item.title, description: item.description }}>
         <PluginBoundary plugin={plugin}>
           {item.layout === "fill" ? (
-            <div className="flex min-h-0 flex-1 flex-col">{body}</div>
+            <div className={sx(paint.s3)}>{body}</div>
           ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className={sx(paint.s4)}>
               <PluginPage>{body}</PluginPage>
             </div>
           )}
@@ -146,7 +188,7 @@ function MissingScreen({ screen }: { screen: string }) {
         <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <div className="flex gap-2">
+        <div className={sx(paint.s5)}>
           {info && off ? (
             <Button size="sm" loading={busy} onClick={() => void turnOn(info)}>
               Turn it on

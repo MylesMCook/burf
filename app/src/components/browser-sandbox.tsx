@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, CircleCheckIcon, CopyIcon, RefreshCwIcon, ShieldAlertIcon, ShieldOffIcon, SquareTerminalIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { create } from "zustand";
@@ -12,8 +13,197 @@ import { type BrowserHealth, canFixWithSudo, SANDBOX_FIX, type SandboxCardState,
 import { useEventLog } from "@/lib/events";
 import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { currentSpace, focusSession, refOf, type WorktreeRef } from "@/lib/workspaces";
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "borderColor": "color-mix(in oklab, var(--warning) 32%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 4%, transparent)",
+  },
+  s1: {
+    "borderColor": "color-mix(in oklab, var(--warning) 32%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 4%, transparent)",
+  },
+  s2: {
+    "borderColor": "color-mix(in oklab, var(--warning) 32%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 4%, transparent)",
+  },
+  s3: {
+    "borderColor": "color-mix(in oklab, var(--success) 32%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--success) 4%, transparent)",
+  },
+  s4: {
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+  },
+  s5: {
+    "display": "flex",
+    "gap": "12px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s6: {
+    "marginTop": "2px",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+  },
+  s7: {
+    "color": "var(--success)",
+  },
+  s8: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "gap": "8px",
+  },
+  s9: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s10: {
+    "fontWeight": 500,
+  },
+  s11: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s12: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s13: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s14: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s15: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s16: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s17: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s18: {
+    "color": "var(--muted-foreground)",
+  },
+  s19: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--background) 70%, transparent)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s20: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowWrap": "break-word",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "lineHeight": "1.625",
+  },
+  s21: {
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-md)",
+    "padding": "2px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s22: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s23: {
+    "width": "14px",
+    "height": "14px",
+  },
+  n0: {
+    "marginTop": "2px",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+  },
+  n1: {
+    "color": "var(--success)",
+  },
+  n2: {
+    "color": "var(--muted-foreground)",
+  },
+  n3: {
+    "color": "var(--warning)",
+  },
+
+  s24: {
+    position: "fixed",
+  },
+  s25: {
+    borderColor: "color-mix(in oklab, var(--warning) 32%, transparent)",
+    backgroundColor: "color-mix(in oklab, var(--warning) 4%, transparent)",
+  },
+  s26: {
+    borderColor: "color-mix(in oklab, var(--success) 32%, transparent)",
+    backgroundColor: "color-mix(in oklab, var(--success) 4%, transparent)",
+  },
+  s27: {
+    borderColor: color.border,
+    backgroundColor: "color-mix(in oklab, var(--muted) 40%, transparent)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The guided fix for an agent's browser that Chromium's sandbox stops
 // (lib/browser-sandbox.ts says why). One flow per box, shared by the card in
@@ -223,11 +413,11 @@ export function useSandboxCardState(box: string, full = false): SandboxCardState
 }
 
 const tone: Record<Exclude<SandboxCardState, "hidden">, string> = {
-  blocked: "border-warning/32 bg-warning/4",
-  fixing: "border-warning/32 bg-warning/4",
-  "still-blocked": "border-warning/32 bg-warning/4",
-  fixed: "border-success/32 bg-success/4",
-  "no-sandbox": "border-border bg-muted/40",
+  blocked: (sx(paint.s25) ?? ""),
+  fixing: (sx(paint.s25) ?? ""),
+  "still-blocked": (sx(paint.s25) ?? ""),
+  fixed: (sx(paint.s26) ?? ""),
+  "no-sandbox": (sx(paint.s27) ?? ""),
 };
 
 // BrowserSandboxCard says what happened in plain words and offers the two
@@ -262,15 +452,15 @@ export function BrowserSandboxCard({ box, worktree, full = false, className }: {
   const blocked = state === "blocked" || state === "still-blocked";
 
   return (
-    <div role="status" data-sandbox-card={state} className={cn("flex gap-3 rounded-lg border px-3.5 py-3 text-sm", tone[state], className)}>
-      <Icon className={cn("mt-0.5 size-4 shrink-0", state === "fixed" ? "text-success" : state === "no-sandbox" ? "text-muted-foreground" : "text-warning")} />
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div className="flex flex-col gap-0.5">
-          <p className="font-medium">{copy.title}</p>
-          <p className="text-muted-foreground text-xs leading-relaxed">{copy.body}</p>
+    <div role="status" data-sandbox-card={state} className={[sx(paint.s5), tone[state], className].filter(Boolean).join(" ")}>
+      <Icon className={[sx(paint.n0), state === sx(paint.s24) ? sx(paint.n1) : state === "no-sandbox" ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")} />
+      <div className={sx(paint.s8)}>
+        <div className={sx(paint.s9)}>
+          <p className={sx(paint.s10)}>{copy.title}</p>
+          <p className={sx(paint.s11)}>{copy.body}</p>
         </div>
         {state === "fixed" && (flow.verifying || flow.verifyError) && (
-          <p className="flex items-center gap-1.5 text-muted-foreground text-xs">
+          <p className={sx(paint.s12)}>
             {flow.verifying ? (
               <>
                 <Spinner  size="sm"/> Starting Chromium on {box} to make sure…
@@ -282,7 +472,7 @@ export function BrowserSandboxCard({ box, worktree, full = false, className }: {
         )}
         {(state === "fixing" || (state === "still-blocked" && sudo)) && <FixCommand />}
         {blocked && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className={sx(paint.s13)}>
             {sudo && openable && (
               <Button size="sm" loading={busy === "fix"} onClick={() => void run("fix", () => openSandboxFix(box, worktree))}>
                 <SquareTerminalIcon />
@@ -295,9 +485,9 @@ export function BrowserSandboxCard({ box, worktree, full = false, className }: {
             </Button>
           </div>
         )}
-        {blocked && <p className="text-muted-foreground text-xs">{TRADE_OFF}</p>}
+        {blocked && <p className={sx(paint.s14)}>{TRADE_OFF}</p>}
         {state === "fixing" && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className={sx(paint.s15)}>
             <Button size="sm" variant="outline" loading={busy === "check"} onClick={() => void run("check", () => checkAgain(box))}>
               <RefreshCwIcon />
               Check again
@@ -308,13 +498,13 @@ export function BrowserSandboxCard({ box, worktree, full = false, className }: {
                 Show the terminal
               </Button>
             )}
-            <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
+            <span className={sx(paint.s16)}>
               <Spinner  size="sm"/> Watching {box} for the change
             </span>
           </div>
         )}
         {state === "no-sandbox" && (
-          <label className="flex items-center gap-2 text-xs">
+          <label className={sx(paint.s17)}>
             <Switch
               checked={!!h?.no_sandbox}
               disabled={h?.no_sandbox_from === "env" || !!busy}
@@ -322,7 +512,7 @@ export function BrowserSandboxCard({ box, worktree, full = false, className }: {
               aria-label="Run without Chromium's sandbox"
             />
             <span>Run without Chromium's sandbox</span>
-            {!full && <span className="text-muted-foreground">· also in Settings → Boxes</span>}
+            {!full && <span className={sx(paint.s18)}>· also in Settings → Boxes</span>}
           </label>
         )}
       </div>
@@ -340,15 +530,15 @@ function FixCommand() {
     return () => window.clearTimeout(t);
   }, [copied]);
   return (
-    <div className="flex items-start gap-2 rounded-md border bg-background/70 px-2.5 py-2">
-      <code className="min-w-0 flex-1 break-words font-mono text-[11px] leading-relaxed">{SANDBOX_FIX}</code>
+    <div className={sx(paint.s19)}>
+      <code className={sx(paint.s20)}>{SANDBOX_FIX}</code>
       <button
         type="button"
         aria-label="Copy the command"
-        className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+        className={sx(paint.s21)}
         onClick={() => navigator.clipboard.writeText(SANDBOX_FIX).then(() => setCopied(true), () => {})}
       >
-        {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+        {copied ? <CheckIcon className={sx(paint.s22)} /> : <CopyIcon className={sx(paint.s23)} />}
       </button>
     </div>
   );

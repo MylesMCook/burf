@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { remoteChatApi } from "@/lib/remote-chat";
@@ -7,6 +8,17 @@ import { PaneContext } from "@/lib/pane-context";
 import { useWorktreeRef } from "@/lib/workspaces";
 import { filesApi } from "@/lib/files";
 import { localAgentName, type LocalAgent, type ChatDecision, type ChatOptions } from "@/lib/local-computer";
+
+const paint = stylex.create({
+  s0: {
+    "padding": "16px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type Saved = { draft?: string; options?: { model?: string; effort?: string } };
 
@@ -42,5 +54,5 @@ export function RemoteChatPane({ box, id, cwd, agent, draft, options, onSaved }:
   }), [client, box, id, cwd, provider, attachments, target]);
   return transport
     ? <Chat key={key} transport={transport} />
-    : <p role="status" className="p-4 text-sm">Connecting to {box}...</p>;
+    : <p role="status" className={sx(paint.s0)}>Connecting to {box}...</p>;
 }

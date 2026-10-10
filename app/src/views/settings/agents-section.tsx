@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, MinusIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -8,6 +9,150 @@ import type { AgentPreset } from "@/lib/api";
 import { NONE, useStore } from "@/lib/store";
 import { Segmented } from "@/views/settings/controls";
 import { Code, SettingsGroup, SettingsPage } from "@/views/settings/rows";
+
+const paint = stylex.create({
+  s0: {
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "24px",
+    "paddingBottom": "24px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s1: {
+    "overflowX": "auto",
+  },
+  s2: {
+    "width": "100%",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s3: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "left",
+    "fontWeight": 400,
+  },
+  s5: {
+    "width": "96px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "center",
+    "fontWeight": 400,
+  },
+  s6: {
+    "borderBottomWidth": {
+      "default": 1,
+      ":last-child": 0,
+    },
+    "borderBottomStyle": {
+      "default": "solid",
+      ":last-child": "solid",
+    },
+    "borderBottomColor": {
+      "default": "var(--border)",
+      ":last-child": "var(--border)",
+    },
+  },
+  s7: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s8: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s9: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s10: {
+    "marginTop": "2px",
+    "paddingLeft": "22px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s11: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+    "textAlign": "center",
+  },
+  s12: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "width": "16px",
+    "height": "16px",
+    "color": "var(--success-foreground)",
+  },
+  s13: {
+    "display": "inline-flex",
+    "cursor": "help",
+    "borderRadius": "var(--radius-md)",
+    "color": "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s14: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s15: {
+    "marginTop": "4px",
+    "display": "block",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s16: {
+    "marginBottom": "8px",
+    "display": "flex",
+    "alignItems": "flex-end",
+    "gap": "12px",
+  },
+  s17: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s18: {
+    "fontWeight": 500,
+    "fontSize": "13px",
+    "color": "var(--muted-foreground)",
+  },
+  s19: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // How to put each built-in agent on a box's PATH.
 const INSTALL: Record<string, string> = {
@@ -48,16 +193,16 @@ export function AgentsSection() {
       }
     >
       {online.length === 0 ? (
-        <p className="rounded-xl border px-4 py-6 text-center text-muted-foreground text-sm">No box is online. Agents are listed once one connects.</p>
+        <p className={sx(paint.s0)}>No box is online. Agents are listed once one connects.</p>
       ) : (
         <SettingsGroup title="Agent CLIs" description="Found on each box's PATH when berthd checks.">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className={sx(paint.s1)}>
+            <table className={sx(paint.s2)}>
               <thead>
-                <tr className="border-b text-[11px] text-muted-foreground">
-                  <th className="px-4 py-2 text-left font-normal">Agent</th>
+                <tr className={sx(paint.s3)}>
+                  <th className={sx(paint.s4)}>Agent</th>
                   {online.map((b) => (
-                    <th key={b.name} className="w-24 px-2 py-2 text-center font-normal">
+                    <th key={b.name} className={sx(paint.s5)}>
                       {b.name}
                     </th>
                   ))}
@@ -65,27 +210,27 @@ export function AgentsSection() {
               </thead>
               <tbody>
                 {rows.map((a) => (
-                  <tr key={a.id} className="border-b last:border-b-0">
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <AgentIcon agent={a.id} className="size-3.5" />
+                  <tr key={a.id} className={sx(paint.s6)}>
+                    <td className={sx(paint.s7)}>
+                      <div className={sx(paint.s8)}>
+                        <AgentIcon agent={a.id} className={sx(paint.s9)} />
                         {a.name}
                       </div>
-                      <div className="mt-0.5 pl-5.5 font-mono text-[11px] text-muted-foreground">{!found.has(a.id) ? "not found on any box" : a.command ? a.command + (a.prompt_flag ? ` ${a.prompt_flag} …` : "") : "$SHELL -l"}</div>
+                      <div className={sx(paint.s10)}>{!found.has(a.id) ? "not found on any box" : a.command ? a.command + (a.prompt_flag ? ` ${a.prompt_flag} …` : "") : "$SHELL -l"}</div>
                     </td>
                     {online.map((b) => {
                       const has = data[b.name]?.info?.agents?.some((x) => x.id === a.id);
                       return (
-                        <td key={b.name} className="px-2 py-2.5 text-center">
+                        <td key={b.name} className={sx(paint.s11)}>
                           {has ? (
-                            <CheckIcon className="mx-auto size-4 text-success-foreground" aria-label={`On ${b.name}`} />
+                            <CheckIcon className={sx(paint.s12)} aria-label={`On ${b.name}`} />
                           ) : (
                             <Tooltip>
-                              <TooltipTrigger render={<button type="button" className="inline-flex cursor-help rounded text-muted-foreground/50 outline-none focus-visible:ring-2 focus-visible:ring-ring" />} aria-label={`Not on ${b.name}`}>
-                                <MinusIcon className="size-4" />
+                              <TooltipTrigger render={<button type="button" className={sx(paint.s13)} />} aria-label={`Not on ${b.name}`}>
+                                <MinusIcon className={sx(paint.s14)} />
                               </TooltipTrigger>
                               <TooltipPopup width="72">
-                                Not on {b.name}'s PATH.{INSTALL[a.id] && <span className="mt-1 block font-mono text-[11px]">{INSTALL[a.id]}</span>}
+                                Not on {b.name}'s PATH.{INSTALL[a.id] && <span className={sx(paint.s15)}>{INSTALL[a.id]}</span>}
                               </TooltipPopup>
                             </Tooltip>
                           )}
@@ -102,9 +247,9 @@ export function AgentsSection() {
 
       {shownSkills && (
         <section>
-          <div className="mb-2 flex items-end gap-3">
-            <div className="min-w-0 flex-1">
-              <h2 className="font-medium text-[13px] text-muted-foreground">Skills{online.length === 1 ? ` on ${shownSkills}` : ""}</h2>
+          <div className={sx(paint.s16)}>
+            <div className={sx(paint.s17)}>
+              <h2 className={sx(paint.s18)}>Skills{online.length === 1 ? ` on ${shownSkills}` : ""}</h2>
             </div>
             {online.length > 1 && <Segmented label="Box" value={shownSkills} options={online.map((b) => ({ value: b.name, label: b.name }))} onChange={setSkillsBox} />}
           </div>
@@ -112,7 +257,7 @@ export function AgentsSection() {
         </section>
       )}
 
-      {boxes.length > online.length && <p className="text-muted-foreground text-xs">Offline boxes are listed once they reconnect.</p>}
+      {boxes.length > online.length && <p className={sx(paint.s19)}>Offline boxes are listed once they reconnect.</p>}
     </SettingsPage>
   );
 }

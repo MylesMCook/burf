@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import {
   ActivityIcon,
   ListPlusIcon,
@@ -54,7 +55,6 @@ import { agentOf, worktreeSessions } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
 import { scheduleRefresh, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { removeWorktreeOnBox } from "@/lib/remove-worktree";
 import { addGroup, isShown, refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
 import { ToneItems } from "@/components/workspace/tab-group";
@@ -67,6 +67,91 @@ import { renameWorktree, shortLabel, worktreeLabel } from "@/lib/worktree-names"
 import { openHomeTerminal } from "@/components/box-picker";
 import { boxLoad } from "@/components/sidebar/box-load";
 import { deriveProjects, type Member, type Project, projectActions as groupActions, useProjectsDoc } from "@/lib/project-groups";
+
+const paint = stylex.create({
+  s0: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s1: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "marginLeft": "8px",
+  },
+  s3: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--sidebar-accent)",
+      "[data-popup-open]": "var(--sidebar-accent)",
+    },
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+  s4: {
+    "display": "block",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": {
+      "[data-menu-open]": "var(--sidebar-accent)",
+    },
+  },
+  s5: {
+    "position": "relative",
+  },
+  s6: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s7: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s8: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s9: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "maxWidth": "224px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The sidebar's actions are defined once and drawn into either menu: the
 // ⋯ button on a row, or the row's right-click menu. Both show the same
@@ -118,9 +203,9 @@ export function ActionItems({ items: from }: { items: Action[] | (() => Action[]
             return (
               <MenuItem key={i} variant={a.destructive ? "destructive" : "default"} disabled={a.disabled} onClick={a.run}>
                 {a.icon}
-                <span className="flex-1">{a.label}</span>
-                {a.hint && <span className="text-muted-foreground text-xs">{a.hint}</span>}
-                {a.shortcut && <span className="ml-2"><Kbd>{a.shortcut}</Kbd></span>}
+                <span className={sx(paint.s0)}>{a.label}</span>
+                {a.hint && <span className={sx(paint.s1)}>{a.hint}</span>}
+                {a.shortcut && <span className={sx(paint.s2)}><Kbd>{a.shortcut}</Kbd></span>}
               </MenuItem>
             );
         }
@@ -139,7 +224,7 @@ export function DotsMenu({ label, items }: { label: string; items: () => Action[
             <button
               type="button"
               aria-label={label}
-              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent [&_svg]:size-3.5"
+              className={sx(paint.s3)}
             />
           }
         >
@@ -258,12 +343,12 @@ export function RowMenus({ children, onKeyDown, ...props }: ComponentProps<"div"
 // its menu is open, and Shift+F10 or the menu key opens it from the
 // keyboard on a focused row. Inside a RowMenus it is a plain div that
 // RowMenus opens a menu for; elsewhere it is a context menu of its own.
-export function ContextRow(props: { items: () => Action[]; children: ReactNode; className?: string }) {
+export function ContextRow({ items, children, marker, look }: { items: () => Action[]; children: ReactNode; marker?: string; look?: stylex.CompiledStyles | null }) {
   const host = useContext(RowMenuContext);
-  return host ? <HostedRow host={host} {...props} /> : <OwnContextRow {...props} />;
+  return host ? <HostedRow host={host} items={items} marker={marker} look={look}>{children}</HostedRow> : <OwnContextRow items={items} marker={marker} look={look}>{children}</OwnContextRow>;
 }
 
-function HostedRow({ host, items, children, className }: { host: RowMenuHost; items: () => Action[]; children: ReactNode; className?: string }) {
+function HostedRow({ host, items, children, marker, look }: { host: RowMenuHost; items: () => Action[]; children: ReactNode; marker?: string; look?: stylex.CompiledStyles | null }) {
   const id = useId();
   const ref = useRef(items);
   ref.current = items;
@@ -281,14 +366,16 @@ function HostedRow({ host, items, children, className }: { host: RowMenuHost; it
     [host],
   );
   const arm = armed ? undefined : () => setArmed(true);
+  const painted = stylex.props(paint.s4, look);
   return (
-    <div ref={watch} data-row-menu={id} onPointerEnter={arm} onFocus={arm} className={cn("block rounded-md data-menu-open:bg-sidebar-accent", className)}>
+    <div ref={watch} data-row-menu={id} onPointerEnter={arm} onFocus={arm} className={[painted.className, marker].filter(Boolean).join(" ") || undefined} style={painted.style}>
       <ArmedContext.Provider value={armed}>{children}</ArmedContext.Provider>
     </div>
   );
 }
 
-function OwnContextRow({ items, children, className }: { items: () => Action[]; children: ReactNode; className?: string }) {
+function OwnContextRow({ items, children, marker, look }: { items: () => Action[]; children: ReactNode; marker?: string; look?: stylex.CompiledStyles | null }) {
+  const painted = stylex.props(paint.s5, look);
   return (
     <ContextMenu>
       <ContextMenuTrigger
@@ -301,7 +388,7 @@ function OwnContextRow({ items, children, className }: { items: () => Action[]; 
           el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.left + 24, clientY: r.top + r.height / 2, button: 2 }));
         }}
       >
-        <div className={cn("relative", className)}>{children}</div>
+        <div className={[painted.className, marker].filter(Boolean).join(" ") || undefined} style={painted.style}>{children}</div>
       </ContextMenuTrigger>
       <ContextMenuPopup width={menuWidths.w56}>
         <ActionItems items={items} />
@@ -310,7 +397,7 @@ function OwnContextRow({ items, children, className }: { items: () => Action[]; 
   );
 }
 
-const slot = (icon: ReactNode) => <span className="flex size-4 items-center justify-center">{icon}</span>;
+const slot = (icon: ReactNode) => <span className={sx(paint.s6)}>{icon}</span>;
 
 function urlFor(box: string, loc: Location, wt: Worktree) {
   const st = useStore.getState();
@@ -359,7 +446,7 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
   // A display name for it; the branch and folder keep theirs.
   if (!wt.main) {
     items.push(sep, item("Rename…", <PencilIcon />, () => openRenameWorktree(box, loc, wt), { shortcut: "F2" }));
-    if (wt.title) items.push(item(`Show as ${wt.name}`, <span className="size-4" />, () => void renameWorktree(box, loc, wt, "")));
+    if (wt.title) items.push(item(`Show as ${wt.name}`, <span className={sx(paint.s7)} />, () => void renameWorktree(box, loc, wt, "")));
   }
   items.push(sep, item("Copy path", <CopyIcon />, () => copy(wt.path, "path")));
   if (wt.branch) items.push(item("Copy branch", <GitBranchIcon />, () => copy(wt.branch!, "branch name")));
@@ -400,7 +487,7 @@ export function archiveWorktree(box: string, loc: Location, wt: Worktree) {
   confirm({
     title: `Archive ${worktreeLabel(wt)}?`,
     description: `${script ? "The repo's archive script runs, then its" : "Its"} folder on ${box} goes and its sessions and services stop. ${wt.branch ? `Branch ${wt.branch} stays, so you can pick it up again.` : ""}`,
-    detail: script ? <span className="font-mono">{script}</span> : undefined,
+    detail: script ? <span className={sx(paint.s8)}>{script}</span> : undefined,
     confirm: "Archive",
     run: async () => {
       const client = useStore.getState().client;
@@ -473,12 +560,12 @@ function RunItems({ box, loc, wt }: { box: string; loc: Location; wt: Worktree }
   }, [box, loc.name, wt.name]);
   if (!list) {
     return (
-      <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground text-xs">
+      <div className={sx(paint.s9)}>
         <Spinner  size="sm"/> Loading…
       </div>
     );
   }
-  if (!list.length) return <div className="max-w-56 px-2 py-1.5 text-muted-foreground text-xs">{error ?? `${loc.name} defines no services.`}</div>;
+  if (!list.length) return <div className={sx(paint.s10)}>{error ?? `${loc.name} defines no services.`}</div>;
   const act = (svc: WorktreeService, action: "start" | "stop" | "restart") => {
     const client = useStore.getState().client;
     if (!client) return;

@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import {
   type ComponentProps,
   useCallback,
@@ -8,8 +9,86 @@ import {
   useState,
 } from "react";
 import { ArrowDownIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { field, floating, paper } from "./surfaces";
+import { fadeIn, field, floating, paper, riseIn } from "./surfaces";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "height": "256px",
+    "width": "100%",
+    "maxWidth": "384px",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-2xl)",
+  },
+  s1: {
+    "display": "flex",
+    "height": "100%",
+    "flexDirection": "column",
+    "gap": "10px",
+    "overflowY": "hidden",
+    "scrollBehavior": "smooth",
+    "padding": "16px",
+  },
+  s2: {
+    "maxWidth": "85%",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+    "transitionDuration": "300ms",
+  },
+  s3: {
+    "color": "color-mix(in oklab, var(--foreground) 55%, transparent)",
+    "alignSelf": "flex-start",
+  },
+  s4: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "left": 0,
+    "right": 0,
+    "top": "0px",
+    "height": "24px",
+    "backgroundImage": "linear-gradient(to bottom, light-dark(var(--background), var(--popover)), transparent)",
+  },
+  s5: {
+    "position": "absolute",
+    "left": 0,
+    "right": 0,
+    "bottom": "12px",
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "display": "flex",
+    "width": "fit-content",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "999px",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "transitionProperty": "transform",
+    "transitionDuration": "200ms",
+    "transform": {
+      ":hover": "translateY(-1px)",
+    },
+  },
+  s7: {
+    "alignSelf": "flex-end",
+    "borderRadius": "var(--radius-2xl)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+  },
+  s6: {
+    "width": "12px",
+    "height": "12px",
+    "opacity": 0.6,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface ScrollAnchorMessage {
   role: "user" | "assistant";
@@ -91,26 +170,23 @@ export function ScrollAnchor({
   return (
     <div
       data-slot="scroll-anchor"
-      className={cn(
-        paper,
-        "relative h-64 w-full max-w-sm overflow-hidden rounded-2xl",
-        className,
-      )}
+      className={[sx(paper, paint.s0), className].filter(Boolean).join(" ")}
 
       {...props}
     >
       <div
         ref={viewportRef}
-        className="flex h-full flex-col gap-2.5 overflow-y-hidden scroll-smooth p-4"
+        className={sx(paint.s1)}
       >
         {messages.slice(0, count).map((message, i) => (
           <div
             key={i}
-            className={cn(
-              "fade-in slide-in-from-bottom-1 animate-in max-w-[85%] text-xs leading-relaxed duration-300 motion-reduce:animate-none",
-              message.role === "user"
-                ? cn(field, "self-end rounded-2xl px-3 py-1.5")
-                : "text-foreground/55 self-start",
+            className={sx(
+              fadeIn,
+              riseIn,
+              paint.s2,
+              message.role === "user" ? field : false,
+              message.role === "user" ? paint.s7 : paint.s3,
             )}
           >
             {message.text}
@@ -119,18 +195,15 @@ export function ScrollAnchor({
       </div>
       <div
         aria-hidden
-        className="from-background dark:from-popover pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b to-transparent"
+        className={sx(paint.s4)}
       />
       {!pinned && newCount > 0 && (
         <button
           type="button"
           onClick={jump}
-          className={cn(
-            floating,
-            "fade-in slide-in-from-bottom-2 animate-in absolute inset-x-0 bottom-3 mx-auto flex w-fit items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs transition-transform duration-200 hover:-translate-y-px",
-          )}
+          className={sx(floating, paint.s5, fadeIn, riseIn)}
         >
-          <ArrowDownIcon className="size-3 opacity-60" />
+          <ArrowDownIcon className={sx(paint.s6)} />
           {newCount} new {newCount === 1 ? "message" : "messages"}
         </button>
       )}

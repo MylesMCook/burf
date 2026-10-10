@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowLeftIcon, CheckIcon, Columns2Icon, CrownIcon, GitCompareArrowsIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -10,21 +11,344 @@ import { plainError } from "@/lib/errors";
 import type { RunCompare } from "@/lib/orchestrate-core";
 import { allRuns, type BoxRun, runs as runsApi, scheduleRuns, useRuns } from "@/lib/runs";
 import { confirm } from "@/components/sidebar/confirm";
-import { cn } from "@/lib/utils";
 import { focusSession, wsKey } from "@/lib/workspaces";
 import { openCompare } from "@/lib/compare-actions";
 import { usePrefs } from "@/lib/prefs";
 import { tokens } from "@/views/automations/flows/runs-tab";
 import { ErrorText } from "@/components/error-note";
 
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "flexShrink": 0,
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 30%, transparent)",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s1: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s2: {
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s4: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "12px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s5: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s6: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s7: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s8: {
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s9: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s10: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "auto",
+    "padding": "24px",
+  },
+  s11: {
+    "marginBottom": "16px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 30%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s12: {
+    "fontWeight": 500,
+  },
+  s13: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s14: {
+    "display": "grid",
+    "gap": "12px",
+  },
+  s15: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--card)",
+  },
+  s16: {
+    "borderColor": "color-mix(in oklab, var(--success) 60%, transparent)",
+  },
+  s17: {
+    "borderColor": "color-mix(in oklab, var(--primary) 50%, transparent)",
+  },
+  s18: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s19: {
+    "flexShrink": 0,
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s20: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s21: {
+    "marginLeft": "auto",
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--primary)",
+  },
+  s22: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s23: {
+    "marginLeft": "auto",
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--success-foreground)",
+  },
+  s24: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s25: {
+    "display": "grid",
+    "gridTemplateColumns": "80px 1fr",
+    "columnGap": "8px",
+    "rowGap": "4px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s26: {
+    "color": "var(--muted-foreground)",
+  },
+  s27: {
+    "color": "var(--success-foreground)",
+  },
+  s28: {
+    "color": "var(--destructive-foreground)",
+  },
+  s29: {
+    "color": "var(--muted-foreground)",
+  },
+  s30: {
+    "fontFamily": "var(--font-mono)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s31: {
+    "color": "var(--success-foreground)",
+  },
+  s32: {
+    "color": "var(--destructive-foreground)",
+  },
+  s33: {
+    "color": "var(--muted-foreground)",
+  },
+  s34: {
+    "color": "var(--muted-foreground)",
+  },
+  s35: {
+    "color": "var(--muted-foreground)",
+  },
+  s36: {
+    "color": "var(--muted-foreground)",
+  },
+  s37: {
+    "color": "var(--muted-foreground)",
+  },
+  s38: {
+    "marginLeft": "12px",
+    "marginRight": "12px",
+    "marginBottom": "8px",
+    "maxHeight": "112px",
+    "overflow": "auto",
+    "borderRadius": "var(--radius-lg)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 60%, transparent)",
+    "padding": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s39: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "11px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "2px",
+    },
+  },
+  s40: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s41: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+  },
+  s42: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--success-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s43: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--destructive-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s44: {
+    "color": "var(--muted-foreground)",
+  },
+  s45: {
+    "color": "var(--muted-foreground)",
+  },
+  s46: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
+
 // CompareStrip lists attempts runs with candidates to compare, at the top of
 // Review: the ones waiting for a pick first.
 export function CompareStrip({ runs, onOpen }: { runs: BoxRun[]; onOpen(r: BoxRun): void }) {
   if (!runs.length) return null;
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-muted/30 px-6 py-2 text-xs">
-      <GitCompareArrowsIcon className="size-3.5 text-muted-foreground" />
-      <span className="text-muted-foreground">Attempts to compare:</span>
+    <div className={sx(paint.s0)}>
+      <GitCompareArrowsIcon className={sx(paint.s1)} />
+      <span className={sx(paint.s2)}>Attempts to compare:</span>
       {runs.map((r) => (
         <Button key={`${r.box}/${r.id}`} size="xs" variant={r.status === "waiting_gate" ? "default" : "outline"} onClick={() => onOpen(r)}>
           {r.title ?? r.id}
@@ -119,15 +443,15 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
     });
   };
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center gap-3 border-b px-6 py-2.5">
+    <div className={sx(paint.s3)}>
+      <div className={sx(paint.s4)}>
         <Button size="sm" variant="ghost" onClick={onClose}>
           <ArrowLeftIcon />
           Review
         </Button>
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-sm">{title}</p>
-          <p className="truncate text-muted-foreground text-xs">
+        <div className={sx(paint.s5)}>
+          <p className={sx(paint.s6)}>{title}</p>
+          <p className={sx(paint.s7)}>
             {multi ? all.map((r) => r.box).join(" and ") : box} · {data ? `${data.run.status.replace("_", " ")} · started ${ago(data.run.created)}` : "…"}
             {data?.run.usage && ` · ${tokens(data.run.usage)}`}
           </p>
@@ -139,90 +463,90 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
           </Button>
         )}
       </div>
-      {error && <ErrorText className="px-6 py-3 text-destructive-foreground text-sm" text={error} />}
+      {error && <ErrorText className={sx(paint.s8)} text={error} />}
       {!data && !error && (
-        <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
+        <div className={sx(paint.s9)}>
           <Spinner  size="lg"/> Reading the attempts…
         </div>
       )}
       {data && (
-        <div className="min-h-0 flex-1 overflow-auto p-6">
+        <div className={sx(paint.s10)}>
           {all
             .filter((r) => r.data.judge)
             .map((r) => (
-              <p key={`${r.box}/${r.id}`} className="mb-4 rounded-xl border bg-muted/30 px-4 py-2.5 text-sm">
-                <span className="font-medium">Judge{multi ? ` on ${r.box}` : ""}: </span>
+              <p key={`${r.box}/${r.id}`} className={sx(paint.s11)}>
+                <span className={sx(paint.s12)}>Judge{multi ? ` on ${r.box}` : ""}: </span>
                 {r.data.judge}
               </p>
             ))}
-          {!cands.length && <p className="text-muted-foreground text-sm">No attempt has finished yet.</p>}
-          <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(1, cands.length)}, minmax(260px, 1fr))` }}>
+          {!cands.length && <p className={sx(paint.s13)}>No attempt has finished yet.</p>}
+          <div className={sx(paint.s14)} style={{ gridTemplateColumns: `repeat(${Math.max(1, cands.length)}, minmax(260px, 1fr))` }}>
             {cands.map((c) => {
               const files = c.review?.files ?? [];
               return (
-                <section key={`${c.box}/${c.runId}/${c.index}`} className={cn("flex min-w-0 flex-col rounded-xl border bg-card", c.picked && "border-success/60", isBest(c) && canPick && "border-primary/50")}>
-                  <header className="flex items-center gap-2 border-b px-3 py-2">
+                <section key={`${c.box}/${c.runId}/${c.index}`} className={[sx(paint.s15), c.picked && sx(paint.s16), isBest(c) && canPick && sx(paint.s17)].filter(Boolean).join(" ")}>
+                  <header className={sx(paint.s18)}>
                     <AgentIcon agent={c.agent} />
-                    <span className="shrink-0 whitespace-nowrap font-medium text-sm">Attempt {c.index + 1}</span>
-                    <span className="min-w-0 truncate text-muted-foreground text-xs">{multi ? `${c.box} · ${c.worktree}` : c.worktree}</span>
+                    <span className={sx(paint.s19)}>Attempt {c.index + 1}</span>
+                    <span className={sx(paint.s20)}>{multi ? `${c.box} · ${c.worktree}` : c.worktree}</span>
                     {isBest(c) && (
-                      <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] text-primary">
-                        <CrownIcon className="size-3" />
+                      <span className={sx(paint.s21)}>
+                        <CrownIcon className={sx(paint.s22)} />
                         judge's pick
                       </span>
                     )}
                     {c.picked && (
-                      <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] text-success-foreground">
-                        <CheckIcon className="size-3" />
+                      <span className={sx(paint.s23)}>
+                        <CheckIcon className={sx(paint.s24)} />
                         picked
                       </span>
                     )}
                   </header>
-                  <dl className="grid grid-cols-[80px_1fr] gap-x-2 gap-y-1 px-3 py-2 text-xs">
-                    <dt className="text-muted-foreground">Check</dt>
-                    <dd className={c.verify.passed ? "text-success-foreground" : "text-destructive-foreground"}>
+                  <dl className={sx(paint.s25)}>
+                    <dt className={sx(paint.s26)}>Check</dt>
+                    <dd className={c.verify.passed ? sx(paint.s27) : sx(paint.s28)}>
                       {c.verify.passed ? "passed" : `failed (exit ${c.verify.exit_code})`}
                       {c.verify.rounds ? ` in ${c.verify.rounds} round${c.verify.rounds === 1 ? "" : "s"}` : ""}
                     </dd>
-                    <dt className="text-muted-foreground">Changes</dt>
-                    <dd className="font-mono tabular-nums">
-                      {c.diff.files} files <span className="text-success-foreground">+{c.diff.added}</span> <span className="text-destructive-foreground">−{c.diff.removed}</span> · {c.diff.commits} commits
+                    <dt className={sx(paint.s29)}>Changes</dt>
+                    <dd className={sx(paint.s30)}>
+                      {c.diff.files} files <span className={sx(paint.s31)}>+{c.diff.added}</span> <span className={sx(paint.s32)}>−{c.diff.removed}</span> · {c.diff.commits} commits
                     </dd>
                     {c.judge.rank ? (
                       <>
-                        <dt className="text-muted-foreground">Judge</dt>
+                        <dt className={sx(paint.s33)}>Judge</dt>
                         <dd>
                           #{c.judge.rank}
-                          {c.judge.reason && <span className="text-muted-foreground"> · {c.judge.reason}</span>}
+                          {c.judge.reason && <span className={sx(paint.s34)}> · {c.judge.reason}</span>}
                         </dd>
                       </>
                     ) : null}
                     {c.tokens && (
                       <>
-                        <dt className="text-muted-foreground">Spent</dt>
+                        <dt className={sx(paint.s35)}>Spent</dt>
                         <dd>{tokens(c.tokens)}</dd>
                       </>
                     )}
                     {c.summary && (
                       <>
-                        <dt className="text-muted-foreground">Commits</dt>
-                        <dd className="text-muted-foreground">{c.summary}</dd>
+                        <dt className={sx(paint.s36)}>Commits</dt>
+                        <dd className={sx(paint.s37)}>{c.summary}</dd>
                       </>
                     )}
                   </dl>
-                  {!c.verify.passed && c.verify.tail && <pre className="mx-3 mb-2 max-h-28 overflow-auto rounded-lg bg-muted/60 p-2 font-mono text-[11px] text-muted-foreground">{c.verify.tail}</pre>}
-                  <ul className="min-h-0 flex-1 space-y-0.5 border-t px-3 py-2 text-[11px]">
+                  {!c.verify.passed && c.verify.tail && <pre className={sx(paint.s38)}>{c.verify.tail}</pre>}
+                  <ul className={sx(paint.s39)}>
                     {files.slice(0, 14).map((f) => (
-                      <li key={f.path} className="flex items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate font-mono">{f.path}</span>
-                        <span className="font-mono text-success-foreground tabular-nums">+{f.added ?? 0}</span>
-                        <span className="font-mono text-destructive-foreground tabular-nums">−{f.removed ?? 0}</span>
+                      <li key={f.path} className={sx(paint.s40)}>
+                        <span className={sx(paint.s41)}>{f.path}</span>
+                        <span className={sx(paint.s42)}>+{f.added ?? 0}</span>
+                        <span className={sx(paint.s43)}>−{f.removed ?? 0}</span>
                       </li>
                     ))}
-                    {files.length > 14 && <li className="text-muted-foreground">and {files.length - 14} more</li>}
-                    {!files.length && <li className="text-muted-foreground">No uncommitted changes.</li>}
+                    {files.length > 14 && <li className={sx(paint.s44)}>and {files.length - 14} more</li>}
+                    {!files.length && <li className={sx(paint.s45)}>No uncommitted changes.</li>}
                   </ul>
-                  <footer className="flex flex-wrap items-center gap-1.5 border-t px-3 py-2">
+                  <footer className={sx(paint.s46)}>
                     {canPick && (
                       <Button size="xs" variant={isBest(c) && c.verify.passed ? "default" : "outline"} disabled={busy} onClick={() => choose(c)}>
                         Pick this one

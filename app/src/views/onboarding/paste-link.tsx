@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -7,6 +8,151 @@ import { laptopApi } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { findPairingLink, linkAddress, onTailnetAddress, unreachable } from "@/views/onboarding/pairing-link";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "40px",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--input)",
+      ":focus-within": "var(--ring)",
+    },
+    "backgroundColor": {
+      "default": "light-dark(var(--background), color-mix(in oklab, var(--input) 32%, transparent))",
+    },
+    "paddingInlineStart": "12px",
+    "paddingInlineEnd": "4px",
+    "boxShadow": {
+      "default": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+      ":focus-within": "0 0 0 2px color-mix(in oklab, var(--ring) 24%, transparent)",
+    },
+  },
+  s1: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s2: {
+    "height": "100%",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "backgroundColor": "transparent",
+    "fontFamily": {
+      "default": "var(--font-mono)",
+      "::placeholder": "var(--font-sans)",
+    },
+    "fontSize": {
+      "default": "13px",
+      "::placeholder": "14px",
+    },
+    "outline": "none",
+    "color": {
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+    },
+    "lineHeight": {
+      "::placeholder": "20px",
+    },
+    "opacity": {
+      ":disabled": 0.64,
+    },
+  },
+  s3: {
+    "flexShrink": 0,
+  },
+  s4: {
+    "marginTop": "8px",
+    "minHeight": "20px",
+    "fontSize": "12px",
+    "lineHeight": "20px",
+  },
+  s5: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--success-foreground)",
+  },
+  s6: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s7: {
+    "color": "var(--destructive-foreground)",
+  },
+  s8: {
+    "color": "var(--muted-foreground)",
+  },
+  s9: {
+    "color": "var(--foreground)",
+    "textDecoration": {
+      "default": "underline",
+      ":hover": "none",
+    },
+  },
+  s10: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+  },
+  s11: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s12: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--foreground)",
+  },
+  s13: {
+    "marginInlineStart": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s14: {
+    "height": "20px",
+    "width": "128px",
+    "borderColor": {
+      "default": "var(--input)",
+      ":focus": "var(--ring)",
+    },
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "transparent",
+    "paddingLeft": "2px",
+    "paddingRight": "2px",
+    "color": {
+      "default": "var(--foreground)",
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+    },
+    "outline": "none",
+  },
+  s15: {
+    "color": "var(--muted-foreground)",
+  },
+
+  s16: {
+    textUnderlineOffset: 2,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // PasteLink pairs with a box from the link `berthd pair` (or the install
 // script) printed there. Pasting the whole output is fine: the field keeps
@@ -75,9 +221,9 @@ export function PasteLink({
           e.preventDefault();
           void pair();
         }}
-        className="flex h-10 items-center gap-2 rounded-lg border border-input bg-background ps-3 pe-1 shadow-xs/5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/24 dark:bg-input/32"
+        className={sx(paint.s0)}
       >
-        <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+        <ChevronRightIcon aria-hidden className={sx(paint.s1)} />
         <input
           ref={field}
           autoFocus={autoFocus}
@@ -104,27 +250,27 @@ export function PasteLink({
             setText(e.target.value);
             setError(undefined);
           }}
-          className="h-full min-w-0 flex-1 truncate bg-transparent font-mono text-[13px] outline-none placeholder:font-sans placeholder:text-muted-foreground/72 placeholder:text-sm disabled:opacity-64"
+          className={sx(paint.s2)}
         />
         <Tip label={!link ? "Paste a pairing link first" : undefined}>
-          <span className="shrink-0"><Button type="submit" size="xs"  disabled={!link || !!done} loading={busy && !done}>
+          <span className={sx(paint.s3)}><Button type="submit" size="xs"  disabled={!link || !!done} loading={busy && !done}>
             Pair
           </Button></span>
         </Tip>
       </form>
-      <div aria-live="polite" className="mt-2 min-h-5 text-xs leading-5">
+      <div aria-live="polite" className={sx(paint.s4)}>
         {done ? (
-          <span className="flex items-center gap-1.5 text-success-foreground">
-            <CheckIcon className="size-3.5" /> Paired with {done}
+          <span className={sx(paint.s5)}>
+            <CheckIcon className={sx(paint.s6)} /> Paired with {done}
           </span>
         ) : error ? (
-          <div className="text-destructive-foreground">
+          <div className={sx(paint.s7)}>
             {error.message}
             {error.away && address && (
-              <span className="text-muted-foreground">
+              <span className={sx(paint.s8)}>
                 {" "}
                 {onTailnetAddress(address) ? `${address} is a tailnet address; if the box is on a tailnet this computer isn't signed in to, ` : "If the box is on another tailnet, "}
-                <button type="button" className="text-foreground underline underline-offset-2 hover:no-underline" onClick={onSignIn}>
+                <button type="button" className={[sx(paint.s9), sx(paint.s16)].filter(Boolean).join(" ")} onClick={onSignIn}>
                   sign in to that tailnet
                 </button>
                 {" and Burf tries again."}
@@ -132,12 +278,12 @@ export function PasteLink({
             )}
           </div>
         ) : link && address ? (
-          <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-            <span className="min-w-0 truncate">
-              Box at <span className="font-mono text-foreground">{address}</span>
+          <div className={sx(paint.s10)}>
+            <span className={sx(paint.s11)}>
+              Box at <span className={sx(paint.s12)}>{address}</span>
               {network ? ` through the ${network} tailnet` : ""}
             </span>
-            <span className="ms-auto flex shrink-0 items-center gap-1">
+            <span className={sx(paint.s13)}>
               named
               <input
                 value={name}
@@ -147,12 +293,12 @@ export function PasteLink({
                 aria-label="Name in Burf"
                 spellCheck={false}
                 disabled={busy}
-                className="h-5 w-32 border-input border-b bg-transparent px-0.5 text-foreground outline-none placeholder:text-muted-foreground/72 focus:border-ring"
+                className={sx(paint.s14)}
               />
             </span>
           </div>
         ) : (
-          <span className="text-muted-foreground">It works once, for ten minutes. Pasting everything it printed is fine.</span>
+          <span className={sx(paint.s15)}>It works once, for ten minutes. Pasting everything it printed is fine.</span>
         )}
       </div>
     </div>

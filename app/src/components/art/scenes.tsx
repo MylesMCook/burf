@@ -1,8 +1,17 @@
+import * as stylex from "@stylexjs/stylex";
 import { useCallback, useId } from "react";
 
-import { cn } from "@/lib/utils";
 
 import "./scenes.css";
+
+const paint = stylex.create({
+  s0: {
+    "flexShrink": 0,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Scenes are Burf's small line drawings for quiet states, all in one
 // drawing language: a 160 x 52 harbour, lines in currentColor (muted unless
@@ -96,7 +105,7 @@ export function Scene({ name, width = 136, still, className }: { name: SceneName
       viewBox={`0 ${TOP} ${W} ${H}`}
       width={width}
       height={(width * H) / W}
-      className={cn("berth-art shrink-0", className)}
+      className={[[sx(paint.s0), "berth-art"].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
       fill="none"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -133,7 +142,7 @@ function Wave({ y, amp, dur, opacity, dash, shift = 12, reverse, width = 1.4 }: 
       opacity={opacity}
       strokeWidth={width}
       strokeDasharray={dash}
-      className={dur ? cn("ba-wave", reverse && "ba-rev") : undefined}
+      className={dur ? ["ba-wave", reverse && "ba-rev"].filter(Boolean).join(" ") : undefined}
       style={dur ? ({ "--ba-d": `${dur}s`, "--ba-x": `${-shift}px` } as React.CSSProperties) : undefined}
     />
   );

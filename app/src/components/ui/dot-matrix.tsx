@@ -3,6 +3,29 @@ import type { ComponentProps, CSSProperties } from "react";
 
 import { color } from "@/styles/tokens.stylex";
 
+const paint = stylex.create({
+  s0: {
+    "display": "inline-block",
+  },
+  s1: {
+    "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)",
+  },
+  s2: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
+
 const still = "@media (prefers-reduced-motion: reduce)";
 
 const styles = stylex.create({
@@ -252,7 +275,7 @@ function DotMatrix({
       style={painted.style}
       {...props}
     >
-      <span className="sr-only">{label ?? state}</span>
+      <span className={sx(paint.s2)}>{label ?? state}</span>
       {/* React 19 hoists and deduplicates this across instances; React 18 renders it inline, and its types don't declare href or precedence, so they're spread. It must live in HTML scope: inside the SVG it would be an SVG-namespace element React does not hoist. */}
       <style {...HOISTED_STYLE}>{DOT_MATRIX_CSS}</style>
       <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className={stylex.props(styles.svg).className}>

@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import {
   useEffect,
   useRef,
@@ -8,8 +9,139 @@ import {
   type RefObject,
 } from "react";
 import { PauseIcon, PlayIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { field, inkButton, mono, paper } from "./surfaces";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderRadius": "var(--radius-2xl)",
+    "padding": "12px",
+    "maxWidth": "448px",
+  },
+  s1: {
+    "width": "40px",
+    "height": "40px",
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-lg)",
+    "objectFit": "cover",
+  },
+  s2: {
+    "display": "flex",
+    "width": "36px",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+    "cursor": {
+      ":disabled": "default",
+    },
+    "opacity": {
+      ":disabled": 0.4,
+    },
+  },
+  s3: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s4: {
+    "marginLeft": "2px",
+    "width": "16px",
+    "height": "16px",
+  },
+  s5: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "gap": "6px",
+  },
+  s6: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "13.5px",
+    "fontWeight": 500,
+  },
+  s7: {
+    "width": "100%",
+    "cursor": {
+      "default": "pointer",
+      ":disabled": "default",
+    },
+    "accentColor": "var(--foreground)",
+  },
+  s8: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "flexShrink": 0,
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s9: {
+    "display": "none",
+  },
+  s10: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "flexShrink": 0,
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s11: {
+    "display": "flex",
+    "width": "100%",
+    "flexDirection": "column",
+    "gap": "8px",
+    "maxWidth": "576px",
+  },
+  s12: {
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-xl)",
+  },
+  s13: {
+    "display": "block",
+    "maxWidth": "100%",
+  },
+  s14: {
+    "height": "100%",
+    "width": "100%",
+    "objectFit": "contain",
+  },
+  s15: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+  },
+  s16: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "13.5px",
+    "fontWeight": 500,
+  },
+  s17: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "flexShrink": 0,
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s18: { "aspectRatio": "1" },
+  s19: { "aspectRatio": "4 / 3" },
+  s20: { "aspectRatio": "16 / 9" },
+  s21: { "aspectRatio": "9 / 16" },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface AudioPlayerProps extends Omit<
   ComponentProps<"div">,
@@ -139,18 +271,14 @@ export function AudioPlayer({
   return (
     <div
       data-slot="audio-player"
-      className={cn(
-        paper,
-        "flex w-full max-w-md items-center gap-3 rounded-2xl p-3",
-        className,
-      )}
+      className={[sx(paper, paint.s0), className].filter(Boolean).join(" ")}
       {...props}
     >
       {artwork ? (
         <img
           src={artwork}
           alt=""
-          className="size-10 shrink-0 rounded-lg object-cover"
+          className={sx(paint.s1)}
         />
       ) : null}
       <button
@@ -158,19 +286,16 @@ export function AudioPlayer({
         aria-label={`${playing ? "Pause" : "Play"}${playbackLabel}`}
         disabled={hasError}
         onClick={togglePlayback}
-        className={cn(
-          inkButton,
-          "flex size-9 shrink-0 items-center justify-center rounded-full disabled:cursor-default disabled:opacity-40",
-        )}
+        className={sx(inkButton, paint.s2)}
       >
         {playing ? (
-          <PauseIcon aria-hidden className="size-4" />
+          <PauseIcon aria-hidden className={sx(paint.s3)} />
         ) : (
-          <PlayIcon aria-hidden className="ml-0.5 size-4" />
+          <PlayIcon aria-hidden className={sx(paint.s4)} />
         )}
       </button>
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className="truncate text-[13.5px] font-medium">
+      <div className={sx(paint.s5)}>
+        <span className={sx(paint.s6)}>
           {displayTitle}
         </span>
         <input
@@ -189,17 +314,17 @@ export function AudioPlayer({
             if (audioRef.current) audioRef.current.currentTime = resolvedTime;
             update({ currentTime: resolvedTime });
           }}
-          className="accent-foreground w-full cursor-pointer disabled:cursor-default"
+          className={sx(paint.s7)}
         />
       </div>
-      <span className={cn(mono, "text-foreground/45 shrink-0 tabular-nums")}>
+      <span className={sx(mono, paint.s8)}>
         {formatDuration(currentTime)} / {durationLabel}
       </span>
       <audio
         ref={audioRef}
         src={src}
         preload="metadata"
-        className="hidden"
+        className={sx(paint.s9)}
         onLoadedMetadata={(event) => {
           setDurationFromMetadata(event.currentTarget.duration);
         }}
@@ -211,7 +336,7 @@ export function AudioPlayer({
         onError={() => update({ hasError: true, playing: false })}
       />
       {hasError ? (
-        <span role="alert" className="text-foreground/45 shrink-0 text-xs">
+        <span role="alert" className={sx(paint.s10)}>
           Can't play this audio
         </span>
       ) : null}
@@ -234,24 +359,24 @@ export function VideoPlayer({
     src,
     durationMs,
   );
-  const ratioClassName =
+  const ratioStyle =
     ratio === "1:1"
-      ? "aspect-square"
+      ? paint.s18
       : ratio === "4:3"
-        ? "aspect-[4/3]"
+        ? paint.s19
         : ratio === "16:9"
-          ? "aspect-video"
+          ? paint.s20
           : ratio === "9:16"
-            ? "aspect-[9/16]"
-            : undefined;
+            ? paint.s21
+            : false;
 
   return (
     <div
       data-slot="video-player"
-      className={cn("flex w-full max-w-xl flex-col gap-2", className)}
+      className={[sx(paint.s11), className].filter(Boolean).join(" ")}
       {...props}
     >
-      <div className={cn(field, "overflow-hidden rounded-xl", ratioClassName)}>
+      <div className={sx(field, paint.s12, ratioStyle)}>
         <video
           ref={videoRef}
           src={src}
@@ -260,25 +385,22 @@ export function VideoPlayer({
           playsInline
           preload="metadata"
           aria-label={title ?? "Video"}
-          className={cn(
-            "block max-w-full",
-            ratio !== "auto" && "h-full w-full object-contain",
-          )}
+          className={[sx(paint.s13), ratio !== "auto" && sx(paint.s14)].filter(Boolean).join(" ")}
           onLoadedMetadata={(event) => {
             setDurationFromMetadata(event.currentTarget.duration);
           }}
         />
       </div>
       {(title || duration !== undefined) && (
-        <div className="flex min-w-0 items-center gap-2 px-1">
+        <div className={sx(paint.s15)}>
           {title ? (
-            <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
+            <span className={sx(paint.s16)}>
               {title}
             </span>
           ) : null}
           {duration !== undefined ? (
             <span
-              className={cn(mono, "text-foreground/45 shrink-0 tabular-nums")}
+              className={sx(mono, paint.s17)}
             >
               {formatDuration(duration)}
             </span>

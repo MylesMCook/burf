@@ -1,14 +1,186 @@
+import * as stylex from "@stylexjs/stylex";
 import { useMemo } from "react";
 
 import { Tip } from "@/components/tip";
 import { exec } from "@/lib/orchestrate";
 import { useProjects } from "@/lib/projects";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { useAppWidgetData } from "@/lib/widget-data";
 
 import { useHomeWidget } from "./env";
 import { compactNumber, DiffStat, WidgetEmpty, WidgetSkeleton } from "./parts";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "flexDirection": "column",
+    "gap": "8px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingBottom": "4px",
+  },
+  s1: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "gap": "8px",
+  },
+  s2: {
+    "fontWeight": 600,
+    "fontSize": "24px",
+    "lineHeight": "32px",
+    "fontVariantNumeric": "tabular-nums",
+    "letterSpacing": "-0.025em",
+  },
+  s3: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "marginLeft": "auto",
+  },
+  s5: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s7: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s8: {
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s9: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s10: {
+    "display": "flex",
+    "maxHeight": "176px",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "gap": "4px",
+  },
+  s11: {
+    "display": "flex",
+    "minHeight": "40px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "flex-end",
+    "gap": "2px",
+  },
+  s12: {
+    "display": "flex",
+    "height": "100%",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "flex-end",
+    "borderRadius": "3px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+  },
+  s13: {
+    "display": "block",
+    "width": "100%",
+    "borderTopLeftRadius": "4px",
+    "borderTopRightRadius": "4px",
+    "borderBottomLeftRadius": "1px",
+    "borderBottomRightRadius": "1px",
+  },
+  s14: {
+    "backgroundColor": "var(--muted)",
+  },
+  s15: {
+    "display": "flex",
+    "gap": "2px",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s16: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "textAlign": "center",
+  },
+  s17: {
+    "display": "flex",
+    "height": "100%",
+    "flexDirection": "column",
+    "gap": "8px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingBottom": "4px",
+  },
+  s18: {
+    "marginLeft": "calc(8px * -1)",
+    "marginRight": "calc(8px * -1)",
+  },
+  s19: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "flex-end",
+    "gap": "2px",
+  },
+  s20: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "borderTopLeftRadius": "4px",
+    "borderTopRightRadius": "4px",
+    "backgroundColor": "var(--muted)",
+  },
+  n0: {
+    "display": "block",
+    "width": "100%",
+    "borderTopLeftRadius": "4px",
+    "borderTopRightRadius": "4px",
+    "borderBottomLeftRadius": "1px",
+    "borderBottomRightRadius": "1px",
+  },
+  n1: {
+    "backgroundColor": "var(--info)",
+  },
+  n2: {
+    "backgroundColor": "color-mix(in oklab, var(--info) 55%, transparent)",
+  },
+  n3: {
+    "backgroundColor": "var(--muted)",
+  },
+
+  s21: {
+    fontFamily: "var(--font-heading)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Git activity: commits and lines changed a day over the last two weeks,
 // across every project, by you and your agents alike. One `git log` per
@@ -115,24 +287,24 @@ export function GitWidget() {
   const del = data.days.reduce((n, d) => n + d.del, 0);
   const tall = span.r > 1;
   return (
-    <div className="flex h-full flex-col gap-2 px-2 pb-1">
-      <div className="flex items-baseline gap-2">
-        <span className="font-heading font-semibold text-2xl tabular-nums tracking-tight">{total}</span>
-        <span className="text-muted-foreground text-xs">commits · {DAYS} days</span>
-        <DiffStat add={add} del={del} className="ml-auto" />
+    <div className={sx(paint.s0)}>
+      <div className={sx(paint.s1)}>
+        <span className={[sx(paint.s2), sx(paint.s21)].filter(Boolean).join(" ")}>{total}</span>
+        <span className={sx(paint.s3)}>commits · {DAYS} days</span>
+        <DiffStat add={add} del={del} className={sx(paint.s4)} />
       </div>
       <Bars days={data.days} />
       {tall && data.byProject.length > 0 && (
-        <ul className="flex flex-col gap-1 text-xs">
+        <ul className={sx(paint.s5)}>
           {data.byProject.slice(0, 4).map((p) => (
-            <li key={p.name} className="flex items-center gap-2">
-              <span className="min-w-0 flex-1 truncate">{p.name}</span>
-              <span className="text-muted-foreground tabular-nums">{p.commits}</span>
+            <li key={p.name} className={sx(paint.s6)}>
+              <span className={sx(paint.s7)}>{p.name}</span>
+              <span className={sx(paint.s8)}>{p.commits}</span>
             </li>
           ))}
         </ul>
       )}
-      {data.failed.length > 0 && <p className="truncate text-[11px] text-muted-foreground">Couldn't read {data.failed.join(", ")}</p>}
+      {data.failed.length > 0 && <p className={sx(paint.s9)}>Couldn't read {data.failed.join(", ")}</p>}
     </div>
   );
 }
@@ -145,22 +317,22 @@ const longDay = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(unde
 function Bars({ days }: { days: Day[] }) {
   const max = Math.max(1, ...days.map((d) => d.commits));
   return (
-    <div className="flex max-h-44 min-h-0 flex-1 flex-col gap-1">
-      <div className="flex min-h-10 flex-1 items-end gap-[2px]" role="list" aria-label="Commits a day">
+    <div className={sx(paint.s10)}>
+      <div className={sx(paint.s11)} role="list" aria-label="Commits a day">
         {days.map((d, i) => (
           <Tip key={d.day} label={`${longDay(d.day)} · ${d.commits} ${d.commits === 1 ? "commit" : "commits"}${d.commits ? ` · +${compactNumber(d.add)} −${compactNumber(d.del)}` : ""}`}>
-            <span role="listitem" aria-label={`${longDay(d.day)}: ${d.commits} commits, ${d.add} lines added, ${d.del} removed`} className="flex h-full min-w-0 flex-1 items-end rounded-[3px] hover:bg-accent/60">
+            <span role="listitem" aria-label={`${longDay(d.day)}: ${d.commits} commits, ${d.add} lines added, ${d.del} removed`} className={sx(paint.s12)}>
               <span
-                className={cn("block w-full rounded-t-[4px] rounded-b-[1px]", d.commits ? (i === days.length - 1 ? "bg-info" : "bg-info/55") : "bg-muted")}
+                className={[sx(paint.n0), d.commits ? i === days.length - 1 ? sx(paint.n1) : sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")}
                 style={{ height: d.commits ? `${Math.max(6, (d.commits / max) * 100)}%` : 2 }}
               />
             </span>
           </Tip>
         ))}
       </div>
-      <div className="flex gap-[2px] text-[10px] text-muted-foreground" aria-hidden>
+      <div className={sx(paint.s15)} aria-hidden>
         {days.map((d) => (
-          <span key={d.day} className="flex-1 text-center">
+          <span key={d.day} className={sx(paint.s16)}>
             {weekday(d.day)}
           </span>
         ))}
@@ -171,11 +343,11 @@ function Bars({ days }: { days: Day[] }) {
 
 function ChartSkeleton() {
   return (
-    <div className="flex h-full flex-col gap-2 px-2 pb-1" role="status" aria-busy="true" aria-label="Loading">
-      <WidgetSkeleton rows={1} className="-mx-2" />
-      <div className="flex flex-1 items-end gap-[2px]">
+    <div className={sx(paint.s17)} role="status" aria-busy="true" aria-label="Loading">
+      <WidgetSkeleton rows={1} className={sx(paint.s18)} />
+      <div className={sx(paint.s19)}>
         {Array.from({ length: DAYS }, (_, i) => (
-          <span key={i} className="flex-1 animate-pulse rounded-t-[4px] bg-muted motion-reduce:animate-none" style={{ height: `${20 + ((i * 37) % 60)}%` }} />
+          <span key={i} className={[sx(paint.s20), "burf-pulse"].filter(Boolean).join(" ")} style={{ height: `${20 + ((i * 37) % 60)}%` }} />
         ))}
       </div>
     </div>
