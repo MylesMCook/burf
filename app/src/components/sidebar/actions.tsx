@@ -39,6 +39,7 @@ import { type ComponentProps, createContext, type KeyboardEvent, type MouseEvent
 
 import { EditorMenuItems } from "@/components/editors/editor-menu";
 import { AutoFixItems } from "@/components/sidebar/autofix-items";
+import { rowMarker } from "@/components/sidebar/row-marker.stylex";
 import { boxHasRuns } from "@/lib/runs";
 import { SessionActionItems } from "@/components/orchestrate/session-actions";
 import { confirm, copy } from "@/components/sidebar/confirm";
@@ -366,7 +367,7 @@ function HostedRow({ host, items, children, marker, look }: { host: RowMenuHost;
     [host],
   );
   const arm = armed ? undefined : () => setArmed(true);
-  const painted = stylex.props(paint.s4, look);
+  const painted = stylex.props(paint.s4, look, rowMarker);
   return (
     <div ref={watch} data-row-menu={id} onPointerEnter={arm} onFocus={arm} className={[painted.className, marker].filter(Boolean).join(" ") || undefined} style={painted.style}>
       <ArmedContext.Provider value={armed}>{children}</ArmedContext.Provider>
@@ -375,7 +376,7 @@ function HostedRow({ host, items, children, marker, look }: { host: RowMenuHost;
 }
 
 function OwnContextRow({ items, children, marker, look }: { items: () => Action[]; children: ReactNode; marker?: string; look?: stylex.CompiledStyles | null }) {
-  const painted = stylex.props(paint.s5, look);
+  const painted = stylex.props(paint.s5, look, rowMarker);
   return (
     <ContextMenu>
       <ContextMenuTrigger

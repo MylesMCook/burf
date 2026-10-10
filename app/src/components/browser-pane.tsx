@@ -687,7 +687,7 @@ const paint = stylex.create({
     maxWidth: "28rem",
   },
   s77: {
-    color: "var(--color-emerald-800)",
+    color: "var(--success-foreground)",
   },
   s78: {
     maxWidth: "20rem",

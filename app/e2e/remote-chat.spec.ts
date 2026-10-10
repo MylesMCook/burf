@@ -1077,7 +1077,8 @@ test("the worktree composer is the way to start an agent", async ({ app }) => {
     await openWorktree(app);
     await expect(app.page.getByTestId("task-composer").getByRole("textbox", { name: "What should your agents work on?" })).toBeVisible();
     await expect(app.page.getByRole("button", { name: /^New (Codex|Custom Codex|Claude Code)$/ })).toHaveCount(0);
-    await expect(app.page.getByRole("button", { name: /^New shell ⌘T$/ })).toBeVisible();
+    const shell = app.page.getByRole("button", { name: /^New shell (⌘T|Ctrl\+T)$/ });
+    await expect(shell).toBeVisible();
     await app.page.getByRole("button", { name: "New tab", exact: true }).click();
     await expect(app.page.getByRole("option", { name: "Codex", exact: true })).toHaveCount(0);
     await expect(app.page.getByRole("option", { name: "Custom Codex", exact: true })).toHaveCount(0);

@@ -19,6 +19,7 @@ import { memo, useMemo, useState } from "react";
 import { AgentIcon, BoxStateDot, StateGlyph } from "@/components/agent-glyph";
 import { type Action, Armed, boxActions, useArmed, ContextRow, DotsMenu, newSection, projectActions, projectGroupActions, worktreeActions } from "@/components/sidebar/actions";
 import { confirm } from "@/components/sidebar/confirm";
+import { rowMarker } from "@/components/sidebar/row-marker.stylex";
 import { type Project, projectActions as groupActions, useProjects } from "@/lib/project-groups";
 import { Tip } from "@/components/tip";
 import { Spinner } from "@/components/ui/spinner";
@@ -365,7 +366,8 @@ const paint = stylex.create({
     "pointerEvents": {
       "default": "none",
       ":focus-within": "auto",
-      ":is(.group\\/row:hover &)": "auto",
+      [stylex.when.ancestor(":focus-within", rowMarker)]: "auto",
+      [stylex.when.ancestor(":hover", rowMarker)]: "auto",
       ":has([data-popup-open])": "auto",
     },
     "position": "absolute",
@@ -381,7 +383,8 @@ const paint = stylex.create({
     "opacity": {
       "default": 0,
       ":focus-within": 1,
-      ":is(.group\\/row:hover &)": 1,
+      [stylex.when.ancestor(":focus-within", rowMarker)]: 1,
+      [stylex.when.ancestor(":hover", rowMarker)]: 1,
       ":has([data-popup-open])": 1,
     },
     "transitionProperty": "opacity",
@@ -470,7 +473,8 @@ const paint = stylex.create({
   s60: {
     "opacity": {
       "default": 0,
-      ":is(.group\\/row:hover &)": 1,
+      [stylex.when.ancestor(":focus-within", rowMarker)]: 1,
+      [stylex.when.ancestor(":hover", rowMarker)]: 1,
       ":has([data-popup-open])": 1,
     },
   },
@@ -1235,9 +1239,9 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
         const key = `section:${name}`;
         const closed = prefs.collapsed[key] ?? false;
         return (
-          <div key={name} {...drop(name)} className={[sx(paint.s52), over === name && sx(paint.s53)].filter(Boolean).join(" ")}>
+          <div key={name} role="group" aria-label={name} {...drop(name)} className={[sx(paint.s52), over === name && sx(paint.s53)].filter(Boolean).join(" ")}>
             <ContextRow items={() => sectionActions(name)}>
-              <div className={[sx(paint.s54), "group/row"].filter(Boolean).join(" ")}>
+              <div className={[sx(paint.s54, rowMarker), "group/row"].filter(Boolean).join(" ")}>
                 <button
                   type="button"
                   onClick={() => update({ collapsed: { ...prefs.collapsed, [key]: !closed } })}

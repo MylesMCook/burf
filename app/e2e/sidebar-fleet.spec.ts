@@ -145,9 +145,12 @@ test("projects fold and open, and drag into a section", async ({ app }) => {
   // Dragged onto Personal, a project moves there (in the plain fixtures:
   // with hundreds of rows between them the drag would have to scroll).
   await app.open();
-  const personal = sidebar.locator("div.mt-2", { hasText: "Personal" });
+  await sidebar.getByRole("group", { name: "Work", exact: true }).getByRole("button", { name: /^Work(?: \d+)?$/ }).click();
+  const personal = sidebar.getByRole("group", { name: "Personal", exact: true });
   const evals = sidebar.locator("[draggable=true]", { hasText: "evals" });
   await expect(personal.locator("[draggable=true]", { hasText: "evals" })).toHaveCount(0);
+  await expect(evals).toBeInViewport();
+  await expect(personal.getByText("Drag a project here.")).toBeInViewport();
   await evals.dragTo(personal.getByText("Drag a project here."));
   await expect(personal.locator("[draggable=true]", { hasText: "evals" })).toBeVisible();
 });

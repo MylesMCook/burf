@@ -25,7 +25,7 @@ func uiStateFixture() *ClientUIState {
 
 func uiStateHandler(t *testing.T) (*Agent, http.Handler) {
 	t.Helper()
-	a := &Agent{cfg: Config{Dir: t.TempDir()}}
+	a := &Agent{cfg: Config{Dir: uiStateTestDir(t)}}
 	mux := http.NewServeMux()
 	a.uiStateRoutes(mux)
 	return a, a.ui("synthetic-ui-token", "127.0.0.1:1437", mux)
@@ -185,7 +185,7 @@ func TestClientUIStateRejectsLinkedAndNonRegularStateFiles(t *testing.T) {
 }
 
 func TestClientUIStateRejectsNonPrivateAndOversizedFiles(t *testing.T) {
-	dir := t.TempDir()
+	dir := uiStateTestDir(t)
 	path := filepath.Join(dir, clientUIStateFile)
 	data, _ := json.Marshal(uiStateFixture())
 	if err := os.WriteFile(path, data, 0o600); err != nil {
@@ -216,7 +216,7 @@ func TestClientUIStateRejectsNonPrivateAndOversizedFiles(t *testing.T) {
 }
 
 func TestClientUIStateReadersAlwaysSeeACompleteSnapshot(t *testing.T) {
-	dir := t.TempDir()
+	dir := uiStateTestDir(t)
 	state := uiStateFixture()
 	if err := saveClientUIState(dir, state); err != nil {
 		t.Fatal(err)

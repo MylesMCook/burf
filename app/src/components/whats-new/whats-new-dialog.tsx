@@ -475,7 +475,9 @@ function SpotlightCard({ open, release }: { open: boolean; release: Release }) {
                   <ChevronLeftIcon />
                 </Button></span>
                 {last ? (
-                  <DialogClose render={<span className={sx(paint.s28)}><Button size="sm" variant="ghost" /></span>}>Done</DialogClose>
+                  <span className={sx(paint.s28)}>
+                    <DialogClose render={<Button size="sm" variant="ghost" />}>Done</DialogClose>
+                  </span>
                 ) : (
                   <span className={sx(paint.s29)}><Button size="sm" variant="ghost"  onClick={() => step(1)}>
                     Next
