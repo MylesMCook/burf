@@ -273,7 +273,7 @@ export function BrowserSandboxCard({ box, worktree, full = false, className }: {
           <p className="flex items-center gap-1.5 text-muted-foreground text-xs">
             {flow.verifying ? (
               <>
-                <Spinner className="size-3" /> Starting Chromium on {box} to make sure…
+                <Spinner  size="sm"/> Starting Chromium on {box} to make sure…
               </>
             ) : (
               <>The setting is fixed, but Chromium still didn't start: {flow.verifyError}</>
@@ -309,7 +309,7 @@ export function BrowserSandboxCard({ box, worktree, full = false, className }: {
               </Button>
             )}
             <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
-              <Spinner className="size-3" /> Watching {box} for the change
+              <Spinner  size="sm"/> Watching {box} for the change
             </span>
           </div>
         )}

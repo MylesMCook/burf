@@ -37,8 +37,8 @@ export function HooksTable({ data, label, onAdd, onEdit, onDelete }: { data: Mac
         )
       ) : !data.file ? (
         <div className="space-y-2 px-4 py-3">
-          <Skeleton className="h-4 w-2/3" />
-          <Skeleton className="h-4 w-1/2" />
+          <div className="h-4 w-2/3"><Skeleton  /></div>
+          <div className="h-4 w-1/2"><Skeleton  /></div>
         </div>
       ) : hooks.length === 0 ? (
         <button type="button" onClick={onAdd} className="flex w-full items-center gap-2 px-4 py-3 text-left text-muted-foreground text-sm hover:bg-accent/40">

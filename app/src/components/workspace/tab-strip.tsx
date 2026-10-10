@@ -162,14 +162,14 @@ export function TabStrip() {
           {leaving && (
             <Tip label={leaving.script ? "The repo's archive script is running on the box. This worktree closes when it finishes, or stays if it fails." : "Waiting for the box."} side="bottom">
               <span role="status" className="flex items-center gap-1.5 rounded-lg bg-accent/70 px-2 py-0.5 text-foreground">
-                <Spinner className="size-3" />
+                <Spinner  size="sm"/>
                 {removalLabel(leaving)}
               </span>
             </Tip>
           )}
           {hereLeaving && !leaving && (
             <span role="status" className="flex items-center gap-1.5 rounded-lg bg-accent/70 px-2 py-0.5 text-foreground">
-              <Spinner className="size-3" />
+              <Spinner  size="sm"/>
               {removalLabel(hereLeaving)}
             </span>
           )}

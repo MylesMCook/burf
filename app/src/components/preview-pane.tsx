@@ -538,7 +538,7 @@ function PreviewBar({
       <OptionsMenu worktree={worktree} detected={detected} />
       <Tip label={canShoot ? "Screenshot of all frames" : "No frame is connected to take a picture of"} side="bottom">
         <ToolbarPrimitive.Button aria-label="Screenshot of all frames" disabled={!canShoot || shooting} onClick={onShot} className={cn(btn, quiet, "w-6.5 justify-center px-0")}>
-          {shooting ? <Spinner className="size-3.5" /> : <CameraIcon />}
+          {shooting ? <Spinner  size="md"/> : <CameraIcon />}
         </ToolbarPrimitive.Button>
       </Tip>
     </ToolbarPrimitive.Root>
@@ -863,12 +863,12 @@ function FrameTile({ frame: f, scale, src, host, strategy, root, allowed, status
           />
         ) : (
           <div className="flex size-full items-center justify-center bg-muted/60 text-muted-foreground">
-            <Spinner className="size-4 opacity-60" />
+            <Spinner  size="lg" soft/>
           </div>
         )}
         {allowed && status === "loading" && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/30">
-            <Spinner className="size-4 opacity-60" />
+            <Spinner  size="lg" soft/>
           </div>
         )}
       </div>

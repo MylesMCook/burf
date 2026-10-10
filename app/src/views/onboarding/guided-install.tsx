@@ -201,7 +201,7 @@ function PlanStage({ target, agents, onAgents, onStart, onClose }: { target: Ins
             {error && <p className="mt-2 text-destructive-foreground text-sm">{error}</p>}
             {!plan && !error && (
               <p className="mt-3 flex items-center gap-2 text-muted-foreground text-sm">
-                <Spinner className="size-3.5" /> Reading the plan…
+                <Spinner  size="md"/> Reading the plan…
               </p>
             )}
             {plan && (
@@ -566,7 +566,7 @@ function RunStage({
     </Badge>
   ) : busy ? (
     <span data-testid="install-status" className="flex items-center gap-1.5 text-muted-foreground text-xs">
-      <Spinner className="size-3" /> Installing
+      <Spinner  size="sm"/> Installing
     </span>
   ) : run.state === "failed" ? (
     <Badge variant="error" size="lg" data-testid="install-status">
@@ -640,7 +640,7 @@ export function StepIcon({ state }: { state: StepState }) {
       ) : state === "fail" ? (
         <XIcon className="size-3" strokeWidth={3} />
       ) : state === "running" ? (
-        <Spinner className="size-3" />
+        <Spinner  size="sm"/>
       ) : state === "skip" ? (
         <MinusIcon className="size-3" />
       ) : (
@@ -744,7 +744,7 @@ function Banner({ run, ready, readyLabel, onReady, onBack, agents }: { run: Inst
         </Button>
       </div>
     );
-  let icon: ReactNode = <Spinner className="size-3.5" />;
+  let icon: ReactNode = <Spinner  size="md"/>;
   let text: ReactNode = "Connecting…";
   let tone = "";
   if (run.waiting === "password") {
@@ -949,7 +949,7 @@ export function AddAgents({ box, open, onClose }: { box: string; open: boolean; 
                   {error && <p className="text-destructive-foreground text-sm">{error}</p>}
                   {!have && !error && (
                     <p className="flex items-center gap-2 text-muted-foreground text-sm">
-                      <Spinner className="size-3.5" /> Asking {box}…
+                      <Spinner  size="md"/> Asking {box}…
                     </p>
                   )}
                   {have && (

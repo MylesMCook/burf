@@ -236,7 +236,7 @@ function WorktreeRow({
           )}
           {leaving && (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-px text-[10px] text-muted-foreground">
-              <Spinner className="size-2.5" />
+              <Spinner  size="xs"/>
               {removalLabel(leaving)}
             </span>
           )}
@@ -383,7 +383,7 @@ function ProgressMark({ p }: { p?: RowProgress }) {
   if (!p) return <span />;
   const body =
     p.state === "running" ? (
-      <Spinner className="size-3.5" />
+      <Spinner  size="md"/>
     ) : p.state === "queued" ? (
       <span className="size-1.5 rounded-full bg-muted-foreground/40" />
     ) : p.state === "ok" ? (

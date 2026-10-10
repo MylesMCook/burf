@@ -198,7 +198,7 @@ function TerminalServices({ worktree: ref, own: { services, reload } }: { worktr
             ) : (
               <Tip label={`Start ${svc.title || svc.name}`}>
                 <Button size="icon-xs" variant="ghost" aria-label={`Start ${svc.title || svc.name}`} disabled={busy === svc.name} className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => void start(svc)}>
-                  {busy === svc.name ? <Spinner className="size-3" /> : <PlayIcon />}
+                  {busy === svc.name ? <Spinner  size="sm"/> : <PlayIcon />}
                 </Button>
               </Tip>
             )}

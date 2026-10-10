@@ -74,7 +74,7 @@ export function EditorsSettings() {
       {error && <ErrorText className="px-4 py-3 text-destructive-foreground text-sm" text={error} />}
       {!editors && !error && (
         <div className="flex items-center gap-2 px-4 py-3 text-muted-foreground text-sm">
-          <Spinner className="size-3.5" /> Looking for editors…
+          <Spinner  size="md"/> Looking for editors…
         </div>
       )}
       {editors && (
@@ -113,7 +113,7 @@ export function EditorsSettings() {
             </div>
             {!ready && (
               <Button size="sm" onClick={() => void write()} disabled={writing}>
-                {writing && <Spinner className="size-3.5" />} Write SSH configuration
+                {writing && <Spinner  size="md"/>} Write SSH configuration
               </Button>
             )}
           </div>

@@ -30,7 +30,7 @@ export function NetworksStep({ onPick }: { onPick(network: string): void }) {
       {error && <ErrorText className="text-destructive-foreground text-sm" text={error} />}
       {networks === undefined && !error ? (
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
-          <Spinner className="size-4" /> Loading…
+          <Spinner  size="lg"/> Loading…
         </div>
       ) : (
         networks &&
@@ -102,7 +102,7 @@ function SignIn({ existing, onJoined }: { existing: string[]; onJoined(network: 
       <p className="mt-0.5 text-muted-foreground text-xs">Name it however you like; it's how Burf refers to that tailnet. A Tailscale sign-in page opens in your browser.</p>
       {state === "waiting" ? (
         <div className="mt-3 flex items-center gap-3 text-sm">
-          <Spinner className="size-4" />
+          <Spinner  size="lg"/>
           <span className="min-w-0 flex-1 text-muted-foreground">{url ? "Waiting for you to approve the sign-in in your browser…" : "Starting…"}</span>
           {url && (
             <Button size="xs" variant="ghost" onClick={() => void openUrl(url)}>

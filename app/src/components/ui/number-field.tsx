@@ -125,7 +125,7 @@ export function NumberFieldScrubArea({
       data-slot="number-field-scrub-area"
       {...props}
     >
-      <Label className="cursor-ew-resize" htmlFor={context.fieldId}>
+      <Label drag htmlFor={context.fieldId}>
         {label}
       </Label>
       <NumberFieldPrimitive.ScrubAreaCursor className="drop-shadow-[0_1px_1px_#0008] filter">

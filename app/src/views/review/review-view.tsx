@@ -148,7 +148,7 @@ export function ReviewView() {
         />
       ) : !loaded ? (
         <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
-          <Spinner className="size-4" /> Reading each box's worktrees…
+          <Spinner  size="lg"/> Reading each box's worktrees…
         </div>
       ) : entries.length === 0 ? null : (
         <div className="flex min-h-0 flex-1">
@@ -169,9 +169,9 @@ export function ReviewView() {
               ).map(([keys, label]) => (
                 <span key={label} className={cn("inline-flex items-center gap-1", label === "discard" && "max-xl:hidden")}>
                   {keys.split(" ").map((k) => (
-                    <Kbd key={k} className="h-4 min-w-4 px-1 text-[10px]">
+                    <span className="h-4 min-w-4 px-1 text-[10px]"><Kbd key={k}>
                       {k}
-                    </Kbd>
+                    </Kbd></span>
                   ))}
                   {label}
                 </span>

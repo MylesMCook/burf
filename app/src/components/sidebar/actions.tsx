@@ -120,7 +120,7 @@ export function ActionItems({ items: from }: { items: Action[] | (() => Action[]
                 {a.icon}
                 <span className="flex-1">{a.label}</span>
                 {a.hint && <span className="text-muted-foreground text-xs">{a.hint}</span>}
-                {a.shortcut && <Kbd className="ml-2">{a.shortcut}</Kbd>}
+                {a.shortcut && <span className="ml-2"><Kbd>{a.shortcut}</Kbd></span>}
               </MenuItem>
             );
         }
@@ -474,7 +474,7 @@ function RunItems({ box, loc, wt }: { box: string; loc: Location; wt: Worktree }
   if (!list) {
     return (
       <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground text-xs">
-        <Spinner className="size-3" /> Loading…
+        <Spinner  size="sm"/> Loading…
       </div>
     );
   }

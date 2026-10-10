@@ -320,7 +320,7 @@ function StopRow({ row, ticked, progress, locked, cleanup, onToggle }: { row: Ro
       <label className={cn("flex items-center gap-2.5 px-3 py-1.5 text-sm", !locked && "cursor-pointer hover:bg-accent/50", !ticked && "text-muted-foreground")}>
         <span className="flex w-4 shrink-0 justify-center">
           {progress?.state === "running" ? (
-            <Spinner className="size-3.5" />
+            <Spinner  size="md"/>
           ) : progress?.state === "ok" ? (
             <CheckIcon className="size-3.5 text-success" />
           ) : progress?.state === "failed" ? (

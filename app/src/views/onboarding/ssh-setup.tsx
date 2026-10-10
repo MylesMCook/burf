@@ -134,7 +134,7 @@ export function SshSetup({
         {host.trim() ? (
           plan === "loading" ? (
             <>
-              <Spinner className="size-3" /> Reading your SSH setup…
+              <Spinner  size="sm"/> Reading your SSH setup…
             </>
           ) : plan ? (
             <>
@@ -193,7 +193,7 @@ export function SshSetup({
             </li>
           ))}
           <li className="flex items-center gap-1.5 px-2 pt-1 pb-0.5 text-[11px] text-muted-foreground">
-            <Kbd>⇥</Kbd> complete <Kbd className="ms-1">↵</Kbd> set up
+            <Kbd>⇥</Kbd> complete <span className="ms-1"><Kbd>↵</Kbd></span> set up
           </li>
         </ul>
       )}

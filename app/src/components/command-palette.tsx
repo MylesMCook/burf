@@ -396,7 +396,7 @@ export function CommandPalette() {
                         <span className="truncate">{item.label}</span>
                         {item.detail && <span className="ml-auto min-w-0 shrink truncate text-muted-foreground text-xs">{item.detail}</span>}
                         {item.trailing}
-                        {item.shortcut && <Kbd className={item.detail ? "" : "ml-auto"}>{item.shortcut}</Kbd>}
+                        {item.shortcut && <span className={item.detail ? "" : "ml-auto"}><Kbd>{item.shortcut}</Kbd></span>}
                       </CommandItem>
                     )}
                   </CommandCollection>

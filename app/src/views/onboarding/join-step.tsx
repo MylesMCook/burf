@@ -281,7 +281,7 @@ function BoxRow({
     <li className="flex items-center gap-3 px-3.5 py-2.5">
       <span className="flex size-4 shrink-0 items-center justify-center">
         {pairing || signing ? (
-          <Spinner className="size-4 text-muted-foreground" />
+          <Spinner  size="lg" muted/>
         ) : settled(r) ? (
           <CheckIcon aria-label="Paired" className="size-4 text-success-foreground" />
         ) : r.status === "needs-network" ? (

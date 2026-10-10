@@ -143,8 +143,8 @@ export function ProjectView({ box, location }: { box: string; location: string }
             {error && <ErrorText className="rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-destructive-foreground text-sm" text={error} />}
             {!config ? (
               <div className="space-y-4">
-                <Skeleton className="h-40 rounded-xl" />
-                <Skeleton className="h-56 rounded-xl" />
+                <div className="h-40"><Skeleton  shape="lg" /></div>
+                <div className="h-56"><Skeleton  shape="lg" /></div>
               </div>
             ) : (
               <>

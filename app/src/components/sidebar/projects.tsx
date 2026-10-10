@@ -511,7 +511,7 @@ function LeavingRow({ wt, label, script }: { wt: Worktree; label: string; script
     <SidebarMenuSubItem>
       <Tip side="right" delay={400} label={script ? "The repo's archive script is running on the box. The worktree goes when it finishes, or comes back if it fails." : "Waiting for the box."}>
         <div aria-disabled="true" aria-busy="true" data-leaving="" className="flex h-side-row w-full cursor-default items-center gap-2 rounded-lg px-2 text-[13px] text-muted-foreground">
-          <Spinner className="size-3.5 shrink-0 opacity-70" />
+          <Spinner size="md" soft />
           <span className="min-w-0 truncate line-through decoration-muted-foreground/40 opacity-70">{worktreeLabel(wt)}</span>
           <span className="ml-auto shrink-0 text-[10px]">{label}</span>
         </div>

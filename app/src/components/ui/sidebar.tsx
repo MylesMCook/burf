@@ -392,17 +392,9 @@ export function SidebarFooter({
   );
 }
 
-export function SidebarSeparator({
-  className,
-  ...props
-}: React.ComponentProps<typeof Separator>): React.ReactElement {
+export function SidebarSeparator(props: React.ComponentProps<typeof Separator>): React.ReactElement {
   return (
-    <Separator
-      className={cn("mx-2 w-auto bg-sidebar-border", className)}
-      data-sidebar="separator"
-      data-slot="sidebar-separator"
-      {...props}
-    />
+    <Separator data-sidebar="separator" data-slot="sidebar-separator" tone="sidebar" {...props} />
   );
 }
 
@@ -656,20 +648,17 @@ export function SidebarMenuSkeleton({
       {...props}
     >
       {showIcon && (
-        <Skeleton
-          className="size-4 rounded-lg"
+        <div className="size-4"><Skeleton
+         
           data-sidebar="menu-skeleton-icon"
-        />
+         shape="lg" /></div>
       )}
-      <Skeleton
+      <div
         className="h-4 max-w-(--skeleton-width) flex-1"
-        data-sidebar="menu-skeleton-text"
-        style={
-          {
-            "--skeleton-width": width,
-          } as React.CSSProperties
-        }
-      />
+        style={{ "--skeleton-width": width } as React.CSSProperties}
+      >
+        <Skeleton data-sidebar="menu-skeleton-text" />
+      </div>
     </div>
   );
 }

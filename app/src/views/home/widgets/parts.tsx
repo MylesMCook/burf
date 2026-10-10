@@ -54,9 +54,9 @@ export function WidgetSkeleton({ rows = 3, className }: { rows?: number; classNa
     <div className={cn("flex flex-col", className)} role="status" aria-busy="true" aria-label="Loading">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex h-9 items-center gap-2.5 px-2">
-          <Skeleton className="size-3.5 rounded-full" />
-          <Skeleton className="h-3 rounded-sm" style={{ width: `${[62, 48, 70, 54, 40, 66, 58, 44][i % 8]}%` }} />
-          <Skeleton className="ml-auto h-3 w-8 rounded-sm" />
+          <div className="size-3.5"><Skeleton  shape="full" /></div>
+          <div className="h-3" style={{ width: `${[62, 48, 70, 54, 40, 66, 58, 44][i % 8]}%` }}><Skeleton /></div>
+          <div className="ml-auto h-3 w-8"><Skeleton  /></div>
         </div>
       ))}
     </div>

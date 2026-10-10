@@ -152,7 +152,7 @@ function MachineList({
   if (found.state === "loading") {
     return (
       <div className="flex h-24 items-center justify-center gap-2 rounded-lg border text-muted-foreground text-sm">
-        <Spinner className="size-4" /> Listing machines…
+        <Spinner  size="lg"/> Listing machines…
       </div>
     );
   }
@@ -367,7 +367,7 @@ function MachineSetup({
           </>
         ) : plan === "loading" ? (
           <>
-            <Spinner className="size-3" /> Reading your SSH setup…
+            <Spinner  size="sm"/> Reading your SSH setup…
           </>
         ) : plan ? (
           <>

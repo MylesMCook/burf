@@ -109,7 +109,7 @@ function MissingScreen({ screen }: { screen: string }) {
   if (loading || (ownerId && info === undefined)) {
     return (
       <Empty className="h-full">
-        <Spinner className="size-5 text-muted-foreground" />
+        <Spinner size="lg" muted />
         <EmptyDescription>Loading plugins…</EmptyDescription>
       </Empty>
     );

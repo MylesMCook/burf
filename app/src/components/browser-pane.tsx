@@ -213,7 +213,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
             <ArrowRightIcon />
           </ToolButton>
           <ToolButton label="Reload" disabled={!url} onClick={reload}>
-            {loading ? <Spinner className="size-3.5" /> : <RotateCwIcon />}
+            {loading ? <Spinner  size="md"/> : <RotateCwIcon />}
           </ToolButton>
           <div className="flex h-6.5 min-w-0 flex-1 items-center rounded-md border bg-muted/50 focus-within:border-ring">
             {where && (
@@ -920,7 +920,7 @@ function AgentView({ ctx, visible, onUrl, onSize }: { ctx: BrowserContext; visib
       ) : error ? (
         <p className="max-w-xs text-center text-muted-foreground text-xs">{error}</p>
       ) : (
-        <Spinner className="size-4" />
+        <Spinner  size="lg"/>
       )}
     </div>
   );

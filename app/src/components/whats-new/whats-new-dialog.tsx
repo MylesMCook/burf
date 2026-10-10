@@ -48,7 +48,7 @@ function Hint({ item, where, className }: { item: WhatsNewItem; where: boolean; 
   if (!item.keys) return null;
   return (
     <span className={cn("flex items-center gap-1.5 text-muted-foreground text-xs", className)}>
-      <Kbd className="text-foreground/80">{item.keys}</Kbd>
+      <span className="text-foreground/80"><Kbd>{item.keys}</Kbd></span>
       {where && item.where}
     </span>
   );

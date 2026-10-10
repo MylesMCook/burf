@@ -224,7 +224,7 @@ export function WorktreesView() {
         {!loaded ? (
           <div className="space-y-2 px-6 pt-4">
             {[0, 1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-10" />
+              <div className="h-10"><Skeleton key={i}  /></div>
             ))}
           </div>
         ) : flat.length === 0 ? (

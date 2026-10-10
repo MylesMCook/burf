@@ -130,7 +130,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
           {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} onLoading={compare ? (l) => pageLoading(pane.id, l) : undefined} />}
           {c.kind === "preview" && <PreviewPane url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "preview", url })} />}
           {c.kind === "file" && (
-            <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Spinner className="size-4 text-muted-foreground" /></div>}>
+            <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Spinner  size="lg" muted/></div>}>
               <FilePane path={c.path} owner={owner} visible={visible} onClose={close} />
             </Suspense>
           )}
@@ -144,7 +144,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
           {c.kind === "panel" && <PanelPane wsKey={owner} plugin={c.plugin} panel={c.panel} />}
           {c.kind === "starting" && (
             <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
-              <Spinner className="size-4" />
+              <Spinner  size="lg"/>
               Starting {c.label}…
             </div>
           )}

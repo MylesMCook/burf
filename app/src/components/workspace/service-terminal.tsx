@@ -85,7 +85,7 @@ export function ServiceStopped({ box, session }: { box: string; session: Session
           <span className="font-medium">{name}</span> <span className="text-muted-foreground">stopped</span>
         </span>
         <Button size="xs" disabled={busy || !where} onClick={() => void start()}>
-          {busy ? <Spinner className="size-3" /> : <PlayIcon />}
+          {busy ? <Spinner  size="sm"/> : <PlayIcon />}
           Start
         </Button>
       </div>

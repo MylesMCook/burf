@@ -99,7 +99,7 @@ export function LoopsPanel() {
     return (
       <div ref={ref} style={{ bottom, right: `calc(${GAP}px + var(--berth-dock-w, 0px))` }} className="fixed z-40" role="region" aria-label="Loops">
         <Button size="sm" variant="outline" className="rounded-full bg-popover shadow-lg/5" onClick={() => setFolded(false)} aria-expanded={false}>
-          {live ? <Spinner className="size-3.5" /> : <RepeatIcon />}
+          {live ? <Spinner  size="md"/> : <RepeatIcon />}
           {`${loops.length} loop${loops.length === 1 ? "" : "s"}${live ? ` · ${live} running` : ""}`}
           <ChevronUpIcon />
         </Button>
@@ -232,7 +232,7 @@ function LoopCard({ loop: l }: { loop: Loop }) {
 }
 
 function StatusIcon({ loop: l }: { loop: Loop }) {
-  if (isLive(l)) return <Spinner className="size-3.5" />;
+  if (isLive(l)) return <Spinner  size="md"/>;
   if (l.outcome === "passed") return <CheckIcon className="size-3.5 text-success" />;
   if (l.outcome === "needs-you") return <HandIcon className="size-3.5 text-warning" />;
   if (l.outcome === "cancelled") return <RepeatIcon className="size-3.5 text-muted-foreground" />;

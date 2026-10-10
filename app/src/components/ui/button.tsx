@@ -73,10 +73,7 @@ export function Button({
       <>
         {children}
         {loading && (
-          <Spinner
-            className="pointer-events-none absolute"
-            data-slot="button-loading-indicator"
-          />
+          <Spinner cover data-slot="button-loading-indicator" />
         )}
       </>
     ),

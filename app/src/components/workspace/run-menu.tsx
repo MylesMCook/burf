@@ -121,7 +121,7 @@ export function RunMenu() {
           onClick={() => primary && busy === undefined && !away && onPrimary()}
           className="flex items-center gap-1.5 rounded-l-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground aria-disabled:opacity-45 aria-disabled:hover:bg-transparent"
         >
-          {busy ? <Spinner className="size-3" /> : running ? <span className="size-1.5 rounded-full bg-success" /> : <PlayIcon className="size-3" />}
+          {busy ? <Spinner  size="sm"/> : running ? <span className="size-1.5 rounded-full bg-success" /> : <PlayIcon className="size-3" />}
           {running ? primary.name : "Run"}
         </button>
       </Tip>
@@ -136,7 +136,7 @@ export function RunMenu() {
         <MenuPopup align="end" width={menuWidths.w64}>
           {services === undefined && (
             <div className="flex items-center gap-2 px-2 py-2 text-muted-foreground text-xs">
-              <Spinner className="size-3" /> Loading services…
+              <Spinner  size="sm"/> Loading services…
             </div>
           )}
           {services?.length === 0 && (

@@ -84,7 +84,7 @@ function RowView({ row, index, active, current, filter, onPick }: { row: TreeRow
       ))}
       {dir ? (
         <span className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
-          {row.loading ? <Spinner className="size-3" /> : row.empty ? null : <ChevronRightIcon className={cn("size-3.5 transition-transform duration-100", row.open && "rotate-90")} />}
+          {row.loading ? <Spinner  size="sm"/> : row.empty ? null : <ChevronRightIcon className={cn("size-3.5 transition-transform duration-100", row.open && "rotate-90")} />}
         </span>
       ) : (
         <FileGlyph path={row.path} className="size-3.5" />
@@ -198,7 +198,7 @@ function NewFile({ ws, wref, dir, onDone }: { ws: string; wref: WorktreeRef; dir
           autoCorrect="off"
           className="min-w-0 flex-1 bg-transparent font-mono text-[12px] outline-none placeholder:text-muted-foreground/70"
         />
-        {busy && <Spinner className="size-3" />}
+        {busy && <Spinner  size="sm"/>}
       </div>
       {error ? (
         <p role="alert" className="mt-1 text-destructive-foreground text-[11px] leading-snug">
@@ -328,7 +328,7 @@ export function TreePanel({ ws, wref, current, onOpen, onClose, className }: { w
       >
         {filter === "all" && loading && !rows.length ? (
           <div className="flex justify-center py-6">
-            <Spinner className="size-4 text-muted-foreground" />
+            <Spinner  size="lg" muted/>
           </div>
         ) : filter === "all" && error ? (
           <p className="px-2 py-6 text-center text-muted-foreground text-xs">{error}</p>

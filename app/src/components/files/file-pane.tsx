@@ -91,7 +91,7 @@ export function FilePane({ path, owner, visible, onClose }: Props) {
   if (!doc || doc.state === "loading")
     return (
       <div className="flex flex-1 items-center justify-center bg-background" data-testid="file-pane" data-state="loading">
-        <Spinner className="size-4 text-muted-foreground" />
+        <Spinner  size="lg" muted/>
       </div>
     );
 
@@ -105,7 +105,7 @@ export function FilePane({ path, owner, visible, onClose }: Props) {
   else if (showCompare) body = <CompareMine doc={doc} />;
   else
     body = (
-      <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Spinner className="size-4 text-muted-foreground" /></div>}>
+      <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Spinner  size="lg" muted/></div>}>
         <CodeEditor path={path} text={doc.text} onChange={(t) => edit(key, t)} onSave={() => void save(key)} changes={marks} conflictLines={conflicted} revealLine={hunks[at]?.from} reveal={reveal} wrap={wrap} className="min-h-0 min-w-0 flex-1" />
       </Suspense>
     );
@@ -293,7 +293,7 @@ function CompareMine({ doc }: { doc: Doc }) {
         </span>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
-        {diffs && "error" in diffs ? <ErrorText text={diffs.error} className="m-6 text-muted-foreground text-xs" /> : fd && diffs && "mod" in diffs ? <diffs.mod.Diff fileDiff={fd} layout="split" dark={dark} /> : <Spinner className="m-6 size-4" />}
+        {diffs && "error" in diffs ? <ErrorText text={diffs.error} className="m-6 text-muted-foreground text-xs" /> : fd && diffs && "mod" in diffs ? <diffs.mod.Diff fileDiff={fd} layout="split" dark={dark} /> : <span className="m-6 inline-flex"><Spinner size="lg" /></span>}
       </div>
     </div>
   );
@@ -359,7 +359,7 @@ function ImageView({ doc }: { doc: Doc }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="file-image">
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-[repeating-conic-gradient(color-mix(in_oklab,var(--muted)_70%,transparent)_0%_25%,transparent_0%_50%)] bg-size-[16px_16px] p-8">
-        {err ? <ErrorText text={err} className="text-muted-foreground text-xs" /> : url ? <img src={url} alt={fileName(doc.path)} onLoad={(e) => setDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} className="max-h-full max-w-full rounded-sm object-contain shadow-sm" /> : <Spinner className="size-4 text-muted-foreground" />}
+        {err ? <ErrorText text={err} className="text-muted-foreground text-xs" /> : url ? <img src={url} alt={fileName(doc.path)} onLoad={(e) => setDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} className="max-h-full max-w-full rounded-sm object-contain shadow-sm" /> : <Spinner  size="lg" muted/>}
       </div>
       <div className="flex h-7 shrink-0 items-center gap-3 border-t px-3 text-[11px] text-muted-foreground tabular-nums">
         <span>{doc.image?.replace("image/", "").toUpperCase()}</span>

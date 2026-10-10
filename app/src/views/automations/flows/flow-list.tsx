@@ -100,7 +100,7 @@ export function FlowList({
 
       {boxes.map((box) => {
         const bf = byBox[box];
-        if (!bf) return <Skeleton key={box} className="h-24 rounded-xl" />;
+        if (!bf) return <div className="h-24"><Skeleton key={box}  shape="lg" /></div>;
         if (bf.error)
           return (
             <section key={box} className="rounded-xl border px-4 py-3">

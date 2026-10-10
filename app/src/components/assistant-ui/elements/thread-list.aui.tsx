@@ -310,10 +310,10 @@ const ThreadListSkeleton: FC = () => {
           data-slot="aui_thread-list-skeleton-wrapper"
           className="flex h-8 items-center px-2.5"
         >
-          <Skeleton
+          <div className="h-3.5 w-full"><Skeleton
             data-slot="aui_thread-list-skeleton"
-            className="h-3.5 w-full"
-          />
+           
+           /></div>
         </div>
       ))}
     </div>

@@ -287,7 +287,7 @@ function Side({ wsKey, tab, i, pane, focused, shown, other, stats, preview, tiny
           <span className={cn("shrink-0 tabular-nums", faster ? "text-success-foreground" : "text-muted-foreground")}>
             {ms?.since ? (
               <span className="flex items-center gap-1">
-                <Spinner className="size-3" /> loading
+                <Spinner  size="sm"/> loading
               </span>
             ) : ms?.ms !== undefined ? (
               `${ms.ms.toLocaleString()} ms${faster ? " · faster" : ""}`

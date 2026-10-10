@@ -121,7 +121,7 @@ function Results() {
       <StepHeader
         title={
           <span className="flex min-w-0 items-center gap-2.5">
-            {run.done ? problems ? <AlertTriangleIcon aria-hidden className="size-4 shrink-0 text-warning" /> : <CheckIcon aria-hidden className="size-4 shrink-0 text-success" /> : <Spinner className="size-4 shrink-0" />}
+            {run.done ? problems ? <AlertTriangleIcon aria-hidden className="size-4 shrink-0 text-warning" /> : <CheckIcon aria-hidden className="size-4 shrink-0 text-success" /> : <Spinner size="lg" />}
             <span className="min-w-0 truncate">{run.title}</span>
           </span>
         }
@@ -192,7 +192,7 @@ function ResultRow({ row, onQueue }: { row: RunRow; onQueue(): void }) {
         <span className="min-w-0 truncate font-medium text-[0.8125rem]">{title}</span>
         <span className="min-w-0 shrink truncate text-muted-foreground text-xs">{detail}</span>
         <span className={cn("ml-auto flex shrink-0 items-center gap-1 text-xs", info.className)}>
-          {info.spin ? <Spinner className="size-3" /> : info.Icon && <info.Icon className="size-3.5" />}
+          {info.spin ? <Spinner  size="sm"/> : info.Icon && <info.Icon className="size-3.5" />}
           {info.label}
         </span>
         {row.state === "offline" && (

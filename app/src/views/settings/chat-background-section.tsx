@@ -457,7 +457,7 @@ function Generate({ onClose }: { onClose(): void }) {
       </div>
       {gens === "loading" ? (
         <div className="flex items-center gap-2 py-2 text-muted-foreground text-xs">
-          <Spinner className="size-3.5" /> Looking for an image generator on this computer…
+          <Spinner  size="md"/> Looking for an image generator on this computer…
         </div>
       ) : gens instanceof Error || !gen || !ready ? (
         <Alert variant="warning">

@@ -82,22 +82,10 @@ export function ToggleGroupItem({
 }
 
 export function ToggleGroupSeparator({
-  className,
   orientation = "vertical",
   ...props
-}: {
-  className?: string;
-} & React.ComponentProps<typeof Separator>): React.ReactElement {
-  return (
-    <Separator
-      className={cn(
-        "pointer-events-none relative bg-input before:absolute before:inset-0 dark:before:bg-input/32",
-        className,
-      )}
-      orientation={orientation}
-      {...props}
-    />
-  );
+}: React.ComponentProps<typeof Separator>): React.ReactElement {
+  return <Separator orientation={orientation} tone="input" {...props} />;
 }
 
 export { ToggleGroupPrimitive };

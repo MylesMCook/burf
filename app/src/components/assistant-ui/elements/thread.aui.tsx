@@ -194,16 +194,16 @@ const ThreadHistorySkeleton: FC = () => (
     className="animate-in fade-in fill-mode-both flex flex-col gap-y-6 [animation-delay:150ms] [animation-duration:200ms]"
   >
     <span className="sr-only">Loading conversation</span>
-    <Skeleton className="ml-auto h-9 w-2/5 rounded-xl motion-reduce:animate-none" />
+    <div className="ml-auto h-9 w-2/5"><Skeleton  shape="lg" /></div>
     <div className="flex flex-col gap-y-2">
-      <Skeleton className="h-4 w-11/12 motion-reduce:animate-none" />
-      <Skeleton className="h-4 w-4/5 motion-reduce:animate-none" />
-      <Skeleton className="h-4 w-3/5 motion-reduce:animate-none" />
+      <div className="h-4 w-11/12"><Skeleton  /></div>
+      <div className="h-4 w-4/5"><Skeleton  /></div>
+      <div className="h-4 w-3/5"><Skeleton  /></div>
     </div>
-    <Skeleton className="ml-auto h-9 w-1/3 rounded-xl motion-reduce:animate-none" />
+    <div className="ml-auto h-9 w-1/3"><Skeleton  shape="lg" /></div>
     <div className="flex flex-col gap-y-2">
-      <Skeleton className="h-4 w-10/12 motion-reduce:animate-none" />
-      <Skeleton className="h-4 w-2/3 motion-reduce:animate-none" />
+      <div className="h-4 w-10/12"><Skeleton  /></div>
+      <div className="h-4 w-2/3"><Skeleton  /></div>
     </div>
   </div>
 );

@@ -82,7 +82,7 @@ export function AppSidebar() {
           >
             <SearchIcon className="size-3.5" />
             <span className="flex-1 text-left">Search</span>
-            <Kbd className="h-4.5 text-[10px]">⌘K</Kbd>
+            <span className="h-4.5 text-[10px]"><Kbd>⌘K</Kbd></span>
           </button>
           <PlacesNav />
         </div>

@@ -158,7 +158,7 @@ export function useComposerMenu({ box, session, agent, text, setText, side = "to
         </OptionList>
       ) : loadingFiles ? (
         <MenuEmpty>
-          <Spinner className="size-3.5" /> Looking through the worktree…
+          <Spinner  size="md"/> Looking through the worktree…
         </MenuEmpty>
       ) : (
         <MenuEmpty>No file matches @{trigger?.query}.</MenuEmpty>

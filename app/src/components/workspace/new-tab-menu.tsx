@@ -172,7 +172,7 @@ export function NewTabMenu() {
                       {item.icon}
                       <span className="truncate">{item.label}</span>
                       {item.detail && <span className="ml-auto max-w-40 truncate text-muted-foreground text-xs">{item.detail}</span>}
-                      {item.shortcut && <Kbd className="ml-auto">{item.shortcut}</Kbd>}
+                      {item.shortcut && <span className="ml-auto"><Kbd>{item.shortcut}</Kbd></span>}
                     </CommandItem>
                   )}
                 </CommandCollection>

@@ -62,7 +62,7 @@ export function StatusBar() {
       )}
       {connection.state === "offline" && restarting ? (
         <span className="flex items-center gap-1.5">
-          <Spinner className="size-3" />
+          <Spinner  size="sm"/>
           Restarting the Burf agent…
         </span>
       ) : connection.state === "offline" ? (
@@ -214,7 +214,7 @@ function OutdatedItem() {
   if (busy) {
     return (
       <Item className="text-foreground" tip="Installing Burf's bundled box agent. Settings → Boxes shows each box's output." onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
-        <Spinner className="size-3" />
+        <Spinner  size="sm"/>
         Updating {running ?? "boxes"}… {progress && <span className="text-muted-foreground tabular-nums">{progress}</span>}
       </Item>
     );

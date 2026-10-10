@@ -420,9 +420,9 @@ function PendingCell({ p }: { p: Placed }) {
   return (
     <div role="listitem" data-widget={p.id} className={cn("relative min-h-0 min-w-0", SPAN[p.size] ?? SPAN.m)}>
       <div className="flex size-full flex-col gap-3 rounded-lg border bg-card p-3" role="status" aria-busy="true" aria-label="Loading">
-        <Skeleton className="h-3.5 w-28" />
-        <Skeleton className="h-3 w-3/4" />
-        <Skeleton className="h-3 w-1/2" />
+        <div className="h-3.5 w-28"><Skeleton  /></div>
+        <div className="h-3 w-3/4"><Skeleton  /></div>
+        <div className="h-3 w-1/2"><Skeleton  /></div>
       </div>
     </div>
   );

@@ -104,7 +104,7 @@ export function DiffView({ file, run, base, comments }: { file: FileChange; run:
       <div className="min-h-0 flex-1 overflow-auto font-mono text-[12px] leading-5 [font-variant-ligatures:none]">
         {diff.state === "loading" && (
           <Centered>
-            <Spinner className="size-4" />
+            <Spinner  size="lg"/>
           </Centered>
         )}
         {diff.state === "error" && <Centered>{diff.message}</Centered>}

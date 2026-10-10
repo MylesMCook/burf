@@ -86,7 +86,7 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
         </CardFrameDescription>
         <CardFrameAction>
           <Button size="xs" variant={pending ? "default" : "outline"} disabled={!report || !pending || !!busy} onClick={() => change("all", true, { skills: "all", agent: "all" })}>
-            {busy === "all" && <Spinner className="size-3" />}
+            {busy === "all" && <Spinner  size="sm"/>}
             {pending ? "Install all" : "All installed"}
           </Button>
         </CardFrameAction>
@@ -105,7 +105,7 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
         {error && <ErrorText className="px-4 py-6 text-center text-destructive-foreground text-xs" text={error} />}
         {!report && !error && (
           <div className="flex items-center justify-center gap-2 px-4 py-6 text-muted-foreground text-xs">
-            <Spinner className="size-3" /> Checking {box}…
+            <Spinner  size="sm"/> Checking {box}…
           </div>
         )}
         {report?.skills.map((s) => (
@@ -160,7 +160,7 @@ function StateCell({ state, committed, busy, disabled, onInstall, onRemove }: { 
   if (busy) {
     return (
       <span className="flex h-6 items-center">
-        <Spinner className="size-3.5" />
+        <Spinner  size="md"/>
       </span>
     );
   }

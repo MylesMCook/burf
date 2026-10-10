@@ -204,7 +204,7 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete,
               ) : !log ? (
                 <div className="space-y-1 pt-1">
                   {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-                    <Skeleton key={i} className="h-6" />
+                    <div className="h-6"><Skeleton key={i}  /></div>
                   ))}
                 </div>
               ) : log.commits.length === 0 || !graph ? (
@@ -376,7 +376,7 @@ function CommitDetails({ row, base, branch, mergeBase, where }: { row: GraphRow;
       <div className="space-y-1">
         <p className="break-words font-medium leading-snug">{c.subject}</p>
         {detail === undefined ? (
-          <Skeleton className="h-3.5 w-2/3" />
+          <div className="h-3.5 w-2/3"><Skeleton  /></div>
         ) : (
           detail !== "failed" && detail.body && <p className="max-h-40 overflow-y-auto whitespace-pre-wrap break-words text-muted-foreground text-xs leading-relaxed">{detail.body}</p>
         )}
@@ -389,7 +389,7 @@ function CommitDetails({ row, base, branch, mergeBase, where }: { row: GraphRow;
         <dt className="text-muted-foreground">Changed</dt>
         <dd>
           {detail === undefined ? (
-            <Skeleton className="mt-0.5 h-3 w-32" />
+            <div className="mt-0.5 h-3 w-32"><Skeleton  /></div>
           ) : detail === "failed" || detail.files === undefined ? (
             <span className="text-muted-foreground">{detail === "failed" ? "Couldn't read" : "Nothing"}</span>
           ) : (

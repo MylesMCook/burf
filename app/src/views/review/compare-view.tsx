@@ -142,7 +142,7 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
       {error && <ErrorText className="px-6 py-3 text-destructive-foreground text-sm" text={error} />}
       {!data && !error && (
         <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
-          <Spinner className="size-4" /> Reading the attempts…
+          <Spinner  size="lg"/> Reading the attempts…
         </div>
       )}
       {data && (

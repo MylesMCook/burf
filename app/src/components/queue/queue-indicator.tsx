@@ -119,7 +119,7 @@ function Row({ it, online }: { it: QueueItem; online: boolean }) {
       {it.error && <p className="mt-1 text-destructive-foreground text-xs">{it.error.split(it.session).join(targetName(it.box, it.session))}</p>}
       <div className="mt-1.5 flex min-w-0 items-center gap-1">
         <span className={cn("flex min-w-0 items-center gap-1 truncate text-[11px]", st.className)}>
-          {(it.state === "sending" || it.state === "waiting") && <Spinner className="size-3" />}
+          {(it.state === "sending" || it.state === "waiting") && <Spinner  size="sm"/>}
           {!online && it.state === "queued" && !it.blocked && <CloudOffIcon className="size-3" />}
           {st.text}
         </span>

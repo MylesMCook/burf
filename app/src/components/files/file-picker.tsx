@@ -194,14 +194,14 @@ function Picker() {
           autoComplete="off"
           className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground/80"
         />
-        {searching && <Spinner className="size-3.5 text-muted-foreground" />}
+        {searching && <Spinner  size="md" muted/>}
         {ref && <span className="shrink-0 rounded-md border bg-muted/60 px-1.5 py-px font-mono text-[11px] text-muted-foreground">{ref.box}</span>}
       </div>
       <CommandPanel className={cn("flex min-h-0", preview && "flex-1")}>
         <div className={cn("flex min-h-0 min-w-0 flex-col", preview ? "w-[24rem] shrink-0 border-r" : "flex-1")}>
           <Results groups={groups} at={at} setAt={setAt} choose={choose} listRef={list} empty={!ws ? "Open a worktree first: ⌘P finds files in the one in front." : error ? error : q ? (searching ? "" : "No file matches.") : touched ? "Type a file's name." : ""} />
         </div>
-        {preview && <div className="min-w-0 flex-1">{current ? <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner className="size-4 text-muted-foreground" /></div>}><Preview ws={ws!} path={current.path} /></Suspense> : <div className="h-full" />}</div>}
+        {preview && <div className="min-w-0 flex-1">{current ? <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner  size="lg" muted/></div>}><Preview ws={ws!} path={current.path} /></Suspense> : <div className="h-full" />}</div>}
       </CommandPanel>
       <CommandFooter className="justify-start gap-4 text-[11px]">
         <span className="flex items-center gap-1">

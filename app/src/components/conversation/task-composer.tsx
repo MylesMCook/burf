@@ -1223,7 +1223,7 @@ function SendButton({ label, icon, dialog, blocker, busy, onClick }: { label: st
           <Button size="sm" disabled={!!blocker} loading={busy} onClick={onClick}>
             {icon}
             {label}
-            <Kbd className="-me-1 bg-primary-foreground/16 text-primary-foreground/80">⏎</Kbd>
+            <span className="-me-1 bg-primary-foreground/16 text-primary-foreground/80"><Kbd>⏎</Kbd></span>
           </Button>
         </span>
       </Tip>

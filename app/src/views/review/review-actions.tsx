@@ -200,7 +200,7 @@ export function ApproveDialog({ entry, initial, onClose }: { entry?: ReviewEntry
           </Button>
           <Button onClick={() => void go()} loading={busy} disabled={!valid}>
             {options.find((o) => o.value === mode)?.label}
-            <Kbd className="ml-1 h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground">⌘↵</Kbd>
+            <span className="ml-1 h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground"><Kbd>⌘↵</Kbd></span>
           </Button>
         </DialogFooter>
       </DialogPopup>
@@ -266,7 +266,7 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
           </Button>
           <Button onClick={() => void go()} loading={busy} disabled={!!files.blocker || !note.replace(/^Changes requested:\s*/, "").trim()}>
             Send back
-            <Kbd className="ml-1 h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground">⌘↵</Kbd>
+            <span className="ml-1 h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground"><Kbd>⌘↵</Kbd></span>
           </Button>
         </DialogFooter>
       </DialogPopup>

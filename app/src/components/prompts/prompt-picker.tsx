@@ -263,7 +263,7 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
         )}
         <Button type="submit" loading={busy} disabled={!ready} autoFocus={nothingToFill}>
           {insert ? "Insert" : offer && target ? queueLabel(offer, target.box) : "Send"}
-          <Kbd className="-me-1 bg-primary-foreground/16 text-primary-foreground/80">⌘↵</Kbd>
+          <span className="-me-1 bg-primary-foreground/16 text-primary-foreground/80"><Kbd>⌘↵</Kbd></span>
         </Button>
       </DialogFooter>
     </form>

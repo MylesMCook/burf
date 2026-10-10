@@ -85,7 +85,7 @@ function GroupLabel({ wsKey, front, folded, count, tone, many, compact }: { wsKe
               className={cn("inline-flex h-5 items-center gap-1 rounded-md px-1.5 font-medium text-[11px] transition-opacity group-focus-visible/label:ring-2 group-focus-visible/label:ring-ring group-focus-visible/label:ring-offset-1 group-focus-visible/label:ring-offset-sidebar", compact ? "max-w-28" : "max-w-40", (away || leaving) && "opacity-55")}
               style={front ? { background: tone, color: "var(--background)" } : { background: `color-mix(in oklab, ${tone} 15%, transparent)`, color: tone }}
             >
-              {leaving ? <Spinner className="size-3" /> : away ? <CloudOffIcon className="size-3" aria-hidden /> : <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: front ? "var(--background)" : tone }} />}
+              {leaving ? <Spinner  size="sm"/> : away ? <CloudOffIcon className="size-3" aria-hidden /> : <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: front ? "var(--background)" : tone }} />}
               <span className="truncate">{label}</span>
               {folded && !compact && <span className="tabular-nums opacity-75">{count}</span>}
             </span>

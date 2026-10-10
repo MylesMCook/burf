@@ -19,7 +19,7 @@ export function EditorMenuItems({ box, path }: { box: string; path: string }) {
   if (!editors)
     return (
       <MenuItem disabled>
-        <Spinner className="size-3.5" /> Looking for editors…
+        <Spinner  size="md"/> Looking for editors…
       </MenuItem>
     );
   const installed = editors.filter((e) => e.installed);

@@ -136,7 +136,7 @@ function ProcessesBody({ box, data, error, reload }: { box: string; data?: BoxPr
   if (!data)
     return (
       <div className="flex justify-center py-6">
-        <Spinner className="size-4" />
+        <Spinner  size="lg"/>
       </div>
     );
   const sessions = (data.sessions ?? []).slice(0, 5);

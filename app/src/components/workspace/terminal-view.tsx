@@ -441,13 +441,13 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
       {state === "ended" && <SessionEnded box={box} session={session} agent={agent} command={command} wsKey={wsKey} tab={tab} pane={pane} onClose={onClose} />}
       {state === "open" && stalled && (
         <div data-testid="terminal-stalled" className="pointer-events-none absolute top-2 right-3 flex items-center gap-2 rounded-md border bg-popover/90 px-2 py-1 text-muted-foreground text-xs shadow-sm">
-          <Spinner className="size-3" />
+          <Spinner  size="sm"/>
           {`Waiting for ${box} to answer… what you type may not arrive`}
         </div>
       )}
       {(state === "connecting" || state === "reconnecting") && (
         <div className="pointer-events-none absolute top-2 right-3 flex items-center gap-2 rounded-md border bg-popover/90 px-2 py-1 text-muted-foreground text-xs shadow-sm">
-          <Spinner className="size-3" />
+          <Spinner  size="sm"/>
           {state === "reconnecting" ? `Reconnecting to ${box}…` : "Attaching…"}
         </div>
       )}

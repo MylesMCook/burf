@@ -49,7 +49,7 @@ export function ShortcutsSheet() {
                   <li key={s.id} className="flex min-h-7.5 items-center gap-2 border-b border-dashed py-0.5 text-sm last:border-b-0">
                     <span className="min-w-0 flex-1 truncate">{describe(s)}</span>
                     {s.labs && !labs && <Badge variant="outline">Labs</Badge>}
-                    <Kbd className="text-foreground/80">{s.keys}</Kbd>
+                    <span className="text-foreground/80"><Kbd>{s.keys}</Kbd></span>
                   </li>
                 ))}
               </ul>

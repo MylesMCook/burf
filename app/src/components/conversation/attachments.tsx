@@ -368,7 +368,7 @@ export function AttachmentChips({ items, onRemove, onRetry, className }: { items
                   )}
                   {busy && (
                     <span className={cn("absolute inset-0 flex items-center justify-center", it.preview ? "bg-black/48 text-white" : "bg-background text-foreground")}>
-                      {it.state === "uploading" && it.progress !== undefined ? <ProgressRing value={it.progress} className="size-5" /> : <Spinner className="size-4" />}
+                      {it.state === "uploading" && it.progress !== undefined ? <ProgressRing value={it.progress} className="size-5" /> : <Spinner  size="lg"/>}
                     </span>
                   )}
                   {it.state === "error" && (

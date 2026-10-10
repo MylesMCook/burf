@@ -42,12 +42,12 @@ export default function Preview({ ws, path }: { ws: string; path: string }) {
       </div>
       {!doc || doc.state === "loading" ? (
         <div className="flex flex-1 items-center justify-center">
-          <Spinner className="size-4 text-muted-foreground" />
+          <Spinner  size="lg" muted/>
         </div>
       ) : doc.state !== "ready" || doc.binary || doc.tooLarge ? (
         <p className="m-auto max-w-xs px-6 text-center text-muted-foreground text-xs">{doc.reason ?? doc.error ?? (doc.image ? "A picture: open it to see it." : "Nothing to show.")}</p>
       ) : (
-        <Suspense fallback={<Spinner className="m-6 size-4" />}>
+        <Suspense fallback={<span className="m-6 inline-flex"><Spinner size="lg" /></span>}>
           <CodeEditor key={shown} path={shown} text={doc.text} changes={marks} readOnly revealLine={marks?.hunks[0]?.from} fontSize={11.5} className="min-h-0 flex-1 overflow-hidden" />
         </Suspense>
       )}

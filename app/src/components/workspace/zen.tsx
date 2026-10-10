@@ -323,7 +323,7 @@ function WorktreeMenu() {
   if (leaving)
     return (
       <span aria-busy="true" className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-muted-foreground text-xs">
-        <Spinner className="size-3" />
+        <Spinner  size="sm"/>
         {removalLabel(leaving)}
       </span>
     );

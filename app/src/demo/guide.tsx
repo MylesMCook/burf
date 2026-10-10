@@ -98,9 +98,9 @@ export default function DemoGuide() {
         <Step done={steps.answer}>Answer the waiting agent</Step>
         <Step done={steps.palette}>
           Press{" "}
-          <Kbd className="h-4.5 min-w-4.5 text-[11px]">
+          <span className="h-4.5 min-w-4.5 text-[11px]"><Kbd>
             {mac ? "⌘" : "Ctrl"} K
-          </Kbd>{" "}
+          </Kbd></span>{" "}
           for every command
         </Step>
       </ol>

@@ -97,7 +97,7 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
             <Button size="sm" className="rounded-r-none" onClick={() => actions.approve(hasFiles ? "commit" : "push")}>
               <CheckIcon />
               Approve…
-              <Kbd className="ml-0.5 hidden h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground xl:inline-flex">A</Kbd>
+              <span className="ml-0.5 hidden h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground xl:inline-flex"><Kbd>A</Kbd></span>
             </Button>
             <Menu>
               <MenuTrigger render={<Button size="sm" className="rounded-l-none border-l border-l-primary-foreground/20 px-1.5" aria-label="More ways to approve" />}>
@@ -124,13 +124,13 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
           <Button size="sm" variant="outline" onClick={actions.sendBack}>
             <MessageSquareReplyIcon />
             Send back…
-            <Kbd className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex">S</Kbd>
+            <span className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex"><Kbd>S</Kbd></span>
           </Button>
           <Tip label={hasFiles ? undefined : "Nothing uncommitted to discard"}>
             <Button size="sm" variant="outline" onClick={actions.discard} disabled={!hasFiles}>
               <Trash2Icon />
               Discard…
-              <Kbd className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex">D</Kbd>
+              <span className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex"><Kbd>D</Kbd></span>
             </Button>
           </Tip>
           <span className="mx-1 h-5 w-px bg-border" />
@@ -138,13 +138,13 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
             <SquareArrowOutUpRightIcon />
             <span className="hidden xl:inline">Open worktree</span>
             <span className="xl:hidden">Open</span>
-            <Kbd className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex">↵</Kbd>
+            <span className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex"><Kbd>↵</Kbd></span>
           </Button>
           <Tip label="Mark reviewed (E): it comes back if the agent changes anything">
             <Button size="sm" variant="ghost" className="ml-auto text-muted-foreground" onClick={actions.markReviewed}>
               <CheckCheckIcon />
               <span className="hidden xl:inline">Mark reviewed</span>
-              <Kbd className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex">E</Kbd>
+              <span className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex"><Kbd>E</Kbd></span>
             </Button>
           </Tip>
         </div>

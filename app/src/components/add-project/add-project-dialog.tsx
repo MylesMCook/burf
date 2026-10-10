@@ -304,7 +304,7 @@ function Body({ startBox }: { startBox?: string }) {
             </>
           ) : online ? (
             <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
-              <Kbd>↑↓</Kbd> pick <Kbd className="ms-1.5">⇥</Kbd> complete <Kbd className="ms-1.5">↵</Kbd> {activeRow && !rowPlan && activeRow.kind !== "new" ? "choose" : verb(shown)}
+              <Kbd>↑↓</Kbd> pick <span className="ms-1.5"><Kbd>⇥</Kbd></span> complete <span className="ms-1.5"><Kbd>↵</Kbd></span> {activeRow && !rowPlan && activeRow.kind !== "new" ? "choose" : verb(shown)}
             </span>
           ) : null}
         </div>
@@ -445,7 +445,7 @@ function PlanLine({ plan, pending, box, home, target, dest, setDest, busy, onEnt
         <p className={cn("flex min-w-0 items-baseline gap-1.5 truncate text-sm", tone)}>{line}</p>
         <div className="min-w-0 truncate text-muted-foreground text-xs">{detail}</div>
       </div>
-      <span className="flex w-6 shrink-0 justify-end">{pending ? <Spinner className="size-3.5 text-muted-foreground" /> : ready && target ? <Kbd>↵</Kbd> : null}</span>
+      <span className="flex w-6 shrink-0 justify-end">{pending ? <Spinner  size="md" muted/> : ready && target ? <Kbd>↵</Kbd> : null}</span>
     </div>
   );
 }

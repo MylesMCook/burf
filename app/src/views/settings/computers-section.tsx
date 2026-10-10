@@ -114,7 +114,7 @@ function BoxComputers({ box }: { box: BoxStatus }) {
         <BoxError className="mx-4 my-3" box={box.name} error={error} what="its paired computers" />
       ) : !list ? (
         <div className="flex items-center gap-2 px-4 py-3 text-muted-foreground text-sm">
-          <Spinner className="size-4" /> Loading…
+          <Spinner  size="lg"/> Loading…
         </div>
       ) : (
         list.map((c) => <ComputerRow key={c.fingerprint} box={box.name} computer={c} onRemoved={load} />)

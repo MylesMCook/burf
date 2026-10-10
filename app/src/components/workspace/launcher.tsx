@@ -144,7 +144,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
           {/* On its way out (archive or remove): nothing new starts here. */}
           {leaving ? (
             <div role="status" aria-busy="true" className="flex items-start gap-3 rounded-lg border bg-muted/40 px-3.5 py-3 text-sm">
-              <Spinner className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <span className="mt-0.5 inline-flex"><Spinner size="lg" muted /></span>
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="font-medium">{leaving.kind === "archive" ? "Archiving" : "Removing"} {name}…</span>
                 <span className="text-muted-foreground">

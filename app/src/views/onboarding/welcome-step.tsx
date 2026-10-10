@@ -30,7 +30,7 @@ export function WelcomeStep({ local, onThisMac, onRemote, onJoin }: { local?: bo
             detail={thisComputer("Agents run here while this Mac is awake. Your first agent is about a minute away; add a server whenever you like.")}
             action={
               <Button autoFocus disabled={local === undefined} onClick={onThisMac}>
-                {local === undefined ? <Spinner className="size-3.5" /> : null}
+                {local === undefined ? <Spinner  size="md"/> : null}
                 {thisComputer("Start on this Mac")} <ArrowRightIcon />
               </Button>
             }

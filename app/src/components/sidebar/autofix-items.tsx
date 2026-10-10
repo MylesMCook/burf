@@ -36,7 +36,7 @@ export function AutoFixItems({ box, path }: { box: string; path: string }) {
   if (!a)
     return (
       <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground text-xs">
-        <Spinner className="size-3" /> Loading…
+        <Spinner  size="sm"/> Loading…
       </div>
     );
   const set = async (patch: Partial<AutoFix>) => {
