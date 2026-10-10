@@ -70,7 +70,7 @@ export function GroupSeparator({
   orientation = "vertical",
   ...props
 }: React.ComponentProps<typeof Separator>): React.ReactElement {
-  return <Separator orientation={orientation} tone="input" {...props} />;
+  return <Separator orientation={orientation} shift tone="input" {...props} />;
 }
 
 export {
