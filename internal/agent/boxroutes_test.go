@@ -145,6 +145,7 @@ type appTerminal struct {
 	mu       sync.Mutex
 	ws       *websocket.Conn
 	held     [][]byte
+	output   bytes.Buffer
 	attaches int
 	opened   chan struct{}
 }
@@ -170,8 +171,14 @@ func (at *appTerminal) run(ctx context.Context) {
 			ws.Write(ctx, websocket.MessageBinary, k)
 		}
 		for {
-			if _, _, err := ws.Read(ctx); err != nil {
+			kind, p, err := ws.Read(ctx)
+			if err != nil {
 				break
+			}
+			if kind == websocket.MessageBinary {
+				at.mu.Lock()
+				at.output.Write(p)
+				at.mu.Unlock()
 			}
 		}
 		at.mu.Lock()
@@ -191,9 +198,16 @@ func (at *appTerminal) key(ctx context.Context, k []byte) {
 	}
 }
 
+func (at *appTerminal) echoed(k string) bool {
+	at.mu.Lock()
+	defer at.mu.Unlock()
+	return strings.Contains(at.output.String(), k)
+}
+
 // The route a terminal rides is blackholed while someone types: the agent
 // moves to the SSH route, the terminal attaches again over it once the old
-// route is declared down, and every key arrives, once and in order.
+// route is declared down. With the last pre-disconnect key observed back,
+// every key arrives, once and in order.
 func TestATerminalSurvivesItsRouteGoingDownWithoutLosingKeys(t *testing.T) {
 	term := &recordingTerminal{}
 	rb := newRoutedBox(t, term.mount)
@@ -219,6 +233,9 @@ func TestATerminalSurvivesItsRouteGoingDownWithoutLosingKeys(t *testing.T) {
 		want.WriteString(k)
 		app.key(ctx, []byte(k))
 		if i == 40 {
+			// The fault drops both directions. Observe the echo before cutting
+			// it so this case does not make the last delivered key ambiguous.
+			eventually(t, "last key echoed before disconnect", func() bool { return app.echoed(k) })
 			rb.paired.Blackhole(true)
 			blackholed = time.Now()
 		}
