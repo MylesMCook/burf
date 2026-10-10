@@ -266,11 +266,13 @@ func TestRoutesCanBeTurnedOffAndAdded(t *testing.T) {
 	eventually(t, "box online", func() bool { return boxStatus(t, a).State == StateOnline })
 	// In use, the faster SSH route takes over.
 	uiCall(t, a, "GET", "/v1/boxes/devbox/api/services", tok)
-	eventually(t, "ssh to take over", func() bool {
+	var st BoxStatus
+	eventually(t, "ssh to take over with both routes measured", func() bool {
 		uiCall(t, a, "GET", "/v1/boxes/devbox/api/services", tok)
-		return boxStatus(t, a).Route == "ssh"
+		st = boxStatus(t, a)
+		p, s := routeOf(st, wire.RoutePaired), routeOf(st, "ssh")
+		return st.Route == "ssh" && p.State == wire.RouteUp && p.LatencyMs > s.LatencyMs && s.Active
 	})
-	st := boxStatus(t, a)
 	if p, s := routeOf(st, wire.RoutePaired), routeOf(st, "ssh"); p.LatencyMs <= s.LatencyMs || p.State != wire.RouteUp || !s.Active {
 		t.Fatalf("routes %+v", st.Routes)
 	}
