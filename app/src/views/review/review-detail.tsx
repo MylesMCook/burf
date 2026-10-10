@@ -624,9 +624,11 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
               <span className={[sx(paint.s19), sx(paint.s74)].filter(Boolean).join(" ")}><Kbd>A</Kbd></span>
             </Button></span>
             <Menu>
-              <MenuTrigger render={<span className={sx(paint.s20)}><Button size="sm"  aria-label="More ways to approve" /></span>}>
-                <ChevronDownIcon />
-              </MenuTrigger>
+              <span className={sx(paint.s20)}>
+                <MenuTrigger render={<Button size="sm" aria-label="More ways to approve" />}>
+                  <ChevronDownIcon />
+                </MenuTrigger>
+              </span>
               <MenuPopup align="start">
                 {hasFiles && (
                   <MenuItem onClick={() => actions.approve("commit")}>

@@ -96,6 +96,8 @@ const paint = stylex.create({
   },
   s12: {
     "alignSelf": "flex-start",
+    "minHeight": "24px",
+    "minWidth": "24px",
     "borderRadius": "var(--radius-sm)",
     "paddingLeft": "8px",
     "paddingRight": "8px",
