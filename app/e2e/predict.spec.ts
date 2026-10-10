@@ -7,11 +7,11 @@ import { expect, mockOnly, test } from "./fixtures";
 // grid, and hands over to the box's own characters once they arrive. The
 // mock holds every echo back (?echoDelay) to make the link slow.
 
-const DELAY = "400";
+const DELAY = "250";
 
 // A shell on gpu's home, opened from Home with ⌘T.
 async function openShell(page: Page) {
-  await expect(page.getByRole("heading", { name: "What should your agents work on?" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "What should your agents work on?" })).toBeVisible();
   await page.keyboard.press("ControlOrMeta+KeyT");
   const picker = page.getByRole("dialog", { name: "New terminal on a box" });
   await expect(picker).toBeVisible();
