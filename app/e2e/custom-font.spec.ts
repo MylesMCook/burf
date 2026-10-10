@@ -8,6 +8,18 @@ const file = { name: `${name}.woff2`, mimeType: "font/woff2", buffer: bytes };
 
 test.beforeEach(() => mockOnly("custom fonts use isolated browser storage"));
 
+test("the interface default loads the bundled Paper Mono face", async ({ app }) => {
+  await app.open();
+  await app.page.evaluate(() => document.fonts.load('400 13px "Paper Mono"'));
+  await expectBodyFont(app, "Paper Mono");
+  const fontUrl = await app.page.evaluate(() => performance.getEntriesByType("resource").map((entry) => entry.name).find((url) => url.includes("paper-mono") && url.endsWith(".ttf")));
+  if (!fontUrl) throw new Error("The bundled Paper Mono resource was not loaded.");
+  expect(new URL(fontUrl).origin).toBe(new URL(app.page.url()).origin);
+  const response = await app.page.request.get(fontUrl);
+  expect(response.ok()).toBe(true);
+  expect((await response.body()).equals(readFileSync(new URL("../src/assets/fonts/paper-mono.ttf", import.meta.url)))).toBe(true);
+});
+
 async function addFont(app: App) {
   const settings = await app.openSettings("appearance");
   await expect(settings.getByRole("button", { name: "Add a font", exact: true })).toBeVisible();
@@ -81,7 +93,7 @@ test("removing a font in use quietly restores defaults for all uses", async ({ a
   await expect(settings.getByRole("list", { name: "Added fonts" })).toHaveCount(0);
   await expect(settings.getByRole("combobox", { name: "Interface font", exact: true })).toContainText("Default");
   await expect(settings.getByRole("combobox", { name: "Code font", exact: true })).toContainText("Default");
-  await expect(app.page.locator("body")).toHaveCSS("font-family", /Inter Variable/);
+  await expectBodyFont(app, "Paper Mono");
   await expect(settings.locator("pre").first()).toHaveCSS("font-family", /JetBrains Mono Variable/);
   await expect(settings.getByRole("status")).toHaveCount(0);
   const prefs = await app.stored("berth.prefs") as Record<string, unknown>;
@@ -133,7 +145,7 @@ test("a stored font that cannot load falls back and names the font in Settings",
   await app.page.reload();
   const settings = await app.openSettings("appearance");
   await expect(settings.getByText(`“${name}” could not be loaded.`, { exact: false })).toBeVisible();
-  await expect(app.page.locator("body")).toHaveCSS("font-family", /Inter Variable/);
+  await expectBodyFont(app, "Paper Mono");
   await expect(settings.getByRole("combobox", { name: "Interface font", exact: true })).toContainText("Default");
   await expect(settings.getByRole("combobox", { name: "Code font", exact: true })).toContainText("Default");
   await expect(settings.locator("pre").first()).toHaveCSS("font-family", /JetBrains Mono Variable/);

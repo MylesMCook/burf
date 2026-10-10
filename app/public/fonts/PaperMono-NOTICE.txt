@@ -1,0 +1,6 @@
+Paper Mono
+Copyright 2025 The Paper Mono Project Authors
+https://github.com/paper-design/paper-mono
+
+The bundled variable TTF is unmodified. Its weight axis covers 100 through 800.
+Licensed under SIL Open Font License 1.1. See PaperMono-OFL.txt.

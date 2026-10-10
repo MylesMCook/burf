@@ -2,6 +2,14 @@
 @import "@fontsource-variable/jetbrains-mono";
 @stylex;
 
+@font-face {
+  font-family: "Paper Mono";
+  src: url("./assets/fonts/paper-mono.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+}
+
 /* Every target owns this value. A button inside window chrome must never
    inherit dragging from its parent. */
 * { --wails-draggable: no-drag; }
@@ -72,7 +80,7 @@
   --color-white: #fff;
   --color-black: #000;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
-  --font-sans: "Inter Variable", sans-serif;
+  --font-sans: "Paper Mono", ui-monospace, monospace;
   --font-heading: var(--font-sans);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
