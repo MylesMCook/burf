@@ -717,7 +717,7 @@ test("Send to agent from the browser's console reaches the worktree's Codex chat
   try {
     await app.open({ agent: f.agent });
     await openWorktree(app);
-    await app.page.getByRole("button", { name: /^New browser tab/ }).click();
+    await app.page.keyboard.press("ControlOrMeta+Shift+KeyB");
     const pane = app.page.locator("[data-testid=browser-pane]:visible");
     const address = pane.getByRole("textbox", { name: "Address" });
     await address.fill("http://fix.shop.devl.localhost:1377/cart");
