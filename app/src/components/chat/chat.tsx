@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { RotateCwIcon, XIcon } from "lucide-react";
-import { AssistantRuntimeProvider, createMessageQueue, useExternalStoreRuntime, WebSpeechDictationAdapter, type AppendMessage, type AssistantRuntime, type DictationAdapter } from "@assistant-ui/react";
+import { AssistantRuntimeProvider, useExternalStoreRuntime, WebSpeechDictationAdapter, type AppendMessage, type AssistantRuntime, type DictationAdapter, type ThreadMessage } from "@assistant-ui/react";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, useReducer, type ReactNode, type KeyboardEvent } from "react";
 import { ApprovalCard } from "@/components/assistant-ui/elements/approval-card";
 import { ErrorState } from "@/components/assistant-ui/elements/error-state";
@@ -16,6 +16,7 @@ import { loadArtifacts, useArt, useHasArtifacts } from "@/lib/art/model";
 import { chatArtifacts } from "@/lib/chat-artifacts";
 import { threadTurns } from "@/lib/chat-thread";
 import { attachmentPaths } from "@/lib/chat-composer";
+import { createSavedChatQueue } from "@/lib/chat-queue";
 import { withAttachments } from "@/lib/attachments";
 import { toolAsk } from "@/lib/chat-tools";
 import { errorMessage } from "@/lib/format";
@@ -24,6 +25,7 @@ import { refFor } from "@/lib/workspaces";
 import { useTitleAt } from "@/lib/worktree-names";
 import { BASE_PERMISSIONS, savedChatPermission, saveChatPermission, type ChatOptions, type ChatModel } from "@/lib/local-computer";
 import type { ChatSnapshot, ChatTransport } from "./chat-transport";
+import { chatStore } from "./chat-store";
 
 const paint = stylex.create({
   s0: {
@@ -168,7 +170,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
   const [modelsError, setModelsError] = useState("");
   const [submitted, setSubmitted] = useState("");
   const submittedItems = useRef(new Set<string>());
-  const [error, setError] = useState("");
+  const [error, setError] = useState(transport.initialSendError ?? "");
   const [readError, setReadError] = useState("");
   const [offline, setOffline] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -246,20 +248,25 @@ export function Chat({ transport, messageList, after, children }: { transport: C
   const keyDown = useRef<((event: KeyboardEvent<HTMLTextAreaElement>) => void) | undefined>(undefined);
   const [composerBlocked, setComposerBlocked] = useState(false);
   const [voiceError, setVoiceError] = useState("");
-  const [queuePaused, setQueuePaused] = useState(false);
+  const [queuePaused, setQueuePaused] = useState(!!transport.initialQueueHeld);
+  const pausedRef = useRef(queuePaused); pausedRef.current = queuePaused;
   const runtimeRef = useRef<AssistantRuntime | undefined>(undefined);
   const dispatch = useRef<(message: AppendMessage) => Promise<void>>(async () => {});
-  const queue = useMemo(() => createMessageQueue({ run: (message) => dispatch.current(message) }), []);
+  const queue = useMemo(() => createSavedChatQueue((message) => void dispatch.current(message), transport.initialQueue), []);
   const queueRunning = useRef(false);
+  const queueSnapshot = useRef<ChatSnapshot | undefined>(undefined);
   const pause = () => { queue.hold(); setQueuePaused(true); };
   const send = async (message: AppendMessage) => {
     if (transport.readOnly || !chat || !transport.message || pending.current || offline || chat.state === "exited") return;
     // Retire before the request: a response can be lost after the provider accepted it.
     queue.notifyBusy(); queueRunning.current = true;
+    queueSnapshot.current = chat;
     const text = withAttachments(message.content.flatMap((p) => p.type === "text" ? [p.text] : []).join("\n"), attachmentPaths(message.attachments ?? []));
     const choices = (message.runConfig?.custom?.choices ?? {}) as ChatOptions;
+    const sendRequest = transport.onSendStart?.(text, choices);
     submittedItems.current = new Set(chat.items.map((item) => item.id)); setSubmitted(text);
     const sent = await mutate(() => transport.message!(text, chat.composer ? choices : undefined));
+    if (sendRequest) transport.onSendSettled?.(sendRequest, sent);
     if (!alive.current) return;
     setSubmitted("");
     if (!sent) {
@@ -282,14 +289,19 @@ export function Chat({ transport, messageList, after, children }: { transport: C
   };
   const enqueueRef = useRef(enqueue); enqueueRef.current = enqueue;
   const queueAdapter = useMemo(() => ({ ...queue.adapter, get items() { return queue.adapter.items; }, get steerItems() { return queue.adapter.steerItems; }, enqueue: (message: AppendMessage) => enqueueRef.current(message), steer: (message: AppendMessage) => enqueueRef.current(message) }), [queue]);
-  const [, refreshQueue] = useReducer((n: number) => n + 1, 0);
-  useEffect(() => queue.subscribe(refreshQueue), [queue]);
+  const [queueVersion, refreshQueue] = useReducer((n: number) => n + 1, 0);
+  const saveQueue = useRef(transport.onQueueChange); saveQueue.current = transport.onQueueChange;
   useEffect(() => {
-    if (offline || busy || !chat || chat.error || chat.state === "exited") { queue.hold(); return; }
+    const unsubscribe = queue.subscribe(() => { saveQueue.current?.(queue.snapshot(), pausedRef.current); refreshQueue(); });
+    return () => { queue.hold(); unsubscribe(); };
+  }, [queue]);
+  useEffect(() => { saveQueue.current?.(queue.snapshot(), queuePaused); }, [queue, queuePaused]);
+  useEffect(() => {
+    if (pending.current || offline || busy || !chat || chat.error || chat.state === "exited" || chat.state !== state.current) { queue.hold(); return; }
     if (running && !queueRunning.current) { queue.notifyBusy(); queueRunning.current = true; }
-    if (!running && chat.state === "idle" && queueRunning.current) { queueRunning.current = false; queue.notifyIdle(); }
+    if (!running && chat.state === "idle" && queueRunning.current && chat !== queueSnapshot.current) { queueSnapshot.current = chat; queueRunning.current = false; queue.notifyIdle(); }
     if (!queuePaused) queue.release();
-  }, [queue, chat, offline, busy, running, queuePaused]);
+  }, [queue, chat, offline, busy, running, queuePaused, queueVersion]);
   const dictation = useMemo<DictationAdapter | undefined>(() => {
     if (typeof window === "undefined" || typeof (window.SpeechRecognition ?? window.webkitSpeechRecognition) !== "function") return;
     const adapter = new WebSpeechDictationAdapter({ continuous: false, interimResults: false });
@@ -307,9 +319,10 @@ export function Chat({ transport, messageList, after, children }: { transport: C
       } catch (error) { setVoiceError("Voice input failed. Check microphone access, or type your message."); throw error; }
     } };
   }, []);
-  const messages = useMemo(() => chat?.messages ?? turns.map(chatMessage), [chat?.messages, turns]);
-  const runtime = useExternalStoreRuntime({
-    messages, convertMessage: (message) => message,
+  const messages = useMemo(() => [...(transport.prefixMessages ?? []), ...(chat?.messages ?? turns.map(chatMessage))], [transport.prefixMessages, chat?.messages, turns]);
+  const store = useMemo(() => chatStore(messages), [messages]);
+  const runtime = useExternalStoreRuntime<ThreadMessage>({
+    ...store,
     isRunning: running, isLoading: transport.loading ?? (!chat && !offline),
     hasEarlier: transport.hasEarlier, onLoadEarlier: transport.loadEarlier,
     isDisabled: transport.readOnly ? false : !chat || !transport.message || chat.state === "exited",
@@ -362,8 +375,8 @@ export function Chat({ transport, messageList, after, children }: { transport: C
       </div> : undefined;
   return <div data-testid={transport.testId} className={sx(paint.s5)}>
     {!transport.readOnly && <header className={sx(paint.s6)}>
-      <Tip label={session.cwd} width="lg"><span className={sx(paint.s7)}>{named ?? session.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? session.cwd}</span></Tip>
-      <span role="status" className={sx(paint.s8)}>{offline ? "Disconnected" : chat?.state === "waiting" ? chat.approvals.length ? `Waiting for approval (${chat.approvals.length})` : "Waiting for your answer" : running ? "Working" : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span>
+      <Tip label={session.cwd} width="lg"><span role="heading" aria-level={2} aria-label={`${named ?? session.cwd}: ${session.cwd}`} className={sx(paint.s7)}>{named ?? session.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? session.cwd}</span></Tip>
+      <span role="status" aria-label="Chat status" className={sx(paint.s8)}>{offline ? "Disconnected" : submitted ? "Sending" : chat?.state === "waiting" ? chat.approvals.length ? `Waiting for approval (${chat.approvals.length})` : "Waiting for your answer" : running ? "Working" : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span>
       <div className={sx(paint.s9)}>
         <WorktreeArtChip wt={artifacts} className={sx(paint.s10)} />
         <Tip label="Refresh chat"><Button data-autofocus={!chat || undefined} size="icon-sm" variant="ghost" aria-label="Refresh chat" disabled={busy} onClick={() => void load()}><RotateCwIcon /></Button></Tip>

@@ -277,7 +277,16 @@ func (c *conn) reason() string {
 	return "the connection closed"
 }
 
-func (c *conn) Write(b []byte) (int, error) { return c.stdin.Write(b) }
+func (c *conn) Write(b []byte) (int, error) {
+	n, err := c.stdin.Write(b)
+	c.mu.Lock()
+	got := c.got
+	c.mu.Unlock()
+	if err != nil && !got {
+		return n, dialErr(fmt.Errorf("ssh %s: %s", c.host, c.reason()))
+	}
+	return n, err
+}
 
 func (c *conn) Close() error {
 	c.once.Do(func() {

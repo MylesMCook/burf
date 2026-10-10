@@ -613,7 +613,7 @@ export function ZenBar() {
   const renaming = useRenaming((s) => !!focused && s.key === `${focused.box}/${focused.session.name}`);
   return (
     <div
-      data-tauri-drag-region
+      data-burf-drag-region
       className={[sx(paint.s27), hasTrafficLights() ? sx(paint.s28) : sx(paint.s29), home ? [sx(paint.s30), sx(paint.s37)].filter(Boolean).join(" ") : sx(paint.s31)].filter(Boolean).join(" ")}
     >
       {renaming && focused ? (
@@ -624,7 +624,7 @@ export function ZenBar() {
         </div>
       )}
       <WorktreeMenu />
-      <div data-tauri-drag-region className={sx(paint.s33)} />
+      <div data-burf-drag-region className={sx(paint.s33)} />
       <Button size="sm" variant="ghost"  onClick={() => useStore.getState().setPaletteOpen(true)} muted>
         Search
         <Kbd>⌘K</Kbd>

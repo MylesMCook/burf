@@ -21,6 +21,7 @@ const styles = stylex.create({
   box5: { width: 20, height: 20 },
   box6: { width: 24, height: 24 },
   box7: { width: 28, height: 28 },
+  fill: { width: "100%", height: "100%" },
   round: {
     borderRadius: radius.full,
     transform: { default: "scale(1)", ":active": "scale(0.96)" },
@@ -29,6 +30,8 @@ const styles = stylex.create({
     position: "absolute",
     insetInlineEnd: 4,
     top: 4,
+  },
+  removeHitArea: {
     "::after": {
       content: '""',
       position: "absolute",
@@ -82,16 +85,16 @@ export type TooltipIconButtonProps = Omit<ComponentPropsWithRef<typeof Button>, 
 export const TooltipIconButton = forwardRef<HTMLButtonElement, TooltipIconButtonProps>(
   ({ children, tooltip, side = "bottom", marker, box = 6, round = false, place, variant = "ghost", size = "icon", ...rest }, ref) => {
     const hooks = ["aui-button-icon", marker].filter(Boolean).join(" ");
-    const state = cls(styles.submitted, styles.open);
+    const state = cls(styles.submitted, styles.open, place === "remove" && styles.removeHitArea);
     return (
-      <Tip label={tooltip} side={side}>
-        <span className={cls(styles.wrap, box === 5 && styles.box5, box === 6 && !place && styles.box6, box === 7 && styles.box7, round && styles.round, place === "remove" && styles.remove, place === "scroll" && styles.scroll)}>
+      <span className={cls(styles.wrap, box === 5 && styles.box5, box === 6 && !place && styles.box6, box === 7 && styles.box7, round && styles.round, place === "remove" && styles.remove, place === "scroll" && styles.scroll)}>
+        <Tip label={tooltip} side={side} wrapClassName={cls(styles.fill)}>
           <Button variant={variant} size={size} fill marker={[hooks, state].filter(Boolean).join(" ")} look={place === "remove" ? "remove" : undefined} {...rest} ref={ref}>
             {children}
             <span className={["aui-sr-only", cls(styles.sr)].filter(Boolean).join(" ")}>{tooltip}</span>
           </Button>
-        </span>
-      </Tip>
+        </Tip>
+      </span>
     );
   },
 );

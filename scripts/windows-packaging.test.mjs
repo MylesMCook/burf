@@ -4,10 +4,10 @@ import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import test from "node:test";
 
-const source = await readFile(new URL("../app/src-tauri/windows/cli-path.ps1", import.meta.url), "utf8");
-const hooks = await readFile(new URL("../app/src-tauri/windows/hooks.nsh", import.meta.url), "utf8");
+const source = await readFile(new URL("./windows/cli-path.ps1", import.meta.url), "utf8");
+const hooks = await readFile(new URL("./windows/hooks.nsh", import.meta.url), "utf8");
 const acceptance = await readFile(new URL("./test-windows-install.ps1", import.meta.url), "utf8");
-const bundle = JSON.parse(await readFile(new URL("../app/src-tauri/tauri.windows.bundle.conf.json", import.meta.url), "utf8"));
+const installer = await readFile(new URL("./windows/installer.nsi", import.meta.url), "utf8");
 const psQuote = (s) => "'" + s.replaceAll("'", "''") + "'";
 function powershell(command) {
   const executable = join(process.env.SystemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
@@ -24,8 +24,8 @@ test("uninstall and installer recovery use only inspected bundled candidates", (
   assert.match(hooks, /BerthInspect "\$INSTDIR\\berth-cli\.exe"/);
   assert.match(hooks, /BerthBackup "Berth\.exe"/);
   assert.match(hooks, /"\$BerthLoginProgram" agent install/);
-  assert.deepEqual(bundle.bundle.externalBin, ["binaries/berth-cli"]);
-  assert.equal(bundle.bundle.resources["binaries/burf-windows-legacy.exe"], "cli/berth.exe");
+  assert.match(installer, /InstallFile "berth-cli\.exe"/);
+  assert.match(installer, /InstallFile "cli\\berth\.exe"/);
   assert.match(hooks, /Function \.onInstFailed\n  Call BerthRecover/);
   assert.match(hooks, /!define MUI_CUSTOMFUNCTION_ABORT BerthRecover/);
   assert.ok(!hooks.includes("Function .onUserAbort"));
@@ -37,6 +37,26 @@ test("uninstall and installer recovery use only inspected bundled candidates", (
   assert.match(hooks, /"\$INSTDIR\\Burf\.exe" --remove-cli-path/);
   assert.ok(!hooks.includes("-File"));
   assert.ok(!source.includes("ExecutionPolicy"));
+});
+
+test("the Go shell embeds the generated reviewed PATH command", async () => {
+  const native = await readFile(new URL("../app/native/desktop/cli_link_windows.go", import.meta.url), "utf8");
+  assert.match(native, /\/\/go:embed cli-path\.ps1/);
+});
+
+test("installer retains normal-user consent and the exact legacy identities", () => {
+  assert.match(installer, /RequestExecutionLevel user/);
+  assert.match(installer, /shell32::IsUserAnAdmin/);
+  assert.match(installer, /InstallDirRegKey HKCU "Software\\berth\\Burf"/);
+  assert.match(installer, /WriteRegStr HKCU "Software\\Classes\\berth\\shell\\open\\command"/);
+  assert.ok(!installer.includes("WriteRegStr HKLM"));
+  assert.ok(!installer.includes("RMDir /r"));
+  assert.ok(!installer.includes("ExecShell"));
+  assert.ok(!installer.includes("bootstrapper"));
+  for (const name of ["WebView2Loader.dll", "berthd-linux-amd64", "berthd-linux-arm64", "uninstall.exe"]) {
+    assert.ok(hooks.includes(`BerthBackup "${name}"`), name);
+    assert.ok(hooks.includes(`BerthRestore "${name}"`), name);
+  }
 });
 
 test("native embedded Status works without loading an unsigned script file", { skip: process.platform !== "win32" }, () => {

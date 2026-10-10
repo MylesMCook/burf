@@ -1099,18 +1099,20 @@ const ThreadLoadEarlier: FC = () => {
         {loading ? "Loading earlier messages" : ""}
       </span>
       {visible && (
-        <ThreadPrimitive.LoadEarlier asChild>
-          <span className={[sx(paint.s41), "aui-thread-load-earlier"].filter(Boolean).join(" ")}><Button
-            variant="ghost"
-            size="sm"
-            data-slot="aui_thread-load-earlier" muted>
-            <span
-              className={loading ? sx(shimmer) : undefined}
+        <span className={[sx(paint.s41), "aui-thread-load-earlier"].filter(Boolean).join(" ")}>
+          <ThreadPrimitive.LoadEarlier asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              data-slot="aui_thread-load-earlier"
+              muted
             >
-              {loading ? "Loading earlier messages" : "Load earlier messages"}
-            </span>
-          </Button></span>
-        </ThreadPrimitive.LoadEarlier>
+              <span className={loading ? sx(shimmer) : undefined}>
+                {loading ? "Loading earlier messages" : "Load earlier messages"}
+              </span>
+            </Button>
+          </ThreadPrimitive.LoadEarlier>
+        </span>
       )}
     </div>
   );
@@ -1208,8 +1210,7 @@ const ThreadSuggestions: FC = () => {
       <div className={[sx(paint.s45), sx(paint.q99)].filter(Boolean).join(" ")}>
         <div className={sx(paint.s46)}>
           {SUGGESTION_GROUPS.map((group) => (
-            <span className={[suggestionChipClass, group.label === expandedLabel && sx(paint.s47)].filter(Boolean).join(" ")}><Button
-              key={group.label}
+            <span key={group.label} className={[suggestionChipClass, group.label === expandedLabel && sx(paint.s47)].filter(Boolean).join(" ")}><Button
               variant="ghost"
               
               onClick={() =>
@@ -1230,8 +1231,7 @@ const ThreadSuggestions: FC = () => {
         >
           <div className={sx(paint.s49)}>
             {expandedGroup.options.map((option) => (
-              <span className={suggestionChipClass}><Button
-                key={option.label}
+              <span key={option.label} className={suggestionChipClass}><Button
                 variant="ghost"
                 
                 onClick={() => sendPrompt(option.prompt)}>
@@ -1285,6 +1285,7 @@ const ComposerAction: FC = () => {
       s.composer.submission !== undefined &&
       !(s.thread.isRunning && s.thread.capabilities.cancel),
   );
+  const queueDraft = useAuiState((s) => s.thread.isRunning && s.thread.capabilities.queue && s.composer.text.trim().length > 0);
 
   return (
     <div className={[sx(paint.s51), "aui-composer-action-wrapper"].filter(Boolean).join(" ")}>
@@ -1333,14 +1334,14 @@ const ComposerAction: FC = () => {
         </AuiIf>
         <AuiIf
           condition={(s) =>
-            !s.composer.canCancel ||
+            !s.composer.canCancel || queueDraft ||
             (s.thread.voice !== undefined &&
               s.composer.submission === undefined)
           }
         >
           <ComposerPrimitive.Send asChild>
             <TooltipIconButton
-              tooltip="Send message"
+              tooltip={queueDraft ? "Queue message" : "Send message"}
               side="bottom"
               type="button"
               variant="default"
@@ -1349,7 +1350,7 @@ const ComposerAction: FC = () => {
               box={7}
               round
               shape="pill"
-              aria-label="Send message"
+              aria-label={queueDraft ? "Queue message" : "Send message"}
             >
               <ArrowUpIcon className={[sx(paint.s56), "aui-composer-send-icon"].filter(Boolean).join(" ")} />
             </TooltipIconButton>
@@ -1362,16 +1363,19 @@ const ComposerAction: FC = () => {
               s.composer.submission !== undefined)
           }
         >
-          <ComposerPrimitive.Cancel asChild>
-            <span className={[sx(paint.s57), "aui-composer-cancel"].filter(Boolean).join(" ")}><Button
-              type="button"
-              variant="default"
-              size="icon"
-              
-              aria-label={isSending ? "Cancel sending" : "Stop generating"}>
-              <SquareIcon className={[sx(paint.s58), "aui-composer-cancel-icon"].filter(Boolean).join(" ")} />
-            </Button></span>
-          </ComposerPrimitive.Cancel>
+          <span className={[sx(paint.s57), "aui-composer-cancel"].filter(Boolean).join(" ")}>
+            <ComposerPrimitive.Cancel asChild>
+              <Button
+                type="button"
+                variant="default"
+                size="icon"
+                fill
+                aria-label={isSending ? "Cancel sending" : "Stop generating"}
+              >
+                <SquareIcon className={[sx(paint.s58), "aui-composer-cancel-icon"].filter(Boolean).join(" ")} />
+              </Button>
+            </ComposerPrimitive.Cancel>
+          </span>
         </AuiIf>
       </div>
     </div>
@@ -1639,16 +1643,16 @@ const EditComposer: FC = () => {
           autoFocus
         />
         <div className={[sx(paint.s82), "aui-edit-composer-footer"].filter(Boolean).join(" ")}>
-          <ComposerPrimitive.Cancel asChild>
-            <span className={sx(paint.s83)}><Button variant="ghost" size="sm">
-              Cancel
-            </Button></span>
-          </ComposerPrimitive.Cancel>
-          <ComposerPrimitive.Send asChild>
-            <span className={sx(paint.s84)}><Button size="sm">
-              Update
-            </Button></span>
-          </ComposerPrimitive.Send>
+          <span className={sx(paint.s83)}>
+            <ComposerPrimitive.Cancel asChild>
+              <Button variant="ghost" size="sm">Cancel</Button>
+            </ComposerPrimitive.Cancel>
+          </span>
+          <span className={sx(paint.s84)}>
+            <ComposerPrimitive.Send asChild>
+              <Button size="sm">Update</Button>
+            </ComposerPrimitive.Send>
+          </span>
         </div>
       </ComposerPrimitive.Root>
     </MessagePrimitive.Root>

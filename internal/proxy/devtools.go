@@ -11,9 +11,9 @@ import (
 
 // The Browser tab's Console drawer reads the page's console through a small
 // script, devtools.js. In the Burf app the page is a native webview, which
-// runs the script itself (src-tauri/src/browser.rs includes this same
-// file). Where the page is an iframe instead (a plain browser, or the native
-// view failed), the app asks for the page with ?__berth_devtools=1 and
+// runs the same script through app/native/nativebrowser. Where the page is an
+// iframe instead (a plain browser, or the native view failed), the app asks
+// for the page with ?__berth_devtools=1 and
 // names the frame berth-devtools:<pane>, and the proxy puts the script in:
 // the flag comes off before the dev server sees the request, the script
 // takes it off the page's address, and it posts what the page logs to the

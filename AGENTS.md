@@ -111,6 +111,24 @@ Run `node scripts/export-branding.mjs` to regenerate and synchronize assets,
 then `node --test scripts/branding.test.mjs` to verify them. This uses existing
 app dependencies and does not update installed applications.
 
+## Go Desktop
+
+The desktop module is `app/native`, pinned to Wails v3.0.0-beta.28. Root
+`go test ./...` does not reach it. `scripts/go-check.mjs` keeps changed-package
+checks inside their module. `make app-bindings` prepares generated inputs;
+`make app-build APP_GOOS=darwin APP_GOARCH=arm64` stages a Mac app without
+installing it. Windows packaging uses `scripts/windows-build.ps1`.
+
+Native smoke is `go build ./cmd/nativecheck` from `app/native`, with the pinned
+WebView2 loader beside the executable on Windows. It owns hidden windows,
+synthetic state and loopback pages; it does not prompt an installed provider.
+Native Windows execution requires an ordinary desktop session. Chromium
+fixtures, cross-builds and Act do not establish native GUI behavior.
+
+Live provider proof requires both the `burf_live_provider` build tag and
+`BURF_PROVIDER_PROOF=1`. Do not enable it in ordinary tests or CI. Existing
+services update through their chat guard; never bypass it with service install.
+
 ## Structured Chat
 
 Structured chat: `GORACE=atexit_sleep_ms=0 go test -race

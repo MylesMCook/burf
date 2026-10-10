@@ -41,6 +41,9 @@ func claudePermission(permission string) string {
 
 func claudeArguments(options LaunchOptions) ([]string, error) {
 	args := []string{"-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--permission-prompt-tool", "stdio", "--permission-mode", "manual", "--allow-dangerously-skip-permissions"}
+	if options.Fork != "" {
+		args = append(args, "--resume", options.Fork, "--fork-session")
+	}
 	// This enables the user's later explicit full-access choice, but does not
 	// turn bypass on. Every new chat starts in manual mode.
 	servers := map[string]any{}
@@ -416,6 +419,9 @@ func (c *claudeProvider) receive(r *running, data []byte) error {
 		}
 		if line.SessionID == "" {
 			return errors.New("Claude Code returned no session identity")
+		}
+		if line.SessionID == r.launchOptions.Fork {
+			return errors.New("Claude Code did not create an independent conversation")
 		}
 		if r.session.ThreadID == "" {
 			r.session.ThreadID = line.SessionID

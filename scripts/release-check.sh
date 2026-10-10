@@ -102,17 +102,15 @@ make -C "$SRC_TREE" release VERSION="$VERSION" >"$OUT/release-build.log" 2>&1 ||
 }
 LINUX_DIST="$SRC_TREE/dist"
 
-# build_app builds the app (make app-build), keeping Cargo's build between
-# runs, and sets DMG to a copy of the dmg in the reports' folder.
+# build_app builds the Go/Wails app and copies its DMG into the report folder.
 build_app() {
 	local cache built
-	cache="${XDG_CACHE_HOME:-$HOME/Library/Caches}/berth-release-check/target"
+	cache="$OUT/go-cache"
 	mkdir -p "$cache"
 	echo "=== Building the app: make app-build${UNIVERSAL:+ APP_TARGET=universal-apple-darwin} (log: $OUT/app-build.log)"
-	rm -f "$cache"/release/bundle/dmg/*.dmg "$cache"/*/release/bundle/dmg/*.dmg
 	if (cd "$SRC_TREE/app" && pnpm install --frozen-lockfile) >"$OUT/app-build.log" 2>&1 &&
-		CARGO_TARGET_DIR="$cache" make -C "$SRC_TREE" app-build ${UNIVERSAL:+APP_TARGET=universal-apple-darwin} >>"$OUT/app-build.log" 2>&1; then
-		built=$(ls -t "$cache"/release/bundle/dmg/*.dmg "$cache"/*/release/bundle/dmg/*.dmg 2>/dev/null | head -1)
+		GOCACHE="$cache" make -C "$SRC_TREE" app-build ${UNIVERSAL:+APP_TARGET=universal-apple-darwin} >>"$OUT/app-build.log" 2>&1; then
+		built=$(ls -t "$SRC_TREE"/dist/native/darwin-*/Burf-macos-*.dmg 2>/dev/null | head -1)
 		if [ -n "$built" ]; then
 			DMG="$OUT/Burf-${REV:0:9}.dmg"
 			cp "$built" "$DMG" && return 0

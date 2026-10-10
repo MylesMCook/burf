@@ -163,9 +163,9 @@ export function HomeTabs() {
   const onHome = !front;
 
   return (
-    <div data-tauri-drag-region data-tab-bar className={sx(paint.s0)}>
+    <div data-burf-drag-region data-tab-bar className={sx(paint.s0)}>
       {homes.length > 0 && (
-        <div data-tauri-drag-region data-tab-strip role="tablist" aria-label="Home tabs" className={sx(paint.s1)}>
+        <div data-burf-drag-region data-tab-strip role="tablist" aria-label="Home tabs" className={sx(paint.s1)}>
           <Tip label="Home" side="bottom">
             <div
               role="tab"
@@ -218,7 +218,7 @@ export function HomeTabs() {
           <NewHomeTerminal box={homeBox(current) ?? homeBox(homes[homes.length - 1])!} />
         </div>
       )}
-      <div data-tauri-drag-region className={sx(paint.s8)} />
+      <div data-burf-drag-region className={sx(paint.s8)} />
       {current && active && lone && (
         <div className={sx(paint.s9)}>
           <PaneActions wsKey={current} tab={active.id} pane={lone} />
@@ -233,7 +233,7 @@ function BoxHomeChip({ box }: { box: string }) {
   const home = useStore((s) => (s.boxes[box]?.info as { home?: string } | undefined)?.home);
   return (
     <Tip label={`Terminals in ${box}'s home folder${home ? `, ${home}` : ""}. They belong to no worktree.`} side="bottom">
-      <span data-tauri-drag-region data-home-box={box} className={sx(paint.s10)}>
+      <span data-burf-drag-region data-home-box={box} className={sx(paint.s10)}>
         <span className={sx(paint.s11)}>{box} · ~</span>
       </span>
     </Tip>

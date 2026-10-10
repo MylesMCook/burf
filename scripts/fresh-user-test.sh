@@ -30,8 +30,8 @@
 # moving the mouse, typing on the keyboard or needing the app in front, and
 # needs nothing built into the app for testing. It brings the app's window
 # to the front for each step (WebKit pauses a covered page), so leave the
-# Mac alone for the minute it takes. tauri-driver has no macOS
-# WebDriver (WKWebView has none), and a test hook in the app would mean
+# Mac alone for the minute it takes. WKWebView has no WebDriver,
+# and a test hook in the app would mean
 # testing something other than what ships. The terminal running this needs
 # Accessibility and Screen Recording permission (System Settings → Privacy
 # & Security); the test says so if it hasn't.

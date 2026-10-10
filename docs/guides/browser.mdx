@@ -12,8 +12,11 @@ A worktree's dev server has an address on your laptop,
 
 A Browser tab (**+ → New browser tab**, ⌘⇧B) is a browser of its own: type a
 port (`3000`) to open that port of the worktree's box, or any URL. In the
-app it is a native web view, so every site works as in a browser. Its
-toolbar can pick an element for the worktree's agent, watch the
+app it is an isolated native WKWebView on macOS or WebView2 on Windows.
+It supports general HTTP(S) browsing, with separate browser storage and no
+Burf command bridge or agent token. Site login and popup behavior still depend
+on the site's policies and the installed web engine. Its toolbar can pick an
+element for the worktree's agent, watch the
 [agent's browser](/guides/agent-browser), and open the page as a Preview tab
 (**Preview sizes**).
 
@@ -21,10 +24,10 @@ toolbar can pick an element for the worktree's agent, watch the
 
 Two layers, both in the Browser tab's toolbar.
 
-**Inspect** opens WebKit's Web Inspector for the page (Elements, Console,
-Network, Sources, Storage…), in a window of its own. Right-click the page
-for **Inspect Element** too. It is the Burf app's: a Browser tab in a plain
-browser shows the page in a frame, which has none.
+**Inspect** opens WebKit's Web Inspector on macOS or WebView2's developer
+tools on Windows. These inspect the browsing child, separately from the
+trusted Burf application page. A Browser tab in a plain browser uses a frame
+and cannot open native developer tools.
 
 **Console and network** (⌘⌥I, or **View → Console and network**) opens a
 drawer under the page. Drag its top edge to resize it.
@@ -54,10 +57,11 @@ without marking them seen for the agent.
 
 <Callout title="A private WebKit setting">
 The Web Inspector in a release build of the Mac app uses a private WebKit
-setting (`developerExtrasEnabled`, through Tauri's `devtools` feature),
-which the Mac App Store refuses. Burf is notarized and distributed outside
-it, so that is fine. The inspector always opens in its own window: docked,
-WebKit would size it as if the page filled the window.
+setting (`developerExtrasEnabled`) and private inspector APIs in the
+Go shell's WKWebView adapter. These are outside the Mac App Store's supported
+API surface. Burf's current source preview has no advertised signed or
+notarized release. The inspector opens in a separate window, because a docked
+inspector would size the browsing child as if it filled the application.
 </Callout>
 
 How the drawer gets its data: the page runs a small script

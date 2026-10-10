@@ -103,7 +103,7 @@ func (c *conv) scan(f *os.File, from, to int64) error {
 	if _, err := f.Seek(from, io.SeekStart); err != nil {
 		return err
 	}
-	r := bufio.NewReaderSize(f, 64<<10)
+	r := bufio.NewReaderSize(io.LimitReader(f, max(0, to-from)), 64<<10)
 	off := from
 	if from > 0 { // the middle of a line: skip to the next
 		n, err := skipLine(r)

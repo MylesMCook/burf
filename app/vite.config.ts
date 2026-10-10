@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
-const host = process.env.TAURI_DEV_HOST;
+const host = process.env.BURF_DEV_HOST;
 
 // devPlugins serves the repository's plugins/ folder at /__dev-plugins/ while
 // developing, so mock mode can load a real plugin bundle without the agent.
@@ -116,7 +116,7 @@ function commit(): string {
 }
 
 // appVersion is package.json's version, which make publish sets for each
-// release, the same the Tauri shell reports; the What's new card keys on it.
+// release, the same the Wails shell reports; the What's new card keys on it.
 function appVersion(): string {
   return JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "package.json"), "utf8")).version;
 }
@@ -125,7 +125,7 @@ function appVersion(): string {
 //
 // `vite build --mode demo` (pnpm build:demo) is the live demo on berthd.app:
 // the app on its fixtures (mock mode, always), with a guide and scripted
-// activity (src/demo/), nothing that needs a laptop agent or Tauri, built
+// activity (src/demo/), nothing that needs a laptop agent or native shell, built
 // with relative paths into site/demo/.
 // A second dev server (another --port) keeps its own prebundled deps: one
 // cache re-bundled under a running server gives its page two copies of a
@@ -176,11 +176,9 @@ export default defineConfig(({ mode }) => ({
           rolldownOptions: { output: { codeSplitting: { groups: [{ name: "icons", test: /node_modules[\\/]lucide-react[\\/]/ }] } } },
         },
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent Vite from obscuring rust errors
+  // Keep frontend and native development diagnostics visible.
   clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
+  // A native development window expects a fixed frontend URL.
   server: {
     port: 1420,
     strictPort: true,
@@ -193,8 +191,8 @@ export default defineConfig(({ mode }) => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // Native and generated assets have their own build workflow.
+      ignored: ["**/native/**"],
     },
   },
 }));

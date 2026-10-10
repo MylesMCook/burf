@@ -4,6 +4,7 @@ import {
   FolderGitIcon,
   GitBranchIcon,
   HomeIcon,
+  MessageSquareIcon,
   PencilIcon,
   PlusIcon,
   RefreshCwIcon,
@@ -24,11 +25,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar";
 import { startSession } from "@/lib/actions";
 import { type BoxStatus, type Location, type Session, type Worktree } from "@/lib/api";
-import { agentOf, type SessionState, sessionName, sessionState, worktreeSessions } from "@/lib/derive";
+import { agentOf, sidebarChats, type SessionState, sessionName, sessionState, worktreeSessions } from "@/lib/derive";
 import { load, save } from "@/lib/storage";
 import { type BoxData, NONE, useStore } from "@/lib/store";
 import { selectFolder } from "@/lib/open-folder-chat";
-import { addGroup, refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
+import { addGroup, openSession, refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
 import { armDrag } from "@/components/workspace/tab-drag";
 import { WtDot } from "@/components/workspace/worktree-tone";
 import { BOX_WORDS, boxState, WORKTREE_WORDS } from "@/lib/state-model";
@@ -777,6 +778,11 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
   const tree = nest(rows, (r) => r.key, (r) => r.wt.parent);
   const shown = expanded ? tree : prune(tree, isActive);
   const hidden = rows.length - size(shown);
+  const drawn = new Set<string>();
+  if (all && main) drawn.add(main.path);
+  collectPaths(shown, drawn);
+  const here = new Set((loc.worktrees ?? []).map((w) => w.path));
+  const chats = sidebarChats((data?.sessions ?? []).filter((s) => here.has(s.dir)), drawn);
   const open = (wt: Worktree) => selectFolder(refOf(box.name, loc, wt));
   const toggle = () => update({ collapsed: { ...prefs.collapsed, [repo.key]: !collapsed } });
 
@@ -830,10 +836,23 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
         )}
       </ContextRow>
 
-      {!collapsed && (all || shown.length > 0 || hidden > 0) && (
+      {!collapsed && (all || shown.length > 0 || hidden > 0 || chats.length > 0) && (
         <SidebarMenuSub indent="repo">
           {all && main && <WorktreeRow box={box.name} loc={loc} wt={main} sessions={mainSessions} data={data} selected={mainSel} onOpen={() => open(main)} away={online ? undefined : box} />}
           <WorktreeNodes nodes={shown} depth={0} prefs={prefs} update={update} />
+          {chats.map((s) => (
+            <SidebarMenuSubItem key={s.name}>
+              <SidebarMenuSubButton
+                render={<button type="button" data-testid="project-chat" data-session={s.name} />}
+                size="sm"
+                density="row"
+                onClick={() => openSession(box.name, s)}
+              >
+                <MessageSquareIcon className={sx(paint.s22)} />
+                <span className={sx(paint.s24)}>{sessionName(s, { sessions: data?.sessions, agent: true })}</span>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          ))}
           {hidden > 0 && (
             <SidebarMenuSubItem>
               <SidebarMenuSubButton
@@ -990,6 +1009,13 @@ interface TreeRow {
   selected: boolean;
   chip?: BoxStatus;
   away?: BoxStatus;
+}
+
+function collectPaths(nodes: TreeNode<TreeRow>[], into: Set<string>, box?: string) {
+  for (const n of nodes) {
+    if (!box || n.row.box === box) into.add(n.row.wt.path);
+    collectPaths(n.children, into, box);
+  }
 }
 
 // WorktreeNodes draws worktrees with the ones handed off from each under
@@ -1308,6 +1334,13 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
   // With one box, the row itself is the main checkout.
   const mainSel = !multi && !!defMain && inWorkspace && current === wsKey(def.box.name, defMain.path);
   const allSessions = p.members.flatMap((m) => (boxes[m.box.name]?.sessions ?? []).filter((s) => !s.service && m.loc.worktrees?.some((w) => w.path === s.dir)));
+  const chats = p.members.flatMap((m) => {
+    const drawn = new Set<string>();
+    if (!multi && all && defMain) drawn.add(defMain.path);
+    collectPaths(shown, drawn, m.box.name);
+    const sessions = (boxes[m.box.name]?.sessions ?? []).filter((s) => m.loc.worktrees?.some((w) => w.path === s.dir));
+    return sidebarChats(sessions, drawn).map((session) => ({ box: m.box.name, session }));
+  }).sort((a, b) => b.session.created.localeCompare(a.session.created));
   const glyphSessions = multi ? (collapsed ? allSessions : []) : defMain ? worktreeSessions(boxes[def.box.name]?.sessions, defMain) : [];
   const online = p.members.some((m) => m.box.state === "online");
 
@@ -1375,7 +1408,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
         )}
       </ContextRow>
 
-      {!collapsed && (all || shown.length > 0 || hidden > 0) && (
+      {!collapsed && (all || shown.length > 0 || hidden > 0 || chats.length > 0) && (
         <SidebarMenuSub indent="repo">
           {!multi && all && defMain && (
             <WorktreeRow
@@ -1390,6 +1423,21 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
             />
           )}
           <WorktreeNodes nodes={shown} depth={0} prefs={prefs} update={update} />
+          {chats.map(({ box, session: s }) => {
+            return (
+              <SidebarMenuSubItem key={`${box}:${s.name}`}>
+                <SidebarMenuSubButton
+                  render={<button type="button" data-testid="project-chat" data-box={box} data-session={s.name} />}
+                  size="sm"
+                  density="row"
+                  onClick={() => openSession(box, s)}
+                >
+                  <MessageSquareIcon className={sx(paint.s22)} />
+                  <span className={sx(paint.s24)}>{sessionName(s, { sessions: boxes[box]?.sessions, agent: true })}</span>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            );
+          })}
           {hidden > 0 && (
             <SidebarMenuSubItem>
               <SidebarMenuSubButton

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { ZoomHud } from "@/components/zoom-hud";
 import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from "@/components/ui/sheet";
-import { isTauri } from "@/lib/api";
+import { isDesktop } from "@/lib/api";
 import { IS_LINUX, LINUX_TERMINAL_KEYS } from "@/lib/platform";
 import { usePrefs } from "@/lib/prefs";
 import { describe, SHORTCUT_GROUPS, SHORTCUTS } from "@/lib/shortcuts";
@@ -88,7 +88,7 @@ export function ShortcutsSheet() {
             ) : (
               <>
                 They work everywhere in the window, terminals included.{" "}
-                {isTauri() ? "You’ll find them in the menu bar too, under File, View, Go and Help." : "In the desktop app they’re in the menu bar too."}
+                {isDesktop() ? "You’ll find them in the menu bar too, under File, View, Go and Help." : "In the desktop app they’re in the menu bar too."}
               </>
             )}
           </SheetDescription>

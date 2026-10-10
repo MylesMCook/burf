@@ -104,8 +104,8 @@ export function ViewHeader(props: ViewHeaderProps) {
 
 function Strip({ title, description, actions, children }: ViewHeaderProps) {
   return (
-    <header data-tauri-drag-region className={sx(paint.s0)}>
-      <div data-tauri-drag-region className={sx(paint.s1)}>
+    <header data-burf-drag-region className={sx(paint.s0)}>
+      <div data-burf-drag-region className={sx(paint.s1)}>
         <h1 className={sx(paint.s2)}>{title}</h1>
         {description && <p className={sx(paint.s3)}>{description}</p>}
       </div>

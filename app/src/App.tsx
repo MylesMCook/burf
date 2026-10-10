@@ -167,7 +167,7 @@ export default function App() {
         <ToastProvider position="bottom-right" clear="onboarding">
           <div {...stylex.props(styles.shell)}>
             {/* Room for the traffic lights; the strip drags the window. */}
-            <div data-tauri-drag-region {...stylex.props(styles.drag)} />
+            <div data-burf-drag-region {...stylex.props(styles.drag)} />
             <main {...stylex.props(styles.main)}>
               <ErrorBoundary scope="onboarding">
                 <OnboardingView />
@@ -215,7 +215,7 @@ export default function App() {
                 </Disconnectable>
               ) : !workspace ? null /* every other view's ViewHeader is the strip */ : (
                 // Onboarding names itself; the strip only drags the window.
-                <div data-tauri-drag-region {...stylex.props(styles.dragFill)} />
+                <div data-burf-drag-region {...stylex.props(styles.dragFill)} />
               )}
               <main {...stylex.props(styles.main)}>
                 {/* Always mounted: terminals keep running behind other views. */}
@@ -292,7 +292,7 @@ function MainView() {
       {view.kind === "local" && <Suspense fallback={<p role="status" {...stylex.props(styles.loading)}>Loading this computer...</p>}><LocalComputerView /></Suspense>}
       {view.kind === "automations" && <AutomationsView />}
       {view.kind === "review" && <ReviewView />}
-      {view.kind === "worktrees" && <WorktreesView />}
+      {view.kind === "worktrees" && <WorktreesView key={view.box ?? "all"} box={view.box} />}
       {view.kind === "project" && <ProjectView key={`${view.box}/${view.location}`} box={view.box} location={view.location} />}
       {view.kind === "settings" && <SettingsView />}
       {view.kind === "plugin" && <PluginScreenView screen={view.screen} />}

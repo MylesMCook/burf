@@ -2,7 +2,7 @@
 // the pane can say when the page is loading and notice a page that keeps
 // reloading itself.
 //
-// The webview reports three things (src-tauri/src/browser.rs):
+// The native browser adapter reports three things:
 //   - "started": a navigation is about to begin. It is the webview's
 //     navigation policy, which is asked for every frame, so a page adding an
 //     iframe after it has loaded reports one too, and nothing ever finishes it.

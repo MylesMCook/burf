@@ -27,10 +27,18 @@ changed="$({ git diff --name-only "$base"; git ls-files --others --exclude-stand
 if [ "${1:-}" = "--smoke" ]; then
 	changed="app/e2e/fixtures.ts"
 fi
-has() { printf '%s\n' "$changed" | grep -q "$1"; }
+has() { printf '%s\n' "$changed" | grep -Eq "$1"; }
 fail=0
 
-if has '^app/'; then
+# Go and browser fixtures use isolated data, so their checks can run together.
+go_pid=""
+if has '\.(go|mod|sum)$'; then
+	(printf '%s\n' "$changed" | node scripts/go-check.mjs) &
+	go_pid=$!
+fi
+
+
+if printf '%s\n' "$changed" | node scripts/ci-changes.mjs | grep -q '^app=true$'; then
 	specs="$(printf '%s\n' "$changed" | node scripts/e2e-pick.mjs | tr '\n' ' ')"
 	(
 		cd app
@@ -46,7 +54,7 @@ if has '^app/'; then
 			# takes two seconds, and a bundled page loads in a sixth of the
 			# requests, which is what the specs spend their time on. No
 			# type-check is in it (that runs beside it, above).
-			pnpm exec vite build --logLevel error > node_modules/.cache/check-vite.log 2>&1 || { echo "BUNDLE FAILED"; tail -20 node_modules/.cache/check-vite.log; exit 1; }
+			pnpm exec vite build --logLevel error > node_modules/.cache/check-vite.log 2>&1 || { echo "BUNDLE FAILED"; tail -20 node_modules/.cache/check-vite.log; wait "$tsc" || true; wait "$unit" || true; exit 1; }
 			# shellcheck disable=SC2086 # the spec names are separate words
 			E2E_PORT="$PORT" pnpm exec playwright test $specs --reporter=dot || e2e=1
 		else
@@ -59,14 +67,6 @@ if has '^app/'; then
 	echo "app: type-check, unit tests, specs: ${specs:-none}"
 fi
 
-if has '\.go$'; then
-	pkgs="$(printf '%s\n' "$changed" | grep '\.go$' | xargs -n1 dirname | sort -u | while read -r d; do if [ -d "$d" ]; then printf './%s ' "$d"; fi; done)"
-	if [ -n "$pkgs" ]; then
-		# shellcheck disable=SC2086 # the package paths are separate words
-		{ go vet $pkgs && go test $pkgs; } || fail=1
-		echo "go: vet and tests of $pkgs"
-	fi
-fi
 
 if has '^scripts/.*\.mjs$'; then
 	node --test scripts/*.test.mjs > /dev/null 2>&1 || { echo "SCRIPT TESTS FAILED"; node --test scripts/*.test.mjs 2>&1 | grep -E "^not ok|✖" | head; fail=1; }
@@ -74,6 +74,10 @@ if has '^scripts/.*\.mjs$'; then
 fi
 if has '\.sh$' && command -v shellcheck > /dev/null; then
 	shellcheck scripts/check-local.sh || fail=1
+fi
+
+if [ -n "$go_pid" ]; then
+	wait "$go_pid" || fail=1
 fi
 
 echo "check-local: $(($(date +%s) - T0)) s$([ "$fail" = 0 ] && echo ", passed" || echo ", FAILED")"

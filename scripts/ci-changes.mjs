@@ -12,22 +12,25 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-export const SUITES = ["go", "app", "e2e", "desktop", "windows", "docs", "shell"];
+export const SUITES = ["go", "native", "app", "e2e", "desktop", "windows", "docs", "shell"];
 
 // Each pattern is a path prefix, or a suffix when it starts with "*".
 // go: the race suite. app: the frontend's own checks and build. e2e: the
-// browser suite. desktop: the Linux bundle and the Rust tests. windows: the
+// browser suite. desktop: the macOS Go/Wails shell. windows: the
 // native Windows tests and installer. docs: the docs site. shell: shellcheck.
 const RULES = [
   // CI itself, and what decides or builds everything.
-  { suites: SUITES, paths: [".github/workflows/", "scripts/ci-changes", "Makefile"] },
-  { suites: ["go", "windows"], paths: ["*.go", "go.mod", "go.sum", "internal/", "cmd/", "examples/"] },
+  { suites: SUITES, paths: [".github/workflows/", "scripts/ci-changes", "scripts/check-local", "Makefile"] },
+  { suites: ["go", "windows"], paths: ["go.mod", "go.sum", "internal/", "cmd/", "examples/"] },
   // The page: what the browser suite loads.
   { suites: ["app", "e2e"], paths: ["app/src/", "app/e2e/", "app/public/", "app/index.html", "app/scripts/", "app/playwright.config.ts", "app/vite.config.ts", "app/tsconfig", "plugins/", "packages/"] },
   // Its dependencies reach every build of it.
   { suites: ["app", "e2e", "desktop", "windows"], paths: ["app/package.json", "app/pnpm-lock.yaml", "app/pnpm-workspace.yaml", "app/components.json", "app/perf/"] },
+  // Portable native logic and Windows compilation run on PRs too.
+  { suites: ["native"], paths: ["app/native/", "app/bindings/", "scripts/go-check", "scripts/native-prepare", "scripts/wails-cli"] },
+  { suites: ["app"], paths: ["app/bindings/"] },
   // The native shell and how it is packaged.
-  { suites: ["desktop", "windows"], paths: ["app/src-tauri/", "scripts/windows", "scripts/test-windows", "design/branding/", "scripts/export-branding.mjs", "scripts/branding.test.mjs"] },
+  { suites: ["desktop", "windows"], paths: ["app/native/", "app/bindings/", "scripts/native-", "scripts/wails-cli", "scripts/webview2", "scripts/macos/", "scripts/mac-release.sh", "scripts/windows", "scripts/test-windows", "design/branding/", "scripts/export-branding.mjs", "scripts/branding.test.mjs"] },
   { suites: ["windows"], paths: ["scripts/build-tmux.sh"] },
   { suites: ["docs"], paths: ["docs/", "docs-site/", "scripts/docs-shots/"] },
   { suites: ["shell"], paths: ["*.sh", "site/install.sh"] },

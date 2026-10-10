@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { desktopKind, invoke } from "@/lib/desktop";
 import { ChevronRightIcon, CopyIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-burf-connection";
-import { endpoint, isTauri } from "@/lib/api";
+import { endpoint, isDesktop } from "@/lib/api";
 import { useEventLog } from "@/lib/events";
 import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -107,7 +107,7 @@ export function DeveloperSection() {
     const s = useStore.getState();
     return JSON.stringify(
       {
-        app: { version: await appVersion(), tauri: isTauri(), mock, userAgent: navigator.userAgent, location: location.href.replace(/token=[^&]+/, "token=…") },
+        app: { version: await appVersion(), shell: desktopKind(window), mock, userAgent: navigator.userAgent, location: location.href.replace(/token=[^&]+/, "token=…") },
         connection: s.connection,
         status: s.status,
         boxes: Object.fromEntries(Object.entries(s.boxes).map(([name, b]) => [name, { info: b.info, error: b.error, locations: b.locations?.length, sessions: b.sessions?.map((x) => ({ name: x.name, agent: x.agent, state: x.agent_state, exited: x.exited })) }])),
@@ -180,7 +180,7 @@ export function DeveloperSection() {
             Reload window
           </Button></span>
         </SettingsRow>
-        {isTauri() && (
+        {isDesktop() && (
           <SettingsRow label="Developer tools" description="The Web Inspector for Burf's own window. A Browser tab's page has its own: Inspect in its toolbar.">
             <span {...stylex.props(styles.slot)}><Button
               size="xs"

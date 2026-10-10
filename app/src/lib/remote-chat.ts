@@ -5,7 +5,7 @@ import { localAgentName } from "@/lib/local-computer";
 import { useStore } from "@/lib/store";
 import { supportsStructuredChat } from "@/lib/structured-chat";
 import { leaves } from "@/lib/layout";
-import { openTab, showWorktree, useWorkspaces, wsKey, type WorktreeRef } from "@/lib/workspaces";
+import { focusPane, openTab, showWorktree, useWorkspaces, wsKey, type WorktreeRef } from "@/lib/workspaces";
 
 export interface RemoteChat extends LocalChat { location: string }
 export type RemoteChatSummary = Omit<RemoteChat, "items" | "approvals">;
@@ -65,7 +65,8 @@ export function openRemoteChat(box: string, chat: RemoteChatSummary, ref: Worktr
   const existing = useWorkspaces.getState().spaces[key]?.tabs.find((tab) => leaves(tab.root).some((l) => l.content.kind === "remote-chat" && l.content.box === box && l.content.chat === chat.id));
   showWorktree(key);
   if (existing) {
-    useWorkspaces.setState((s) => ({ spaces: { ...s.spaces, [key]: { ...s.spaces[key], active: existing.id } } }));
+    const pane = leaves(existing.root).find((l) => l.content.kind === "remote-chat" && l.content.box === box && l.content.chat === chat.id);
+    if (pane) focusPane(key, existing.id, pane.id);
   } else openTab({ kind: "remote-chat", box, chat: chat.id, cwd: chat.cwd, agent: chat.agent, draft, options }, key);
 }
 

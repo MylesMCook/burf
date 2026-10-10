@@ -140,9 +140,7 @@ find_dmg() {
 	local found
 	# Newest first; the paths have no spaces (target/ and dist/ are ours).
 	# shellcheck disable=SC2012
-	found=$(ls -t "$REPO"/dist/mac/Burf-macos-universal.dmg \
-		"$REPO"/app/src-tauri/target/*/release/bundle/dmg/*.dmg \
-		"$REPO"/app/src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null)
+	found=$(ls -t "$REPO"/dist/mac/Burf-macos-universal.dmg "$REPO"/dist/native/darwin-*/Burf-macos-*.dmg 2>/dev/null)
 	for d in $found; do
 		info=$(dmg_info "$d") || continue
 		if [ "$(info_of "$info" revision)" = "$head" ]; then

@@ -30,6 +30,7 @@ State, in `<state>/client/`:
 | `queue.json` | The [offline prompt queue](/guides/offline-queue) |
 | `agent.sock`, `agent.lock`, `agent.log` | The laptop agent's socket, lock and log |
 | `ui-token` | The token for [the app's API](/reference/app-api) (mode 0600) |
+| `ui-state.json` | The private, explicit desktop-origin migration snapshot: allowlisted preferences, drafts, fonts and background images. It excludes credentials and arbitrary plugin storage. |
 | `networks/` | Embedded Tailscale nodes for other tailnets |
 
 Yours, in `~/.berth/`:
@@ -119,7 +120,7 @@ See [events and gates](/reference/events#what-a-hook-gets).
 | `SHELL` | The shell scripts, sessions and `exec` run in |
 | `BERTH_PROXY_ADDR`, `BERTH_UI_ADDR` | `burf agent` only: where a second agent (a test, a throwaway home) listens instead of 1377 and 1378 |
 | `BERTH_CHROMIUM` | berthd: the Chromium for [agents' browsers](/guides/agent-browser) |
-| `BERTH_CLI` | A dev build of the desktop app (`pnpm tauri dev`): the `berth` to run for the laptop agent. The packaged app ignores it and runs only the copy it carries |
+| `BERTH_CLI` | A native desktop build with the Go `dev` build tag: the absolute path to the `burf` CLI to run. Packaged apps ignore this override and run only their bundled CLI. `pnpm dev` starts the frontend server only. |
 
 The [laptop agent](/concepts/laptop-agent) explains what runs where; the
 [config reference](/reference/config) has the shape of every file you write.

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MylesMCook/burf/internal/sshroute/sshtest"
 	"github.com/MylesMCook/burf/internal/sshsetup"
@@ -86,6 +87,28 @@ func TestAHostSSHCannotReachIsADialError(t *testing.T) {
 	var op *net.OpError
 	if !errors.As(err, &op) || op.Op != "dial" || !strings.Contains(err.Error(), "Could not resolve hostname") {
 		t.Fatalf("read: %v", err)
+	}
+}
+
+func TestAnInitialWriteAfterSSHExitsKeepsItsDiagnostic(t *testing.T) {
+	bin, _ := fakeSSH(t)
+	d := &Dialer{SSH: bin, Host: sshtest.Unreachable, Forward: "127.0.0.1:7444", Finder: noAgents}
+	c, err := d.Dial(t.Context(), "tcp", "x:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	select {
+	case <-c.(*conn).exited:
+	case <-ctx.Done():
+		t.Fatal("synthetic SSH did not exit")
+	}
+	_, err = c.Write([]byte("TLS ClientHello"))
+	var op *net.OpError
+	if !errors.As(err, &op) || op.Op != "dial" || !strings.Contains(err.Error(), "Could not resolve hostname") {
+		t.Fatalf("write: %v", err)
 	}
 }
 

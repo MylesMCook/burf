@@ -3,13 +3,14 @@ import { ArrowLeftIcon, FolderIcon, GitForkIcon, MessageSquareIcon, PlusIcon, Ro
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chat } from "@/components/chat/chat";
 import type { ChatTransport } from "@/components/chat/chat-transport";
+import { TaskComposer } from "@/components/conversation/task-composer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tip } from "@/components/tip";
 import { type Client } from "@/lib/api";
-import { openComposer } from "@/lib/composer";
 import { errorMessage } from "@/lib/format";
-import { localAgentName, localApi, type LocalComputer, type LocalConversation, type LocalHistoryPage, type LocalSession } from "@/lib/local-computer";
+import { localAgentName, localApi, publishLocalThreads, useLocalThreadList, type LocalComputer, type LocalConversation, type LocalHistoryPage, type LocalSession } from "@/lib/local-computer";
+import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { savedChatMessages } from "@/lib/saved-chat";
 import { ViewHeader } from "@/views/view-header";
@@ -234,7 +235,12 @@ const paint = stylex.create({
     "paddingBottom": "4px",
   },
   s33: {
-    "margin": "auto",
+    "width": "100%",
+    "maxWidth": "720px",
+    "marginTop": "auto",
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "paddingBottom": "24px",
     "paddingLeft": "24px",
     "paddingRight": "24px",
     "fontSize": "14px",
@@ -354,10 +360,13 @@ type Selection = { kind: "history"; conversation: LocalConversation } | { kind: 
 
 export function LocalComputerView() {
   const client = useStore((s) => s.client)!;
-  const [local, setLocal] = useState<LocalComputer>();
+  const [localState, setLocal] = useState<{ client: Client; value: LocalComputer }>();
+  const local = localState?.client === client ? localState.value : undefined;
   const [conversations, setConversations] = useState<LocalConversation[]>([]);
   const view = useStore((s) => s.view);
   const opened = view.kind === "local" ? view.session : undefined;
+  const openedHistory = view.kind === "local" ? view.history : undefined;
+  const sidebarOpen = !usePrefs((p) => p.sidebarCollapsed);
   const [selection, select] = useState<Selection | undefined>(() => opened ? { kind: "session", session: opened } : undefined);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
@@ -372,10 +381,11 @@ export function LocalComputerView() {
     try {
       const value = await localApi.status(client, controller.signal);
       if (controller.signal.aborted) return;
-      setLocal(value);
+      setLocal({ client, value });
       const history = value.supported ? await localApi.conversations(client, controller.signal) : [];
       if (controller.signal.aborted) return;
       setConversations(history ?? []);
+      publishLocalThreads(value.sessions, history ?? []);
     } catch (e) {
       if (!controller.signal.aborted) setError(errorMessage(e));
     } finally {
@@ -394,53 +404,63 @@ export function LocalComputerView() {
     return [...grouped.entries()];
   }, [conversations, search]);
   const changeSession = useCallback((session: LocalSession) => {
-    setLocal((value) => value ? { ...value, sessions: [session, ...(value.sessions ?? []).filter((s) => s.id !== session.id)] } : value);
+    setLocal((state) => state?.client === client ? { ...state, value: { ...state.value, sessions: [session, ...(state.value.sessions ?? []).filter((s) => s.id !== session.id)] } } : state);
+    const prev = useLocalThreadList.getState();
+    publishLocalThreads([session, ...prev.sessions.filter((s) => s.id !== session.id)], prev.conversations);
     select((current) => current?.kind === "session" && current.session.id === session.id ? { kind: "session", session } : current);
-  }, []);
+  }, [client]);
   useEffect(() => {
     if (!opened) return;
     changeSession(opened);
     select({ kind: "session", session: opened });
   }, [opened, changeSession]);
+  useEffect(() => {
+    if (!openedHistory) return;
+    select({ kind: "history", conversation: openedHistory });
+  }, [openedHistory]);
+  useEffect(() => {
+    if (view.kind === "local" && !view.session && !view.history) select(undefined);
+  }, [view]);
 
   return <div className={[sx(paint.s0), sx(paint.s43)].filter(Boolean).join(" ")}>
     <ViewHeader title={local?.name || "This computer"} description="This computer" actions={<>
       <Tip label="Refresh local conversations"><Button size="icon-sm" variant="ghost" aria-label="Refresh local conversations" disabled={loading} onClick={() => void refresh()}><RotateCwIcon className={[sx(paint.s1), loading && "burf-spin"].filter(Boolean).join(" ")} /></Button></Tip>
-      <Button size="sm" disabled={!local?.supported} onClick={() => { select(undefined); openComposer({ place: { kind: "local" } }); }}><PlusIcon />New agent</Button>
+      {selection && <Button size="sm" disabled={!local?.supported} onClick={() => useStore.getState().setView({ kind: "local" })}><PlusIcon />New chat</Button>}
     </>} />
     {error && <div role="alert" className={sx(paint.s2)}>{error}</div>}
     {local && !local.supported ? <p className={sx(paint.s3)}>Local agents are unavailable on this computer.</p> : <div className={sx(paint.s4)}>
-      <aside aria-label="Local conversations" className={[[sx(paint.s5), sx(paint.s44)].filter(Boolean).join(" "), selection && [sx(paint.s6), sx(paint.s45)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
+      {!sidebarOpen && <aside aria-label="Local conversations" className={[[sx(paint.s5), sx(paint.s44)].filter(Boolean).join(" "), selection && [sx(paint.s6), sx(paint.s45)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
         <div className={sx(paint.s7)}><Input aria-label="Search local conversations" placeholder="Search conversations" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         {!!local?.sessions?.length && <section className={sx(paint.s8)}>
           <h2 className={sx(paint.s9)}>Started in Burf</h2>
-          {local.sessions.map((s) => <Tip key={s.id} label={s.cwd} width="lg"><button type="button" onClick={() => select({ kind: "session", session: s })} className={[sx(paint.s10), selection?.kind === "session" && selection.session.id === s.id && sx(paint.s11)].filter(Boolean).join(" ")}>
+          {local.sessions.map((s) => <Tip key={s.id} label={s.cwd} width="lg"><button type="button" onClick={() => { select({ kind: "session", session: s }); useStore.getState().setView({ kind: "local", session: s }); }} className={[sx(paint.s10), selection?.kind === "session" && selection.session.id === s.id && sx(paint.s11)].filter(Boolean).join(" ")}>
             {s.mode === "chat" ? <MessageSquareIcon className={sx(paint.s12)} /> : <TerminalIcon className={sx(paint.s13)} />}<span className={sx(paint.s14)}><span className={sx(paint.s15)}>{localAgentName(s.agent)}</span><span className={sx(paint.s16)}>{s.cwd}</span></span><span className={sx(paint.s17)}>{s.state}</span>
           </button></Tip>)}
         </section>}
         <h2 className={sx(paint.s18)}>Existing conversations</h2>
         {projects.map(([cwd, chats]) => <section key={cwd} className={sx(paint.s19)}>
           <h3 className={sx(paint.s20)}><FolderIcon className={sx(paint.s21)} /><Tip label={cwd || undefined} width="lg"><span className={sx(paint.s22)}>{cwd || "Unknown project"}</span></Tip></h3>
-          {chats.map((c) => <button type="button" key={c.id} onClick={() => select({ kind: "history", conversation: c })} className={[sx(paint.s23), selection?.kind === "history" && selection.conversation.id === c.id && sx(paint.s24)].filter(Boolean).join(" ")}>
+          {chats.map((c) => <button type="button" key={c.id} onClick={() => { select({ kind: "history", conversation: c }); useStore.getState().setView({ kind: "local", history: c }); }} className={[sx(paint.s23), selection?.kind === "history" && selection.conversation.id === c.id && sx(paint.s24)].filter(Boolean).join(" ")}>
             <MessageSquareIcon className={sx(paint.s25)} /><span className={sx(paint.s26)}><span className={sx(paint.s27)}>{c.title || "Untitled conversation"}</span><span className={sx(paint.s28)}>{localAgentName(c.source)} <time dateTime={c.updated_at}>{new Date(c.updated_at).toLocaleDateString()}</time></span></span>
           </button>)}
         </section>)}
         {!loading && !projects.length && <p className={sx(paint.s29)}>{search ? "No matching conversations." : "No local conversations found."}</p>}
-      </aside>
-      <section className={[sx(paint.s30), !selection && [sx(paint.s31), sx(paint.s46)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
-        {selection && <div className={[sx(paint.s32), sx(paint.s47)].filter(Boolean).join(" ")}><Button size="sm" variant="ghost" onClick={() => select(undefined)}><ArrowLeftIcon />Conversations</Button></div>}
-        {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={conversations.find((c) => c.id === selection.conversation.id) ?? selection.conversation} canFork={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_fork} onStart={(session, conversationID) => {
+      </aside>}
+      <section className={[sx(paint.s30), !selection && !sidebarOpen && [sx(paint.s31), sx(paint.s46)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
+        {selection && <div className={[sx(paint.s32), sx(paint.s47)].filter(Boolean).join(" ")}><Button size="sm" variant="ghost" onClick={() => useStore.getState().setView({ kind: "local" })}><ArrowLeftIcon />Conversations</Button></div>}
+        {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={conversations.find((c) => c.id === selection.conversation.id) ?? selection.conversation} canFork={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_fork} canContinueChat={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_continue_chat} onStart={(session, conversationID) => {
           changeSession(session);
-          select((current) => current?.kind === "history" && current.conversation.id === conversationID ? { kind: "session", session } : current);
+          const current = useStore.getState().view;
+          if (current.kind === "local" && current.history?.id === conversationID) useStore.getState().setView({ kind: "local", session });
         }} />}
-        {selection?.kind === "session" && (selection.session.mode === "chat" ? <LocalChat key={selection.session.id} client={client} session={selection.session} onChange={changeSession} /> : <LocalTerminal key={selection.session.id} client={client} session={selection.session} onChange={changeSession} />)}
-        {!selection && <div className={sx(paint.s33)}>Select a conversation or start an agent.</div>}
+        {selection?.kind === "session" && (selection.session.mode === "chat" ? local && <LocalChat key={selection.session.id} client={client} session={selection.session} onChange={changeSession} accountScope={local.client_scope} /> : <LocalTerminal key={selection.session.id} client={client} session={selection.session} onChange={changeSession} />)}
+        {!selection && local?.supported && <div className={sx(paint.s33)}><TaskComposer localComputer={local} draft={{ place: { kind: "local" } }} autoFocus placeholder="Send a message…" /></div>}
       </section>
     </div>}
   </div>;
 }
 
-function LocalHistory({ client, conversation, canFork, onStart }: { client: Client; conversation: LocalConversation; canFork: boolean; onStart(session: LocalSession, conversationID: string): void }) {
+function LocalHistory({ client, conversation, canFork, canContinueChat, onStart }: { client: Client; conversation: LocalConversation; canFork: boolean; canContinueChat: boolean; onStart(session: LocalSession, conversationID: string): void }) {
   const [page, setPage] = useState<LocalHistoryPage>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -486,7 +506,7 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
   return <>
     <div className={sx(paint.s34)}><Tip label={conversation.title || undefined} width="lg"><h2 className={sx(paint.s35)}>{conversation.title}</h2></Tip><span className={sx(paint.s36)}>Read-only</span></div>
     <div className={sx(paint.s37)}>
-      <Tip label={canFork ? "Continue as a new chat; the original stays unchanged" : "Installed CLI does not support continuing a copy"}>
+      <Tip label={canFork ? `Continue as a new ${canContinueChat ? "chat" : "terminal"}; the original stays unchanged` : "Installed CLI does not support continuing a copy"}>
         <Button size="sm" variant="outline" disabled={!canContinue || starting} aria-describedby={continueReason ? "local-continue-reason" : undefined} onClick={async () => {
           if (!canContinue || startingRef.current) return;
           startingRef.current = true;
@@ -494,7 +514,7 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
           launch.current = controller;
           setStarting(true); setStartError("");
           try {
-            const session = await localApi.fork(client, conversation.id, controller.signal);
+            const session = await (canContinueChat ? localApi.continueChat : localApi.fork)(client, conversation.id, controller.signal);
             if (!controller.signal.aborted) onStart(session, conversation.id);
           }
           catch (e) { if (!controller.signal.aborted) setStartError(errorMessage(e)); }

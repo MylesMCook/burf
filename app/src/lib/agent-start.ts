@@ -1,8 +1,8 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/desktop";
 
-import { isTauri } from "@/lib/api";
+import { isDesktop } from "@/lib/api";
 
-// Starting the laptop agent from the "not running" screen. The Tauri shell
+// Starting the laptop agent from the "not running" screen. The Wails shell
 // finds the berth command (bundled in Burf.app, or bin/berth in a dev
 // build) and runs it; a plain browser cannot, so it gets the terminal
 // instructions instead. ?mock=offline acts the whole thing out without an
@@ -22,7 +22,7 @@ export const mockAgentDown = () => mockOffline() && !mockStarted;
 // findAgentBinary is the berth command the app can start the agent with, or
 // null when there is none to run.
 export async function findAgentBinary(): Promise<AgentBinary | null> {
-  if (isTauri()) return invoke<AgentBinary | null>("agent_binary");
+  if (isDesktop()) return invoke<AgentBinary | null>("agent_binary");
   if (mockOffline()) return { path: "/Applications/Burf.app/Contents/MacOS/burf-cli", source: "bundled" };
   return null;
 }
@@ -30,7 +30,7 @@ export async function findAgentBinary(): Promise<AgentBinary | null> {
 // startAgent starts the agent now; atLogin also installs it as a login
 // service (burf agent install), which only happens when asked.
 export async function startAgent(atLogin: boolean): Promise<string> {
-  if (isTauri()) return invoke<string>("start_agent", { atLogin });
+  if (isDesktop()) return invoke<string>("start_agent", { atLogin });
   if (mockOffline()) {
     await new Promise((r) => setTimeout(r, 900));
     mockStarted = true;

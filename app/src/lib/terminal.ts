@@ -1,6 +1,7 @@
 import type { TerminalColors } from "@/lib/api";
 import type { PredictMode, Screen } from "./predict.ts";
 import { HIDDEN_FLUSH_MS, OutputGate } from "./term-output.ts";
+import { disposeXterm } from "./dispose-xterm.ts";
 
 // One small interface over the terminal emulator, so the renderer can be
 // swapped: ghostty-web (Ghostty's VT parser in WASM, drawn on a canvas) by
@@ -674,7 +675,7 @@ async function createXterm(host: HTMLElement, colors: TerminalColors, prefs: Ter
           callback(links.length ? links : undefined);
         },
       }),
-    dispose: () => t.dispose(),
+    dispose: () => disposeXterm(t),
   };
 }
 

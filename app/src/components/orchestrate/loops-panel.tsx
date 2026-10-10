@@ -19,13 +19,12 @@ const paint = stylex.create({
   s1: {
     "borderRadius": "999px",
     "backgroundColor": "var(--popover)",
-    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
   },
   s2: {
     "position": "fixed",
     "zIndex": 40,
     "display": "flex",
-    "maxHeight": "50vh",
+    "maxHeight": "min(50vh, max(112px, calc(100vh - var(--berth-home-composer-h, 0px) - var(--berth-status-h, 26px) - 96px)))",
     "width": "352px",
     "flexDirection": "column",
     "gap": "8px",
@@ -33,8 +32,7 @@ const paint = stylex.create({
   },
   s3: {
     "alignSelf": "flex-end",
-    "backgroundColor": "color-mix(in oklab, var(--popover) 80%, transparent)",
-    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+    "backgroundColor": "var(--popover)",
   },
   s4: {
     "borderRadius": "var(--radius-xl)",
@@ -45,7 +43,6 @@ const paint = stylex.create({
     "padding": "12px",
     "fontSize": "14px",
     "lineHeight": "20px",
-    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
   },
   s5: {
     "borderColor": "color-mix(in oklab, var(--warning) 60%, transparent)",
@@ -75,7 +72,7 @@ const paint = stylex.create({
     "backgroundColor": "var(--muted)",
     "paddingLeft": "4px",
     "paddingRight": "4px",
-    "fontSize": "10px",
+    "fontSize": "12px",
     "color": "var(--muted-foreground)",
   },
   s12: {
@@ -210,9 +207,8 @@ function detail(l: Loop): string {
   return l.message.replace(/ round\(s\)/, l.round === 1 ? " round" : " rounds");
 }
 
-// The panel docks above the status bar (26px) with a 12px gap, left of the
-// Files panel when that is docked (--berth-dock-w); toasts stack above the
-// panel by reading its height from --berth-loops-h.
+// The panel docks above the status bar and Home's task entry, left of the
+// Files panel when docked. Toasts include the same reservation when stacking.
 const STATUS_BAR = 26;
 const GAP = 12;
 
@@ -249,7 +245,7 @@ export function LoopsPanel() {
     }
     // Its width too, so a centred column (a conversation) can step aside.
     const sync = () => {
-      root.style.setProperty("--berth-loops-h", `${el.offsetHeight + GAP}px`);
+      root.style.setProperty("--berth-loops-h", `calc(${el.offsetHeight + GAP}px + var(--berth-home-composer-h, 0px))`);
       root.style.setProperty("--berth-loops-w", `${el.offsetWidth + GAP * 2}px`);
     };
     sync();
@@ -264,7 +260,7 @@ export function LoopsPanel() {
 
   if (!loops.length) return null;
   const live = loops.filter(isLive).length;
-  const bottom = `calc(var(--berth-status-h, ${STATUS_BAR}px) + ${GAP}px)`;
+  const bottom = `calc(var(--berth-status-h, ${STATUS_BAR}px) + var(--berth-home-composer-h, 0px) + ${GAP}px)`;
   // Folded, the panel is one pill in the corner, so it never sits over a
   // page's own controls; it opens again on a click, or when a loop needs you.
   if (folded && !loops.some((l) => l.outcome === "needs-you")) {

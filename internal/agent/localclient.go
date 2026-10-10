@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"runtime"
 	"strconv"
 	"sync"
 
@@ -34,6 +33,12 @@ func (a *Agent) initLocalClient() {
 		a.localClient.chats = localchat.New(program, localchat.StartProcess)
 		a.localClient.history = localhistory.New(localhistory.Config{})
 		a.localClient.manager = localagent.New(a.localClient.commands, func(program string, args []string, dir string, env []string, cols, rows int) (localagent.Process, error) {
+			for _, command := range a.localClient.commands {
+				if command.Program == program {
+					env = withLocalPATH(env, command.PATH)
+					break
+				}
+			}
 			return localpty.Start(program, args, dir, env, cols, rows)
 		})
 	})
@@ -41,7 +46,7 @@ func (a *Agent) initLocalClient() {
 
 func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/local", func(w http.ResponseWriter, r *http.Request) {
-		if runtime.GOOS != "windows" {
+		if !localClientSupported() {
 			writeJSON(w, http.StatusOK, map[string]any{"supported": false})
 			return
 		}
@@ -51,7 +56,7 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 		agents := make([]map[string]any, 0, 2)
 		for _, id := range []string{"claude", "codex"} {
 			command := a.localClient.commands[id]
-			agents = append(agents, map[string]any{"id": id, "available": command.Program != "", "can_fork": command.CanFork, "can_chat": command.CanChat})
+			agents = append(agents, map[string]any{"id": id, "available": command.Program != "", "can_terminal": localTerminalSupported(), "can_fork": command.CanFork, "can_chat": command.CanChat, "can_continue_chat": command.Program != "" && command.CanChat && command.CanFork})
 		}
 		sessions := make([]any, 0)
 		for _, s := range a.localClient.manager.List() {
@@ -62,12 +67,16 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 				sessions = append(sessions, s)
 			}
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"supported": true, "name": name, "home": home, "agents": agents, "sessions": sessions})
+		status := map[string]any{"supported": true, "name": name, "home": home, "agents": agents, "sessions": sessions}
+		if a.id != nil {
+			status["client_scope"] = a.id.Fingerprint().String()
+		}
+		writeJSON(w, http.StatusOK, status)
 	})
 	handle := func(pattern string, fn http.HandlerFunc) {
 		mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-			if runtime.GOOS != "windows" {
-				writeError(w, http.StatusNotImplemented, "native local sessions are available on Windows only")
+			if !localClientSupported() {
+				writeError(w, http.StatusNotImplemented, "local messages need Burf running as your user on macOS or Windows")
 				return
 			}
 			a.initLocalClient()

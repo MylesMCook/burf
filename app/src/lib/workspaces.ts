@@ -9,6 +9,7 @@ import { foldedOf, groupsOf, NARROW, stepGroup, stripTabs, withGroup, withoutGro
 import { usePrefs } from "@/lib/prefs";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
+import { localChatDraftKey, readLocalChatDraft, type LocalChatDraft, type LocalChatScope } from "@/lib/local-chat-draft";
 
 // A workspace is one worktree's tabs, as in Orca: selecting a worktree in the
 // sidebar swaps the tab strip to its tabs. Each tab is a tree of split panes.
@@ -64,6 +65,7 @@ interface State {
   // back is instant and nothing reconnects.
   mounted: string[];
   recentUrls: string[];
+  localChatDrafts: Record<string, LocalChatDraft>;
 }
 
 export const wsKey = (box: string, path: string) => `${box}:${path}`;
@@ -150,9 +152,19 @@ export const useWorkspaces = create<State>()(() => ({
   // show at once.
   mounted: savedShown,
   recentUrls: saved.recentUrls ?? [],
+  localChatDrafts: saved.localChatDrafts ?? {},
 }));
 
-useWorkspaces.subscribe((s) => save("berth.workspaces", { current: s.current, shown: s.shown, folded: s.folded, tones: s.tones, spaces: s.spaces, recentUrls: s.recentUrls }));
+useWorkspaces.subscribe((s) => save("berth.workspaces", { current: s.current, shown: s.shown, folded: s.folded, tones: s.tones, spaces: s.spaces, recentUrls: s.recentUrls, localChatDrafts: s.localChatDrafts }));
+
+export function localChatDraft(session: LocalChatScope): LocalChatDraft {
+  return readLocalChatDraft(useWorkspaces.getState().localChatDrafts[localChatDraftKey(session)]);
+}
+
+export function changeLocalChatDraft(session: LocalChatScope, change: (draft: LocalChatDraft) => LocalChatDraft) {
+  const key = localChatDraftKey(session);
+  useWorkspaces.setState((state) => ({ localChatDrafts: { ...state.localChatDrafts, [key]: change(readLocalChatDraft(state.localChatDrafts[key])) } }));
+}
 
 const mapLeaves = (n: PaneNode, fn: (l: Leaf) => Leaf): PaneNode => (n.kind === "leaf" ? fn(n) : { ...n, a: mapLeaves(n.a, fn), b: mapLeaves(n.b, fn) });
 

@@ -1,5 +1,6 @@
 // Native Windows and Mac keep their own shortcuts; Linux is an alpha.
 // ?platform=mac/windows/linux can show a platform in screenshots and tests.
+import { isDesktop } from "./desktop.ts";
 
 const forced = (() => {
   try {
@@ -9,10 +10,10 @@ const forced = (() => {
   }
 })();
 
-const tauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+const native = isDesktop();
 const nav = typeof navigator === "undefined" ? "" : navigator.platform || navigator.userAgent;
 
-export const IS_LINUX = forced ? forced === "linux" : tauri && /Linux/.test(nav);
+export const IS_LINUX = forced ? forced === "linux" : native && /Linux/.test(nav);
 export const IS_MAC = forced ? forced === "mac" : /Mac|iPhone|iPad/.test(nav);
 export const IS_WINDOWS = forced ? forced === "windows" : /Win/.test(nav);
 

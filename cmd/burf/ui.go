@@ -14,17 +14,14 @@ import (
 	"strings"
 
 	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/uibundle"
 	"github.com/MylesMCook/burf/internal/uicontract"
 )
 
 const uiUsage = "usage: burf ui install PATH | status [--json] | rollback | remove"
-const uiMaxBytes = 512 * 1024 * 1024
+const uiMaxBytes = uibundle.MaxBytes
 
-type uiManifest struct {
-	Shell   string            `json:"shell"`
-	Version string            `json:"version"`
-	Files   map[string]string `json:"files"`
-}
+type uiManifest = uibundle.Manifest
 
 type uiStatus struct {
 	Path       string `json:"path"`
@@ -79,65 +76,25 @@ func uiCommand(home string, args []string) error {
 }
 
 func validUIPath(name string) bool {
-	if name == "" || strings.ContainsAny(name, "\\:") {
-		return false
-	}
-	for _, part := range strings.Split(name, "/") {
-		if part == "" || part == "." || part == ".." {
-			return false
-		}
-	}
-	return true
+	return uibundle.ValidPath(name)
 }
 
-// Links and special files are refused. os.Root also prevents reads escaping
-// through a parent link changed while copying or checking a source folder.
 func uiFiles(dir string) (map[string][]byte, error) {
-	info, err := os.Lstat(dir)
+	assets, err := uibundle.Snapshot(dir)
 	if err != nil {
 		return nil, err
 	}
-	if !info.IsDir() {
-		return nil, errors.New("interface is not a directory")
-	}
-	root, err := os.OpenRoot(dir)
-	if err != nil {
-		return nil, err
-	}
-	defer root.Close()
 	files := make(map[string][]byte)
-	var total int64
-	err = fs.WalkDir(root.FS(), ".", func(name string, entry fs.DirEntry, walkErr error) error {
+	err = fs.WalkDir(assets, ".", func(name string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
-		}
-		if name == "." {
-			return nil
-		}
-		if !validUIPath(name) {
-			return fmt.Errorf("invalid asset path: %s", name)
 		}
 		if entry.IsDir() {
 			return nil
 		}
-		if !entry.Type().IsRegular() {
-			return fmt.Errorf("asset is not a regular file: %s", name)
-		}
-		f, err := root.Open(name)
+		data, err := fs.ReadFile(assets, name)
 		if err != nil {
 			return err
-		}
-		data, err := io.ReadAll(io.LimitReader(f, uiMaxBytes-total+1))
-		closeErr := f.Close()
-		if err != nil {
-			return err
-		}
-		if closeErr != nil {
-			return closeErr
-		}
-		total += int64(len(data))
-		if total > uiMaxBytes {
-			return errors.New("interface exceeds 512 MiB")
 		}
 		files[name] = data
 		return nil
@@ -146,32 +103,8 @@ func uiFiles(dir string) (map[string][]byte, error) {
 }
 
 func checkUI(dir string) (uiManifest, error) {
-	files, err := uiFiles(dir)
-	var m uiManifest
-	if err != nil {
-		return m, err
-	}
-	if err = json.Unmarshal(files["manifest.json"], &m); err != nil {
-		return m, fmt.Errorf("manifest.json: %w", err)
-	}
-	if m.Shell == "" || strings.TrimSpace(m.Version) == "" || m.Files["index.html"] == "" {
-		return m, errors.New("manifest needs shell, version and index.html")
-	}
-	delete(files, "manifest.json")
-	if len(files) != len(m.Files) {
-		return m, errors.New("interface file list does not match manifest")
-	}
-	for name, hash := range m.Files {
-		if !validUIPath(name) || name == "manifest.json" {
-			return m, fmt.Errorf("invalid asset path: %s", name)
-		}
-		data, ok := files[name]
-		sum := sha256.Sum256(data)
-		if !ok || hex.EncodeToString(sum[:]) != hash {
-			return m, fmt.Errorf("interface checksum does not match: %s", name)
-		}
-	}
-	return m, nil
+	_, m, err := uibundle.Verify(dir)
+	return m, err
 }
 
 func inspectUI(dir string) uiStatus {

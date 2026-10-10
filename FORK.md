@@ -39,6 +39,23 @@ screen scraping or simulated terminal keystrokes when implementing this.
 Keep terminals as a fallback for shell work and unsupported agent interactions.
 Preserve source-history isolation, agent permissions and no-replay guarantees.
 
+The desktop window uses Go and Wails v3.0.0-beta.28. Desktop builds use Go
+and TypeScript; there is no Rust or Tauri build path. Browser panes support
+general browsing in isolated native WKWebViews on Mac and WebView2 controllers
+on Windows. Foreign pages receive no app runtime, bindings or UI token.
+Linux machines continue to run the Go daemon; no Linux desktop is advertised.
+
+The trusted app origin changes during migration. Export the old window's
+preferences, drafts, fonts and backgrounds through the owned client before
+replacement. Restore precedes imports that read settings. A failed import is
+retryable and leaves both origins intact. The updater remains disabled.
+
+This computer opens local messages directly on Mac and Windows. It does not
+pair a box or install a daemon. Mac local agents use structured chat; local
+terminal hosting remains Windows-only. Existing daemon services are never
+copied or restarted by automatic refresh or reconnect. Their updates use the
+daemon's atomic chat guard through Install bundled or `burf upgrade BOX`.
+
 ### Removed Team Setup and Kits
 
 Team setup and Kits are no longer product features. Their CLI commands, API
@@ -451,23 +468,23 @@ The folder is `~/Library/Application Support/berth/ui/current` on macOS,
 `${XDG_CONFIG_HOME:-~/.config}/berth/ui/current` on Linux. `BERTH_HOME`
 overrides the state root on every OS.
 
-`manifest.json` is `{ "shell": "1", "version": "0.3.12+<commit>", "files":
+`manifest.json` is `{ "shell": "2", "version": "0.3.12+<commit>", "files":
 { "index.html": "<sha256>", "assets/app.js": "<sha256>" } }`. Every regular
 file except the manifest must have its original bytes' lowercase SHA-256.
 The script uses `app/package.json` plus the Git commit; installing a build
 without a manifest generates one in staging with version `unversioned`.
-`internal/uicontract/shell.txt` is the single contract, embedded by Go, included
-at Rust compile time and read by the script. Bump it when a native command's
+`internal/uicontract/shell.txt` is the single contract, embedded by Go and read
+by the script. Contract 2 selects the Go desktop. Bump it when a native command's
 name or arguments, an event payload or a capability used by the frontend
 changes. Frontend-only changes using the same contract keep it.
 
 Missing, unreadable, damaged or incompatible files select the compiled-in
 frontend for the whole process. Links, absolute names and traversal are refused.
 Verified bytes stay in memory, so installs cannot mix versions in an open window.
-The page keeps Tauri's origin, CSP and command permissions. Folder HTML gets its
-own inline script hashes, including the import map, and Tauri's nonce processing;
-compiled HTML's inline hashes are not reused. No HTTP listener or updater feed
-is added. This is the person's own executable interface, with the same authority
+The page uses the trusted Wails origin and a finite native command boundary.
+Folder HTML gets its own inline script hashes after final runtime injection,
+including the import map; compiled HTML's inline hashes are not reused. No
+updater feed is added. This is the person's own executable interface, with the same authority
 as the built-in frontend. Hashes guard against damage or half-copied files, not
 someone who can already write that person's files.
 

@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -31,6 +32,12 @@ type LaunchOptions struct {
 	chatID  string
 	Program string
 	CWD     string
+	// Fork names saved history to branch into an independent provider session.
+	Fork string
+	// HistoryID is the local history store's opaque reference, never a provider ID.
+	HistoryID string
+	// HistoryBefore bounds imported history to the bytes present at the fork.
+	HistoryBefore int64
 	// Env replaces the provider environment; nil inherits the current environment.
 	Env []string
 	// Browser, when set, offers one client's browser tools to this chat only.
@@ -96,20 +103,22 @@ func patchDetail(changes []fileChange) (string, bool) {
 }
 
 type Session struct {
-	ID        string      `json:"id"`
-	Agent     string      `json:"agent"`
-	Mode      string      `json:"mode"`
-	CWD       string      `json:"cwd"`
-	State     string      `json:"state"`
-	StartedAt time.Time   `json:"started_at"`
-	ThreadID  string      `json:"thread_id"`
-	TurnID    string      `json:"turn_id,omitempty"`
-	Items     []Item      `json:"items"`
-	Approvals []Approval  `json:"approvals"`
-	Error     string      `json:"error,omitempty"`
-	Truncated bool        `json:"truncated,omitempty"`
-	Options   TurnOptions `json:"options"`
-	Composer  bool        `json:"composer"`
+	ID            string      `json:"id"`
+	Agent         string      `json:"agent"`
+	Mode          string      `json:"mode"`
+	CWD           string      `json:"cwd"`
+	State         string      `json:"state"`
+	StartedAt     time.Time   `json:"started_at"`
+	HistoryID     string      `json:"history_id,omitempty"`
+	HistoryBefore int64       `json:"history_before,omitempty"`
+	ThreadID      string      `json:"thread_id"`
+	TurnID        string      `json:"turn_id,omitempty"`
+	Items         []Item      `json:"items"`
+	Approvals     []Approval  `json:"approvals"`
+	Error         string      `json:"error,omitempty"`
+	Truncated     bool        `json:"truncated,omitempty"`
+	Options       TurnOptions `json:"options"`
+	Composer      bool        `json:"composer"`
 	// Permission modes the composer may offer for the next message.
 	Permissions []string `json:"permissions,omitempty"`
 	// Browser is set only for a chat started with browser tools.
@@ -155,6 +164,7 @@ type running struct {
 }
 type Manager struct {
 	mu       sync.Mutex
+	forkMu   sync.Mutex
 	program  string
 	launch   Launch
 	sessions map[string]*running
@@ -177,6 +187,27 @@ func (m *Manager) Start(ctx context.Context, cwd string) (Session, error) {
 // StartWith binds one chat to its resolved project executable and account
 // environment without changing the defaults used by other concurrent chats.
 func (m *Manager) StartWith(ctx context.Context, options LaunchOptions) (Session, error) {
+	if options.Fork != "" {
+		if options.Env == nil {
+			options.Env = os.Environ()
+		}
+		// Serialize continuations, not the registry: inspecting or stopping
+		// another chat must remain possible during a provider handshake.
+		m.forkMu.Lock()
+		defer m.forkMu.Unlock()
+		if err := ctx.Err(); err != nil {
+			return Session{}, err
+		}
+		if !filepath.IsAbs(options.CWD) {
+			return Session{}, errors.New("project directory must be absolute")
+		}
+		if st, err := os.Stat(options.CWD); err != nil || !st.IsDir() {
+			return Session{}, errors.New("project directory does not exist")
+		}
+		if s, ok := m.existingFork(options); ok {
+			return s, nil
+		}
+	}
 	r, err := m.startProcess(ctx, options)
 	if err != nil {
 		return Session{}, err
@@ -190,11 +221,42 @@ func (m *Manager) StartWith(ctx context.Context, options LaunchOptions) (Session
 	return r.snapshot(), nil
 }
 
+func (m *Manager) existingFork(options LaunchOptions) (Session, bool) {
+	agent := options.Agent
+	if agent == "" {
+		agent = "codex"
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed {
+		return Session{}, false
+	}
+	for _, r := range m.sessions {
+		r.mu.Lock()
+		old := r.launchOptions
+		sameSource := r.session.Agent == agent && old.Fork == options.Fork
+		sameProcess := old.Program == options.Program && old.CWD == filepath.Clean(options.CWD) && slices.Equal(old.Env, options.Env)
+		if r.session.State != "exited" && sameSource && sameProcess && old.Browser == options.Browser && old.Tools == options.Tools {
+			if options.HistoryID != "" {
+				r.session.HistoryID = options.HistoryID
+			}
+			r.mu.Unlock()
+			return r.snapshot(), true
+		}
+		r.mu.Unlock()
+	}
+	return Session{}, false
+}
+
 func (codexProvider) start(ctx context.Context, r *running, options LaunchOptions) error {
 	var err error
 	initCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	_, err = r.call(initCtx, "initialize", map[string]any{"clientInfo": map[string]string{"name": "burf", "title": "Burf", "version": "1"}})
+	initialize := map[string]any{"clientInfo": map[string]string{"name": "burf", "title": "Burf", "version": "1"}}
+	if options.Fork != "" {
+		initialize["capabilities"] = map[string]any{"experimentalApi": true}
+	}
+	_, err = r.call(initCtx, "initialize", initialize)
 	if err == nil {
 		err = r.queue(map[string]any{"method": "initialized"})
 	}
@@ -211,7 +273,15 @@ func (codexProvider) start(ctx context.Context, r *running, options LaunchOption
 		if len(servers) > 0 {
 			params["config"] = map[string]any{"mcp_servers": servers}
 		}
-		result, err = r.call(initCtx, "thread/start", params)
+		method := "thread/start"
+		if options.Fork != "" {
+			method = "thread/fork"
+			params["threadId"] = options.Fork
+			// History stays in the read-only view; only the new identity is
+			// needed here, without an unbounded response of saved turns.
+			params["excludeTurns"] = true
+		}
+		result, err = r.call(initCtx, method, params)
 	}
 	var reply struct {
 		Thread struct {
@@ -222,6 +292,9 @@ func (codexProvider) start(ctx context.Context, r *running, options LaunchOption
 		err = json.Unmarshal(result, &reply)
 		if err == nil && reply.Thread.ID == "" {
 			err = errors.New("Codex returned no thread identity")
+		}
+		if err == nil && reply.Thread.ID == options.Fork {
+			err = errors.New("Codex did not create an independent conversation")
 		}
 	}
 	if err != nil {
@@ -307,7 +380,7 @@ func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*run
 		return nil, err
 	}
 	r := &running{provider: backend, launchOptions: options, process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage), browser: make(map[string]chan BrowserResult), browserWake: make(chan struct{}), tools: options.Tools != nil, toolAsks: make(map[string]chan bool), idle: m.Idle}
-	r.session = Session{ID: hex.EncodeToString(bytes[:]), Agent: options.Agent, Mode: "chat", CWD: cwd, State: "starting", StartedAt: time.Now().UTC(), Items: []Item{}, Approvals: []Approval{}, Options: TurnOptions{Permission: "strict"}, Composer: true, Permissions: Permissions}
+	r.session = Session{ID: hex.EncodeToString(bytes[:]), Agent: options.Agent, Mode: "chat", CWD: cwd, State: "starting", StartedAt: time.Now().UTC(), HistoryID: options.HistoryID, HistoryBefore: options.HistoryBefore, Items: []Item{}, Approvals: []Approval{}, Options: TurnOptions{Permission: "strict"}, Composer: true, Permissions: Permissions}
 	if options.Browser != nil {
 		r.session.Browser = &BrowserState{Tools: append([]BrowserTool{}, options.Browser.Tools...), Calls: []BrowserCall{}}
 	}

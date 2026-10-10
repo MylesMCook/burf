@@ -157,7 +157,7 @@ function sx(...parts: readonly (false | null | undefined | object)[]): string {
 //
 // Pointer events, not HTML5 drag and drop: WebKit's drag images are poor and
 // the strip is also the window's drag handle. Tabs don't carry
-// data-tauri-drag-region, so pressing one never moves the window, and a press
+// data-burf-drag-region, so pressing one never moves the window, and a press
 // only becomes a drag after a few pixels, so clicks still click. Escape, or
 // the window losing focus, cancels.
 

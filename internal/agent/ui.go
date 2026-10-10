@@ -41,6 +41,8 @@ var uiOrigins = map[string]bool{
 	"tauri://localhost":       true,
 	"http://tauri.localhost":  true,
 	"https://tauri.localhost": true,
+	"wails://localhost":       true,
+	"http://wails.localhost":  true,
 	"http://localhost:1420":   true,
 }
 
@@ -102,6 +104,7 @@ func (a *Agent) ui(token, hostport string, inner http.Handler) http.Handler {
 	a.outdatedRoutes(mux)
 	a.localBoxRoutes(mux)
 	a.localClientRoutes(mux)
+	a.uiStateRoutes(mux)
 	a.joinRoutes(mux)
 	mux.HandleFunc("POST /v1/stop", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "the app cannot stop the agent")
@@ -317,7 +320,7 @@ func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 	cols, _ := strconv.Atoi(r.URL.Query().Get("cols"))
 	rows, _ := strconv.Atoi(r.URL.Query().Get("rows"))
 	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		OriginPatterns: []string{"localhost", "localhost:14[23][0-9]", "tauri.localhost"},
+		OriginPatterns: []string{"localhost", "localhost:14[23][0-9]", "tauri.localhost", "wails.localhost"},
 	})
 	if err != nil {
 		return

@@ -82,7 +82,7 @@ func TestArtifactPageIsServedOnItsOwnOriginUnderAStrictPolicy(t *testing.T) {
 		"sandbox allow-scripts", "default-src 'none'", "connect-src 'none'", "form-action 'none'", "frame-src 'none'", "worker-src 'none'",
 		"img-src data: blob:", "font-src data:", "base-uri 'none'", "webrtc 'block'",
 		"script-src 'unsafe-inline' 'unsafe-eval' http://" + artHost + "/_lib/;",
-		"frame-ancestors http://" + artHost + " tauri://localhost http://tauri.localhost https://tauri.localhost http://localhost:1420",
+		"frame-ancestors http://" + artHost + " tauri://localhost http://tauri.localhost https://tauri.localhost wails://localhost http://wails.localhost http://localhost:1420",
 	} {
 		if !strings.Contains(csp, want) {
 			t.Errorf("policy lacks %q:\n%s", want, csp)

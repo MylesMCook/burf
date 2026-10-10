@@ -85,3 +85,6 @@ func nativeCLI(path string) bool {
 	st, err := os.Stat(path)
 	return err == nil && st.Mode().IsRegular()
 }
+
+func localClientSupported() bool   { return true }
+func localTerminalSupported() bool { return true }

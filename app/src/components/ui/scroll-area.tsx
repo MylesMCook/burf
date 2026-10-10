@@ -66,6 +66,7 @@ export function ScrollArea({
   overscrollContain = false,
   grow = false,
   cap = false,
+  contentSize = "default",
   ...props
 }: Omit<ScrollAreaPrimitive.Root.Props, "className"> & {
   scrollFade?: boolean;
@@ -75,6 +76,8 @@ export function ScrollArea({
   overscrollContain?: boolean;
   grow?: boolean;
   cap?: boolean;
+  /** Constrain ordinary lists to the viewport; wide tables retain intrinsic sizing. */
+  contentSize?: "default" | "container";
 }): React.ReactElement {
   return (
     <ScrollAreaPrimitive.Root className={stylex.props(styles.root, grow && styles.grow).className} {...props}>
@@ -92,7 +95,11 @@ export function ScrollArea({
         }
         data-slot="scroll-area-viewport"
       >
-        <ScrollAreaPrimitive.Content className={stylex.props(fill && styles.fill, clampContentMinWidth && styles.clamp).className} data-slot="scroll-area-content">
+        <ScrollAreaPrimitive.Content
+          className={stylex.props(fill && styles.fill, clampContentMinWidth && styles.clamp).className}
+          data-slot="scroll-area-content"
+          style={contentSize === "container" ? { minWidth: 0, width: "100%", maxWidth: "100%" } : undefined}
+        >
           {children}
         </ScrollAreaPrimitive.Content>
       </ScrollAreaPrimitive.Viewport>

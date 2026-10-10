@@ -11,7 +11,7 @@ import { scrollBehavior } from "@/lib/motion";
 import { usePluginsLoading } from "@/plugins/registry";
 
 import { useOnScreen, WidgetBoundary, WidgetHeading, WidgetMenu } from "./card";
-import { GAP, HomeWidgetProvider, ROW } from "./env";
+import { GAP, HomeListReport, HomeWidgetProvider, ROW, type HomeList } from "./env";
 import { AddWidgetDialog } from "./picker";
 import { sizeFor, useWidgets, type WidgetDef } from "./registry";
 
@@ -747,6 +747,9 @@ interface CellProps {
 
 function Cell({ def, size, cols, edit, dragging, refresh, handleRef, onKeyDown, onPointerDown, onPointerMove, onPointerUp, onSize, onRemove, onRefresh, onCustomize }: CellProps) {
   const [el, setEl] = useState<HTMLDivElement | null>(null);
+  const [presence, setPresence] = useState<HomeList>("loading");
+  const report = useCallback((state: HomeList) => setPresence((prev) => (prev === state ? prev : state)), []);
+  const vacant = !edit && presence === "empty";
   const onScreen = useOnScreen(el);
   const headingId = `w-${def.id.replace(/[^a-z0-9-]/gi, "-")}`;
   const Body = def.Component;
@@ -784,7 +787,8 @@ function Cell({ def, size, cols, edit, dragging, refresh, handleRef, onKeyDown, 
   };
 
   return (
-    <div ref={setEl} role="listitem" data-widget={def.id} data-size={size} className={[sx(paint.s17), SPAN[size]].filter(Boolean).join(" ")}>
+    <div ref={setEl} role="listitem" data-widget={def.id} data-size={size} hidden={vacant} className={[sx(paint.s17), SPAN[size]].filter(Boolean).join(" ")}>
+      <HomeListReport report={report}>
       <HomeWidgetProvider size={size} cols={cols} visible={onScreen} refresh={refresh} bare={def.bare && !edit}>
       {def.bare && !edit ? (
         <section aria-label={def.title} className={[sx(paint.s18), "group/w"].filter(Boolean).join(" ")}>
@@ -847,6 +851,7 @@ function Cell({ def, size, cols, edit, dragging, refresh, handleRef, onKeyDown, 
         </section>
       )}
       </HomeWidgetProvider>
+      </HomeListReport>
     </div>
   );
 }

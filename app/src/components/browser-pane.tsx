@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@/lib/desktop";
+import { listen } from "@/lib/desktop";
 import { ArrowLeftIcon, ArrowUpRightIcon, ArrowRightIcon, BotIcon, CrosshairIcon, ExternalLinkIcon, GlobeIcon, MonitorSmartphoneIcon, RotateCwIcon, SendIcon, ShieldAlertIcon, XIcon } from "lucide-react";
 import { useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 
@@ -9,7 +9,7 @@ import { BrowserSandboxCard, seedSandbox, useSandboxCardState } from "@/componen
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { isTauri } from "@/lib/api";
+import { isDesktop } from "@/lib/api";
 import { openPreviewAt } from "@/lib/actions";
 import { agentBrowserStatus, boxHasBrowser, fitFrame, type Frame, sizeLabel, watchAgentBrowser } from "@/lib/agent-browser";
 import { useAgentTarget } from "@/lib/agent-target";
@@ -724,7 +724,7 @@ type Mode = "native" | "iframe";
 export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, onLoading }: Props) {
   const fallbackId = useId();
   const id = useMemo(() => (paneId ?? fallbackId).replace(/[^A-Za-z0-9_-]/g, ""), [paneId, fallbackId]);
-  const [mode, setMode] = useState<Mode>(isTauri() ? "native" : "iframe");
+  const [mode, setMode] = useState<Mode>(isDesktop() ? "native" : "iframe");
   const [failure, setFailure] = useState<string>();
   const [input, setInput] = useState(url);
   const [loading, setLoading] = useState(false);

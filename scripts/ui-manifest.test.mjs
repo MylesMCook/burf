@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, writeFile, rm, symlink } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { makeManifest } from "./ui-manifest.mjs";
+import { makeManifest, verifyManifest } from "./ui-manifest.mjs";
 
 test("manifest hashes every nested asset and shares the shell contract", async (t) => {
   const dir = await mkdtemp(join(tmpdir(), "burf-ui-"));
@@ -33,4 +33,30 @@ test("a folder without index.html is not a build", async (t) => {
   const dir = await mkdtemp(join(tmpdir(), "burf-ui-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   await assert.rejects(makeManifest(dir, "abcdef"), /Missing index.html/);
+});
+
+test("downloaded UI rejects a stale commit without replacing its manifest", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "burf-ui-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, "index.html"), "<html>interface</html>");
+  const manifest = await makeManifest(dir, "abcdef123456");
+  assert.deepEqual(await verifyManifest(dir, "abcdef123456" + "0".repeat(28)), manifest);
+  await assert.rejects(verifyManifest(dir, "123456abcdef"), /must match this commit/);
+  assert.deepEqual(JSON.parse(await readFile(join(dir, "manifest.json"), "utf8")), manifest);
+});
+
+test("downloaded UI rejects changed, extra or missing bytes", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "burf-ui-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, "index.html"), "<html>interface</html>");
+  await writeFile(join(dir, "app.js"), "export default 1");
+  await makeManifest(dir, "abcdef123456");
+  await writeFile(join(dir, "app.js"), "export default 2");
+  await assert.rejects(verifyManifest(dir, "abcdef123456"), /every file hash/);
+  await writeFile(join(dir, "app.js"), "export default 1");
+  await writeFile(join(dir, "extra.js"), "extra");
+  await assert.rejects(verifyManifest(dir, "abcdef123456"), /every file hash/);
+  await rm(join(dir, "extra.js"));
+  await rm(join(dir, "app.js"));
+  await assert.rejects(verifyManifest(dir, "abcdef123456"), /every file hash/);
 });

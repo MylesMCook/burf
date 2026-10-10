@@ -15,7 +15,7 @@ test("a change to Go runs the race suite and the native Windows tests, not the b
 });
 
 test("a change to the native shell builds both desktops and leaves the page's suites alone", () => {
-  assert.deepEqual(picked("app/src-tauri/src/lib.rs"), ["desktop", "windows"]);
+  assert.deepEqual(picked("app/native/desktop/service.go"), ["desktop", "native", "windows"]);
 });
 
 test("the page's dependencies reach every build of it", () => {
@@ -52,4 +52,8 @@ test("a merge with one suite left to prove runs that suite when the change reach
   assert.deepEqual([...only(suitesFor(["app/src/views/home.tsx"]), ["e2e"])], ["e2e"]);
   assert.deepEqual([...only(suitesFor(["internal/wire/server.go"]), ["e2e"])], []);
   assert.deepEqual([...only(suitesFor([".github/workflows/ci.yml"]), ["e2e"])], ["e2e"]);
+});
+
+test("native changes receive quick Go validation on a pull request", () => {
+  assert.ok(suitesFor(["app/native/desktop/service.go"]).has("native"));
 });

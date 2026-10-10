@@ -8,7 +8,7 @@ test("⌘T on Home asks which box, then opens a terminal in its home over Home",
   mockOnly("starts a session on a box");
   await app.open();
   const page = app.page;
-  await expect(page.getByRole("heading", { name: "What should your agents work on?" })).toBeVisible();
+  await expect(page.getByTestId("task-composer").getByRole("textbox", { name: "What should your agents work on?" })).toBeVisible();
   await expect(page.locator("[data-home-tab]")).toHaveCount(0);
   await expect(app.worktree("devl/checkout-fix")).toBeVisible();
 
@@ -35,11 +35,11 @@ test("⌘T on Home asks which box, then opens a terminal in its home over Home",
   await expect(tab).toHaveAttribute("aria-selected", "true");
   const pane = page.locator("[data-testid=pane][data-pane-kind=terminal]:visible");
   await expect(pane).toHaveCount(1);
-  await expect(page.getByRole("heading", { name: "What should your agents work on?" })).toBeHidden();
+  await expect(page.getByTestId("task-composer").getByRole("textbox", { name: "What should your agents work on?" })).toBeHidden();
 
   // The Home tab shows Home again; the terminal keeps its tab.
   await page.locator("[data-home-tab]").click();
-  await expect(page.getByRole("heading", { name: "What should your agents work on?" })).toBeVisible();
+  await expect(page.getByTestId("task-composer").getByRole("textbox", { name: "What should your agents work on?" })).toBeVisible();
   await expect(tab).toHaveAttribute("aria-selected", "false");
 
   // The pick is remembered: next time it is first, and ↵ opens it.
@@ -60,7 +60,7 @@ test("⌘T on Home asks which box, then opens a terminal in its home over Home",
   const confirm = page.getByRole("alertdialog");
   if (await confirm.isVisible().catch(() => false)) await confirm.getByRole("button", { name: /Close/ }).click();
   await expect(page.locator("[data-home-tab]")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "What should your agents work on?" })).toBeVisible();
+  await expect(page.getByTestId("task-composer").getByRole("textbox", { name: "What should your agents work on?" })).toBeVisible();
 });
 
 test("⌘T in a worktree still opens its terminal there", async ({ app }) => {

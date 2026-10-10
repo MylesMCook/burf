@@ -1,5 +1,6 @@
 import type { AttachmentAdapter, ThreadMessageLike } from "@assistant-ui/react";
 import type { ChatDecision, ChatModel, ChatOptions, LocalChat, LocalSession } from "@/lib/local-computer";
+import type { SavedQueueMessage } from "@/lib/chat-queue";
 
 // A transport supplies session data and capabilities, never a composer or a view.
 export type ChatSession = Omit<LocalSession, "agent"> & { agent: string };
@@ -20,6 +21,7 @@ export interface ChatTransport {
   // Terminal-backed transports already own their queue and its idempotency keys.
   queueOnServer?: boolean;
   snapshot?: ChatSnapshot;
+  prefixMessages?: readonly ThreadMessageLike[];
   readOnly?: boolean;
   loading?: boolean;
   hasEarlier?: boolean;
@@ -29,6 +31,12 @@ export interface ChatTransport {
   onChange?(session: ChatSession): void;
   onDraftChange?(text: string): void;
   onOptionsChange?(options: ChatOptions): void;
+  initialQueue?: readonly SavedQueueMessage[];
+  initialQueueHeld?: boolean;
+  initialSendError?: string;
+  onQueueChange?(messages: SavedQueueMessage[], held: boolean): void;
+  onSendStart?(text: string, options: ChatOptions): string;
+  onSendSettled?(request: string, sent: boolean): void;
   read(signal?: AbortSignal): Promise<ChatSnapshot>;
   message?(text: string, options?: ChatOptions): Promise<unknown>;
   models?(): Promise<ChatModel[]>;

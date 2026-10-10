@@ -23,7 +23,7 @@ import (
 func TestLocalRoutesRequireAuthAndLoopback(t *testing.T) {
 	a := &Agent{}
 	h := a.ui("local-test-token", "127.0.0.1:1378", http.NotFoundHandler())
-	for _, endpoint := range [][2]string{{"GET", "/v1/local"}, {"GET", "/v1/local/conversations"}, {"GET", "/v1/local/sessions/foreign/output"}, {"POST", "/v1/local/conversations/foreign/fork"}, {"POST", "/v1/local/chats"}, {"GET", "/v1/local/chats/foreign"}, {"POST", "/v1/local/chats/foreign/messages"}, {"POST", "/v1/local/chats/foreign/approvals"}, {"POST", "/v1/local/chats/foreign/interrupt"}, {"DELETE", "/v1/local/chats/foreign"}} {
+	for _, endpoint := range [][2]string{{"GET", "/v1/local"}, {"GET", "/v1/local/conversations"}, {"GET", "/v1/local/sessions/foreign/output"}, {"POST", "/v1/local/conversations/foreign/fork"}, {"POST", "/v1/local/conversations/foreign/continue"}, {"POST", "/v1/local/chats"}, {"GET", "/v1/local/chats/foreign"}, {"POST", "/v1/local/chats/foreign/messages"}, {"POST", "/v1/local/chats/foreign/approvals"}, {"POST", "/v1/local/chats/foreign/interrupt"}, {"DELETE", "/v1/local/chats/foreign"}} {
 		for _, tc := range []struct {
 			host, token string
 			status      int
@@ -40,8 +40,8 @@ func TestLocalRoutesRequireAuthAndLoopback(t *testing.T) {
 }
 
 func TestLocalContinuationAPI(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("native local API is Windows only")
+	if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
+		t.Skip("native local API needs Windows or macOS")
 	}
 	for _, provider := range []string{"codex", "claude"} {
 		t.Run(provider, func(t *testing.T) { testLocalContinuationAPI(t, provider) })
@@ -140,8 +140,8 @@ func (p *localTestProcess) Wait() error                 { return nil }
 func (p *localTestProcess) Close() error                { p.once.Do(func() { p.w.Close() }); return nil }
 
 func TestLocalClientAPI(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("native local API is Windows only")
+	if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
+		t.Skip("native local API needs Windows or macOS")
 	}
 	dir := t.TempDir()
 	a := &Agent{ctx: context.Background()}

@@ -30,7 +30,9 @@ it, typed out for you to run (on this Mac, **Copy and open Terminal**), and
 Homebrew tmux (`/opt/homebrew/bin`, `/usr/local/bin`) when launchd starts it
 without those on its `PATH`.
 
-On your laptop: macOS, Windows x64, or the x86-64 [Linux alpha](#linux-alpha).
+On your laptop: macOS 13 or newer, or Windows x64/ARM64 with the WebView2
+Evergreen Runtime. Linux remains supported for the CLI and headless boxes;
+there is no Go/Wails Linux desktop package in this migration.
 See [build from source](#build-from-source) and the
 [Windows build guide](/contributing/windows) for prerequisites and limits.
 
@@ -112,8 +114,8 @@ window.
 
 ### Updates
 
-Automatic application updates are disabled: the updater public key and
-endpoints are empty. No upstream feed or signing identity is used. Replace a
+Automatic application updates are disabled. There is no configured update
+feed or automatic installer. No upstream signing identity is used. Replace a
 local preview only with a build you intentionally install; the app view and
 the box's running sessions are separate processes.
 
@@ -133,45 +135,17 @@ app. If `~/.local/bin` isn't on your `PATH`, add it
 (`export PATH="$HOME/.local/bin:$PATH"` in your shell's profile); these
 pages may also use the compatible `berth` alias. `burf help` lists every command.
 
-### Linux (alpha)
+<a id="linux-alpha" />
 
-The Linux app is an **alpha**: x86-64 only, built on Ubuntu 22.04 with
-WebKitGTK, and less tested than the Mac app. Its sidebar and **Settings →
-About** say **Alpha**, and About has **Report a Linux bug**, which opens a
-GitHub issue; please paste **Copy diagnostics** into it.
+### Linux
 
-Linux desktop behavior was imported from upstream; fork-owned AppImage and
-.deb release distribution and updater feeds remain deferred. Build locally
-with the existing Tauri toolchain rather than downloading upstream binaries
-as Burf. A locally packaged AppImage needs FUSE 2, or
-`--appimage-extract-and-run`; packaged applications keep the `berth://` scheme.
+Linux boxes and the Linux CLI keep their existing Go implementation, state
+paths and service identities. This desktop migration currently supplies
+native browsing adapters for macOS and Windows only. It does not build or
+advertise an AppImage, Debian package or Linux desktop update feed.
 
-Like the Mac app, it carries the `burf` CLI, the Linux `berthd` builds and
-tmux, and a `berthd` for this computer. It copies them to
-`~/.local/share/berth/app/` on its first launch and after each update, and
-runs the agent from there, because an AppImage's own files go away when it
-quits; **Settings → General → The burf command** links `~/.local/bin/burf`
-to that copy. **Start at login** makes the agent a systemd user service
-(`berth-agent.service`); without systemd's user session, the app starts the
-agent on its own instead, and it runs until you log out.
-
-What works differently, or not yet, on Linux:
-
-- **Keys.** Ctrl stands in for ⌘, and the app shows its keys that way. In a
-  terminal, Ctrl and a letter belong to the shell (Ctrl+W, Ctrl+D, Ctrl+K…):
-  add Shift for the app's (Ctrl+Shift+T, Ctrl+Shift+K), and Ctrl+Shift+C and
-  Ctrl+Shift+V copy and paste. There is no menu bar.
-- **Browser tabs** show the page in a WebKitGTK view laid over the app, as
-  the Mac app does with WebKit. **Inspect** opens WebKit's inspector docked
-  inside the tab (its own button undocks it). The Console and Network drawer
-  works as on the Mac.
-- **Title bar.** Your window manager's, with no traffic lights; the window
-  title ends in "(alpha)".
-- **Wayland.** WebKitGTK runs natively on Wayland. With an NVIDIA GPU the
-  app turns off WebKit's DMA-BUF renderer, which leaves the window blank
-  there; if the window is still blank, try
-  `WEBKIT_DISABLE_COMPOSITING_MODE=1`.
-- **arm64** has no build yet.
+Use `make all` for the Linux CLI and daemon. Existing box state and running
+sessions stay on their boxes; replacing a desktop window does not move them.
 
 ### The CLI without the app
 
@@ -214,9 +188,10 @@ start it: **Start the Burf agent** runs `burf agent start`, and ticking
 installed unless you tick it. The app runs only the copy of `burf` it
 carries, and only while it is signed by the same team as the app (see
 [the security model](/concepts/security#on-the-laptop)). A dev build
-(`pnpm tauri dev`) runs `BERTH_CLI` when set, then the repository's
-`bin/burf` when there is one, and otherwise `burf` from `~/.local/bin`,
-`/opt/homebrew/bin` or `/usr/local/bin`. Without any of them, the app shows
+(compiled with the Go `dev` tag) uses an absolute `BERTH_CLI` override when
+set, then its bundled CLI, the repository's `bin/burf`, and the existing
+Mac command locations. `pnpm dev` starts the frontend server only. Without
+an available CLI, the app shows
 the command to run in a terminal (`burf status`) and connects as soon as
 the agent is up.
 
@@ -244,8 +219,13 @@ Each check that fails says how to fix it.
 ## Build from source
 
 For working on Burf, or a laptop the release doesn't cover. You need
-**Go 1.27** for `berth` and `berthd`, and **Node 22, pnpm and Rust** for
-the desktop app.
+**Go 1.27** for the CLI, daemon and desktop shell, plus **Node 22 and pnpm**
+for the frontend. The native module and frontend runtime pin **Wails v3
+`3.0.0-beta.28`**, a prerelease. No Rust compiler or Cargo build is involved.
+Use the repository's lockfiles and the pinned CLI helper; do not substitute an
+unmatched Wails version. macOS builds require macOS 13 or newer and the
+existing Xcode Command Line Tools. Windows prerequisites and installer limits
+are in the [Windows build guide](/contributing/windows).
 
 ```sh
 git clone https://github.com/MylesMCook/burf
@@ -262,18 +242,33 @@ make all
 | `bin/berthd-linux-amd64`, `bin/berthd-linux-arm64` | The box daemon for Linux boxes |
 
 Where these pages write `burf`, run `bin/burf` from the clone, or use the
-compatible `bin/berth` alias, or put `bin/` on your `PATH`. Then run the app from the clone:
+compatible `bin/berth` alias, or put `bin/` on your `PATH`. Restore the locked
+frontend dependencies and use the development server for UI edits:
 
 ```sh
 cd app
-pnpm install
-pnpm tauri dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-It runs the clone's `bin/burf` for the laptop agent (with the legacy
-`bin/berth` alias retained). `make app-build`
-builds `Burf.app` and its disk image, with the CLI and the Linux daemons
-inside, under `app/src-tauri/target/release/bundle/`.
+The frontend server uses an existing client connection or synthetic fixtures;
+it does not start a native window. From the repository root, `make app-build`
+builds the Go/Wails macOS app and its disk image under
+`dist/native/darwin-<architecture>/`. `APP_GOARCH=universal` builds both Mac
+architectures. On Windows, `scripts/windows-build.ps1 -StageOnly` builds the
+Go app and ZIPs under `dist/native/windows-<architecture>/` and `dist/windows/`;
+omit `-StageOnly` to use an existing NSIS compiler for an installer.
+
+The app carries its matching CLI and daemon resources. These commands build
+artifacts only; they do not replace an installed application, restart a
+service, publish a release or enable updates.
+
+When moving an existing preview to the new desktop origin, save its explicit
+settings snapshot before replacing the previous app. The Wails app restores
+allowlisted preferences, drafts, fonts and background images before importing
+the UI; pairings and provider credentials remain in their existing stores.
+If that snapshot is unavailable, startup reports the missing migration data
+and keeps the previous app's data available for recovery.
 
 ## Next
 

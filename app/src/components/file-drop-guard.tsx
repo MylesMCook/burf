@@ -55,9 +55,8 @@ function sx(...parts: readonly (false | null | undefined | object)[]): string {
 }
 
 // FileDropGuard keeps a file dropped where nothing takes it from replacing
-// the app. The window gets the browser's own drag and drop (tauri.conf's
-// dragDropEnabled is false, so the sidebar, tabs and Home widgets can drag),
-// and a file let fall on a page that doesn't take it is opened in its place:
+// the app. Browser drag and drop lets the sidebar, tabs and Home widgets drag.
+// A file let fall on a page that doesn't take it is opened in its place:
 // the whole window becomes that markdown file or image, with no way back.
 //
 // Places that take files (a chat's or a task's composer, a terminal)

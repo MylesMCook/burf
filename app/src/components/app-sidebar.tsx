@@ -1,6 +1,5 @@
 import {
   EllipsisIcon,
-  MonitorIcon,
   FolderPlusIcon,
   GitBranchPlusIcon,
   PanelLeftCloseIcon,
@@ -16,6 +15,7 @@ import { NotificationBell } from "@/components/notifications/notification-center
 import { newSection } from "@/components/sidebar/actions";
 import { MoreItems, Nav as PlacesNav, useArrangedNav } from "@/components/sidebar/nav";
 import { Projects, useSidebarPrefs } from "@/components/sidebar/projects";
+import { ThisComputerRail, ThisComputerRow } from "@/components/sidebar/this-computer";
 import { RailAgents } from "@/components/sidebar/rail";
 import { SidebarResizeHandle } from "@/components/sidebar/resize-handle";
 import { RowLayer } from "@/components/sidebar/row-layer";
@@ -24,7 +24,6 @@ import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { SidebarContext, type SidebarContextProps } from "@/components/ui/sidebar";
 import { usePrefs } from "@/lib/prefs";
-import { useLocalComputer } from "@/lib/local-computer";
 import { useStore } from "@/lib/store";
 import { SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN } from "@/lib/sidebar-width";
 import { WhatsNewNudge } from "@/components/whats-new/whats-new-dialog";
@@ -136,22 +135,6 @@ const styles = stylex.create({
     color: { default: color.mutedForeground, ":hover": color.foreground },
     backgroundColor: { default: "transparent", ":hover": color.sidebarAccent },
   },
-  local: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: radius.md,
-    textAlign: "left",
-    fontSize: 12,
-    color: { default: color.mutedForeground, ":hover": color.foreground },
-    backgroundColor: { default: "transparent", ":hover": color.sidebarAccent },
-  },
-  localWide: { width: "100%", marginBottom: 8, paddingTop: 8, paddingBottom: 8, paddingLeft: 8, paddingRight: 8 },
-  localCompact: { width: 32, height: 32, justifyContent: "center" },
-  localOn: { backgroundColor: color.sidebarAccent, color: color.foreground },
-  localText: { minWidth: 0 },
-  localName: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  localSub: { display: "block", fontSize: 10, color: color.mutedForeground },
   rail: {
     position: "relative",
     display: "flex",
@@ -226,7 +209,7 @@ export function AppSidebar() {
       >
         <SidebarResizeHandle />
         {/* Room for the macOS traffic lights; the strip drags the window. */}
-        <div data-tauri-drag-region {...stylex.props(styles.drag)}>
+        <div data-burf-drag-region {...stylex.props(styles.drag)}>
           <NotificationBell />
         </div>
 
@@ -290,7 +273,7 @@ export function AppSidebar() {
 
         {/* One context menu and one tooltip for every row in it. */}
         <RowLayer layout="projects">
-          <LocalComputerLink />
+          <ThisComputerRow />
           <Projects prefs={prefs} update={update} />
         </RowLayer>
 
@@ -325,22 +308,6 @@ export function AppSidebar() {
   );
 }
 
-function LocalComputerLink({ compact = false }: { compact?: boolean }) {
-  const local = useLocalComputer();
-  const active = useStore((s) => s.view.kind === "local");
-  if (!local?.supported) return null;
-  return (
-    <Tip label={`This computer: ${local.name}`} side="right">
-      <button type="button" data-testid="nav-local" aria-label={`This computer: ${local.name}`} aria-current={active ? "page" : undefined}
-        onClick={() => useStore.getState().setView({ kind: "local" })}
-        {...stylex.props(styles.local, compact ? styles.localCompact : styles.localWide, active && styles.localOn)}>
-        <MonitorIcon {...stylex.props(styles.icon35)} />
-        {!compact && <span {...stylex.props(styles.localText)}><span {...stylex.props(styles.localName)}>{local.name}</span><span {...stylex.props(styles.localSub)}>This computer</span></span>}
-      </button>
-    </Tip>
-  );
-}
-
 // Rail is the sidebar folded away (⌘\): the window's controls, the places
 // in the sidebar's own order, the agents by state (sidebar/rail.tsx), and a
 // way back. It keeps clear of the traffic lights like the full one, which is
@@ -366,11 +333,11 @@ function Rail() {
   return (
     <aside aria-label="Sidebar" data-testid="sidebar-rail" {...stylex.props(styles.rail)}>
       <SidebarResizeHandle folded />
-      <div data-tauri-drag-region {...stylex.props(styles.railDrag)} />
+      <div data-burf-drag-region {...stylex.props(styles.railDrag)} />
       <div {...stylex.props(styles.railCol)}>
         {item("Search (⌘K)", <SearchIcon />, false, () => useStore.getState().setPaletteOpen(true))}
         <NotificationBell size="rail" />
-        <LocalComputerLink compact />
+        <ThisComputerRail />
         {pinned.map((n) => (
           <span key={n.id}>{item(n.label, n.icon, n.active, n.go, n.badge)}</span>
         ))}

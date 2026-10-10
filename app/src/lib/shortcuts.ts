@@ -3,7 +3,7 @@ import { shortcutLabel } from "@/lib/platform";
 
 // The app's keyboard shortcuts, from shortcuts.json: the one table the key
 // handler (hooks/use-shortcuts), the Keyboard shortcuts sheet, Settings →
-// Shortcuts and the Mac app's menu bar (src-tauri/src/lib.rs) all read.
+// Shortcuts and the native app's menu bar all read.
 
 export type ShortcutGroup = "File" | "View" | "Go" | "Help";
 
@@ -13,7 +13,7 @@ export interface Shortcut {
   // The menu item's name; with count, {n} is each item's number.
   label: string;
   keys: string;
-  // Set when the item is in the menu bar, as a Tauri accelerator.
+  // Set when the item is in the menu bar, as a native accelerator.
   accel?: string;
   count?: number;
   sep?: boolean;

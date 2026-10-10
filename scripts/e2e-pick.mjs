@@ -32,7 +32,7 @@ export const RULES = [
   { paths: ["app/src/components/art/", "app/src/components/charts/", "app/src/lib/art/"], specs: ["artifacts", "visual-diff"] },
   { paths: ["app/src/components/whats-new/"], specs: ["whats-new"] },
   { paths: ["app/src/components/command-palette", "app/src/lib/shortcuts", "app/src/hooks/use-shortcuts"], specs: ["keyboard", "predict"] },
-  { paths: ["app/src/components/ui/", "app/src/index.css", "app/src/lib/themes/"], specs: ["look", "branding", ...SMOKE] },
+  { paths: ["app/src/components/ui/", "app/src/index.css", "app/src/lib/themes/"], specs: ["look", "branding", "overlay-layout", ...SMOKE] },
 ];
 
 const exists = (spec) => existsSync(join(E2E, `${spec}.spec.ts`));
@@ -47,7 +47,7 @@ export function specsFor(paths, has = exists) {
       out.add(own[1]);
       continue;
     }
-    if (!path.startsWith("app/") || /\.test\.ts$/.test(path)) continue;
+    if (!path.startsWith("app/") || path.startsWith("app/native/") || path.startsWith("app/bindings/") || /\.test\.ts$/.test(path)) continue;
     const rule = RULES.find((r) => r.paths.some((p) => path.startsWith(p)));
     for (const spec of rule ? rule.specs : SMOKE) out.add(spec);
   }

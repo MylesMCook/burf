@@ -140,6 +140,13 @@ const paint = stylex.create({
   s19: {
     marginTop: 12,
   },
+  formPanel: {
+    minWidth: 0,
+    ":not(#\\#) code": {
+      overflowX: "auto",
+      textOverflow: "clip",
+    },
+  },
 });
 function sx(...parts: readonly (false | null | undefined | object)[]): string {
   return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
@@ -329,7 +336,13 @@ export function AddBoxFlow({
     return (
       <>
         <StepHeader title={head.title} description={head.description} onBack={onBack} />
-        <DialogPanel inset="body">{body}</DialogPanel>
+        <DialogPanel
+          inset="body"
+          contentSize="container"
+          render={<div className={sx(paint.formPanel)} />}
+        >
+          {body}
+        </DialogPanel>
       </>
     );
   }

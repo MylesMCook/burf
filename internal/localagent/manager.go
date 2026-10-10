@@ -31,6 +31,9 @@ type Launch func(program string, args []string, dir string, env []string, cols, 
 
 type Command struct {
 	Program string
+	// PATH resolves the installed CLI's runtime and tools without replacing
+	// the current account's provider environment.
+	PATH    string
 	Args    []string
 	CanFork bool
 	CanChat bool

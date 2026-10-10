@@ -5,7 +5,7 @@ name: release
 # release (creating it when scripts/publish.sh has not already). Then the
 # macos job builds the desktop app, universal, signed with the Developer ID,
 # notarized and stapled (scripts/mac-release.sh), and adds the dmg, the
-# updater archive and latest.json, the feed installed apps update from. No
+# app archive. The installed-app updater remains disabled. No
 # asset name carries a version, so releases/latest/download/<name> always
 # finds the newest. The checks job (all of ci.yml) must pass first. The
 # release job runs on omarchy, the owner's self-hosted
@@ -97,21 +97,16 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/*.tar.gz dist/checksums.txt --clobber
           else
-            # A draft until the macos job uploads the app's feed: GitHub's
-            # "latest" link skips drafts, so installed apps and the install
-            # script keep using the last full release meanwhile, instead of a
-            # latest.json that 404s.
+            # Keep it a draft until the complete macOS app is uploaded.
             gh release create "$TAG" dist/*.tar.gz dist/checksums.txt --verify-tag --draft --title "Burf $TAG" --generate-notes
           fi
 
   macos:
     # After the release job, which has made the release by then; it takes
     # Burf's tmux from the tmux job, since a Mac runner has no Docker. Safe to
-    # re-run: it skips when the release's latest.json already announces this
-    # version (scripts/publish.sh uploaded it, or an earlier run did), and
-    # otherwise replaces only its own four assets, the feed last, so the feed
-    # never points at an archive that is not there yet.
-    needs: [tmux, release, windows]
+    # re-run: it skips an app archive already uploaded by publish.sh or a
+    # prior run, and otherwise replaces only its own app artifacts.
+    needs: [tmux, release]
     runs-on: macos-latest
     timeout-minutes: 90
     permissions:
@@ -130,10 +125,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Published means the release's latest.json announces this version.
-          if gh release download "$TAG" --pattern latest.json --output - 2>/dev/null |
-            python3 -c 'import json, os, sys; sys.exit(json.load(sys.stdin).get("version") != os.environ["TAG"][1:])' 2>/dev/null; then
-            echo "::notice::$TAG's latest.json already announces this version; not building the app again"
+          if [ "$(gh release view "$TAG" --json assets --jq 'any(.assets[]; .name == "Burf-macos-universal.app.tar.gz")')" = true ]; then
+            echo "::notice::$TAG already has its app archive; not building the app again"
             echo "published=true" >>"$GITHUB_OUTPUT"
           else
             echo "published=false" >>"$GITHUB_OUTPUT"
@@ -153,15 +146,6 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: app/pnpm-lock.yaml
-      - name: Install tools
-        if: steps.published.outputs.published != 'true'
-        run: |
-          rustup target add aarch64-apple-darwin x86_64-apple-darwin
-          brew install minisign
-          # spctl's verdict is a check below; with assessments off it
-          # would accept anything.
-          sudo spctl --master-enable || true
-          spctl --status
       - if: steps.published.outputs.published != 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -227,8 +211,6 @@ jobs:
         env:
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: scripts/mac-release.sh "$TAG"
       - name: Add the app to the release
         if: steps.published.outputs.published != 'true'
@@ -238,18 +220,16 @@ jobs:
           set -euo pipefail
           gh release view "$TAG" >/dev/null
           # scripts/publish.sh may have published it from a Mac meanwhile.
-          if gh release download "$TAG" --pattern latest.json --output - 2>/dev/null |
-            python3 -c 'import json, os, sys; sys.exit(json.load(sys.stdin).get("version") != os.environ["TAG"][1:])' 2>/dev/null; then
-            echo "::notice::$TAG's latest.json appeared while this built; leaving the published app alone"
+          if [ "$(gh release view "$TAG" --json assets --jq 'any(.assets[]; .name == "Burf-macos-universal.app.tar.gz")')" = true ]; then
+            echo "::notice::$TAG's app archive appeared while this built; leaving it alone"
             exit 0
           fi
           gh release upload "$TAG" --clobber \
             dist/mac/Burf-macos-universal.dmg \
             dist/mac/Burf-macos-universal.app.tar.gz \
-            dist/mac/Burf-macos-universal.app.tar.gz.sig
-          gh release upload "$TAG" --clobber dist/mac/latest.json
+            dist/mac/mac-checksums.txt
       - name: Publish the release
-        # Last: the feed and the app are up, so it can become "latest".
+        # Last: the complete app artifacts are up, so it can become "latest".
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit "$TAG" --draft=false --latest
@@ -259,46 +239,4 @@ jobs:
           if [ -n "${KEYCHAIN_PATH:-}" ]; then security delete-keychain "$KEYCHAIN_PATH" || true; fi
           rm -f "$RUNNER_TEMP/berth-notary.p8" "$RUNNER_TEMP/berth-signing.p12"
 
-  windows:
-    needs: [tmux, release]
-    runs-on: windows-2022
-    timeout-minutes: 90
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-        with:
-          version: 11
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: app/pnpm-lock.yaml
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: tmux
-          path: bin
-      - run: pnpm install --frozen-lockfile
-        working-directory: app
-      - name: Build the signed updater installer
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
-          TAG: ${{ github.ref_name }}
-        run: ./scripts/windows-build.ps1 -Version $env:TAG -Release
-      - name: Add Windows assets and feed to the draft release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          gh release upload $env:TAG --clobber dist/windows/Burf-windows-x64-setup.exe dist/windows/Burf-windows-x64-setup.exe.sig dist/windows/burf-windows-amd64.zip dist/windows/windows-checksums.txt
-          if ($LASTEXITCODE -ne 0) { throw 'Windows asset upload failed.' }
-          gh release upload $env:TAG --clobber dist/windows/latest-windows.json
-          if ($LASTEXITCODE -ne 0) { throw 'Windows feed upload failed.' }
+  # Windows publication stays deferred until an approved signing workflow exists.

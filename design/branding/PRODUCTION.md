@@ -20,9 +20,8 @@ even-odd cutouts. ImageMagick's local SVG renderer omitted the coral underline
 in a probe and is deliberately not used. No design or color transformations
 are applied.
 
-Tauri's installed icon tool creates ICNS and Windows store assets. ICNS chunks
-are sorted by representation tag for repeatable exports; their payloads stay
-unchanged. ICO embeds
+The export script packages the directly rendered PNGs into ICNS and ICO.
+ICNS chunks are sorted by representation tag for repeatable exports. ICO embeds
 the exact vector-rendered PNG frames at 16, 24, 32, 48, 64 and 256px, avoiding
 alpha bleed from downsampling the 1024px bitmap. The standard desktop PNGs also
 use direct vector renders. Temporary unused mobile outputs are not retained.
@@ -35,7 +34,7 @@ use direct vector renders. Temporary unused mobile outputs are not retained.
 - `exports/burf-wordmark-smiling-{620,1240}.png`: same dimensions, supplied face.
 - `exports/burf-mark-*.png`: small b at 16, 24, 32, 48, 64, 128, 256 and 512px.
 
-The export script synchronizes Tauri icons, web/doc favicons and touch icons,
+Native builds read these exports directly. The export script synchronizes web/doc favicons and touch icons,
 phone-web-app icons, and runtime branding folders. Existing `design/logo`
 compatibility filenames point to the new art; historical concept sheets stay
 untouched. No installed application is modified by this script.

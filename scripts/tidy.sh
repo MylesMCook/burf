@@ -92,7 +92,7 @@ if [ -z "$have" ]; then
 	echo "none installed: scripts/ship-ui.sh"
 elif ! git cat-file -e "$have^{commit}" 2> /dev/null; then
 	echo "built at $have, which this checkout does not have: scripts/ship-ui.sh"
-elif git diff --quiet "$have" origin/main -- app ':(exclude)app/e2e' ':(exclude)app/src-tauri' ':(exclude)app/playwright.config.ts' ':(exclude,glob)app/**/*.test.ts'; then
+elif git diff --quiet "$have" origin/main -- app ':(exclude)app/e2e' ':(exclude)app/native' ':(exclude)app/playwright.config.ts' ':(exclude,glob)app/**/*.test.ts'; then
 	echo "main's (built at $have; the interface has not changed since)"
 else
 	echo "behind main (built at $have): scripts/ship-ui.sh"

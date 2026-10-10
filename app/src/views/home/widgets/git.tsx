@@ -281,7 +281,7 @@ export function GitWidget() {
   );
 
   if (!targets.length && !loading) return <WidgetEmpty scene="chart" title="No projects to chart" hint="Add a repository on a box and its commits show here." action="Add a project" onAction={() => useStore.getState().openAddProject()} />;
-  if (!data) return error ? <WidgetEmpty scene="storm" title="Couldn't read git" hint={error} compact /> : <ChartSkeleton />;
+  if (!data) return error ? <WidgetEmpty scene="storm" title="Couldn't read git" hint={error} compact hold /> : <ChartSkeleton />;
   const total = data.days.reduce((n, d) => n + d.commits, 0);
   const add = data.days.reduce((n, d) => n + d.add, 0);
   const del = data.days.reduce((n, d) => n + d.del, 0);

@@ -8,6 +8,7 @@ import { ChevronDownIcon, ChevronsUpDownIcon, ChevronUpIcon } from "lucide-react
 import type * as React from "react";
 
 import { color, radius } from "@/styles/tokens.stylex";
+import { overlay } from "@/components/ui/overlay-tokens.stylex";
 
 
 const sm = "@media (min-width: 640px)";
@@ -41,7 +42,7 @@ const styles = stylex.create({
     color: color.foreground,
     fontSize: { default: 16, [sm]: 14 },
     boxShadow: {
-      default: "0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent)",
+      default: "none",
       ":focus-visible": "0 0 0 3px color-mix(in oklab, var(--ring) 24%, transparent)",
       ':focus-visible[aria-invalid="true"]': "0 0 0 3px var(--invalid-ring)",
       ":disabled": "none",
@@ -52,14 +53,6 @@ const styles = stylex.create({
     opacity: { default: 1, ":disabled": 0.64 },
     pointerEvents: { default: "auto", ":disabled": "none" },
     transitionProperty: "box-shadow",
-    "::before": {
-      content: '""',
-      pointerEvents: "none",
-      position: "absolute",
-      inset: 0,
-      borderRadius: "calc(var(--radius-lg) - 1px)",
-      boxShadow: "var(--dialog-edge)",
-    },
   },
   xs: {
     minHeight: 24,
@@ -137,15 +130,7 @@ const styles = stylex.create({
     borderColor: color.border,
     backgroundColor: color.popover,
     backgroundClip: "padding-box",
-    boxShadow: "0 10px 15px -3px color-mix(in oklab, var(--foreground) 5%, transparent)",
-    "::before": {
-      content: '""',
-      pointerEvents: "none",
-      position: "absolute",
-      inset: 0,
-      borderRadius: "calc(var(--radius-lg) - 1px)",
-      boxShadow: "var(--dialog-edge)",
-    },
+    boxShadow: overlay.shadow,
   },
   list: {
     maxHeight: "var(--available-height)",

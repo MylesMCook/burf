@@ -155,3 +155,31 @@ test("the New task dialog shares Home's folded and open preference", async ({ ap
   await expect(dialog).toHaveCount(0);
   await expect(summary(app)).toHaveAttribute("aria-expanded", "true");
 });
+
+// Given Home at a supported smaller desktop size with expanded loop details,
+// When the task configuration opens and its provider changes,
+// Then the loop panel does not cover task entry, choices, or Start.
+test("Home task configuration remains usable beside expanded loop details at 1024px", async ({ app }) => {
+  await app.page.setViewportSize({ width: 1024, height: 768 });
+  await app.context.addInitScript(() => {
+    localStorage.setItem("berth.loops.folded", "false");
+    localStorage.setItem("berth.runs.dismissed", "[]");
+  });
+  await home(app);
+  // The run watcher may start before mock box capabilities arrive. Resume
+  // the page so its ordinary poller reads the now-ready synthetic runs.
+  await app.page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  const loops = app.page.getByRole("region", { name: "Loops", exact: true });
+  await expect(loops.getByRole("button", { name: "Open session", exact: true })).toBeVisible();
+  await openTaskPickers(composer(app));
+  await expect.poll(async () => {
+    const panel = await loops.boundingBox();
+    const task = await composer(app).boundingBox();
+    return panel && task ? panel.y + panel.height <= task.y : false;
+  }, { message: "loop details stay above the task composer" }).toBe(true);
+  await composer(app).getByRole("button", { name: "Provider: Claude Code", exact: true }).click();
+  await app.page.getByRole("menuitemradio", { name: "Codex", exact: true }).click();
+  await expect(summary(app)).toHaveText("evals on gpu · new worktree · Codex");
+  await composer(app).getByRole("textbox").fill("A synthetic task, kept in the composer.");
+  await expect(composer(app).getByRole("button", { name: "Start", exact: true })).toBeEnabled();
+});

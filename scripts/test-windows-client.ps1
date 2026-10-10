@@ -34,9 +34,9 @@ try {
         $unauthorized = $true
     }
     if (!$unauthorized) { throw 'The app API accepted a request without its token.' }
-    $headers = @{ Authorization = "Bearer $token"; Origin = 'http://tauri.localhost' }
+    $headers = @{ Authorization = "Bearer $token"; Origin = 'http://wails.localhost' }
     $api = Invoke-WebRequest -UseBasicParsing -Headers $headers "$endpoint/v1/status"
-    if ($api.Headers['Access-Control-Allow-Origin'] -ne 'http://tauri.localhost') { throw 'Windows Tauri origin was rejected.' }
+    if ($api.Headers['Access-Control-Allow-Origin'] -ne 'http://wails.localhost') { throw 'Windows Wails origin was rejected.' }
     $info = Invoke-RestMethod -Headers $headers "$endpoint/v1/agent"
     if ($info.pid -le 0) { throw 'The agent did not report its process.' }
     Invoke-Burf @('agent', 'stop', '--drain') | Out-Null
@@ -44,7 +44,7 @@ try {
     if (Get-Process -Id $info.pid -ErrorAction SilentlyContinue) { throw 'Drain-stop returned before the process exited.' }
     $after = (Invoke-Burf @('agent', 'status', '--json')) | ConvertFrom-Json
     if ($after.running -or $after.installed) { throw 'Smoke test left a process or login task running.' }
-    Write-Output 'PASS: native Windows start, status, private app API, Tauri origin, and drained process exit. No login task was installed.'
+    Write-Output 'PASS: native Windows start, status, private app API, Wails origin, and drained process exit. No login task was installed.'
 } finally {
     if ($started) { & $Binary agent stop --drain | Out-Null }
     foreach ($name in $saved.Keys) { [Environment]::SetEnvironmentVariable($name, $saved[$name], 'Process') }

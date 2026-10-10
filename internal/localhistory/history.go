@@ -199,6 +199,7 @@ type Continuation struct {
 	Source    string
 	SessionID string
 	Cwd       string
+	Size      int64
 }
 
 // Continuation resolves only discovered, still-valid history. Callers cannot
@@ -209,7 +210,7 @@ func (s *Store) Continuation(ctx context.Context, id string) (Continuation, erro
 		return Continuation{}, err
 	}
 	f.Close()
-	return Continuation{Source: r.Source, SessionID: r.identity, Cwd: r.Cwd}, nil
+	return Continuation{Source: r.Source, SessionID: r.identity, Cwd: r.Cwd, Size: r.fileInfo.Size()}, nil
 }
 
 func (s *Store) openRecord(ctx context.Context, id string) (record, *os.File, error) {
@@ -241,6 +242,8 @@ func (s *Store) openRecord(ctx context.Context, id string) (record, *os.File, er
 		f.Close()
 		return record{}, nil, err
 	}
+	// Return the validated byte boundary without changing discovery's baseline.
+	r.fileInfo = info
 	return r, f, nil
 }
 

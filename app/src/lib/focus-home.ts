@@ -73,8 +73,12 @@ export function useChatPaneFocus(ref: RefObject<HTMLElement | null>, active: boo
     let parked: HTMLElement | undefined;
     const stop = () => {
       observer.disconnect();
-      root.removeEventListener("keydown", stop, true);
-      root.removeEventListener("pointerdown", stop, true);
+      root.removeEventListener("keydown", takeFocus, true);
+      root.removeEventListener("pointerdown", takeFocus, true);
+    };
+    const takeFocus = () => {
+      if (placed && root.contains(placed)) placed = undefined;
+      stop();
     };
     const usable = (el: HTMLElement | null | undefined): el is HTMLElement => !!el && shown(el) && !el.matches(":disabled");
     const focus = () => {
@@ -94,14 +98,14 @@ export function useChatPaneFocus(ref: RefObject<HTMLElement | null>, active: boo
       const marked = [...root.querySelectorAll<HTMLElement>("[data-autofocus]")].find((el) => !el.matches(COMPOSER) && usable(el));
       const first = marked ?? (composer ? undefined : firstFocusable(root));
       if (!first) return;
-      first.focus({ preventScroll: true });
+      put(first);
       parked = first;
     };
     const observer = new MutationObserver(focus);
     observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled", "data-autofocus"] });
     // Using the pane, by key or pointer, is the person taking the keyboard.
-    root.addEventListener("keydown", stop, true);
-    root.addEventListener("pointerdown", stop, true);
+    root.addEventListener("keydown", takeFocus, true);
+    root.addEventListener("pointerdown", takeFocus, true);
     focus();
     return stop;
   }, [ref, active]);

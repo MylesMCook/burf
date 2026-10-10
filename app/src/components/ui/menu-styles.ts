@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { StyleXStyles } from "@stylexjs/stylex";
 
 import { color, font, radius } from "@/styles/tokens.stylex";
+import { overlay } from "@/components/ui/overlay-tokens.stylex";
 
 
 const sm = "@media (min-width: 640px)";
@@ -31,7 +32,7 @@ const styles = stylex.create({
     borderColor: color.border,
     backgroundColor: color.popover,
     color: color.popoverForeground,
-    boxShadow: "0 8px 24px color-mix(in oklab, var(--foreground) 12%, transparent)",
+    boxShadow: overlay.shadow,
     outline: "none",
     transformOrigin: "var(--transform-origin)",
     fontFamily: font.sans,
@@ -80,7 +81,7 @@ const styles = stylex.create({
   },
   radio: {
     display: "grid",
-    gridTemplateColumns: "0.75rem 1fr",
+    gridTemplateColumns: "0.75rem minmax(0, 1fr)",
     alignItems: "center",
     columnGap: 8,
     minHeight: { default: 32, [sm]: 28 },
@@ -101,6 +102,15 @@ const styles = stylex.create({
     display: "flex",
     width: 12,
     height: 12,
+  },
+  indicator: {
+    gridColumnStart: 1,
+    gridRowStart: 1,
+  },
+  itemText: {
+    gridColumnStart: 2,
+    gridRowStart: 1,
+    minWidth: 0,
   },
   label: {
     display: "flex",
@@ -234,6 +244,14 @@ export function radioClass(state: ItemState): string | undefined {
 
 export function checkProps() {
   return stylex.props(styles.check);
+}
+
+export function indicatorProps() {
+  return stylex.props(styles.indicator);
+}
+
+export function itemTextProps() {
+  return stylex.props(styles.itemText);
 }
 
 export function labelClass(inset?: boolean): string | undefined {

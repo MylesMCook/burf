@@ -34,6 +34,16 @@ export function worktreeSessions(sessions: Session[] | undefined, wt: Worktree):
   return (sessions ?? []).filter((s) => s.dir === wt.path && !s.service);
 }
 
+// sidebarChats are named chats whose folder is not already a worktree row.
+// An exited agent on the main checkout is one: that checkout is not drawn
+// as its own row. A session on a worktree that is already drawn is not,
+// or a fleet of worktrees would list every chat twice.
+export function sidebarChats(sessions: Session[] | undefined, drawnDirs: ReadonlySet<string>): Session[] {
+  return (sessions ?? [])
+    .filter((s) => !s.service && !!s.dir && !drawnDirs.has(s.dir) && (!!agentOf(s) || !!s.title?.trim()))
+    .sort((a, b) => b.created.localeCompare(a.created) || b.name.localeCompare(a.name));
+}
+
 // worktreeOf finds the worktree a session runs in.
 export function worktreeOf(locations: Location[] | undefined, s: Session): { location: Location; worktree: Worktree } | undefined {
   for (const location of locations ?? []) {

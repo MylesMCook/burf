@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'This acceptance runner requires Windows.' }
 $repository = if ($PSScriptRoot) { Split-Path -Parent $PSScriptRoot } else { (Get-Location).Path }
-$pathSource = Join-Path $repository 'app/src-tauri/windows/cli-path.ps1'
+$pathSource = Join-Path $repository 'scripts/windows/cli-path.ps1'
 if (!(Test-Path -LiteralPath $pathSource -PathType Leaf)) { throw 'Invoke inline acceptance from the repository root so its reviewed PATH command can be found.' }
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = [Security.Principal.WindowsPrincipal]::new($identity)
@@ -154,7 +154,7 @@ function Uninstall-TestCopy {
     $process = Start-Process -FilePath $uninstaller -ArgumentList "/S _?=$installRoot" -PassThru
     if (!$process.WaitForExit(180000) -or $process.ExitCode -ne 0) { throw 'The supported uninstaller did not complete successfully.' }
     $script:uninstalled = $true
-    # Tauri retains an install-location preference without deleting app data.
+    # The installer retains an install-location preference without deleting app data.
     # Remove only this synthetic run's exact preference, not shared app data.
     $path = 'Software\berth\Burf'
     $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($path, $true)

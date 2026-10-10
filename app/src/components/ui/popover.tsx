@@ -5,6 +5,7 @@ import * as stylex from "@stylexjs/stylex";
 import type React from "react";
 import { FocusRescue } from "@/lib/focus-home";
 import { color, radius } from "@/styles/tokens.stylex";
+import { overlay } from "@/components/ui/overlay-tokens.stylex";
 
 const still = "@media (prefers-reduced-motion: reduce)";
 
@@ -33,21 +34,10 @@ const styles = stylex.create({
     backgroundColor: color.popover,
     backgroundClip: "padding-box",
     color: color.popoverForeground,
-    boxShadow: "0 10px 15px -3px color-mix(in oklab, var(--foreground) 5%, transparent)",
+    boxShadow: overlay.shadow,
     outline: "none",
     transitionProperty: "width, height, scale, opacity",
     transitionDuration: { default: "200ms", [still]: "0s" },
-    "::before": {
-      content: '""',
-      pointerEvents: "none",
-      position: "absolute",
-      inset: 0,
-      borderRadius: {
-        default: "calc(var(--radius-lg) - 1px)",
-        ":has([data-slot='calendar'])": "calc(var(--radius-xl) - 1px)",
-      },
-      boxShadow: "var(--dialog-edge)",
-    },
   },
   fade: { opacity: 0, scale: 0.98 },
   tip: {
@@ -55,8 +45,6 @@ const styles = stylex.create({
     textWrap: "balance",
     borderRadius: radius.md,
     fontSize: 12,
-    boxShadow: "0 4px 6px color-mix(in oklab, var(--foreground) 5%, transparent)",
-    "::before": { borderRadius: "calc(var(--radius-md) - 1px)" },
   },
   w26: { width: "26rem" },
   w32: { width: "32rem", maxWidth: "calc(100vw - 2rem)" },
