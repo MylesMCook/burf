@@ -4,7 +4,7 @@ import * as stylex from "@stylexjs/stylex";
 import { SimpleSelect } from "@/components/simple-select";
 import { color } from "@/styles/tokens.stylex";
 import { Button } from "@/components/ui/button";
-import { addCustomFont, removeCustomFont, useCustomFonts } from "@/lib/custom-fonts";
+import { addCustomFont, GEIST_PIXEL_FONT_ID, removeCustomFont, useCustomFonts } from "@/lib/custom-fonts";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { SettingsGroup, SettingsRow } from "@/views/settings/rows";
 
@@ -16,12 +16,15 @@ const styles = stylex.create({
 export function CustomFontSettings() {
   const fonts = usePrefs((p) => p.customFonts);
   const interfaceFont = usePrefs((p) => p.interfaceFont);
+  const readingFont = usePrefs((p) => p.readingFont);
   const codeFont = usePrefs((p) => p.codeFont);
   const status = useCustomFonts((s) => s.status);
   const file = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const options = [{ value: "default", label: "Default" }, ...fonts.filter((f) => status[f.id] === "loaded").map((f) => ({ value: f.id, label: f.name }))];
+  const addedOptions = fonts.filter((f) => status[f.id] === "loaded").map((f) => ({ value: f.id, label: f.name }));
+  const options = [{ value: "default", label: "Default" }, ...addedOptions];
+  const interfaceOptions = [{ value: "default", label: "Default" }, { value: GEIST_PIXEL_FONT_ID, label: "Geist Pixel" }, ...addedOptions];
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
     setMessage("");
@@ -54,7 +57,10 @@ export function CustomFontSettings() {
         }}
       />
       <SettingsRow label="Interface font">
-        <SimpleSelect measure="56" options={options} value={interfaceFont ?? "default"} onChange={(id) => setPrefs({ interfaceFont: id === "default" ? null : id })} />
+        <SimpleSelect measure="56" options={interfaceOptions} value={interfaceFont ?? "default"} onChange={(id) => setPrefs({ interfaceFont: id === "default" ? null : id })} />
+      </SettingsRow>
+      <SettingsRow label="Reading font" description="Messages and headings. Independent of the interface and code fonts.">
+        <SimpleSelect measure="56" options={options} value={readingFont ?? "default"} onChange={(id) => setPrefs({ readingFont: id === "default" ? null : id })} />
       </SettingsRow>
       <SettingsRow label="Code font" description="Code blocks and terminals using the default font.">
         <SimpleSelect measure="56" options={options} value={codeFont ?? "default"} onChange={(id) => setPrefs({ codeFont: id === "default" ? null : id })} />

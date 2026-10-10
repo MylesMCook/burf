@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { Response } from "@playwright/test";
 
 import { type App, expect, mockOnly, test } from "./fixtures";
 
@@ -8,36 +9,51 @@ const file = { name: `${name}.woff2`, mimeType: "font/woff2", buffer: bytes };
 
 test.beforeEach(() => mockOnly("custom fonts use isolated browser storage"));
 
-test("the interface default loads the bundled Paper Mono face", async ({ app }) => {
+function fontResponses(app: App): Response[] {
+  const responses: Response[] = [];
+  app.page.on("response", (response) => {
+    if (/\.(woff2|ttf)$/.test(new URL(response.url()).pathname)) responses.push(response);
+  });
+  return responses;
+}
+
+test("the interface default loads the bundled Geist face", async ({ app }) => {
+  const responses = fontResponses(app);
   await app.open();
-  await app.page.evaluate(() => document.fonts.load('400 13px "Paper Mono"'));
-  await expectBodyFont(app, "Paper Mono");
-  const fontUrl = await app.page.evaluate(() => performance.getEntriesByType("resource").map((entry) => entry.name).find((url) => url.includes("paper-mono") && url.endsWith(".ttf")));
-  if (!fontUrl) throw new Error("The bundled Paper Mono resource was not loaded.");
-  expect(new URL(fontUrl).origin).toBe(new URL(app.page.url()).origin);
-  const response = await app.page.request.get(fontUrl);
+  await app.page.evaluate(() => document.fonts.load('400 13px "Geist"'));
+  await expectBodyFont(app, "Geist");
+  const response = responses.find((item) => {
+    const path = new URL(item.url()).pathname;
+    return path.includes("/geist") && !path.includes("pixel") && path.endsWith(".woff2");
+  });
+  if (!response) throw new Error("The bundled Geist resource was not loaded.");
+  expect(new URL(response.url()).origin).toBe(new URL(app.page.url()).origin);
   expect(response.ok()).toBe(true);
-  expect((await response.body()).equals(readFileSync(new URL("../src/assets/fonts/paper-mono.ttf", import.meta.url)))).toBe(true);
+  expect((await response.body()).equals(readFileSync(new URL("../src/assets/fonts/geist.woff2", import.meta.url)))).toBe(true);
 });
 
-test("Newsreader headings and both bundled styles use local font assets", async ({ app }) => {
+test("headings, Pixel and Paper Mono use their bundled local assets", async ({ app }) => {
+  const responses = fontResponses(app);
   await app.open();
   await app.openSettings("boxes");
   await app.page.getByRole("button", { name: "Add a box", exact: true }).first().click();
-  await expect(app.page.getByRole("dialog", { name: "Add a box", exact: true }).getByRole("heading", { name: "Add a box", exact: true })).toHaveCSS("font-family", /Newsreader/);
+  await expect(app.page.getByRole("dialog", { name: "Add a box", exact: true }).getByRole("heading", { name: "Add a box", exact: true })).toHaveCSS("font-family", /Geist/);
   await app.page.evaluate(async () => {
-    await document.fonts.load('400 18px "Newsreader"');
-    await document.fonts.load('italic 400 18px "Newsreader"');
+    await document.fonts.load('400 13px "Geist Pixel Square"');
+    await document.fonts.load('400 13px "Paper Mono"');
   });
-  const faces = await app.page.evaluate(() => Array.from(document.fonts).filter((face) => face.family === "Newsreader").map((face) => ({ style: face.style, status: face.status })));
-  expect(faces).toEqual(expect.arrayContaining([{ style: "normal", status: "loaded" }, { style: "italic", status: "loaded" }]));
-  for (const name of ["newsreader-regular", "newsreader-italic"]) {
-    const fontUrl = await app.page.evaluate((name) => performance.getEntriesByType("resource").map((entry) => entry.name).find((url) => url.includes(name) && url.endsWith(".ttf")), name);
-    if (!fontUrl) throw new Error(`The bundled ${name} resource was not loaded.`);
-    expect(new URL(fontUrl).origin).toBe(new URL(app.page.url()).origin);
-    const response = await app.page.request.get(fontUrl);
+  const faces = await app.page.evaluate(() => Array.from(document.fonts).map((face) => ({ family: face.family, status: face.status })));
+  expect(faces).toEqual(expect.arrayContaining([{ family: "Geist Pixel Square", status: "loaded" }, { family: "Paper Mono", status: "loaded" }]));
+  for (const file of ["geist-pixel-square.woff2", "paper-mono.ttf"]) {
+    const name = file.replace(/\.[^.]+$/, ""), extension = file.slice(file.lastIndexOf("."));
+    const response = responses.find((item) => {
+      const path = new URL(item.url()).pathname;
+      return path.includes(name) && path.endsWith(extension);
+    });
+    if (!response) throw new Error(`The bundled ${file} resource was not loaded.`);
+    expect(new URL(response.url()).origin).toBe(new URL(app.page.url()).origin);
     expect(response.ok()).toBe(true);
-    expect((await response.body()).equals(readFileSync(new URL(`../src/assets/fonts/${name}.ttf`, import.meta.url)))).toBe(true);
+    expect((await response.body()).equals(readFileSync(new URL(`../src/assets/fonts/${file}`, import.meta.url)))).toBe(true);
   }
 });
 
@@ -48,6 +64,42 @@ async function addFont(app: App) {
   await expect(settings.getByRole("list", { name: "Added fonts" }).getByText(name, { exact: true })).toBeVisible();
   return settings;
 }
+
+test("the Pixel interface choice reloads without changing headings, code or terminals", async ({ app }) => {
+  await app.open();
+  const settings = await app.openSettings("appearance");
+  await choose(app, "Interface font", "Geist Pixel");
+  await expectBodyFont(app, "Geist Pixel Square");
+  const heading = settings.getByRole("heading", { name: "Fonts", exact: true });
+  await expect(heading).toHaveCSS("font-family", /^"?Geist"?,/);
+  await expect.poll(() => heading.evaluate((element) => getComputedStyle(element).fontSynthesis)).toMatch(/\bstyle\b/);
+  await expect(settings.locator("pre").first()).toHaveCSS("font-family", /Paper Mono/);
+  await app.openSettings("terminal");
+  await expect(app.page.getByTestId("terminal-preview")).toHaveCSS("font-family", /Paper Mono/);
+  await app.page.reload();
+  await expectBodyFont(app, "Geist Pixel Square");
+  await app.openSettings("appearance");
+  await expect(app.page.getByRole("combobox", { name: "Interface font", exact: true })).toContainText("Geist Pixel");
+  await choose(app, "Interface font", "Default");
+  await expectBodyFont(app, "Geist");
+});
+
+test("a separate reading face reloads without changing interface or code", async ({ app }) => {
+  await app.open();
+  const settings = await addFont(app);
+  const family = await addedFamily(app);
+  await choose(app, "Reading font", name);
+  await expect(settings.getByRole("heading", { name: "Fonts", exact: true })).toHaveCSS("font-family", new RegExp(family));
+  await expectBodyFont(app, "Geist");
+  await expect(settings.locator("pre").first()).toHaveCSS("font-family", /Paper Mono/);
+  await app.page.reload();
+  const restored = await app.openSettings("appearance");
+  await expect(restored.getByRole("combobox", { name: "Reading font", exact: true })).toContainText(name);
+  await expect(restored.getByRole("heading", { name: "Fonts", exact: true })).toHaveCSS("font-family", new RegExp(family));
+  await restored.getByRole("button", { name: `Remove ${name}`, exact: true }).click();
+  await expect(restored.getByRole("combobox", { name: "Reading font", exact: true })).toContainText("Default");
+  await expect(restored.getByRole("heading", { name: "Fonts", exact: true })).toHaveCSS("font-family", /^"?Geist"?,/);
+});
 
 async function choose(app: App, label: string, font: string) {
   await app.page.getByRole("combobox", { name: label, exact: true }).click();
@@ -60,7 +112,7 @@ async function addedFamily(app: App): Promise<string> {
 }
 
 async function expectBodyFont(app: App, family: string) {
-  await expect.poll(() => app.page.evaluate(() => getComputedStyle(document.body).fontFamily.replace(/^['"]/, ""))).toMatch(new RegExp(`^${family}`));
+  await expect.poll(() => app.page.evaluate(() => getComputedStyle(document.body).fontFamily.split(",")[0]?.trim().replace(/^['"]|['"]$/g, ""))).toBe(family);
   // Checking the registered face too prevents a missing family, which
   // document.fonts.check alone can report as available through fallback.
   await expect.poll(() => app.page.evaluate((family) => Array.from(document.fonts).some((face) => face.family === family && face.status === "loaded") && document.fonts.check(`13px "${family}"`), family)).toBe(true);
@@ -69,7 +121,7 @@ async function expectBodyFont(app: App, family: string) {
 test("an added font is named and offered for both uses and terminals", async ({ app }) => {
   await app.open();
   const settings = await addFont(app);
-  for (const label of ["Interface font", "Code font"]) {
+  for (const label of ["Interface font", "Reading font", "Code font"]) {
     await settings.getByRole("combobox", { name: label, exact: true }).click();
     await expect(app.page.getByRole("option", { name, exact: true })).toBeVisible();
     await app.page.keyboard.press("Escape");
@@ -114,8 +166,8 @@ test("removing a font in use quietly restores defaults for all uses", async ({ a
   await expect(settings.getByRole("list", { name: "Added fonts" })).toHaveCount(0);
   await expect(settings.getByRole("combobox", { name: "Interface font", exact: true })).toContainText("Default");
   await expect(settings.getByRole("combobox", { name: "Code font", exact: true })).toContainText("Default");
-  await expectBodyFont(app, "Paper Mono");
-  await expect(settings.locator("pre").first()).toHaveCSS("font-family", /JetBrains Mono Variable/);
+  await expectBodyFont(app, "Geist");
+  await expect(settings.locator("pre").first()).toHaveCSS("font-family", /Paper Mono/);
   await expect(settings.getByRole("status")).toHaveCount(0);
   const prefs = await app.stored("berth.prefs") as Record<string, unknown>;
   expect(prefs.customFonts).toEqual([]);
@@ -123,7 +175,7 @@ test("removing a font in use quietly restores defaults for all uses", async ({ a
   expect(prefs.codeFont).toBeNull();
   expect(prefs.terminalFont).toBeNull();
   await app.openSettings("terminal");
-  await expect(app.page.getByTestId("terminal-preview")).toHaveCSS("font-family", /JetBrains Mono Variable/);
+  await expect(app.page.getByTestId("terminal-preview")).toHaveCSS("font-family", /Paper Mono/);
   await app.page.getByRole("combobox", { name: "Font", exact: true }).click();
   await expect(app.page.getByRole("option", { name, exact: true })).toHaveCount(0);
 });
@@ -166,10 +218,10 @@ test("a stored font that cannot load falls back and names the font in Settings",
   await app.page.reload();
   const settings = await app.openSettings("appearance");
   await expect(settings.getByText(`“${name}” could not be loaded.`, { exact: false })).toBeVisible();
-  await expectBodyFont(app, "Paper Mono");
+  await expectBodyFont(app, "Geist");
   await expect(settings.getByRole("combobox", { name: "Interface font", exact: true })).toContainText("Default");
   await expect(settings.getByRole("combobox", { name: "Code font", exact: true })).toContainText("Default");
-  await expect(settings.locator("pre").first()).toHaveCSS("font-family", /JetBrains Mono Variable/);
+  await expect(settings.locator("pre").first()).toHaveCSS("font-family", /Paper Mono/);
   await app.openSettings("terminal");
-  await expect(app.page.getByTestId("terminal-preview")).toHaveCSS("font-family", /JetBrains Mono Variable/);
+  await expect(app.page.getByTestId("terminal-preview")).toHaveCSS("font-family", /Paper Mono/);
 });
