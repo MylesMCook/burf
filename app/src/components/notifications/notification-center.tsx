@@ -34,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Scene } from "@/components/art/scenes";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Kbd } from "@/components/ui/kbd";
-import { Menu, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Sheet, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Session } from "@/lib/api";
@@ -401,7 +401,7 @@ export function NotificationCenter() {
                 {current.label}
                 <ChevronDownIcon className="size-3 opacity-70" />
               </MenuTrigger>
-              <MenuPopup align="start" className="min-w-44">
+              <MenuPopup align="start" width={menuWidths.w44}>
                 <MenuRadioGroup value={filter} onValueChange={(v) => setFilter(v as Filter)}>
                   {FILTERS.map((f, i) => {
                     const count = notes.filter((n) => matches(f.id, n)).length;
@@ -432,7 +432,7 @@ export function NotificationCenter() {
               <MenuTrigger render={<Button size="icon-xs" variant="ghost" aria-label="More" className="text-muted-foreground" />}>
                 <EllipsisIcon />
               </MenuTrigger>
-              <MenuPopup align="end" className="min-w-56">
+              <MenuPopup align="end" width={menuWidths.w56}>
                 {quiet ? (
                   <MenuItem onClick={() => setDoNotDisturb(false)}>
                     <BellIcon />

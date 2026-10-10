@@ -11,7 +11,7 @@ import { Tip } from "@/components/tip";
 import { AlertDialog, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogPopup, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import type { SessionEntry } from "@/hooks/use-agent-counts";
@@ -379,7 +379,7 @@ export function ColumnMenu({ title, items, cleanup, onPick }: { title: string; i
           <EllipsisIcon className="size-3.5" />
         </MenuTrigger>
       </Tip>
-      <MenuPopup align="end" className="min-w-52">
+      <MenuPopup align="end" width={menuWidths.w52}>
         <MenuItem onClick={onPick}>
           <ListChecksIcon />
           Select all {items.length}

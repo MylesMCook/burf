@@ -44,7 +44,7 @@ import { confirm, copy } from "@/components/sidebar/confirm";
 import { Tip } from "@/components/tip";
 import { ContextMenu, ContextMenuPopup, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Kbd } from "@/components/ui/kbd";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { openBrowserAt, startSession, stopSession } from "@/lib/actions";
@@ -99,7 +99,7 @@ export function ActionItems({ items: from }: { items: Action[] | (() => Action[]
             // Base UI requires a group label inside a group.
             return (
               <MenuGroup key={i}>
-                <MenuGroupLabel className="px-2 pt-1 pb-0.5">{a.label}</MenuGroupLabel>
+                <MenuGroupLabel>{a.label}</MenuGroupLabel>
               </MenuGroup>
             );
           case "node":
@@ -111,7 +111,7 @@ export function ActionItems({ items: from }: { items: Action[] | (() => Action[]
                   {a.icon}
                   {a.label}
                 </MenuSubTrigger>
-                <MenuSubPopup className="min-w-48">{typeof a.items === "function" ? a.items() : <ActionItems items={a.items} />}</MenuSubPopup>
+                <MenuSubPopup width={menuWidths.w48}>{typeof a.items === "function" ? a.items() : <ActionItems items={a.items} />}</MenuSubPopup>
               </MenuSub>
             );
           default:
@@ -146,7 +146,7 @@ export function DotsMenu({ label, items }: { label: string; items: () => Action[
           <EllipsisIcon />
         </MenuTrigger>
       </Tip>
-      <MenuPopup align="start" className="min-w-56">
+      <MenuPopup align="start" width={menuWidths.w56}>
         <ActionItems items={items} />
       </MenuPopup>
     </Menu>
@@ -247,7 +247,7 @@ export function RowMenus({ children, onKeyDown, ...props }: ComponentProps<"div"
         >
           {children}
           {/* Inside the trigger, so tooltips in it reach a tip layer round it. */}
-          <ContextMenuPopup className="min-w-56">{items && <ActionItems items={items.fn} />}</ContextMenuPopup>
+          <ContextMenuPopup width={menuWidths.w56}>{items && <ActionItems items={items.fn} />}</ContextMenuPopup>
         </ContextMenuTrigger>
       </ContextMenu>
     </RowMenuContext.Provider>
@@ -292,7 +292,7 @@ function OwnContextRow({ items, children, className }: { items: () => Action[]; 
   return (
     <ContextMenu>
       <ContextMenuTrigger
-        className={cn("block rounded-md data-popup-open:bg-sidebar-accent", className)}
+        fill="row"
         onKeyDown={(e) => {
           if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
           e.preventDefault();
@@ -301,9 +301,9 @@ function OwnContextRow({ items, children, className }: { items: () => Action[]; 
           el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.left + 24, clientY: r.top + r.height / 2, button: 2 }));
         }}
       >
-        {children}
+        <div className={cn("relative", className)}>{children}</div>
       </ContextMenuTrigger>
-      <ContextMenuPopup className="min-w-56">
+      <ContextMenuPopup width={menuWidths.w56}>
         <ActionItems items={items} />
       </ContextMenuPopup>
     </ContextMenu>

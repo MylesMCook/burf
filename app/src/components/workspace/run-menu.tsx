@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { openProjectSettings } from "@/components/skills/project-settings-dialog";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { serviceRunning, showServiceTerminal } from "@/components/workspace/service-terminal";
 import { toastManager } from "@/components/ui/toast";
@@ -133,7 +133,7 @@ export function RunMenu() {
         <MenuTrigger render={<button type="button" aria-label="Services" className="flex min-w-6 items-center justify-center rounded-r-md px-1 text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent" />}>
           <ChevronDownIcon className="size-3" />
         </MenuTrigger>
-        <MenuPopup align="end" className="min-w-64">
+        <MenuPopup align="end" width={menuWidths.w64}>
           {services === undefined && (
             <div className="flex items-center gap-2 px-2 py-2 text-muted-foreground text-xs">
               <Spinner className="size-3" /> Loading services…
@@ -147,7 +147,7 @@ export function RunMenu() {
           {services?.map((svc, i) => (
             <MenuGroup key={svc.name}>
               {i > 0 && <MenuSeparator />}
-              <MenuGroupLabel className="flex items-center gap-1.5">
+              <MenuGroupLabel>
                 <span className={cn("size-1.5 rounded-full", live(svc) ? "bg-success" : svc.state === "failed" ? "bg-destructive" : "bg-muted-foreground/40")} />
                 <span className="font-medium text-foreground">{svc.name}</span>
                 <span className="truncate font-mono text-[10px]">{svc.terminal ? (live(svc) ? "running" : "stopped") : svc.state}{svc.port ? ` · :${svc.port}` : ""}</span>

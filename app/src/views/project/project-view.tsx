@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { RepoTrustBanner } from "@/components/repo-trust";
 import { SkillsPanel } from "@/components/skills/skills-panel";
 import { Button } from "@/components/ui/button";
-import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuItem, MenuPopup, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
 import { flowsApi, type RepoConfig, trustPending } from "@/lib/flows";
@@ -103,7 +103,7 @@ export function ProjectView({ box, location }: { box: string; location: string }
                 <CopyIcon />
                 Copy as .berth/config.json
               </MenuTrigger>
-              <MenuPopup align="end" className="min-w-64">
+              <MenuPopup align="end" width={menuWidths.w64}>
                 <MenuItem onClick={() => copy("effective")}>
                   <span className="flex flex-col">
                     <span>Everything that applies</span>

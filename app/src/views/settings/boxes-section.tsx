@@ -9,7 +9,7 @@ import { ErrorDetails } from "@/components/error-note";
 import { GuardDialog } from "@/components/guard-dialog";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
-import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
 import { OutdatedNotice, UpgradeBox } from "@/components/upgrade-box";
@@ -154,7 +154,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
           <MenuTrigger render={<Button size="icon-xs" variant="ghost" aria-label={`${box.name} actions`} />}>
             <EllipsisIcon />
           </MenuTrigger>
-          <MenuPopup align="end" className="min-w-48">
+          <MenuPopup align="end" width={menuWidths.w48}>
             <MenuItem disabled={!online || upgrading || !!check?.error || !!unsupported} onClick={() => void updateBoxes([box.name])}>
               <ArrowUpCircleIcon />
               {online ? "Install bundled box agent" : "Install bundled box agent (offline)"}

@@ -13,7 +13,7 @@ import { CompareSideContext, type CompareSide, pageLoading } from "@/lib/compare
 import { ErrorText } from "@/components/error-note";
 import { SessionActionItems } from "@/components/orchestrate/session-actions";
 import { Button } from "@/components/ui/button";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { LogView } from "@/components/workspace/log-view";
 import { PanelIcon, PanelPane } from "@/components/workspace/panel-pane";
@@ -306,7 +306,7 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
             <EllipsisIcon className="size-3.5" />
           </MenuTrigger>
         </Tip>
-        <MenuPopup align="end" className="min-w-56">
+        <MenuPopup align="end" width={menuWidths.w56}>
           {c.kind === "terminal" && agent && (
             <>
               <SessionActionItems box={c.box} session={c.session} />

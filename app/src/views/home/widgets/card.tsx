@@ -2,7 +2,7 @@ import { EllipsisIcon, EyeOffIcon, LayoutGridIcon, PlugIcon, RefreshCwIcon } fro
 import { Component, type ErrorInfo, type ReactNode, useEffect, useState } from "react";
 
 import { Tip } from "@/components/tip";
-import { Menu, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { SIZE_ORDER, SIZES, type WidgetSize } from "@/lib/home-layout";
 import { cn } from "@/lib/utils";
 
@@ -72,7 +72,7 @@ export function WidgetMenu({ def, size, onSize, onRefresh, onRemove, onCustomize
       >
         <EllipsisIcon className="size-3.5" />
       </MenuTrigger>
-      <MenuPopup align="end" className="min-w-48">
+      <MenuPopup align="end" width={menuWidths.w48}>
         {def.sizes.length > 1 && (
           <>
             <MenuGroupLabel>Size</MenuGroupLabel>

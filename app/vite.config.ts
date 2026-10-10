@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import stylex from "@stylexjs/unplugin";
 import tailwindcss from "@tailwindcss/vite";
 import { execSync } from "node:child_process";
 import fs from "node:fs";
@@ -134,7 +135,22 @@ const argPort = process.argv.includes("--port") ? process.argv[process.argv.inde
 
 export default defineConfig(({ mode }) => ({
   cacheDir: argPort && argPort !== "1420" ? `node_modules/.vite-${argPort}` : "node_modules/.vite",
-  plugins: [react(), tailwindcss(), devPlugins(), mockVdiff(), noShikiWasm(), ...(mode === "demo" ? [demoPage()] : [])],
+  plugins: [
+    // StyleX before React so Fast Refresh still sees the compiled output.
+    // https://stylexjs.com/docs/llm-resources
+    stylex.vite({
+      useCSSLayers: true,
+      treeshakeCompensation: true,
+      unstable_moduleResolution: { type: "commonJS", rootDir: import.meta.dirname },
+      aliases: { "@/*": [path.resolve(import.meta.dirname, "./src/*")] },
+    }),
+    react(),
+    tailwindcss(),
+    devPlugins(),
+    mockVdiff(),
+    noShikiWasm(),
+    ...(mode === "demo" ? [demoPage()] : []),
+  ],
   // The diff renderer's highlighting worker loads its languages as chunks,
   // which takes a module worker.
   worker: { format: "es" as const, plugins: () => [noShikiWasm(), workerScript()] },

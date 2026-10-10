@@ -2,7 +2,7 @@ import { ArrowRightLeftIcon, BookMarkedIcon, EllipsisIcon, GitCompareArrowsIcon,
 import type { ReactNode } from "react";
 
 import { Tip } from "@/components/tip";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { openAttempts } from "@/lib/composer";
 import { openPromptPicker } from "@/lib/prompts";
 import { type OrchestrateDraft, useStore } from "@/lib/store";
@@ -82,7 +82,7 @@ export function SessionActions({ box, session, className, children }: { box: str
           <EllipsisIcon className="size-3.5" />
         </MenuTrigger>
       </Tip>
-      <MenuPopup align="end" className="min-w-48">
+      <MenuPopup align="end" width={menuWidths.w48}>
         <SessionActionItems box={box} session={session} />
         {children}
       </MenuPopup>

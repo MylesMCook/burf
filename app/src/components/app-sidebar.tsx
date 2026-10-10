@@ -20,7 +20,7 @@ import { SidebarResizeHandle } from "@/components/sidebar/resize-handle";
 import { RowLayer } from "@/components/sidebar/row-layer";
 import { Tip } from "@/components/tip";
 import { Kbd } from "@/components/ui/kbd";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { SidebarContext, type SidebarContextProps } from "@/components/ui/sidebar";
 import { usePrefs } from "@/lib/prefs";
 import { useLocalComputer } from "@/lib/local-computer";
@@ -95,7 +95,7 @@ export function AppSidebar() {
             >
               <EllipsisIcon className="size-3.5" />
             </MenuTrigger>
-            <MenuPopup align="end" className="min-w-52">
+            <MenuPopup align="end" width={menuWidths.w52}>
               <MenuItem onClick={() => useStore.getState().openNewWorktree()}>
                 <GitBranchPlusIcon />
                 New task…
@@ -235,7 +235,7 @@ function Rail() {
               <EllipsisIcon className="size-4" />
             </MenuTrigger>
           </Tip>
-          <MenuPopup side="right" align="start" className="min-w-72">
+          <MenuPopup side="right" align="start" width={menuWidths.w72}>
             <MoreItems more={more} />
           </MenuPopup>
         </Menu>

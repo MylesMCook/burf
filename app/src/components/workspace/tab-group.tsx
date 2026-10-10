@@ -2,7 +2,7 @@ import { CloudOffIcon, FoldHorizontalIcon, PaletteIcon, PencilIcon, UnfoldHorizo
 
 import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
 import { Tip } from "@/components/tip";
-import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuSub, ContextMenuSubPopup, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuSub, ContextMenuSubPopup, ContextMenuSubTrigger, ContextMenuTrigger, menuWidths } from "@/components/ui/context-menu";
 import { MenuRadioGroup, MenuRadioItem } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { armDrag } from "@/components/workspace/tab-drag";
@@ -92,7 +92,7 @@ function GroupLabel({ wsKey, front, folded, count, tone, many, compact }: { wsKe
           </button>
         </Tip>
       </ContextMenuTrigger>
-      <ContextMenuPopup className="min-w-52">
+      <ContextMenuPopup width={menuWidths.w52}>
         <ContextMenuItem onClick={() => foldGroup(wsKey, !folded)}>
           {folded ? <UnfoldHorizontalIcon /> : <FoldHorizontalIcon />}
           <span className="flex-1">{folded ? "Unfold" : "Fold to its name"}</span>
@@ -113,7 +113,7 @@ function GroupLabel({ wsKey, front, folded, count, tone, many, compact }: { wsKe
             <PaletteIcon />
             Colour
           </ContextMenuSubTrigger>
-          <ContextMenuSubPopup className="min-w-40">
+          <ContextMenuSubPopup width={menuWidths.w40}>
             <ContextMenuRadioGroup value={picked ?? "auto"} onValueChange={(v) => setTone(wsKey, v === "auto" ? undefined : String(v))}>
               <ContextMenuRadioItem value="auto">Automatic</ContextMenuRadioItem>
               {TONES.map((t) => (

@@ -26,7 +26,7 @@ import { Suggestions, useBrowserContext } from "@/components/browser-pane";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
-import { Menu, MenuCheckboxItem, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuCheckboxItem, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { openBrowserAt } from "@/lib/actions";
@@ -610,7 +610,7 @@ function SizesMenu({ worktree }: { worktree: string }) {
           <span className="tabular-nums @max-[36rem]/bar:hidden">{s.sizes.length}</span>
         </MenuTrigger>
       </Tip>
-      <MenuPopup align="end" className="min-w-64">
+      <MenuPopup align="end" width={menuWidths.w64}>
         <MenuGroup>
           <MenuGroupLabel>Tailwind breakpoints</MenuGroupLabel>
           {breakpoints.map((p) => (
@@ -702,7 +702,7 @@ function OptionsMenu({ worktree, detected }: { worktree: string; detected?: stri
           <SlidersHorizontalIcon />
         </MenuTrigger>
       </Tip>
-      <MenuPopup align="end" className="min-w-64">
+      <MenuPopup align="end" width={menuWidths.w64}>
         <MenuGroup>
           <MenuGroupLabel>Synced scrolling</MenuGroupLabel>
           <MenuRadioGroup value={s.scroll} onValueChange={(v) => setPreviewSettings(worktree, { scroll: v as "proportional" | "anchor" })}>

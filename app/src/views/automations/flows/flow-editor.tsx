@@ -8,7 +8,7 @@ import { SimpleSelect } from "@/components/simple-select";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Switch } from "@/components/ui/switch";
 import { sortedWorktrees } from "@/lib/derive";
 import { DEFAULT_MAX_RUNS_PER_HOUR, type Flow, type FlowRun, type FlowSource, flowsApi, type GitHubOn, type Scope, type Step, type StepKind, scopeLocation, slug, type TriggerKind, triggerKind, triggerType } from "@/lib/flows";
@@ -398,18 +398,18 @@ function RunsFor({ value, options, disabled, onChange }: { value: { box: string;
         <ProjectLabel box={value.box} scope={value.scope} className="flex-1" />
         {!disabled && <ChevronsUpDownIcon className="size-4 shrink-0 opacity-60" />}
       </MenuTrigger>
-      <MenuPopup align="start" className="max-h-96 min-w-(--anchor-width)">
+      <MenuPopup align="start" width={menuWidths.anchor}>
         {boxes.map((box, i) => (
           <MenuGroup key={box}>
             {i > 0 && <MenuSeparator />}
-            <MenuGroupLabel className="flex items-center gap-1.5">
+            <MenuGroupLabel>
               <ServerIcon className="size-3" />
               {box}
             </MenuGroupLabel>
             {options
               .filter((o) => o.box === box)
               .map((o) => (
-                <MenuItem key={o.scope} onClick={() => onChange(o)} className={cn(o.box === value.box && o.scope === value.scope && "bg-accent")}>
+                <MenuItem key={o.scope} onClick={() => onChange(o)} current={o.box === value.box && o.scope === value.scope}>
                   {o.scope === "box" ? (
                     <span className="flex items-center gap-1.5">
                       <LayersIcon className="size-3.5 text-muted-foreground" />
@@ -456,7 +456,7 @@ function AddStep({ onPick, children }: { onPick(k: StepKind): void; children: Re
   return (
     <Menu>
       <MenuTrigger render={children} />
-      <MenuPopup align="center" className="min-w-64">
+      <MenuPopup align="center" width={menuWidths.w64}>
         <MenuGroup>
           <MenuGroupLabel>Add a step</MenuGroupLabel>
           {KIND_ORDER.map((k) => {
@@ -511,7 +511,7 @@ function TestRun({ box, scope, flow, dirty, onRun }: { box: string; scope: Scope
         <FlaskConicalIcon />
         Test run
       </MenuTrigger>
-      <MenuPopup align="end" className="max-h-96 min-w-64">
+      <MenuPopup align="end" width={menuWidths.w64}>
         <MenuGroup>
           <MenuGroupLabel>{dirty ? "Runs the saved version, for real, in" : "Runs it now, for real, in"}</MenuGroupLabel>
           {choices.length === 0 && <MenuItem disabled>No worktrees on {box}</MenuItem>}

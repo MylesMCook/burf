@@ -9,7 +9,7 @@ import { kindOf } from "@/components/art/kinds";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Menu, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { type Art, type ArtVersion, latest, sizeLabel, useArt, useArtBody, useArtifact } from "@/lib/art/model";
 import { openBoard } from "@/lib/art/open";
 import { PaneContext } from "@/lib/pane-context";
@@ -191,16 +191,21 @@ function VersionMenu({ art, cur, v, pulse, onPick, className }: { art: Art; cur:
   return (
     <Menu>
       <MenuTrigger
-        aria-label={`Version: v${v.n}${v.n === cur.n ? `, the latest (${state.toLowerCase()})` : `, the latest is v${cur.n}`}. ${art.versions.length} ${art.versions.length === 1 ? "version" : "versions"}`}
-        data-testid="art-version-menu"
-        data-pulse={pulse || undefined}
-        className={cn("shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[0.6875rem] tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring", pulse ? "art-pulse border-info/40 bg-info/10 text-info-foreground" : "text-muted-foreground hover:bg-accent/60", className)}
+        render={
+          <button
+            type="button"
+            aria-label={`Version: v${v.n}${v.n === cur.n ? `, the latest (${state.toLowerCase()})` : `, the latest is v${cur.n}`}. ${art.versions.length} ${art.versions.length === 1 ? "version" : "versions"}`}
+            data-testid="art-version-menu"
+            data-pulse={pulse || undefined}
+            className={cn("inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[0.6875rem] tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring", pulse ? "art-pulse border-info/40 bg-info/10 text-info-foreground" : "text-muted-foreground hover:bg-accent/60", className)}
+          />
+        }
       >
         <span className={cn("size-1.5 rounded-full", pulse ? "art-dot bg-info" : art.watched ? "bg-success" : "bg-muted-foreground/60")} aria-hidden />
         v{v.n}
         <ChevronDownIcon className="size-3" aria-hidden />
       </MenuTrigger>
-      <MenuPopup align="start" className="min-w-56">
+      <MenuPopup align="start" width={menuWidths.w56}>
         <MenuGroup>
           <MenuGroupLabel>
             {state} · v{cur.n} · {when(cur.at)}

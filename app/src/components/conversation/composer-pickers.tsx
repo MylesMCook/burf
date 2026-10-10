@@ -17,8 +17,7 @@ import {
   MenuSub,
   MenuSubPopup,
   MenuSubTrigger,
-  MenuTrigger,
-} from "@/components/ui/menu";
+  MenuTrigger, menuWidths } from "@/components/ui/menu";
 import type { SessionEntry } from "@/hooks/use-agent-counts";
 import type { AgentPreset } from "@/lib/api";
 import type { AgentPick } from "@/lib/composer";
@@ -147,7 +146,7 @@ export function AgentsPicker({
         <span className="truncate">{label}</span>
         <ChevronsUpDownIcon className="opacity-60" />
       </MenuTrigger>
-      <MenuPopup align="end" className="min-w-64">
+      <MenuPopup align="end" width={menuWidths.w64}>
         {onCompare && <><MenuItem onClick={() => onCompare(false)}>Use one agent</MenuItem><MenuSeparator /></>}
         <MenuGroup>
           <MenuGroupLabel>{single ? "Agent" : "Agents"}</MenuGroupLabel>
@@ -170,13 +169,13 @@ export function AgentsPicker({
             const toggle = (m: string, on: boolean) => set(p.id, { ...cur, models: on ? [...cur.models.filter((x) => x !== m), m] : cur.models.filter((x) => x !== m) });
             return (
               <MenuSub key={p.id}>
-                <MenuSubTrigger className="gap-2 ps-2">
+                <MenuSubTrigger>
                   <Tick on={!!c} />
                   <AgentIcon agent={p.id} />
                   <span className="flex-1">{p.name}</span>
                   {c && <span className="text-muted-foreground text-xs">{[...c.models.map((m) => (m ? nice(m) : "Default")), c.effort && nice(c.effort)].filter(Boolean).join(", ")}</span>}
                 </MenuSubTrigger>
-                <MenuSubPopup className="min-w-44">
+                <MenuSubPopup width={menuWidths.w44}>
                   <MenuGroup>
                     <MenuGroupLabel>Model</MenuGroupLabel>
                     {["", ...models].map((m) => (
@@ -281,7 +280,7 @@ function SingleAgentPicker({ presets, sel, none, missing, allowNone, onChange, o
           <span className="truncate">{label}</span>
           <ChevronsUpDownIcon className="opacity-60" />
         </MenuTrigger>
-        <MenuPopup align="end" className="min-w-52">
+        <MenuPopup align="end" width={menuWidths.w52}>
           <MenuGroup>
             <MenuGroupLabel>Provider</MenuGroupLabel>
             {presets.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-xs">No agent CLI on this box. Settings → Agents shows how to add one.</p>}
@@ -391,7 +390,7 @@ export function Pick({
         <span className="truncate">{shown}</span>
         {!fixed && <ChevronsUpDownIcon className="opacity-60" />}
       </MenuTrigger>
-      <MenuPopup align="start" className="min-w-52">
+      <MenuPopup align="start" width={menuWidths.w52}>
         <MenuGroup>
           <MenuGroupLabel>{label}</MenuGroupLabel>
           <MenuRadioGroup value={value} onValueChange={(v) => onPick(String(v))}>
@@ -469,7 +468,7 @@ export function TargetsPicker({
         <span className="truncate">{label}</span>
         <ChevronsUpDownIcon className="opacity-60" />
       </MenuTrigger>
-      <MenuPopup align="start" className="max-h-96 min-w-80">
+      <MenuPopup align="start" width={menuWidths.w80}>
         <MenuCheckboxItem checked={onlyFree} onCheckedChange={onOnlyFree}>
           Only agents that are ready or done
         </MenuCheckboxItem>
@@ -482,7 +481,7 @@ export function TargetsPicker({
         {byBox.map(([box, entries]) => (
           <MenuGroup key={box}>
             <MenuSeparator />
-            <MenuGroupLabel className="flex items-center gap-1.5">
+            <MenuGroupLabel>
               {away.has(box) && <CloudOffIcon className="size-3" />}
               {box}
               {away.has(box) && <span className="font-normal">· offline, as last seen</span>}
@@ -523,7 +522,7 @@ export function SavedPrompts({ onPick }: { onPick(id: string, body: string): voi
           <BookMarkedIcon />
         </MenuTrigger>
       </Tip>
-      <MenuPopup align="end" className="max-h-80 w-72">
+      <MenuPopup align="end" width={menuWidths.fixed72}>
         <MenuGroup>
           <MenuGroupLabel>Saved prompts</MenuGroupLabel>
           {list.length === 0 && <p className="px-2 py-2 text-muted-foreground text-xs">None yet. Save prompts you use often from ⌘K → Send a saved prompt.</p>}

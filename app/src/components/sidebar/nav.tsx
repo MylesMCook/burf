@@ -22,7 +22,7 @@ import { create } from "zustand";
 import { type Action, ContextRow } from "@/components/sidebar/actions";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
-import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { useAgentCounts } from "@/hooks/use-agent-counts";
@@ -188,7 +188,7 @@ export function MoreItems({ more }: { more: NavItem[] }) {
   return (
     <>
       {more.map((n) => (
-        <MenuItem key={n.id} onClick={n.go} aria-current={n.active ? "page" : undefined} className={cn(n.active && "bg-accent/50 font-medium")}>
+        <MenuItem key={n.id} onClick={n.go} aria-current={n.active ? "page" : undefined} current={n.active}>
           <span className="flex size-4 items-center justify-center [&_svg]:size-4">{n.icon}</span>
           <span className="min-w-0 flex-1 truncate">{n.label}</span>
           {n.badge && <span className={cn("text-xs tabular-nums", n.badge.loud ? "text-warning-foreground" : "text-muted-foreground")}>{n.badge.count}</span>}
@@ -233,7 +233,7 @@ export function Nav() {
               <EllipsisIcon />
               <span>{dragging ? "Drop in More" : "More"}</span>
             </MenuTrigger>
-            <MenuPopup side="right" align="start" className="min-w-72">
+            <MenuPopup side="right" align="start" width={menuWidths.w72}>
               <MoreItems more={more} />
             </MenuPopup>
           </Menu>

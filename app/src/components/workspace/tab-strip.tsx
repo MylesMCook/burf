@@ -7,7 +7,7 @@ import { BoardButton } from "@/components/art/board-buttons";
 import { DockButton } from "@/components/files/tree-dock";
 import { Tip } from "@/components/tip";
 import { Spinner } from "@/components/ui/spinner";
-import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger, menuWidths } from "@/components/ui/context-menu";
 import { NewTabMenu } from "@/components/workspace/new-tab-menu";
 import { FileTabState } from "@/components/files/file-bits";
 import { PaneActions, PaneIcon, paneLabel } from "@/components/workspace/pane";
@@ -373,7 +373,7 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
           </Tip>
         )}
       </ContextMenuTrigger>
-      <ContextMenuPopup className="min-w-48">
+      <ContextMenuPopup width={menuWidths.w48}>
         {session && (
           <ContextMenuItem onClick={() => setEditing(true)}>
             <PencilIcon />

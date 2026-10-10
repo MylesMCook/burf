@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { TitleInput } from "@/components/workspace/tab-strip";
 import { renameSession, startRenaming, useRenaming } from "@/lib/session-title";
 import { useAllSessions } from "@/hooks/use-agent-counts";
@@ -138,9 +138,9 @@ export function ZenSwitcher({ className }: { className?: string }) {
         {waiting > 0 && <Badge variant="warning">{waiting}</Badge>}
         <ChevronsUpDownIcon className="opacity-60" />
       </MenuTrigger>
-      <MenuPopup align="start" className="w-80">
+      <MenuPopup align="start" width={menuWidths.fixed80}>
         {pinned.map((n) => (
-          <MenuItem key={n.id} onClick={n.go} aria-current={n.active ? "page" : undefined} className={cn(n.active && "bg-accent/50 font-medium")}>
+          <MenuItem key={n.id} onClick={n.go} aria-current={n.active ? "page" : undefined} current={n.active}>
             <span className="flex size-4 items-center justify-center [&_svg]:size-4">{n.icon}</span>
             <span className="min-w-0 flex-1 truncate">{n.label}</span>
             {n.badge && <span className={cn("text-xs tabular-nums", n.badge.loud ? "text-warning-foreground" : "text-muted-foreground")}>{n.badge.count}</span>}
@@ -152,7 +152,7 @@ export function ZenSwitcher({ className }: { className?: string }) {
             <span className="min-w-0 flex-1 truncate">More</span>
             {more.find((n) => n.active) && <span className="text-muted-foreground text-xs">{more.find((n) => n.active)!.label}</span>}
           </MenuSubTrigger>
-          <MenuSubPopup className="min-w-72">
+          <MenuSubPopup width={menuWidths.w72}>
             <MoreItems more={more} />
           </MenuSubPopup>
         </MenuSub>
@@ -233,7 +233,7 @@ function AllWorktrees() {
         <FolderIcon />
         All worktrees
       </MenuSubTrigger>
-      <MenuSubPopup className="min-w-56">
+      <MenuSubPopup width={menuWidths.w56}>
         {online.map((box) => {
           const here = projects.filter((p) => p.box === box);
           if (!here.length) return null;
@@ -246,7 +246,7 @@ function AllWorktrees() {
                     <FolderIcon />
                     {loc.name}
                   </MenuSubTrigger>
-                  <MenuSubPopup className="min-w-72">
+                  <MenuSubPopup width={menuWidths.w72}>
                     {loc.worktrees!.map((wt) => {
                       const leaving = removalOf(removals, box, wt.path);
                       return (
@@ -334,7 +334,7 @@ function WorktreeMenu() {
           <EllipsisIcon />
         </MenuTrigger>
       </Tip>
-      <MenuPopup align="start" className="min-w-56">
+      <MenuPopup align="start" width={menuWidths.w56}>
         {focused && (
           <>
             <MenuItem onClick={() => startRenaming(focused.box, focused.session.name)}>

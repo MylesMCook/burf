@@ -2,7 +2,7 @@ import { ChevronDownIcon, CircleAlertIcon, GitBranchIcon, GitPullRequestIcon, In
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Frame, FramePanel } from "@/components/ui/frame";
-import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import type { Branch, ResolveKind, Resolution } from "@/lib/projects";
 import { cn } from "@/lib/utils";
 
@@ -77,7 +77,7 @@ export function StartFrom({
               {mode.label}
               <ChevronDownIcon className="size-3 opacity-60" />
             </MenuTrigger>
-            <MenuPopup align="start" className="min-w-64">
+            <MenuPopup align="start" width={menuWidths.w64}>
               <MenuRadioGroup
                 value={kind}
                 onValueChange={(v) => {
@@ -86,7 +86,7 @@ export function StartFrom({
                 }}
               >
                 {modes.map((m) => (
-                  <MenuRadioItem key={m.kind} value={m.kind} closeOnClick className="py-1.5">
+                  <MenuRadioItem key={m.kind} value={m.kind} closeOnClick>
                     <span className="flex min-w-0 items-start gap-2">
                       <m.Icon className="mt-0.5 size-3.5 shrink-0 opacity-80" />
                       <span className="flex min-w-0 flex-col">

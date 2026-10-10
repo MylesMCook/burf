@@ -2,7 +2,7 @@ import { BracesIcon } from "lucide-react";
 import { useRef } from "react";
 
 import { Input } from "@/components/ui/input";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { Variable } from "@/views/automations/flows/model";
@@ -52,7 +52,7 @@ export function TemplateField({
               <BracesIcon className="size-3" />
               Insert
             </MenuTrigger>
-            <MenuPopup align="end" className="max-h-80 min-w-56">
+            <MenuPopup align="end" width={menuWidths.w56}>
               {groups.map((g) => (
                 <MenuGroup key={g}>
                   <MenuGroupLabel>{g}</MenuGroupLabel>

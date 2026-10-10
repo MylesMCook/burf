@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@stylex;
 /* Built-in plugins are styled with the app's classes. */
 @source "../../plugins";
 @import "@fontsource-variable/inter";

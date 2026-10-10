@@ -3,7 +3,7 @@ import { create } from "zustand";
 
 import { Button } from "@/components/ui/button";
 import { Group, GroupSeparator } from "@/components/ui/group";
-import { Menu, MenuCheckboxItem, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuCheckboxItem, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
 import { load, save } from "@/lib/storage";
 import { SYNC_MODES, type SyncMode } from "@/lib/worktrees";
@@ -59,7 +59,7 @@ export function SyncButton({
         <MenuTrigger render={<Button size={size === "sm" ? "icon-sm" : "icon-xs"} variant="outline" disabled={disabled} aria-label="Sync with…" />}>
           <ChevronDownIcon />
         </MenuTrigger>
-        <MenuPopup align="end" className="min-w-64">
+        <MenuPopup align="end" width={menuWidths.w64}>
           <MenuGroup>
             <MenuGroupLabel>Sync with the base by</MenuGroupLabel>
             <MenuRadioGroup value={mode} onValueChange={(v) => set(v as SyncMode)}>
