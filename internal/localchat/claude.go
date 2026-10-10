@@ -18,10 +18,11 @@ import (
 // fields are ignored. Tool, permission and interrupt shapes need a signed-in
 // CLI check; the executable peer tests exercise the assumed SDK contract.
 type claudeProvider struct {
-	initialized chan struct{}
-	initOnce    sync.Once
-	sequence    uint64
-	spoke       bool
+	initialized  chan struct{}
+	initOnce     sync.Once
+	sequence     uint64
+	spoke        bool
+	presentCalls map[string]bool
 }
 
 func newClaudeProvider() *claudeProvider { return &claudeProvider{initialized: make(chan struct{})} }
@@ -174,6 +175,7 @@ func (c *claudeProvider) send(ctx context.Context, r *running, text string, opti
 	r.session.State = "running"
 	r.session.Error = ""
 	c.spoke = false
+	c.presentCalls = nil
 	thread := r.session.ThreadID
 	r.mu.Unlock()
 	err := r.queue(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": []any{map[string]any{"type": "text", "text": text}}}, "parent_tool_use_id": nil, "session_id": thread})
@@ -480,12 +482,28 @@ func (c *claudeProvider) receive(r *running, data []byte) error {
 				if block.ID == "" || block.Name == "" {
 					continue
 				}
+				if r.tools && block.Name == "mcp__"+ToolServer+"__burf_present" {
+					if c.presentCalls == nil {
+						c.presentCalls = map[string]bool{}
+					}
+					if len(c.presentCalls) < maxItems {
+						c.presentCalls[block.ID] = true
+						continue
+					}
+				}
 				claudeItem(r, Item{ID: r.session.TurnID + "/tool/" + block.ID, Kind: "tool", Text: claudeToolLabel(block.Name, block.Input), Status: "inProgress"})
 			}
 		}
 	case "user":
 		for _, block := range line.Message.Content {
 			if block.Type != "tool_result" {
+				continue
+			}
+			if c.presentCalls[block.ToolUseID] {
+				delete(c.presentCalls, block.ToolUseID)
+				if block.IsError {
+					claudeItem(r, Item{ID: r.session.TurnID + "/tool/" + block.ToolUseID, Kind: "tool", Text: "burf_present\n" + claudeContent(block.Content), Status: "failed"})
+				}
 				continue
 			}
 			for _, old := range r.session.Items {

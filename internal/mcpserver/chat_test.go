@@ -100,7 +100,7 @@ func TestAChatsServerAddsTheArtifactToolAndThePlainServerDoesNot(t *testing.T) {
 		return strings.Join(out, " ")
 	}
 	plain, chat := names(&Server{Box: box.NewClient(&chatBox{})}), names(&Server{Box: box.NewClient(&chatBox{}), Chat: "c1", Caller: "chat:c1"})
-	if strings.Contains(plain, "berth_artifact_add") || chat != plain+" berth_artifact_add" {
+	if strings.Contains(plain, "berth_artifact_add") || chat != plain+" berth_artifact_add burf_present" {
 		t.Fatalf("plain: %s\nchat:  %s", plain, chat)
 	}
 }

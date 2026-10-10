@@ -46,6 +46,7 @@ func (t *Tools) serverConfig(chat string) map[string]any {
 // Caller holds mu. A turn that ended, or a chat that stopped, can no longer
 // act: its unanswered questions are refused.
 func (r *running) cancelTools() {
+	r.cancelForms()
 	for id, ch := range r.toolAsks {
 		close(ch)
 		delete(r.toolAsks, id)
@@ -60,7 +61,7 @@ func (r *running) dropApproval(id string) {
 			break
 		}
 	}
-	if len(r.approvals)+len(r.toolAsks) == 0 && r.session.State == "waiting" {
+	if len(r.approvals)+len(r.toolAsks)+len(r.forms) == 0 && r.session.State == "waiting" {
 		r.session.State = "running"
 	}
 }
