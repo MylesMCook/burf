@@ -1,7 +1,7 @@
 "use client";
 
 // Adapted from https://r.assistant-ui.com/elements-elicitation-form.json.
-// Stock props and behavior are retained; styling uses Burf's theme and controls.
+// Stock props are retained; Burf adds pending feedback and cancellation receipts.
 
 import { useId, type ComponentProps } from "react";
 import { CheckIcon, PlugIcon, XIcon } from "lucide-react";
@@ -143,6 +143,7 @@ export function ElicitationForm({
   message,
   fields,
   state,
+  pendingAction,
   onFieldChange,
   onAccept,
   onDecline,
@@ -163,6 +164,7 @@ export function ElicitationForm({
   message: string;
   fields: readonly ElicitationField[];
   state: ElicitationState;
+  pendingAction?: "accept" | "decline";
   onFieldChange?: ((name: string, value: string) => void) | undefined;
   onAccept?: () => void;
   onDecline?: () => void;
@@ -170,6 +172,9 @@ export function ElicitationForm({
   const fieldPrefix = useId();
   const { receiptRef, focusHandlers } = useReceiptFocus(props);
   const interactive = state === "request" && onFieldChange !== undefined;
+  const status = state === "request"
+    ? pendingAction === "accept" ? "Sending answer" : pendingAction === "decline" ? "Declining" : "Needs input"
+    : state === "accepted" ? "Answered" : state === "declined" ? "Declined" : "Cancelled";
   const missingRequired =
     interactive &&
     fields.some(
@@ -194,14 +199,14 @@ export function ElicitationForm({
         <span className={sx(styles.server)}>
           {server}
         </span>
-        <span className={sx(styles.status)}>
-          needs input
+        <span role="status" className={sx(styles.status)}>
+          {status}
         </span>
       </div>
 
       <p className={sx(styles.message)}>{message}</p>
 
-      <div className={sx(styles.fields)}>
+      <div className={sx(styles.fields)} aria-busy={!!pendingAction}>
         {fields.map((item, index) => {
           const labelId = `${fieldPrefix}-${index}`;
           const inputId = `${labelId}-input`;
@@ -243,6 +248,7 @@ export function ElicitationForm({
                         key={option}
                         type="button"
                         aria-pressed={option === item.value}
+                        disabled={!!pendingAction}
                         onClick={() => onFieldChange(item.name, option)}
                       >
                         {option}
@@ -269,6 +275,7 @@ export function ElicitationForm({
                     <Switch
                       aria-labelledby={labelId}
                       checked={item.value === "true"}
+                      disabled={!!pendingAction}
                       onCheckedChange={(checked) => onFieldChange(item.name, String(checked))}
                     />
                     <Toggle value={item.value} />
@@ -285,6 +292,7 @@ export function ElicitationForm({
                   id={inputId}
                   value={item.value}
                   aria-required={item.required || undefined}
+                  disabled={!!pendingAction}
                   onChange={(event) =>
                     onFieldChange(item.name, event.currentTarget.value)
                   }
@@ -312,6 +320,7 @@ export function ElicitationForm({
               size="sm"
               type="button"
               onClick={onDecline}
+              disabled={!!pendingAction}
             >
               Decline
             </Button>
@@ -319,7 +328,7 @@ export function ElicitationForm({
               size="sm"
               type="button"
               onClick={onAccept}
-              disabled={missingRequired}
+              disabled={missingRequired || !!pendingAction}
             >
               Send
             </Button>

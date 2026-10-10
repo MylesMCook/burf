@@ -70,7 +70,7 @@ test("read-aloud can stop and reports speech failures without losing the answer"
 async function toolConversation(app: App, presentations: ChatPresentation[]) {
   const agent = await fakeAgent();
   const calls: PresentationAnswer[] = [];
-  const control = { loseAnswer: false };
+  const control: { loseAnswer: boolean; answerHeld?: Promise<void> } = { loseAnswer: false };
   const chat = { id: "features", agent: "codex", mode: "chat", location: "shop/fix", cwd: DIR, state: "waiting", started_at: "2026-10-10T12:00:00Z", thread_id: "thread", turn_id: "turn", items: [
     { id: "reasoning", kind: "assistant", reasoning: true, text: "Checking the public plan" },
     ...presentations.map((presentation) => ({ id: presentation.id, kind: "tool", text: "burf_present", presentation })),
@@ -82,6 +82,7 @@ async function toolConversation(app: App, presentations: ChatPresentation[]) {
     if (path.endsWith("/answer")) {
       const answer: PresentationAnswer = route.request().postDataJSON();
       calls.push(answer);
+      await control.answerHeld;
       const form = presentations.find((presentation) => presentation.type === "form");
       if (form?.type === "form") {
         form.state = answer.action === "accept" ? "accepted" : "declined";
@@ -113,6 +114,7 @@ for (const width of [1440, 720]) test(`typed tool data and a one-use form render
     { type: "table", id: "table1", caption: "Build comparison", columns: [{ key: "name", label: "Name", priority: "primary" }, { key: "time", label: "Time", format: { kind: "number" } }], rows: [{ name: "Slow", time: 12 }, { name: "Fast", time: 2 }] },
     question(),
   ]);
+  let release = () => {};
   try {
     await f.pane.getByRole("button", { name: "Reasoning", exact: true }).click();
     await expect(f.pane.getByText("Checking the public plan", { exact: true })).toBeVisible();
@@ -123,18 +125,35 @@ for (const width of [1440, 720]) test(`typed tool data and a one-use form render
     if (width === 1440) {
       await table.getByRole("button", { name: "Sort by Time", exact: true }).click();
       await expect(table.getByRole("row").nth(1)).toContainText("Fast");
+    } else {
+      const sort = table.getByRole("combobox", { name: "Sort table", exact: true });
+      await sort.press("Enter");
+      await app.page.keyboard.press("End");
+      await app.page.keyboard.press("ArrowUp");
+      await app.page.keyboard.press("Enter");
+      await expect(sort).toHaveText("Time, ascending");
+      await expect(table.getByRole("listitem").first()).toContainText("Fast");
     }
     const form = f.pane.getByRole("region", { name: "Agent question" });
     await expect(form.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
     await form.getByRole("textbox", { name: "Target", exact: true }).fill("Mini");
     await form.getByRole("switch", { name: "Notify" }).click();
+    if (width === 1440) f.control.answerHeld = new Promise<void>((resolve) => { release = resolve; });
     await form.getByRole("button", { name: "Send", exact: true }).click();
+    if (width === 1440) {
+      await expect(form.getByRole("status")).toHaveText("Sending answer");
+      await expect(form.getByRole("textbox", { name: "Target", exact: true })).toBeDisabled();
+      expect(f.calls).toHaveLength(1);
+      release();
+    }
     await expect(form).toContainText("Sent to Burf");
+    await expect(form.getByRole("status")).toHaveText("Answered");
+    await expect(form.getByText("Sent to Burf", { exact: true })).toBeFocused();
     expect(f.calls).toEqual([{ action: "accept", values: { target: "Mini", mode: "Safe", notify: "true" } }]);
     await expect(form.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
     expect(await app.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await app.page.screenshot({ path: info.outputPath(`tool-presentations-${width}.png`), animations: "disabled" });
-  } finally { await f.agent.close(); }
+  } finally { release(); await f.agent.close(); }
 });
 
 test("lost form responses recover the settled answer without replay", async ({ app }) => {
@@ -144,6 +163,7 @@ test("lost form responses recover the settled answer without replay", async ({ a
     const form = f.pane.getByRole("region", { name: "Agent question" });
     await form.getByRole("button", { name: "Decline", exact: true }).click();
     await expect(form).toContainText("Declined");
+    await expect(form.getByRole("status")).toHaveText("Declined");
     await expect(f.pane.getByText(/The request may have arrived/)).toBeVisible();
     await app.page.reload();
     await expect(app.page.getByRole("region", { name: "Agent question" })).toContainText("Declined");

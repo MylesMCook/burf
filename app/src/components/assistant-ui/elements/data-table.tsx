@@ -1,10 +1,11 @@
 "use client";
 
 // Adapted from https://r.assistant-ui.com/elements-data-table.json.
-// Stock props and behavior are retained; styling uses Burf's theme and controls.
+// Stock props are retained; Burf's compact view also exposes sorting.
 
 import { useEffect, useState, type ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectValue, SelectPopup, SelectItem } from "@/components/ui/select";
 import { Tip } from "@/components/tip";
 import * as stylex from "@stylexjs/stylex";
 import { color, font, radius } from "@/styles/tokens.stylex";
@@ -80,6 +81,10 @@ const styles = stylex.create({
     flexDirection: "column",
     gap: 8,
     padding: 10
+  },
+  compactSort: {
+    display: { default: "block", "@container (min-width: 448px)": "none" },
+    padding: "10px 10px 0",
   },
   card: {
     backgroundColor: {
@@ -708,21 +713,29 @@ export function DataTable({
   const primaryColumn =
     columns.find((column) => column.priority === "primary") ?? columns[0];
 
+  const applySort = (next: DataTableSort | null) => {
+    const label = columns.find((column) => column.key === next?.key)?.label;
+    if (sort === undefined) setInternalSort(next);
+    setAnnouncement(next ? `Sorted by ${label}, ${next.direction === "asc" ? "ascending" : "descending"}` : "Sorting cleared");
+    onSortChange?.(next);
+  };
   const changeSort = (column: DataTableColumn) => {
-    const next =
+    applySort(
       activeSort?.key !== column.key
         ? { key: column.key, direction: "asc" as const }
         : activeSort.direction === "asc"
           ? { key: column.key, direction: "desc" as const }
-          : null;
-    if (sort === undefined) setInternalSort(next);
-    setAnnouncement(
-      next
-        ? `Sorted by ${column.label}, ${next.direction === "asc" ? "ascending" : "descending"}`
-        : "Sorting cleared",
+          : null,
     );
-    onSortChange?.(next);
   };
+  const directions: DataTableSort["direction"][] = ["asc", "desc"];
+  const sortOptions: { id: string; label: string; sort: DataTableSort | null }[] = [
+    { id: "source", label: "Source order", sort: null },
+    ...columns.filter((column) => column.sortable !== false).flatMap((column, index) => directions.map((direction) => ({
+      id: `${index}-${direction}`, label: `${column.label}, ${direction === "asc" ? "ascending" : "descending"}`, sort: { key: column.key, direction },
+    }))),
+  ];
+  const selectedSort = sortOptions.find((option) => option.sort?.key === activeSort?.key && option.sort?.direction === activeSort?.direction) ?? sortOptions[0];
 
   const cellClass = (column: DataTableColumn) =>
     sx(
@@ -739,6 +752,15 @@ export function DataTable({
       ).className}
       {...props}
     >
+      {sortOptions.length > 1 && <div className={sx(styles.compactSort)}>
+        <Select value={selectedSort.id} onValueChange={(value) => {
+          const option = sortOptions.find((option) => option.id === value);
+          if (option) applySort(option.sort);
+        }}>
+          <SelectTrigger aria-label="Sort table" size="sm"><SelectValue>{selectedSort.label}</SelectValue></SelectTrigger>
+          <SelectPopup>{sortOptions.map((option) => <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>)}</SelectPopup>
+        </Select>
+      </div>}
       <table className={sx(styles.table)}>
         {caption ? <caption className={sx(styles.sr)}>{caption}</caption> : null}
         <thead className={sx(styles.head)}>
@@ -842,6 +864,7 @@ export function DataTable({
             >
               {primaryColumn ? (
                 <div className={sx(styles.primary)}>
+                  <span className={sx(styles.sr)}>{primaryColumn.label}: </span>
                   <Value
                     column={primaryColumn}
                     row={row}

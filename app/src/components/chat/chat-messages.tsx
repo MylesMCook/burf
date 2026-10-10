@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { MessagePrimitive, useAui, useAuiState, type ThreadMessageLike, type TextMessagePartProps } from "@assistant-ui/react";
-import { createContext, useContext, type PropsWithChildren, type ReactNode } from "react";
+import { createContext, Fragment, useContext, type PropsWithChildren, type ReactNode } from "react";
 
 import { AssistantMessage, UserMessage, type ThreadGroupPart } from "@/components/assistant-ui/elements/thread.aui";
 import { ToolGroupRoot, ToolGroupTrigger, ToolGroupContent } from "@/components/assistant-ui/elements/tool-group.aui";
@@ -80,7 +80,7 @@ function CallsWithArtifacts({ group, children }: PropsWithChildren<{ group: Thre
       </ToolGroupRoot>
       {group.indices.map((i) => {
         const part = parts[i];
-        return part?.type === "tool-call" ? extras.tool?.(part.toolCallId) : null;
+        return part?.type === "tool-call" ? <Fragment key={part.toolCallId}>{extras.tool?.(part.toolCallId)}</Fragment> : null;
       })}
     </>
   );
