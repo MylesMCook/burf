@@ -498,11 +498,11 @@ function Generate({ onClose }: { onClose(): void }) {
           </div>
           <pre className="mt-1.5 max-h-28 overflow-auto whitespace-pre-wrap rounded-lg [overflow-wrap:anywhere] bg-muted px-2.5 py-2 font-mono text-[11px] text-foreground/85 leading-relaxed">{shown}</pre>
           {error && (
-            <Alert variant="error" className="mt-2">
+            <div className="mt-2"><Alert variant="error">
               <TriangleAlertIcon />
               <AlertTitle>Couldn't generate it</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            </Alert></div>
           )}
           <div className="mt-3 flex items-center gap-3">
             <Button size="sm" disabled={!prompt.trim() || !!busy} loading={!!busy} onClick={() => void go()}>

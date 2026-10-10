@@ -126,11 +126,11 @@ export function ErrorText({ text, className }: { text?: string; className?: stri
 
 // ErrorNote is an error in place, as an alert: what happened, what to do,
 // and the step as a button when the caller can take it.
-export function ErrorNote({ error, box, onStep, className }: { error: unknown; box?: string; onStep?: (step: NextStep) => void; className?: string }) {
+export function ErrorNote({ error, box, onStep }: { error: unknown; box?: string; onStep?: (step: NextStep) => void }) {
   const e = explain(error, { box });
   const step = e.step && (onStep || globalStep(e)) ? e.step : undefined;
   return (
-    <Alert variant="error" className={className}>
+    <Alert variant="error">
       <CircleAlertIcon />
       <AlertTitle>{e.title}</AlertTitle>
       <AlertDescription>

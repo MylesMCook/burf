@@ -8,7 +8,7 @@ export interface PickOneOption<T extends string> {
   label: ReactNode;
   icon?: ReactNode;
   // For the rare option that needs a tone of its own when chosen.
-  className?: string;
+  tone?: "warning";
 }
 
 // PickOne is the app's one control for picking one of a few values: a coss
@@ -61,10 +61,7 @@ export function PickOne<T extends string>({
         <ToggleGroupItem
           key={toItem(o.value)}
           value={toItem(o.value)}
-          className={cn(
-            "gap-1.5 rounded-md px-2.5 font-normal text-[13px] text-foreground/80 hover:bg-background/60 hover:text-foreground data-pressed:bg-background data-pressed:font-medium data-pressed:text-foreground data-pressed:shadow-xs/5 dark:hover:bg-input/32 dark:data-pressed:bg-input",
-            o.className,
-          )}
+          tone={o.tone ?? "choice"}
         >
           {o.icon}
           {o.label}

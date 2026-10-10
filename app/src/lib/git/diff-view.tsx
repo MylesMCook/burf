@@ -84,7 +84,7 @@ export function DiffView({ file, run, base, comments }: { file: FileChange; run:
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-9 shrink-0 items-center gap-2 border-b px-3 text-xs">
         <span className="min-w-0 truncate font-mono">{file.from ? `${file.from} → ${file.path}` : file.path}</span>
-        <Badge variant="outline" size="sm" className="shrink-0">
+        <Badge variant="outline" size="sm" >
           {describeCode(file.code).label}
         </Badge>
         <PickOne<"unified" | "split">
@@ -196,7 +196,7 @@ export function CommentNote({ c, onRemove }: { c: LineComment; onRemove(): void 
     <div className="sticky left-0 flex w-full max-w-[min(100%,560px)] items-start gap-2 border-primary/60 border-l-2 bg-muted/50 py-1.5 pr-2 pl-3 font-sans text-[12.5px] leading-snug">
       <p className={cn("min-w-0 flex-1 whitespace-pre-wrap break-words", c.sent && "text-muted-foreground")}>{c.text}</p>
       {c.sent ? (
-        <Badge variant="outline" size="sm" className="shrink-0">
+        <Badge variant="outline" size="sm" >
           Sent
         </Badge>
       ) : (

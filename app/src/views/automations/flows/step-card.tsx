@@ -108,7 +108,7 @@ export function StepCard({
             value={when}
             onChange={(w) => set({ when: w === "success" ? undefined : w })}
             // Running only after a failure is the unusual case; it says so.
-            options={WHENS.map((w) => ({ ...w, className: w.value === "failure" ? "data-pressed:bg-warning/15 data-pressed:text-warning dark:data-pressed:bg-warning/15" : undefined }))}
+            options={WHENS.map((w) => ({ ...w, tone: w.value === "failure" ? "warning" as const : undefined }))}
           />
         )}
         <span className="ml-auto flex items-center gap-1.5">

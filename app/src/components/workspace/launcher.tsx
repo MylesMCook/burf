@@ -118,7 +118,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
               )}
               <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[11px]">{ref.box}</span>
               <Tip
-                className="max-w-md"
+                width="md"
                 label={
                   <span className="flex flex-col gap-0.5">
                     <span className="break-all font-mono">{ref.path}</span>

@@ -220,6 +220,11 @@
     --switch-off: var(--input);
     --switch-thumb-off: var(--background);
     --invalid-ring: color-mix(in oklab, var(--destructive) 16%, transparent);
+    --tint-destructive: color-mix(in oklab, var(--destructive) 8%, transparent);
+    --tint-info: color-mix(in oklab, var(--info) 8%, transparent);
+    --tint-success: color-mix(in oklab, var(--success) 8%, transparent);
+    --tint-warning: color-mix(in oklab, var(--warning) 8%, transparent);
+    --alert-fill: transparent;
 }
 
 .dark {
@@ -230,6 +235,11 @@
     --switch-off: color-mix(in oklab, var(--foreground) 18%, transparent);
     --switch-thumb-off: color-mix(in oklab, var(--foreground) 64%, transparent);
     --invalid-ring: color-mix(in oklab, var(--destructive) 24%, transparent);
+    --tint-destructive: color-mix(in oklab, var(--destructive) 16%, transparent);
+    --tint-info: color-mix(in oklab, var(--info) 16%, transparent);
+    --tint-success: color-mix(in oklab, var(--success) 16%, transparent);
+    --tint-warning: color-mix(in oklab, var(--warning) 16%, transparent);
+    --alert-fill: color-mix(in oklab, var(--input) 32%, transparent);
     --destructive-foreground: var(--color-red-400);
     --info: var(--color-blue-500);
     --info-foreground: var(--color-blue-400);

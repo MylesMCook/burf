@@ -767,7 +767,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           {retryWorktree && !busy && <p className="px-3 pt-2 text-sm">The worktree is at {retryWorktree.path} on {box}. Start again to use it without creating another worktree.</p>}
           {box && !structuredChat && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className="mx-1 mt-1" />}
           {pendingTrust?.wants && fresh && (
-            <Alert variant="warning" className="mt-1">
+            <div className="mt-1"><Alert variant="warning">
               <ShieldAlertIcon />
               <AlertTitle>This repository wants to run commands on {box}</AlertTitle>
               <AlertDescription>
@@ -792,7 +792,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
                   {blocker && <span className="text-muted-foreground text-xs">{blocker}</span>}
                 </div>
               </AlertDescription>
-            </Alert>
+            </Alert></div>
           )}
           {error && <ErrorText className="px-3 pt-2 text-destructive-foreground text-sm" text={error} />}
         </>

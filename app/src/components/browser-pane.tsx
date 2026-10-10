@@ -219,7 +219,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
             {where && (
               // Tooltips here open upward: below the bar is the page, which in
               // the app is a native view that would cover them.
-              <Tip label={<span className="break-all font-mono">{url}</span>} className="max-w-md">
+              <Tip label={<span className="break-all font-mono">{url}</span>} width="md">
                 <span className="@max-[26rem]/bar:hidden ml-1 shrink-0 rounded bg-accent px-1.5 py-px font-medium text-[10px] text-muted-foreground">{berthUrlLabel(where)}</span>
               </Tip>
             )}
@@ -806,7 +806,7 @@ function AgentBar({
         Agent's view · live
         <LiveDot />
       </span>
-      <Tip label={<span className="break-all font-mono">{url ?? ""}</span>} className="max-w-md">
+      <Tip label={<span className="break-all font-mono">{url ?? ""}</span>} width="md">
         <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">{here ?? "…"}</span>
       </Tip>
       {label && (
@@ -817,7 +817,7 @@ function AgentBar({
               {zoom ? `, shown at ${zoom} to fit` : ", at its own size"}. Agents set it with <span className="font-mono">berthd browser resize</span>.
             </span>
           }
-          className="max-w-xs"
+          width="xs"
         >
           <span data-testid="agent-size" className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[11px] text-emerald-800 tabular-nums dark:text-emerald-200">
             {label}

@@ -61,7 +61,6 @@ export const MessageTiming: FC<{
           side={side}
           sideOffset={8}
           data-slot="message-timing-popover"
-          className="bg-popover text-popover-foreground border px-3 py-2 [&_[data-slot=tooltip-arrow]]:hidden"
         >
           <div className="grid min-w-35 gap-1.5 text-xs">
             {timing.firstTokenTime !== undefined && (

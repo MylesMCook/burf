@@ -164,9 +164,9 @@ function QuickRow({ step: s, run, host, user, busy, agents, needed, onRetry }: {
         <span className={cn("shrink-0 text-[13px]", (s.state === "todo" || s.state === "skip") && "text-muted-foreground", s.state === "running" && "font-medium")}>{s.id === "tools" ? "tmux and git" : s.title}</span>
         <span className="min-w-0 truncate text-muted-foreground text-xs">{message ?? hint(s, agents)}</span>
         {s.sudo && s.state !== "skip" && (
-          <Badge variant="warning" size="sm" className="ms-auto shrink-0">
+          <span className="ms-auto"><Badge variant="warning" size="sm">
             <KeyRoundIcon /> sudo
-          </Badge>
+          </Badge></span>
         )}
       </div>
       {needed && (

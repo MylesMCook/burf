@@ -15,7 +15,7 @@ import {
   useState,
 } from "react";
 
-import { focusFromKeyboard, Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
+import { focusFromKeyboard, Tooltip, TooltipPopup, TooltipTrigger, type TooltipWidth } from "@/components/ui/tooltip";
 import { platformKeys } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +39,8 @@ export function Tip({
   side,
   align,
   delay,
-  className,
+  width,
+  narrow,
   wrapClassName,
   children,
 }: {
@@ -47,7 +48,8 @@ export function Tip({
   side?: "top" | "bottom" | "left" | "right";
   align?: "start" | "center" | "end";
   delay?: number;
-  className?: string;
+  width?: TooltipWidth;
+  narrow?: boolean;
   wrapClassName?: string;
   children: ReactElement;
 }) {
@@ -63,11 +65,11 @@ export function Tip({
   ) : (
     children
   );
-  if (layer) return <LayerTip layer={layer} spec={{ label, side, align, delay, className }} trigger={trigger} />;
+  if (layer) return <LayerTip layer={layer} spec={{ label, side, align, delay, width, narrow }} trigger={trigger} />;
   return (
     <Tooltip>
       <TooltipTrigger delay={delay} render={trigger} />
-      <TooltipPopup side={side} align={align} className={className}>
+      <TooltipPopup side={side} align={align} width={width} narrow={narrow}>
         {label}
       </TooltipPopup>
     </Tooltip>
@@ -81,7 +83,8 @@ interface TipSpec {
   side?: "top" | "bottom" | "left" | "right";
   align?: "start" | "center" | "end";
   delay?: number;
-  className?: string;
+  width?: TooltipWidth;
+  narrow?: boolean;
 }
 
 interface TipLayer {
@@ -202,7 +205,7 @@ export function useTipLayer() {
   const spec = cur ? layer.tips.get(cur.id)?.current : undefined;
   const tooltip = (
     <Tooltip open={open && !!spec} onOpenChange={(o) => !o && hide()}>
-      <TooltipPopup anchor={cur?.el} side={spec?.side} align={spec?.align} className={spec?.className}>
+      <TooltipPopup anchor={cur?.el} side={spec?.side} align={spec?.align} width={spec?.width} narrow={spec?.narrow}>
         {spec?.label}
       </TooltipPopup>
     </Tooltip>

@@ -206,12 +206,12 @@ function RunRow({ run: r, name }: { run: BoxRun; name: string }) {
           <ChevronRightIcon className={cn("size-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")} />
           <span className="truncate font-medium">{name}</span>
           {r.template !== "flow" && (
-            <Badge variant="outline" size="sm" className="shrink-0 text-muted-foreground">
+            <Badge variant="outline" size="sm" muted>
               {TEMPLATE_LABEL[r.template] ?? r.template}
             </Badge>
           )}
           {r.status === "waiting_gate" && (
-            <Badge variant="warning" size="sm" className="shrink-0">
+            <Badge variant="warning" size="sm" >
               <HandIcon />
               Needs you
             </Badge>

@@ -259,7 +259,7 @@ function AgentTile({ e }: { e: RailAgent }) {
       {/* On screen: a bar at the rail's edge, in its tab group's colour. */}
       {e.selected || e.tone ? <span aria-hidden className="absolute top-2 -left-1 h-5 w-[3px] rounded-r-full" style={{ background: e.tone ?? "var(--foreground)" }} /> : null}
       <ContextRow items={() => tileActions(e)}>
-        <Tip side="right" align="start" className="max-w-none" label={<AgentCard e={e} />}>
+        <Tip side="right" align="start" width="none" label={<AgentCard e={e} />}>
           <button
             type="button"
             data-rail-item

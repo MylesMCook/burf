@@ -58,7 +58,7 @@ export function SettingsView() {
               <div key={s.id}>
                 {s.id === "about" && <div className="mx-2.5 my-2 border-t max-[1200px]:mx-1" />}
                 {/* The tooltip is for the narrow window, where only icons show. */}
-                <Tip label={s.title} side="right" className="min-[1201px]:hidden">
+                <Tip label={s.title} side="right" narrow>
                   <button
                     type="button"
                     onClick={() => openSettings(s.id)}

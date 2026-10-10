@@ -2,18 +2,19 @@
 
 import type { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
 import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group";
-import type { VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import {
   Toggle as ToggleComponent,
-  type toggleVariants,
+  type ToggleSize,
+  type ToggleVariant,
 } from "@/components/ui/toggle";
 
-export const ToggleGroupContext: React.Context<
-  VariantProps<typeof toggleVariants>
-> = React.createContext<VariantProps<typeof toggleVariants>>({
+export const ToggleGroupContext: React.Context<{
+  size: ToggleSize;
+  variant: ToggleVariant;
+}> = React.createContext<{ size: ToggleSize; variant: ToggleVariant }>({
   size: "default",
   variant: "default",
 });
@@ -25,8 +26,10 @@ export function ToggleGroup({
   orientation = "horizontal",
   children,
   ...props
-}: ToggleGroupPrimitive.Props &
-  VariantProps<typeof toggleVariants>): React.ReactElement {
+}: ToggleGroupPrimitive.Props & {
+  variant?: ToggleVariant;
+  size?: ToggleSize;
+}): React.ReactElement {
   return (
     <ToggleGroupPrimitive
       className={cn(
@@ -55,13 +58,16 @@ export function ToggleGroup({
 }
 
 export function ToggleGroupItem({
-  className,
   children,
   variant,
   size,
+  tone,
   ...props
-}: TogglePrimitive.Props &
-  VariantProps<typeof toggleVariants>): React.ReactElement {
+}: Omit<TogglePrimitive.Props, "className" | "style"> & {
+  variant?: ToggleVariant | null;
+  size?: ToggleSize | null;
+  tone?: "choice" | "warning";
+}): React.ReactElement {
   const context = React.useContext(ToggleGroupContext);
 
   const resolvedVariant = context.variant || variant;
@@ -69,11 +75,11 @@ export function ToggleGroupItem({
 
   return (
     <ToggleComponent
-      className={className}
       data-size={resolvedSize}
       data-variant={resolvedVariant}
       size={resolvedSize}
       variant={resolvedVariant}
+      tone={tone}
       {...props}
     >
       {children}

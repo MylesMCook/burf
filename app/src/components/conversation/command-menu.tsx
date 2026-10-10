@@ -228,7 +228,7 @@ function CommandRow({ c, active }: { c: AgentCommand; active: boolean }) {
         {alias && <span className="text-muted-foreground/72"> · {alias}</span>}
         {active && c.source && <span className="text-muted-foreground/72"> · from {c.source}</span>}
       </span>
-      <Badge variant={KIND_BADGE[c.kind]} size="sm" className="shrink-0">
+      <Badge variant={KIND_BADGE[c.kind]} size="sm" >
         {KIND_LABEL[c.kind]}
       </Badge>
     </>

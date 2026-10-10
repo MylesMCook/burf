@@ -180,7 +180,7 @@ function BrowserRow({ box, b, onStopped }: { box: string; b: BoxBrowser; onStopp
       <div className="min-w-0 flex-1">
         <div className="truncate">{b.label}</div>
         <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground tabular-nums">
-          <Badge size="sm" variant={b.owner === "orphan" ? "warning" : "outline"} className="shrink-0">
+          <Badge size="sm" variant={b.owner === "orphan" ? "warning" : "outline"} >
             {OWNER_WORDS[b.owner]}
           </Badge>
           <span className="truncate">

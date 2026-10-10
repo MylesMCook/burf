@@ -137,7 +137,7 @@ export function NotificationsSection() {
                     <ToggleGroupItem
                       value={String(i)}
                       aria-label={DAY_NAMES[i]}
-                      className="min-w-7 rounded-md px-0 font-normal text-muted-foreground text-xs hover:bg-background/60 hover:text-foreground data-pressed:bg-background data-pressed:font-medium data-pressed:text-foreground data-pressed:shadow-xs/5 dark:hover:bg-input/32 dark:data-pressed:bg-input"
+                      tone="choice"
                     >
                       {DAYS[i]}
                     </ToggleGroupItem>

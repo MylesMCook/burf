@@ -387,7 +387,7 @@ function ConsoleRowView({ e, sending, onSend }: { e: ConsoleEntry; sending: bool
       </div>
       {e.count > 1 && <span className="mt-px shrink-0 rounded-full bg-foreground/10 px-1.5 text-[10px] tabular-nums">{e.count}</span>}
       {e.at && (
-        <Tip label={<span className="break-all font-mono">{e.at}</span>} side={DOWN} className="max-w-md">
+        <Tip label={<span className="break-all font-mono">{e.at}</span>} side={DOWN} width="md">
           <span className="mt-px max-w-48 shrink-0 truncate text-[11px] text-muted-foreground underline decoration-dotted underline-offset-2">{shortAt(e.at)}</span>
         </Tip>
       )}
@@ -577,7 +577,7 @@ function Sender({ sending, pageUrl, ctx, agent, onDone }: { sending: Sending; pa
       }}
     >
       <SendIcon className="size-3.5 shrink-0 text-muted-foreground" />
-      <Tip label={<pre className="max-h-64 max-w-lg overflow-hidden whitespace-pre-wrap break-all font-mono text-[11px]">{message}</pre>} side={DOWN} className="max-w-lg">
+      <Tip label={<pre className="max-h-64 max-w-lg overflow-hidden whitespace-pre-wrap break-all font-mono text-[11px]">{message}</pre>} side={DOWN} width="lg">
         <span className="max-w-[40%] shrink-0 truncate font-mono text-[11px]">{summary}</span>
       </Tip>
       <input

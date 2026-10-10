@@ -101,11 +101,11 @@ const AttachmentPreviewDialog: FC<AttachmentPreviewDialogProps> = ({
 
 const AttachmentThumb: FC<{ src: string | undefined }> = ({ src }) => {
   return (
-    <Avatar className="aui-attachment-tile-avatar h-full w-full rounded-none">
+    <Avatar fill marker="aui-attachment-tile-avatar">
       <AvatarImage
         src={src}
         alt=""
-        className="aui-attachment-tile-image rounded-none object-cover"
+        marker="aui-attachment-tile-image"
       />
       <AvatarFallback>
         <FileText className="aui-attachment-tile-fallback-icon text-muted-foreground/80 size-6 stroke-[1.5]" />

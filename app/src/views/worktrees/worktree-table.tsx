@@ -89,17 +89,17 @@ export function WorktreeTable({
           </span>
         </Tip>
         <span>Worktree</span>
-        <Tip className="max-w-sm" label="Commits ahead of its base, and behind it">
+        <Tip width="sm" label="Commits ahead of its base, and behind it">
           <span className="w-fit">vs base</span>
         </Tip>
-        <Tip className="max-w-sm" label="Uncommitted: modified and untracked files">
+        <Tip width="sm" label="Uncommitted: modified and untracked files">
           <span className="w-fit">Changes</span>
         </Tip>
         <span>Last commit</span>
-        <Tip className="max-w-sm" label="Sessions in it, and dev servers it runs">
+        <Tip width="sm" label="Sessions in it, and dev servers it runs">
           <span className="w-fit">Agents</span>
         </Tip>
-        <Tip className="max-w-sm" label="Its first port, on its own box">
+        <Tip width="sm" label="Its first port, on its own box">
           <span className="w-fit justify-self-end @max-5xl:hidden">Port</span>
         </Tip>
         <span />
@@ -223,7 +223,7 @@ function WorktreeRow({
         <Checkbox checked={selected} tabIndex={-1} aria-label={`Select ${name}`} passive />
       </span>
 
-      <Tip className="max-w-sm" label={<NameTip row={r} />}>
+      <Tip width="sm" label={<NameTip row={r} />}>
         <div className="flex min-w-0 items-center gap-1.5">
           {r.main && <HouseIcon className="size-3.5 shrink-0 text-muted-foreground" aria-label="Main checkout" />}
           <span className="max-w-full shrink-0 truncate font-medium">{name}</span>
@@ -243,7 +243,7 @@ function WorktreeRow({
         </div>
       </Tip>
 
-      <Tip className="max-w-sm" label={r.ahead || r.behind ? `${r.ahead} commit${s(r.ahead)} ahead of ${base}, ${r.behind} behind` : `Even with ${base}`}>
+      <Tip width="sm" label={r.ahead || r.behind ? `${r.ahead} commit${s(r.ahead)} ahead of ${base}, ${r.behind} behind` : `Even with ${base}`}>
         <div className="flex w-fit items-center gap-2 font-mono text-xs tabular-nums">
           <span className={cn("inline-flex items-center gap-0.5", r.ahead ? "text-foreground" : "text-muted-foreground")}>
             <ArrowUpIcon className="size-3" />
@@ -256,7 +256,7 @@ function WorktreeRow({
         </div>
       </Tip>
 
-      <Tip className="max-w-sm" label={r.changed || r.untracked ? [r.changed && `${r.changed} modified`, r.untracked && `${r.untracked} untracked`].filter(Boolean).join(", ") : "No uncommitted changes"}>
+      <Tip width="sm" label={r.changed || r.untracked ? [r.changed && `${r.changed} modified`, r.untracked && `${r.untracked} untracked`].filter(Boolean).join(", ") : "No uncommitted changes"}>
         <div className="flex w-fit items-center gap-2 text-xs tabular-nums">
           {r.changed === 0 && r.untracked === 0 ? (
             <span className="text-muted-foreground">Clean</span>
@@ -408,7 +408,7 @@ function ProgressMark({ p }: { p?: RowProgress }) {
   return (
     <Tooltip>
       <TooltipTrigger render={<span className="flex items-center justify-center" />}>{body}</TooltipTrigger>
-      <TooltipPopup className="max-w-sm">{label}</TooltipPopup>
+      <TooltipPopup width="sm">{label}</TooltipPopup>
     </Tooltip>
   );
 }

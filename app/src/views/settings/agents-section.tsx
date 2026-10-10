@@ -84,7 +84,7 @@ export function AgentsSection() {
                               <TooltipTrigger render={<button type="button" className="inline-flex cursor-help rounded text-muted-foreground/50 outline-none focus-visible:ring-2 focus-visible:ring-ring" />} aria-label={`Not on ${b.name}`}>
                                 <MinusIcon className="size-4" />
                               </TooltipTrigger>
-                              <TooltipPopup className="max-w-72">
+                              <TooltipPopup width="72">
                                 Not on {b.name}'s PATH.{INSTALL[a.id] && <span className="mt-1 block font-mono text-[11px]">{INSTALL[a.id]}</span>}
                               </TooltipPopup>
                             </Tooltip>
