@@ -128,7 +128,7 @@ function SignIn({ existing, onJoined }: { existing: string[]; onJoined(network: 
             void start();
           }}
         >
-          <Input size="sm" className="max-w-56" value={name} onChange={(e) => setName(e.target.value)} placeholder="work, personal…" aria-label="Network name" aria-invalid={duplicate || undefined} />
+          <Input size="sm" measure="cap56" value={name} onChange={(e) => setName(e.target.value)} placeholder="work, personal…" aria-label="Network name" aria-invalid={duplicate || undefined} />
           <Tip label={!name.trim() ? "Name the network first" : duplicate ? "There is a network by that name already" : undefined}>
             <Button size="sm" type="submit" disabled={!name.trim() || duplicate}>
               Sign in

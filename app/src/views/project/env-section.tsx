@@ -137,7 +137,7 @@ function SecretInput({ name, value, onChange, box }: { name: string; value: stri
           type={shown || ref || problem ? "text" : "password"}
           onChange={(e) => onChange(e.target.value)}
           size="sm"
-          className="min-w-0 flex-1 font-mono text-xs"
+          mono text="xs"
           spellCheck={false}
           autoComplete="off"
           aria-label={`${name} value`}
@@ -271,7 +271,7 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
           }}
         >
           <div>
-            <Input autoFocus value={adding.key} onChange={(e) => setAdding({ ...adding, key: e.target.value.toUpperCase().replace(/\s/g, "_") })} placeholder="NAME" size="sm" className="font-mono text-xs" aria-label="Name" aria-invalid={!!keyError} />
+            <Input autoFocus value={adding.key} onChange={(e) => setAdding({ ...adding, key: e.target.value.toUpperCase().replace(/\s/g, "_") })} placeholder="NAME" size="sm" mono text="xs" aria-label="Name" aria-invalid={!!keyError} />
             {keyError && <p className="mt-1 text-destructive-foreground text-[11px]">{keyError}</p>}
           </div>
           <div className="min-w-0">
@@ -280,7 +280,7 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
               onChange={(e) => setAdding({ ...adding, value: e.target.value })}
               placeholder="postgres://localhost/$BERTH_WORKTREE_SLUG, or a secret: op://vault/item/field"
               size="sm"
-              className="font-mono text-xs"
+              mono text="xs"
               aria-label="Value"
               aria-invalid={valueBroken || undefined}
               spellCheck={false}

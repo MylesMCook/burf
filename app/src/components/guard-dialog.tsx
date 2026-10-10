@@ -138,7 +138,7 @@ export function GuardDialog({ box, open, onOpenChange }: { box: string; open: bo
                 max={99}
                 value={threshold}
                 onChange={(e) => setDraft({ ...draft, memory_percent: Number(e.target.value) || undefined })}
-                className="w-16 text-right tabular-nums"
+                measure="slot" align="end" nums
                 aria-label="Memory threshold percent"
               />
               <span>%</span>

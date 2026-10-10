@@ -99,7 +99,7 @@ function Body({ req }: { req: ConfirmRequest }) {
           {req.detail && <div className="rounded-md bg-muted/60 px-3 py-2 font-mono text-xs leading-relaxed">{req.detail}</div>}
           {req.options?.map((o) => (
             <label key={o.id} className="flex items-start gap-2.5">
-              <Checkbox className="mt-0.5" checked={!!checked[o.id]} onCheckedChange={(v) => setChecked((c) => ({ ...c, [o.id]: !!v }))} />
+              <Checkbox offset checked={!!checked[o.id]} onCheckedChange={(v) => setChecked((c) => ({ ...c, [o.id]: !!v }))} />
               <span>
                 {o.label}
                 {o.hint && <span className="block text-muted-foreground text-xs">{o.hint}</span>}

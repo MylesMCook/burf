@@ -42,10 +42,10 @@ export function AgentsSection({ repo, draft, setDraft, box }: { repo: RepoConfig
             return (
               <div key={row} className="grid grid-cols-[1.25rem_8rem_minmax(0,10rem)_minmax(0,1fr)_auto_3.5rem] items-center gap-3 px-4 py-2">
                 <AgentIcon agent={a.id} />
-                {mine && !c ? <Input value={mine.id} onChange={(e) => update(i, { id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} size="sm" className="font-mono text-xs" aria-label="Preset id" /> : <code className="truncate font-mono text-xs">{id}</code>}
+                {mine && !c ? <Input value={mine.id} onChange={(e) => update(i, { id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} size="sm" mono text="xs" aria-label="Preset id" /> : <code className="truncate font-mono text-xs">{id}</code>}
                 {mine ? <Input value={mine.name} onChange={(e) => update(i, { name: e.target.value })} placeholder="Name" size="sm" /> : <span className="truncate text-sm">{a.name}</span>}
                 {mine ? (
-                  <Input value={mine.command} onChange={(e) => update(i, { command: e.target.value })} placeholder="claude --model opus" size="sm" className="font-mono text-xs" spellCheck={false} />
+                  <Input value={mine.command} onChange={(e) => update(i, { command: e.target.value })} placeholder="claude --model opus" size="sm" mono text="xs" spellCheck={false} />
                 ) : (
                   <code className="truncate px-2.5 font-mono text-muted-foreground text-xs">{a.command}</code>
                 )}

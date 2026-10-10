@@ -2,35 +2,120 @@
 
 import { Field as FieldPrimitive } from "@base-ui/react/field";
 import { mergeProps } from "@base-ui/react/merge-props";
+import * as stylex from "@stylexjs/stylex";
 import type * as React from "react";
 import { useCallback, useLayoutEffect, useRef } from "react";
-import { cn } from "@/lib/utils";
 
-export type TextareaProps = React.ComponentPropsWithoutRef<"textarea"> &
+import { color, font, radius } from "@/styles/tokens.stylex";
+
+const sm = "@media (min-width: 640px)";
+
+const styles = stylex.create({
+  shell: {
+    position: "relative",
+    display: "inline-flex",
+    width: "100%",
+    minWidth: 0,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: {
+      default: color.input,
+      ":has(:focus-visible)": color.ring,
+      ':has([aria-invalid="true"])': "color-mix(in oklab, var(--destructive) 36%, transparent)",
+      ':has(:focus-visible):has([aria-invalid="true"])': "color-mix(in oklab, var(--destructive) 64%, transparent)",
+    },
+    backgroundColor: "var(--control-fill)",
+    color: color.foreground,
+    fontSize: { default: 16, [sm]: 14 },
+    boxShadow: {
+      default: "0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent)",
+      ":has(:focus-visible)": "0 0 0 3px color-mix(in oklab, var(--ring) 24%, transparent)",
+      ':has(:focus-visible):has([aria-invalid="true"])': "0 0 0 3px var(--invalid-ring)",
+      ":has(:disabled)": "none",
+      ':has([aria-invalid="true"])': "none",
+    },
+    opacity: { default: 1, ":has(:disabled)": 0.64 },
+    transitionProperty: "box-shadow",
+    transitionDuration: "150ms",
+  },
+  bare: {
+    display: "inline-flex",
+    width: "100%",
+    minWidth: 0,
+  },
+  field: {
+    fieldSizing: "content",
+    minHeight: { default: 82, [sm]: 70 },
+    width: "100%",
+    borderRadius: "inherit",
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    paddingTop: 5,
+    paddingBottom: 5,
+    paddingLeft: 11,
+    paddingRight: 11,
+    color: color.foreground,
+    outline: "none",
+    resize: "vertical",
+    "::placeholder": { color: "color-mix(in oklab, var(--muted-foreground) 72%, transparent)" },
+  },
+  fieldSm: {
+    minHeight: { default: 78, [sm]: 66 },
+    paddingTop: 3,
+    paddingBottom: 3,
+    paddingLeft: 9,
+    paddingRight: 9,
+  },
+  fieldLg: {
+    minHeight: { default: 86, [sm]: 74 },
+    paddingTop: 7,
+    paddingBottom: 7,
+  },
+  mono: { fontFamily: font.mono },
+  xs: { fontSize: 12 },
+  prompt: { fontSize: 13 },
+  script: { minHeight: 52, maxHeight: 192 },
+  note: { minHeight: 64 },
+});
+
+export type TextareaProps = Omit<React.ComponentPropsWithoutRef<"textarea">, "className" | "style"> &
   React.RefAttributes<HTMLTextAreaElement> & {
     size?: "sm" | "default" | "lg" | number;
     unstyled?: boolean;
+    mono?: boolean;
+    text?: "default" | "xs" | "prompt";
+    /** script: a short command. note: a few lines of mono text. */
+    span?: "auto" | "script" | "note";
   };
 
 export function Textarea({
-  className,
   size = "default",
   unstyled = false,
+  mono = false,
+  text = "default",
+  span = "auto",
   ref,
   ...props
 }: TextareaProps): React.ReactElement {
+  const shell = stylex.props(
+    unstyled ? styles.bare : styles.shell,
+    mono && styles.mono,
+    text === "xs" && styles.xs,
+    text === "prompt" && styles.prompt,
+  );
+  const field = stylex.props(
+    styles.field,
+    size === "sm" && styles.fieldSm,
+    size === "lg" && styles.fieldLg,
+    mono && styles.mono,
+    text === "xs" && styles.xs,
+    text === "prompt" && styles.prompt,
+    span === "script" && styles.script,
+    span === "note" && styles.note,
+  );
   return (
-    <span
-      className={
-        cn(
-          !unstyled &&
-            "relative inline-flex w-full rounded-lg border border-input bg-background not-dark:bg-clip-padding text-base shadow-xs/5 ring-ring/24 transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] has-focus-visible:has-aria-invalid:border-destructive/64 has-focus-visible:has-aria-invalid:ring-destructive/16 has-aria-invalid:border-destructive/36 has-focus-visible:border-ring has-disabled:opacity-64 has-[:disabled,:focus-visible,[aria-invalid]]:shadow-none has-focus-visible:ring-[3px] not-has-disabled:has-not-focus-visible:not-has-aria-invalid:before:shadow-[0_1px_--theme(--color-black/4%)] sm:text-sm dark:bg-input/32 dark:has-aria-invalid:ring-destructive/24 dark:not-has-disabled:has-not-focus-visible:not-has-aria-invalid:before:shadow-[0_-1px_--theme(--color-white/6%)]",
-          className,
-        ) || undefined
-      }
-      data-size={size}
-      data-slot="textarea-control"
-    >
+    <span {...shell} data-size={size} data-slot="textarea-control">
       <FieldPrimitive.Control
         ref={ref}
         value={props.value}
@@ -40,15 +125,7 @@ export function Textarea({
         name={props.name}
         render={(defaultProps: React.ComponentProps<"textarea">) => (
           <ValueTextarea
-            className={cn(
-              "field-sizing-content min-h-17.5 w-full rounded-[inherit] px-[calc(--spacing(3)-1px)] py-[calc(--spacing(1.5)-1px)] text-foreground outline-none placeholder:text-muted-foreground/72 max-sm:min-h-20.5",
-              size === "sm" &&
-                "min-h-16.5 px-[calc(--spacing(2.5)-1px)] py-[calc(--spacing(1)-1px)] max-sm:min-h-19.5",
-              size === "lg" &&
-                "min-h-18.5 py-[calc(--spacing(2)-1px)] max-sm:min-h-21.5",
-            )}
-            data-slot="textarea"
-            {...mergeProps(defaultProps, props)}
+            {...mergeProps(defaultProps, props, { className: field.className, "data-slot": "textarea" })}
           />
         )}
       />

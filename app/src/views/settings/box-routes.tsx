@@ -85,7 +85,7 @@ export function BoxRouteList({ box }: { box: BoxStatus }) {
               placeholder="An SSH host (alex@devl) or an address (192.168.1.20:7444)"
               aria-label="SSH host or address"
               data-testid="box-route-add-input"
-              className="font-mono text-xs"
+              mono text="xs"
             />
             <Button size="xs" type="submit" loading={busy} disabled={!value.trim()} data-testid="box-route-add">
               Add

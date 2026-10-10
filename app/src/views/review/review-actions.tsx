@@ -178,7 +178,7 @@ export function ApproveDialog({ entry, initial, onClose }: { entry?: ReviewEntry
                 onChange={(e) => setMessage(e.target.value)}
                 rows={5}
                 placeholder="What the agent changed, in one line, then details"
-                className="font-mono text-xs"
+                mono text="xs"
                 autoFocus
               />
               <span className="text-muted-foreground text-xs">Drafted from {agentLabel(entry.agent)}'s last message. The first line is the subject{mode === "pr" && openPR ? " and the PR's title" : ""}.</span>

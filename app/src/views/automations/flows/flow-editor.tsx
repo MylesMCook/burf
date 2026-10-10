@@ -119,7 +119,7 @@ export function FlowEditor({
           onChange={(e) => setFlow({ ...flow, name: e.target.value })}
           placeholder="Name this flow"
           unstyled
-          className="min-w-0 flex-1 font-medium text-[15px]"
+          plain="title"
           aria-label="Flow name"
         />
         <label className="flex items-center gap-2 text-muted-foreground text-xs">
@@ -211,7 +211,7 @@ export function FlowEditor({
               onChange={(e) => setFlow({ ...flow, max_runs_per_hour: Number(e.target.value) || undefined })}
               placeholder={`${DEFAULT_MAX_RUNS_PER_HOUR} (default)`}
               size="sm"
-              className="w-28 text-right tabular-nums"
+              measure="time" align="end" nums
             />
             <span className="text-muted-foreground text-xs">runs an hour</span>
           </section>
@@ -326,7 +326,7 @@ function TriggerCard({
                     readOnly={readOnly}
                     onChange={(e) => setW({ author: e.target.value.split(/[\s,]+/).filter(Boolean) })}
                     placeholder="collaborators · or logins, or * for anyone"
-                    className="font-mono text-xs"
+                    mono text="xs"
                   />
                   <span className="mt-1 block text-muted-foreground text-xs">Comments reach the agent's prompt, marked as someone else's words. Anyone can comment on a public repository, so only collaborators count unless you list people.</span>
                 </label>
@@ -345,7 +345,7 @@ function TriggerCard({
         </div>
         <label className={cn("block", kind !== "event" && "col-span-2")}>
           <span className="mb-1 block font-medium text-muted-foreground text-xs">On branch</span>
-          <Input value={w.branch ?? ""} readOnly={readOnly} onChange={(e) => setW({ branch: e.target.value })} placeholder="Any · fix/* for a prefix" className="font-mono text-xs" />
+          <Input value={w.branch ?? ""} readOnly={readOnly} onChange={(e) => setW({ branch: e.target.value })} placeholder="Any · fix/* for a prefix" mono text="xs" />
         </label>
       </div>
     </article>
@@ -366,7 +366,7 @@ function ScheduleFields({ flow, setFlow, readOnly }: { flow: Flow; setFlow(f: Fl
         onChange={(v) => v !== "custom" && set({ schedule: v })}
         options={[...SCHEDULE_PRESETS, { value: "custom", label: "Custom…" }]}
       />
-      <Input value={expr} readOnly={readOnly} onChange={(e) => set({ schedule: e.target.value })} placeholder="0 2 * * *" className="font-mono text-xs" aria-label="Cron expression" />
+      <Input value={expr} readOnly={readOnly} onChange={(e) => set({ schedule: e.target.value })} placeholder="0 2 * * *" mono text="xs" aria-label="Cron expression" />
       <p className="col-span-2 flex items-center gap-1.5 text-muted-foreground text-xs">
         <ClockIcon className="size-3.5" />
         {describeCron(expr)} · the box's local time

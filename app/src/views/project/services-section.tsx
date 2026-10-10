@@ -82,13 +82,13 @@ export function ServicesSection({ repo, draft, setDraft, box, location, urlPort 
                 {mine && !c ? (
                   // Always the same tooltip: switching it on as the name goes bad would remount the field mid-word.
                   <Tip label="Lowercase letters, digits and dashes">
-                    <Input value={mine.name} onChange={(e) => update(name, { name: e.target.value })} size="sm" className="font-mono text-xs" aria-invalid={!!bad} />
+                    <Input value={mine.name} onChange={(e) => update(name, { name: e.target.value })} size="sm" mono text="xs" aria-invalid={!!bad} />
                   </Tip>
                 ) : (
                   <code className="truncate font-mono text-xs">{name}</code>
                 )}
                 {mine ? (
-                  <Input value={mine.run} onChange={(e) => update(name, { run: e.target.value })} placeholder="pnpm dev --port $BERTH_PORT" size="sm" className="font-mono text-xs" spellCheck={false} />
+                  <Input value={mine.run} onChange={(e) => update(name, { run: e.target.value })} placeholder="pnpm dev --port $BERTH_PORT" size="sm" mono text="xs" spellCheck={false} />
                 ) : (
                   <code className="truncate px-2.5 font-mono text-muted-foreground text-xs" title={s.run}>
                     {s.run}

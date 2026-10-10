@@ -220,7 +220,7 @@ function WorktreeRow({
         }}
         className="flex h-full items-center"
       >
-        <Checkbox checked={selected} tabIndex={-1} aria-label={`Select ${name}`} className="pointer-events-none" />
+        <Checkbox checked={selected} tabIndex={-1} aria-label={`Select ${name}`} passive />
       </span>
 
       <Tip className="max-w-sm" label={<NameTip row={r} />}>

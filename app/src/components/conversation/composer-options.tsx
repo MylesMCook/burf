@@ -98,7 +98,7 @@ export function WorktreeOptions({
     return (
       <Section title="New worktree">
         <Labelled label="Name">
-          <Input size="sm" className="font-mono" value={v.name} placeholder={placeholders.name} spellCheck={false} onChange={(e) => set({ name: e.target.value }, ["name"])} />
+          <Input size="sm" mono value={v.name} placeholder={placeholders.name} spellCheck={false} onChange={(e) => set({ name: e.target.value }, ["name"])} />
         </Labelled>
       </Section>
     );
@@ -111,13 +111,13 @@ export function WorktreeOptions({
       )}
       <div className="grid grid-cols-[1fr_1fr_9rem] gap-2">
         <Labelled label="Folder">
-          <Input size="sm" className="font-mono" value={v.name} placeholder={placeholders.name} spellCheck={false} onChange={(e) => set({ name: e.target.value }, ["name"])} />
+          <Input size="sm" mono value={v.name} placeholder={placeholders.name} spellCheck={false} onChange={(e) => set({ name: e.target.value }, ["name"])} />
         </Labelled>
         <Labelled label="Branch">
-          <Input size="sm" className="font-mono" value={v.branch} placeholder={placeholders.branch} spellCheck={false} onChange={(e) => set({ branch: e.target.value }, ["branch"])} />
+          <Input size="sm" mono value={v.branch} placeholder={placeholders.branch} spellCheck={false} onChange={(e) => set({ branch: e.target.value }, ["branch"])} />
         </Labelled>
         <Labelled label="From">
-          <Input size="sm" className="font-mono" value={v.base} placeholder={placeholders.base} spellCheck={false} onChange={(e) => set({ base: e.target.value }, ["base"])} />
+          <Input size="sm" mono value={v.base} placeholder={placeholders.base} spellCheck={false} onChange={(e) => set({ base: e.target.value }, ["base"])} />
         </Labelled>
       </div>
       {templates.length > 0 && (
@@ -193,10 +193,10 @@ export function AttemptsOptions({
       {!runsHere && <NeedsUpdate box={box}>{box} runs an older berthd without runs, which trying several ways needs.</NeedsUpdate>}
       <div className="grid grid-cols-[1fr_10rem] gap-2">
         <Labelled label="Worktree names">
-          <Input size="sm" className="font-mono" value={names.name} placeholder={names.namePlaceholder} spellCheck={false} onChange={(e) => names.set({ name: e.target.value })} />
+          <Input size="sm" mono value={names.name} placeholder={names.namePlaceholder} spellCheck={false} onChange={(e) => names.set({ name: e.target.value })} />
         </Labelled>
         <Labelled label="From">
-          <Input size="sm" className="font-mono" value={names.base} placeholder={names.basePlaceholder} spellCheck={false} onChange={(e) => names.set({ base: e.target.value })} />
+          <Input size="sm" mono value={names.base} placeholder={names.basePlaceholder} spellCheck={false} onChange={(e) => names.set({ base: e.target.value })} />
         </Labelled>
       </div>
       <div className="flex flex-col gap-1.5">
@@ -218,7 +218,7 @@ export function AttemptsOptions({
       </div>
       <div className="grid grid-cols-[1fr_10rem] gap-2">
         <Labelled label="Check, optional (exit 0 passes; a failure goes back once)">
-          <Input size="sm" className="font-mono" value={v.check} placeholder="none: the judge reads the changes" onChange={(e) => set({ check: e.target.value })} />
+          <Input size="sm" mono value={v.check} placeholder="none: the judge reads the changes" onChange={(e) => set({ check: e.target.value })} />
         </Labelled>
         <Labelled label="Judge">
           <SimpleSelect size="sm" className="min-w-0" value={v.judge} onChange={(judge) => set({ judge })} options={presets.map((p) => ({ value: p.id, label: p.name }))} />
@@ -313,7 +313,7 @@ export function SendOptions({
           {v.loop && (
             <div className="grid grid-cols-[1fr_auto] gap-2 ps-11">
               <Labelled label="Check (runs in each agent's worktree; exit 0 means done)">
-                <Input size="sm" className="font-mono" value={v.check} onChange={(e) => set({ check: e.target.value })} />
+                <Input size="sm" mono value={v.check} onChange={(e) => set({ check: e.target.value })} />
               </Labelled>
               <Labelled label="Rounds">
                 <NumberField className="w-28" size="sm" value={v.rounds} min={1} max={20} onValueChange={(n) => n != null && set({ rounds: n })}>
@@ -353,7 +353,7 @@ function TargetRow({ entry, expanded, onExpand, text, edited, missing, onEdit }:
       </button>
       {expanded && (
         <div className="flex flex-col gap-1 px-3 pb-2.5 pl-9">
-          <Textarea rows={4} className="text-[0.8125rem]" value={text} onChange={(e) => onEdit(e.target.value)} aria-label={`Prompt for ${short}`} />
+          <Textarea rows={4} text="prompt" value={text} onChange={(e) => onEdit(e.target.value)} aria-label={`Prompt for ${short}`} />
           {edited && (
             <span className="self-start"><Button type="button" size="xs" variant="ghost"  onClick={() => onEdit(undefined)} muted>
               Use the prompt above again

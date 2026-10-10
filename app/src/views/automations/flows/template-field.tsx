@@ -4,7 +4,6 @@ import { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import type { Variable } from "@/views/automations/flows/model";
 
 // TemplateField is a step's text, with the {{…}} variables it can use one
@@ -41,7 +40,6 @@ export function TemplateField({
     });
   };
 
-  const cls = cn(mono && "font-mono text-xs");
   return (
     <div>
       <span className="mb-1 flex items-center gap-2">
@@ -71,9 +69,9 @@ export function TemplateField({
         )}
       </span>
       {multiline ? (
-        <Textarea ref={el} value={value} readOnly={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={cls} spellCheck={!mono} />
+        <Textarea ref={el} value={value} readOnly={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} mono={mono} text={mono ? "xs" : "default"} spellCheck={!mono} />
       ) : (
-        <Input ref={el} value={value} readOnly={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={cls} spellCheck={false} />
+        <Input ref={el} value={value} readOnly={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} mono={mono} text={mono ? "xs" : "default"} spellCheck={false} />
       )}
     </div>
   );

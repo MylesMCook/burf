@@ -349,18 +349,8 @@ export function SidebarInset({
   );
 }
 
-export function SidebarInput({
-  className,
-  ...props
-}: React.ComponentProps<typeof Input>): React.ReactElement {
-  return (
-    <Input
-      className={cn("h-8 w-full bg-background shadow-none", className)}
-      data-sidebar="input"
-      data-slot="sidebar-input"
-      {...props}
-    />
-  );
+export function SidebarInput(props: React.ComponentProps<typeof Input>): React.ReactElement {
+  return <Input data-sidebar="input" data-slot="sidebar-input" {...props} />;
 }
 
 export function SidebarHeader({

@@ -214,10 +214,22 @@
     --sidebar-primary-foreground: var(--color-neutral-50);
     --sidebar-ring: var(--color-neutral-400);
     --separator-shade: transparent;
+    --control-fill: var(--background);
+    --control-off-border: var(--input);
+    --control-autofill: color-mix(in oklab, var(--foreground) 4%, transparent);
+    --switch-off: var(--input);
+    --switch-thumb-off: var(--background);
+    --invalid-ring: color-mix(in oklab, var(--destructive) 16%, transparent);
 }
 
 .dark {
     --separator-shade: color-mix(in oklab, var(--input) 32%, transparent);
+    --control-fill: color-mix(in oklab, var(--input) 32%, transparent);
+    --control-off-border: color-mix(in oklab, var(--foreground) 30%, transparent);
+    --control-autofill: color-mix(in oklab, var(--foreground) 8%, transparent);
+    --switch-off: color-mix(in oklab, var(--foreground) 18%, transparent);
+    --switch-thumb-off: color-mix(in oklab, var(--foreground) 64%, transparent);
+    --invalid-ring: color-mix(in oklab, var(--destructive) 24%, transparent);
     --destructive-foreground: var(--color-red-400);
     --info: var(--color-blue-500);
     --info-foreground: var(--color-blue-400);

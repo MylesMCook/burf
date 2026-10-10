@@ -212,7 +212,7 @@ function Notifications({ boxes, phone, onChange }: { boxes: string[]; phone: Rec
       ) : (
         <div className="flex flex-col gap-3 px-4 py-4">
           <div className="flex gap-2">
-            <Input value={url} onChange={(e) => setUrl(e.currentTarget.value)} placeholder="https://ntfy.sh/your-private-topic" className="font-mono text-xs" aria-label="ntfy topic URL" />
+            <Input value={url} onChange={(e) => setUrl(e.currentTarget.value)} placeholder="https://ntfy.sh/your-private-topic" mono text="xs" aria-label="ntfy topic URL" />
             <Button size="sm" variant="outline" onClick={() => setUrl(newNtfyTopic())}>
               New topic
             </Button>

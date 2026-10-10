@@ -99,7 +99,7 @@ export function HookSheet({ editing, onSave, onClose }: { editing?: Editing; onS
               onChange={(e) => setHook({ ...hook, run: e.target.value })}
               placeholder={d.gate ? 'test "$BERTH_NAME" != main' : 'cd "$BERTH_PATH" && pnpm install'}
               rows={2}
-              className="font-mono text-xs [&_textarea]:max-h-48 [&_textarea]:min-h-13"
+              mono text="xs" span="script"
               spellCheck={false}
             />
             <p className="mt-2 text-muted-foreground text-xs">Through /bin/sh, with the event as JSON on stdin. Click to insert:</p>
@@ -115,11 +115,11 @@ export function HookSheet({ editing, onSave, onClose }: { editing?: Editing; onS
           <section className="grid grid-cols-[8rem_1fr] gap-3">
             <div>
               <Label>Timeout</Label>
-              <Input value={hook.timeout ?? ""} onChange={(e) => setHook({ ...hook, timeout: e.target.value })} placeholder={d.gate ? "30s" : "1m"} className="font-mono text-xs" />
+              <Input value={hook.timeout ?? ""} onChange={(e) => setHook({ ...hook, timeout: e.target.value })} placeholder={d.gate ? "30s" : "1m"} mono text="xs" />
             </div>
             <div>
               <Label>Integration (optional)</Label>
-              <Input value={hook.tool ?? ""} onChange={(e) => setHook({ ...hook, tool: e.target.value })} placeholder="e.g. slack" className="font-mono text-xs" />
+              <Input value={hook.tool ?? ""} onChange={(e) => setHook({ ...hook, tool: e.target.value })} placeholder="e.g. slack" mono text="xs" />
               <p className="mt-1 text-muted-foreground text-xs">Skips events this integration caused, so two integrations can't loop.</p>
             </div>
           </section>
@@ -189,7 +189,7 @@ function EventPicker({ machine, value, onChange }: { machine: string; value: str
         autoFocus={!!value}
         placeholder="Search events, or type a pattern like worktree.*"
         unstyled
-        className="flex w-full border-b py-0.5"
+        plain="line"
       />
       <ul className="max-h-60 overflow-y-auto py-1" role="listbox">
         {custom && (

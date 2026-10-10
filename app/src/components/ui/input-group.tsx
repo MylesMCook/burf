@@ -92,16 +92,10 @@ export function InputGroupText({
   );
 }
 
-export function InputGroupInput({
-  className,
-  ...props
-}: InputProps): React.ReactElement {
-  return <Input className={className} unstyled {...props} />;
+export function InputGroupInput(props: InputProps): React.ReactElement {
+  return <Input unstyled {...props} />;
 }
 
-export function InputGroupTextarea({
-  className,
-  ...props
-}: TextareaProps): React.ReactElement {
-  return <Textarea className={className} unstyled {...props} />;
+export function InputGroupTextarea(props: TextareaProps): React.ReactElement {
+  return <Textarea unstyled {...props} />;
 }

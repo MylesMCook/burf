@@ -258,7 +258,7 @@ function AgentPicker({ choices, value, onChange, installed = [] }: { choices: Ag
               className={cn("flex cursor-pointer items-start gap-2.5 border-b px-3 py-2.5 transition-colors last:border-b-0 hover:bg-accent/40", on && "bg-accent/30", done && "cursor-default hover:bg-transparent")}
             >
               <Checkbox
-                className="mt-0.5"
+                offset
                 checked={on}
                 disabled={done}
                 onCheckedChange={(c) => onChange(c ? [...value.filter((v) => v !== a.id), a.id].sort((x, y) => order(x) - order(y)) : value.filter((v) => v !== a.id))}

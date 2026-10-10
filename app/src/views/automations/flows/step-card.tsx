@@ -119,7 +119,7 @@ export function StepCard({
             onChange={(e) => set({ id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") || undefined })}
             placeholder="optional"
             size="sm"
-            className="w-28 font-mono text-xs"
+            measure="time" mono text="xs"
             aria-label="Step name, for {{steps.NAME.output}}"
           />
         </span>
@@ -134,7 +134,7 @@ function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p:
   const timeout = (placeholder: string) => (
     <label className="block w-32">
       <span className="mb-1 block font-medium text-muted-foreground text-xs">Timeout</span>
-      <Input value={step.timeout ?? ""} readOnly={readOnly} onChange={(e) => set({ timeout: e.target.value || undefined })} placeholder={placeholder} className="font-mono text-xs" />
+      <Input value={step.timeout ?? ""} readOnly={readOnly} onChange={(e) => set({ timeout: e.target.value || undefined })} placeholder={placeholder} mono text="xs" />
     </label>
   );
   switch (step.kind) {
@@ -152,7 +152,7 @@ function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p:
           <TemplateField label="Prompt" multiline value={step.text ?? ""} onChange={(text) => set({ text })} variables={variables} placeholder="The tests failed: {{prev.output}} — fix them." readOnly={readOnly} />
           <label className="block">
             <span className="mb-1 block font-medium text-muted-foreground text-xs">Session</span>
-            <Input value={step.session ?? ""} readOnly={readOnly} onChange={(e) => set({ session: e.target.value || undefined })} placeholder="The agent that triggered this flow" className="font-mono text-xs" />
+            <Input value={step.session ?? ""} readOnly={readOnly} onChange={(e) => set({ session: e.target.value || undefined })} placeholder="The agent that triggered this flow" mono text="xs" />
           </label>
         </>
       );
@@ -207,7 +207,7 @@ function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p:
             {step.new_worktree && (
               <label className="block w-44">
                 <span className="mb-1 block font-medium text-muted-foreground text-xs">Worktree name</span>
-                <Input value={step.name ?? ""} readOnly={readOnly} onChange={(e) => set({ name: e.target.value || undefined })} placeholder="{{worktree.name}}-review" className="font-mono text-xs" />
+                <Input value={step.name ?? ""} readOnly={readOnly} onChange={(e) => set({ name: e.target.value || undefined })} placeholder="{{worktree.name}}-review" mono text="xs" />
               </label>
             )}
           </div>

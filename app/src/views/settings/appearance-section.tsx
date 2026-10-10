@@ -46,7 +46,7 @@ export function AppearanceSection() {
           </div>
           <div className="relative w-48 shrink-0">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input size="sm" type="search" value={query} onChange={(e) => setQuery(e.currentTarget.value)} placeholder="Find a theme" aria-label="Find a theme" className="[&_input]:pl-7.5" />
+            <Input size="sm" type="search" value={query} onChange={(e) => setQuery(e.currentTarget.value)} placeholder="Find a theme" aria-label="Find a theme" inset="field" />
           </div>
         </div>
         {!q && <SystemCard selected={themeId === SYSTEM_THEME} themes={themes} />}

@@ -116,7 +116,7 @@ function Body({ project }: { project: Project }) {
               </Field>
               <Field>
                 <FieldLabel>Into folder</FieldLabel>
-                <Input value={parent} className="font-mono" onChange={(e) => setParent(e.target.value)} />
+                <Input value={parent} mono onChange={(e) => setParent(e.target.value)} />
                 <FieldDescription className="truncate">
                   Clones <span className="font-mono">{project.remote}</span>
                 </FieldDescription>

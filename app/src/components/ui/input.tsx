@@ -1,66 +1,203 @@
 "use client";
 
 import { Input as InputPrimitive } from "@base-ui/react/input";
+import * as stylex from "@stylexjs/stylex";
 import type * as React from "react";
-import { cn } from "@/lib/utils";
+
+import { color, font, radius } from "@/styles/tokens.stylex";
+
+const sm = "@media (min-width: 640px)";
+
+const styles = stylex.create({
+  shell: {
+    position: "relative",
+    display: "inline-flex",
+    width: "100%",
+    minWidth: 0,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: {
+      default: color.input,
+      ":has(:focus-visible)": color.ring,
+      ':has([aria-invalid="true"])': "color-mix(in oklab, var(--destructive) 36%, transparent)",
+      ':has(:focus-visible):has([aria-invalid="true"])': "color-mix(in oklab, var(--destructive) 64%, transparent)",
+    },
+    backgroundColor: {
+      default: "var(--control-fill)",
+      ":has(:autofill)": "var(--control-autofill)",
+    },
+    color: color.foreground,
+    fontSize: { default: 16, [sm]: 14 },
+    boxShadow: {
+      default: "0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent)",
+      ":has(:focus-visible)": "0 0 0 3px color-mix(in oklab, var(--ring) 24%, transparent)",
+      ':has(:focus-visible):has([aria-invalid="true"])': "0 0 0 3px var(--invalid-ring)",
+      ":has(:disabled)": "none",
+      ':has([aria-invalid="true"])': "none",
+    },
+    opacity: { default: 1, ":has(:disabled)": 0.64 },
+    transitionProperty: "box-shadow",
+    transitionDuration: "150ms",
+  },
+  bare: {
+    display: "inline-flex",
+    width: "100%",
+    minWidth: 0,
+  },
+  field: {
+    height: { default: 34, [sm]: 30 },
+    width: "100%",
+    minWidth: 0,
+    borderRadius: "inherit",
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    paddingLeft: 11,
+    paddingRight: 11,
+    color: color.foreground,
+    lineHeight: { default: "34px", [sm]: "30px" },
+    outline: "none",
+    transitionProperty: "background-color",
+    transitionDuration: "5000000s",
+    transitionTimingFunction: "ease-in-out",
+    "::placeholder": { color: "color-mix(in oklab, var(--muted-foreground) 72%, transparent)" },
+    ":autofill": { WebkitTextFillColor: "var(--foreground)" },
+  },
+  fieldSm: {
+    height: { default: 30, [sm]: 26 },
+    paddingLeft: 9,
+    paddingRight: 9,
+    lineHeight: { default: "30px", [sm]: "26px" },
+  },
+  fieldLg: {
+    height: { default: 38, [sm]: 34 },
+    lineHeight: { default: "38px", [sm]: "34px" },
+  },
+  search: {
+    "::-webkit-search-cancel-button": { appearance: "none" },
+    "::-webkit-search-decoration": { appearance: "none" },
+    "::-webkit-search-results-button": { appearance: "none" },
+    "::-webkit-search-results-decoration": { appearance: "none" },
+  },
+  mono: { fontFamily: font.mono },
+  xs: { fontSize: 12 },
+  time: { width: 112 },
+  cap56: { maxWidth: 224 },
+  cap72: { maxWidth: 288 },
+  slot: { width: 64 },
+  end: { textAlign: "right" },
+  nums: { fontVariantNumeric: "tabular-nums" },
+  line: {
+    display: "flex",
+    width: "100%",
+    borderBottomWidth: 1,
+    borderBottomStyle: "solid",
+    borderBottomColor: color.border,
+    paddingTop: 2,
+    paddingBottom: 2,
+  },
+  title: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    fontWeight: 500,
+    fontSize: 15,
+  },
+  insetShell: { paddingLeft: 28 },
+  insetField: { paddingLeft: 30 },
+  insetWide: { paddingLeft: 32 },
+  rename: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    height: 28,
+    fontSize: 14,
+  },
+  renameField: {
+    height: 28,
+    paddingLeft: 10,
+    paddingRight: 36,
+    lineHeight: "28px",
+    fontSize: 14,
+  },
+});
+
+export type InputMeasure = "fill" | "time" | "slot" | "cap56" | "cap72";
+export type InputInset = "shell" | "field" | "wide";
 
 export type InputProps = Omit<
   InputPrimitive.Props & React.RefAttributes<HTMLInputElement>,
-  "size"
+  "size" | "className" | "style"
 > & {
   size?: "sm" | "default" | "lg" | number;
   unstyled?: boolean;
   nativeInput?: boolean;
+  mono?: boolean;
+  text?: "default" | "xs";
+  measure?: InputMeasure;
+  inset?: InputInset;
+  /** Thread rename row: a short field with room for the confirm control. */
+  layout?: "rename";
+  align?: "start" | "end";
+  nums?: boolean;
+  /** Unstyled field that is still a search line or a flow title. */
+  plain?: "line" | "title";
 };
 
 export function Input({
-  className,
   size = "default",
   unstyled = false,
   nativeInput = false,
-  style,
+  mono = false,
+  text = "default",
+  measure = "fill",
+  inset,
+  layout,
+  align = "start",
+  nums = false,
+  plain,
   ...props
 }: InputProps): React.ReactElement {
-  const inputClassName = cn(
-    "h-8.5 w-full min-w-0 rounded-[inherit] px-[calc(--spacing(3)-1px)] text-foreground leading-8.5 outline-none [transition:background-color_5000000s_ease-in-out_0s] placeholder:text-muted-foreground/72 sm:h-7.5 sm:leading-7.5 autofill:[-webkit-text-fill-color:var(--foreground)]",
-    size === "sm" &&
-      "h-7.5 px-[calc(--spacing(2.5)-1px)] leading-7.5 sm:h-6.5 sm:leading-6.5",
-    size === "lg" && "h-9.5 leading-9.5 sm:h-8.5 sm:leading-8.5",
-    props.type === "search" &&
-      "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none",
-    props.type === "file" &&
-      "text-muted-foreground file:me-3 file:bg-transparent file:font-medium file:text-foreground file:text-sm",
+  const shell = stylex.props(
+    unstyled ? styles.bare : styles.shell,
+    plain === "line" && styles.line,
+    plain === "title" && styles.title,
+    mono && styles.mono,
+    text === "xs" && styles.xs,
+    measure === "time" && styles.time,
+    measure === "slot" && styles.slot,
+    measure === "cap56" && styles.cap56,
+    measure === "cap72" && styles.cap72,
+    inset === "shell" && styles.insetShell,
+    layout === "rename" && styles.rename,
+    align === "end" && styles.end,
+    nums && styles.nums,
   );
-
+  const field = stylex.props(
+    styles.field,
+    size === "sm" && styles.fieldSm,
+    size === "lg" && styles.fieldLg,
+    props.type === "search" && styles.search,
+    mono && styles.mono,
+    text === "xs" && styles.xs,
+    inset === "field" && styles.insetField,
+    inset === "wide" && styles.insetWide,
+    layout === "rename" && styles.renameField,
+    align === "end" && styles.end,
+    nums && styles.nums,
+    plain === "title" && styles.title,
+  );
+  const fieldProps = {
+    className: field.className,
+    "data-slot": "input",
+    size: typeof size === "number" ? size : undefined,
+    ...props,
+  };
   return (
-    <span
-      className={
-        cn(
-          !unstyled &&
-            "relative inline-flex w-full rounded-lg border border-input bg-background not-dark:bg-clip-padding text-base shadow-xs/5 ring-ring/24 transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] not-has-disabled:not-has-focus-visible:not-has-aria-invalid:before:shadow-[0_1px_--theme(--color-black/4%)] has-focus-visible:has-aria-invalid:border-destructive/64 has-focus-visible:has-aria-invalid:ring-destructive/16 has-aria-invalid:border-destructive/36 has-focus-visible:border-ring has-autofill:bg-foreground/4 has-disabled:opacity-64 has-[:disabled,:focus-visible,[aria-invalid]]:shadow-none has-focus-visible:ring-[3px] sm:text-sm dark:bg-input/32 dark:has-autofill:bg-foreground/8 dark:has-aria-invalid:ring-destructive/24 dark:not-has-disabled:not-has-focus-visible:not-has-aria-invalid:before:shadow-[0_-1px_--theme(--color-white/6%)]",
-          className,
-        ) || undefined
-      }
-      data-size={size}
-      data-slot="input-control"
-    >
-      {nativeInput ? (
-        <input
-          className={inputClassName}
-          data-slot="input"
-          size={typeof size === "number" ? size : undefined}
-          style={typeof style === "function" ? undefined : style}
-          {...props}
-        />
-      ) : (
-        <InputPrimitive
-          className={inputClassName}
-          data-slot="input"
-          size={typeof size === "number" ? size : undefined}
-          style={style}
-          {...props}
-        />
-      )}
+    <span {...shell} data-size={size} data-slot="input-control">
+      {nativeInput ? <input {...fieldProps} /> : <InputPrimitive {...fieldProps} />}
     </span>
   );
 }

@@ -48,7 +48,7 @@ export function CreateForm({ box, onAdded, onCancel }: { box: string; onAdded(lo
             <Input autoFocus value={name} spellCheck={false} placeholder="my-app" onChange={(e) => setName(e.target.value)} />
           </Labelled>
           <Labelled label="In">
-            <Input className="font-mono" value={parent} spellCheck={false} onChange={(e) => setParent(e.target.value)} />
+            <Input mono value={parent} spellCheck={false} onChange={(e) => setParent(e.target.value)} />
           </Labelled>
         </div>
         <p className="truncate text-[13px] text-muted-foreground">

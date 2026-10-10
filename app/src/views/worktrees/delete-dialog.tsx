@@ -94,11 +94,11 @@ export function DeleteDialog({ rows, progress, running, onRun, onClose, archive 
         {!started && !archive && (
           <div className="mx-6 mt-3 mb-2 space-y-2.5">
             <label className="flex items-start gap-2.5 text-sm">
-              <Checkbox checked={branch} onCheckedChange={(v) => setBranch(!!v)} className="mt-0.5" />
+              <Checkbox offset checked={branch} onCheckedChange={(v) => setBranch(!!v)} />
               Also delete their branches
             </label>
             <label className="flex items-start gap-2.5 text-sm">
-              <Checkbox checked={force} onCheckedChange={(v) => setForce(!!v)} className="mt-0.5" />
+              <Checkbox offset checked={force} onCheckedChange={(v) => setForce(!!v)} />
               <span>
                 Even with uncommitted changes
                 <span className={cn("block text-muted-foreground text-xs", dirty && !force && "text-warning-foreground")}>

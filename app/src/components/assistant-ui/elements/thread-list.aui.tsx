@@ -54,7 +54,7 @@ export const ThreadListSearch = forwardRef<
     value: string;
     onValueChange: (value: string) => void;
   }
->(({ className, value, onValueChange, ...props }, ref) => {
+>(({ value, onValueChange, ...props }, ref) => {
   return (
     <div data-slot="aui_thread-list-search" className="relative px-0.5 py-1">
       <SearchIcon
@@ -68,7 +68,7 @@ export const ThreadListSearch = forwardRef<
         onChange={(event) => onValueChange(event.target.value)}
         aria-label="Search threads"
         placeholder="Search threads"
-        className={cn("h-8 ps-8 text-sm", className)}
+        inset="wide"
         {...props}
       />
     </div>
@@ -416,7 +416,7 @@ const ThreadListItemRename: FC<{
       data-slot="aui_thread-list-item-rename"
       aria-label="Rename thread"
       value={value}
-      className="h-7 min-w-0 flex-1 ps-2.5 pe-9 text-sm"
+      layout="rename"
       onChange={(event) => setValue(event.target.value)}
       onBlur={() => commit(false)}
       onKeyDown={(event) => {

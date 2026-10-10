@@ -95,7 +95,7 @@ function AgentOffline({ error }: { error?: string }) {
                 {phase.kind === "starting" ? "Starting the Burf agent…" : phase.kind === "waiting" ? "Connecting…" : "Start the Burf agent"}
               </Button></span>
               <label className="flex w-full items-start gap-2.5 text-left text-sm">
-                <Checkbox className="mt-0.5" checked={atLogin} disabled={busy} onCheckedChange={(v) => setAtLogin(!!v)} />
+                <Checkbox offset checked={atLogin} disabled={busy} onCheckedChange={(v) => setAtLogin(!!v)} />
                 <span>
                   Start at login
                   <span className="block text-muted-foreground text-xs">Also starts it whenever you log in to this computer, and restarts it if it stops.</span>

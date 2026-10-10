@@ -263,7 +263,7 @@ export function FailurePanel({
               onRetry();
             }}
           >
-            <Input size="sm" className="max-w-72 font-mono" value={identity} onChange={(e) => setIdentity(e.target.value)} placeholder="~/.ssh/id_ed25519" aria-label="Identity file" spellCheck={false} />
+            <Input size="sm" mono measure="cap72" value={identity} onChange={(e) => setIdentity(e.target.value)} placeholder="~/.ssh/id_ed25519" aria-label="Identity file" spellCheck={false} />
             <Button size="sm" type="submit" variant="outline">
               {identity.trim() ? "Try with this key" : "Try again"}
             </Button>

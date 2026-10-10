@@ -56,15 +56,15 @@ export function CloneForm({ box, onAdded, onCancel }: { box: string; onAdded(loc
     >
       <DialogPanel className="flex flex-col gap-3 px-5 pb-5">
         <Labelled label="Repository URL">
-          <Input autoFocus className="font-mono" disabled={busy} value={url} spellCheck={false} placeholder="https://github.com/acme/shop" onChange={(e) => setUrl(e.target.value)} />
+          <Input autoFocus mono disabled={busy} value={url} spellCheck={false} placeholder="https://github.com/acme/shop" onChange={(e) => setUrl(e.target.value)} />
         </Labelled>
         <div className="grid grid-cols-[1fr_11rem] gap-2">
           <Labelled label="Into">
-            <Input className="font-mono" disabled={busy} value={parent} spellCheck={false} onChange={(e) => setParent(e.target.value)} />
+            <Input mono disabled={busy} value={parent} spellCheck={false} onChange={(e) => setParent(e.target.value)} />
           </Labelled>
           <Labelled label="Folder">
             <Input
-              className="font-mono"
+              mono
               disabled={busy}
               value={shownName}
               spellCheck={false}

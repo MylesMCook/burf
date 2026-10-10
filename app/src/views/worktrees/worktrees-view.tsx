@@ -175,7 +175,7 @@ export function WorktreesView() {
       <div className="@container/toolbar flex shrink-0 items-center gap-2 border-b px-6 py-2">
         <div className="relative w-56 min-w-36 shrink">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input size="sm" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="[&_input]:pl-8" aria-label="Search worktrees" />
+          <Input size="sm" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" inset="wide" aria-label="Search worktrees" />
         </div>
         <BoxFilter boxes={boxes} hidden={hiddenBoxes} onChange={hideBoxes} />
         <div className="w-40 min-w-28 shrink">

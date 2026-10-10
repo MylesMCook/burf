@@ -2,37 +2,98 @@
 
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
+import * as stylex from "@stylexjs/stylex";
 import type React from "react";
-import { cn } from "@/lib/utils";
+
+import { color, radius } from "@/styles/tokens.stylex";
+
+const sm = "@media (min-width: 640px)";
+
+const styles = stylex.create({
+  group: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  root: {
+    position: "relative",
+    display: "inline-flex",
+    width: { default: 18, [sm]: 16 },
+    height: { default: 18, [sm]: 16 },
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: color.input,
+    backgroundColor: "var(--control-fill)",
+    outline: "none",
+    boxShadow: {
+      default: "0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent)",
+      ":focus-visible": "0 0 0 1px var(--background), 0 0 0 3px var(--ring)",
+      ":disabled": "none",
+    },
+    opacity: { default: 1, ":disabled": 0.64 },
+    cursor: { default: "pointer", ":disabled": "not-allowed" },
+  },
+  checkedRoot: {
+    backgroundColor: color.background,
+  },
+  invalid: {
+    borderColor: {
+      default: "color-mix(in oklab, var(--destructive) 36%, transparent)",
+      ":focus-visible": "color-mix(in oklab, var(--destructive) 64%, transparent)",
+    },
+    boxShadow: {
+      ":focus-visible": "0 0 0 1px var(--background), 0 0 0 3px color-mix(in oklab, var(--destructive) 48%, transparent)",
+    },
+  },
+  indicator: {
+    position: "absolute",
+    top: -1,
+    right: -1,
+    bottom: -1,
+    left: -1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.full,
+    backgroundColor: color.primary,
+    "::before": {
+      content: '""',
+      width: { default: 8, [sm]: 6 },
+      height: { default: 8, [sm]: 6 },
+      borderRadius: radius.full,
+      backgroundColor: color.primaryForeground,
+    },
+  },
+  hidden: { display: "none" },
+});
 
 export function RadioGroup({
-  className,
   ...props
-}: RadioGroupPrimitive.Props): React.ReactElement {
-  return (
-    <RadioGroupPrimitive
-      className={cn("flex flex-col gap-3", className)}
-      data-slot="radio-group"
-      {...props}
-    />
-  );
+}: Omit<RadioGroupPrimitive.Props, "className" | "style">): React.ReactElement {
+  return <RadioGroupPrimitive {...stylex.props(styles.group)} data-slot="radio-group" {...props} />;
 }
 
 export function Radio({
-  className,
   ...props
-}: RadioPrimitive.Root.Props): React.ReactElement {
+}: Omit<RadioPrimitive.Root.Props, "className" | "style">): React.ReactElement {
   return (
     <RadioPrimitive.Root
-      className={cn(
-        "relative inline-flex size-4.5 shrink-0 items-center justify-center rounded-full border border-input bg-background not-dark:bg-clip-padding shadow-xs/5 outline-none transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-full not-data-disabled:not-data-checked:not-aria-invalid:before:shadow-[0_1px_--theme(--color-black/4%)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background aria-invalid:border-destructive/36 focus-visible:aria-invalid:border-destructive/64 focus-visible:aria-invalid:ring-destructive/48 data-disabled:cursor-not-allowed data-disabled:opacity-64 sm:size-4 dark:not-data-checked:bg-input/32 dark:aria-invalid:ring-destructive/24 dark:not-data-disabled:not-data-checked:not-aria-invalid:before:shadow-[0_-1px_--theme(--color-white/6%)] [[data-disabled],[data-checked],[aria-invalid]]:shadow-none",
-        className,
-      )}
+      className={(state) =>
+        stylex.props(
+          styles.root,
+          state.checked && styles.checkedRoot,
+          state.valid === false && styles.invalid,
+        ).className
+      }
       data-slot="radio"
       {...props}
     >
       <RadioPrimitive.Indicator
-        className="absolute -inset-px flex size-4.5 items-center justify-center rounded-full before:size-2 before:rounded-full before:bg-primary-foreground data-unchecked:hidden data-checked:bg-primary sm:size-4 sm:before:size-1.5"
+        className={(state) => stylex.props(styles.indicator, !state.checked && styles.hidden).className}
         data-slot="radio-indicator"
       />
     </RadioPrimitive.Root>

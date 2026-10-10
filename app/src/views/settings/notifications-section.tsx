@@ -118,9 +118,9 @@ export function NotificationsSection() {
           <SettingsRow label="Quiet hours">
             <div className="flex flex-wrap items-center justify-end gap-3">
               <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                <Input type="time" size="sm" aria-label="From" className="w-28" value={dnd.from} onChange={(e) => e.target.value && setQuietHours({ from: e.target.value })} />
+                <Input type="time" size="sm" aria-label="From" measure="time" value={dnd.from} onChange={(e) => e.target.value && setQuietHours({ from: e.target.value })} />
                 to
-                <Input type="time" size="sm" aria-label="To" className="w-28" value={dnd.to} onChange={(e) => e.target.value && setQuietHours({ to: e.target.value })} />
+                <Input type="time" size="sm" aria-label="To" measure="time" value={dnd.to} onChange={(e) => e.target.value && setQuietHours({ to: e.target.value })} />
               </div>
               {/* Days are a multi-pick in PickOne's track: a day that's on is
                   raised, a day that's off sits flat and muted. */}
