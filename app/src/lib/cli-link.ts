@@ -1,9 +1,9 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/desktop";
 
 import { isTauri } from "@/lib/api";
 
 // The berth command in a terminal: Burf.app carries the CLI, and Settings →
-// General can link ~/.local/bin/berth to it (src-tauri/src/cli_link.rs).
+// General can link ~/.local/bin/berth to its bundled command.
 
 export interface CliLink {
   link: string;

@@ -25,10 +25,11 @@ type PickEvent struct {
 // Remote views never receive Wails bindings, asset handlers or the app token.
 // Emit only carries page/navigation diagnostics back to the trusted UI.
 type Config struct {
-	Parent       unsafe.Pointer
-	ProfileDir   string
-	Emit         func(name string, payload any)
-	DispatchSync func(fn func())
+	Parent         unsafe.Pointer
+	ProfileDir     string
+	DevtoolsScript string
+	Emit           func(name string, payload any)
+	DispatchSync   func(fn func())
 }
 
 type driver interface {

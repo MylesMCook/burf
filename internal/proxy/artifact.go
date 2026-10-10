@@ -55,7 +55,7 @@ type ArtifactFunc func(ctx context.Context, box, id, version string) (*http.Resp
 // AppOrigins are the origins Burf's app runs on, which alone may frame an
 // artifact: the bundled app, and the dev server's ports (1420–1439).
 var AppOrigins = func() []string {
-	out := []string{"tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"}
+	out := []string{"tauri://localhost", "http://tauri.localhost", "https://tauri.localhost", "wails://localhost", "http://wails.localhost"}
 	for p := 1420; p <= 1439; p++ {
 		out = append(out, "http://localhost:"+strconv.Itoa(p))
 	}

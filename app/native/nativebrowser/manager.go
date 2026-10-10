@@ -13,10 +13,12 @@ var validID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 // Manager owns only raw remote views; the trusted application view is absent.
 type Manager struct {
-	mu     sync.Mutex
-	driver driver
-	views  map[string]view
-	closed bool
+	mu         sync.Mutex
+	openMu     sync.Mutex
+	driver     driver
+	views      map[string]view
+	generation map[string]uint64
+	closed     bool
 }
 
 func New(config Config) (*Manager, error) {
@@ -27,7 +29,7 @@ func New(config Config) (*Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Manager{driver: d, views: make(map[string]view)}, nil
+	return &Manager{driver: d, views: make(map[string]view), generation: make(map[string]uint64)}, nil
 }
 
 func checkURL(raw string) error {
@@ -58,19 +60,35 @@ func (m *Manager) Open(id, raw string, bounds Bounds) error {
 	if err := checkBounds(bounds); err != nil {
 		return err
 	}
+	// Native creation can wait on the UI thread. Close and Shutdown must be
+	// able to invalidate it without waiting for that thread.
+	m.openMu.Lock()
+	defer m.openMu.Unlock()
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.closed {
+		m.mu.Unlock()
 		return errors.New("native browser is closed")
 	}
-	if _, ok := m.views[id]; ok {
-		return nil
+	if existing := m.views[id]; existing != nil {
+		m.mu.Unlock()
+		if err := existing.Navigate(raw); err != nil {
+			return err
+		}
+		return existing.SetBounds(bounds)
 	}
+	generation := m.generation[id]
+	m.mu.Unlock()
 	v, err := m.driver.Open(id, raw, bounds)
 	if err != nil {
 		return err
 	}
+	m.mu.Lock()
+	if m.closed || m.generation[id] != generation {
+		m.mu.Unlock()
+		return errors.Join(errors.New("browser creation was canceled"), v.Close())
+	}
 	m.views[id] = v
+	m.mu.Unlock()
 	return nil
 }
 func (m *Manager) with(id string, f func(view) error) error {
@@ -116,6 +134,10 @@ func (m *Manager) Close(id string) error {
 	m.mu.Lock()
 	v := m.views[id]
 	delete(m.views, id)
+	if m.generation == nil {
+		m.generation = make(map[string]uint64)
+	}
+	m.generation[id]++
 	m.mu.Unlock()
 	if v == nil {
 		return nil

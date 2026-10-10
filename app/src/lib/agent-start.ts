@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/desktop";
 
 import { isTauri } from "@/lib/api";
 

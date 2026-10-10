@@ -4,7 +4,7 @@
 //
 // Console entries come from devtools.js (internal/proxy/devtools.js) in the
 // page: the native webview's watcher sends its reports as events
-// (src-tauri/src/browser.rs), a frame posts them. Network entries are the
+// from the native browser adapter; a frame posts them. Network entries are the
 // laptop proxy's log of the requests it relayed for the page's host
 // (internal/proxy/requestlog.go).
 

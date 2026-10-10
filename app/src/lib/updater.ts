@@ -1,10 +1,7 @@
-import { getVersion } from "@tauri-apps/api/app";
-import { invoke } from "@tauri-apps/api/core";
-import { check, type Update } from "@tauri-apps/plugin-updater";
+import { checkLegacyUpdate, getVersion, invoke, isLegacyTauri, type LegacyUpdate } from "@/lib/desktop";
 import { create } from "zustand";
 
 import { toastManager } from "@/components/ui/toast";
-import { isTauri } from "@/lib/api";
 import { useStore } from "@/lib/store";
 
 // Updates to the app itself. Burf checks the latest GitHub release's
@@ -37,13 +34,13 @@ export type UpdaterState =
 export const useUpdater = create<UpdaterState>(() => ({ status: "idle" }));
 
 const EVERY = 4 * 60 * 60 * 1000;
-let pending: Update | null = null;
+let pending: LegacyUpdate | null = null;
 let running: Promise<void> | null = null;
 
 // updatesSupported is whether this copy of Burf can update itself: the
 // packaged app. A dev build (pnpm tauri dev) can check, but only by hand.
 // Fork builds stay off the upstream feed until they have their own signed updates.
-export const updatesSupported = () => isTauri() && import.meta.env.VITE_BURF_UPDATES === "true";
+export const updatesSupported = () => isLegacyTauri() && import.meta.env.VITE_BURF_UPDATES === "true";
 
 // checkForUpdate checks once, and downloads what it finds. A check while
 // one runs joins it. `manual` is a click on Check now: only then is a
@@ -65,7 +62,7 @@ async function run(manual: boolean) {
   if (before.status === "ready" || before.status === "installing") return;
   set({ status: "checking" }, true);
   try {
-    const update = await check({ timeout: 30_000 });
+    const update = await checkLegacyUpdate();
     if (!update) {
       set({ status: "current", checkedAt: Date.now() }, true);
       return;

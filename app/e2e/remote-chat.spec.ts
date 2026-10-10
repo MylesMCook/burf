@@ -762,7 +762,7 @@ test("a Codex chat is headed by the name its worktree was given", async ({ app }
     await expect(header).toContainText("Fix checkout totals");
     // The folder is still there to read, on hover.
     await header.getByText("Fix checkout totals", { exact: true }).hover();
-    await expect(app.page.getByRole("tooltip")).toContainText(DIR);
+    await expect(app.page.locator('[data-slot="tooltip-popup"]')).toContainText(DIR);
     await expect(header).not.toContainText(DIR);
   } finally { await f.agent.close(); }
 });

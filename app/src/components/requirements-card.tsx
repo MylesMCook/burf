@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/desktop";
 import { CheckIcon, CopyIcon, ExternalLinkIcon, PackageIcon, RefreshCwIcon, SquareTerminalIcon } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { create } from "zustand";

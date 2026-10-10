@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/desktop";
 import { BugIcon, ClipboardListIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 

@@ -1,15 +1,8 @@
-import { isTauri } from "@/lib/api";
+import { openExternalUrl } from "@/lib/desktop";
 
 // openUrl opens a link in the default browser: through the shell plugin in
 // the app, where window.open would navigate the webview itself.
-export async function openUrl(url: string) {
-  if (isTauri()) {
-    const { open } = await import("@tauri-apps/plugin-shell");
-    await open(url);
-    return;
-  }
-  window.open(url, "_blank", "noopener");
-}
+export const openUrl = openExternalUrl;
 
 // DOCS_URL is Burf's documentation site, built from the repository's docs/.
 export const DOCS_URL = "https://docs.berthd.app";

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@/lib/desktop";
+import { listen } from "@/lib/desktop";
 import { ArrowLeftIcon, ArrowUpRightIcon, ArrowRightIcon, BotIcon, CrosshairIcon, ExternalLinkIcon, GlobeIcon, MonitorSmartphoneIcon, RotateCwIcon, SendIcon, ShieldAlertIcon, XIcon } from "lucide-react";
 import { useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 

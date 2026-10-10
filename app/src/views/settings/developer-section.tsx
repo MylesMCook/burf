@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { desktopKind, invoke } from "@/lib/desktop";
 import { ChevronRightIcon, CopyIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
@@ -107,7 +107,7 @@ export function DeveloperSection() {
     const s = useStore.getState();
     return JSON.stringify(
       {
-        app: { version: await appVersion(), tauri: isTauri(), mock, userAgent: navigator.userAgent, location: location.href.replace(/token=[^&]+/, "token=…") },
+        app: { version: await appVersion(), shell: desktopKind(window), mock, userAgent: navigator.userAgent, location: location.href.replace(/token=[^&]+/, "token=…") },
         connection: s.connection,
         status: s.status,
         boxes: Object.fromEntries(Object.entries(s.boxes).map(([name, b]) => [name, { info: b.info, error: b.error, locations: b.locations?.length, sessions: b.sessions?.map((x) => ({ name: x.name, agent: x.agent, state: x.agent_state, exited: x.exited })) }])),

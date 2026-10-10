@@ -1,5 +1,4 @@
-import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { closeWindow, listen } from "@/lib/desktop";
 import { useEffect } from "react";
 
 import { openEditor } from "@/components/editors/open";
@@ -181,7 +180,7 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       // With one group, ⌘⇧W closes the window, as it always has.
       if (wsKey && closeGroup(wsKey)) return true;
       if (!isTauri()) return false;
-      void getCurrentWindow().close();
+      void closeWindow();
       return true;
     case "focus":
       if (!inWorkspace) return false;
@@ -311,7 +310,7 @@ export function useShortcuts() {
       e.stopPropagation();
     };
     window.addEventListener("keydown", onKey, { capture: true });
-    // The Mac app's menu bar: each item sends its id (src-tauri/src/lib.rs).
+    // The native menu sends the same shortcut IDs as the key handler.
     let unlisten: (() => void) | undefined;
     let gone = false;
     if (isTauri())

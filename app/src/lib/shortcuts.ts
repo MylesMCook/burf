@@ -3,7 +3,7 @@ import { shortcutLabel } from "@/lib/platform";
 
 // The app's keyboard shortcuts, from shortcuts.json: the one table the key
 // handler (hooks/use-shortcuts), the Keyboard shortcuts sheet, Settings →
-// Shortcuts and the Mac app's menu bar (src-tauri/src/lib.rs) all read.
+// Shortcuts and the native app's menu bar all read.
 
 export type ShortcutGroup = "File" | "View" | "Go" | "Help";
 

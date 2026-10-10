@@ -251,7 +251,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
   const dispatch = useRef<(message: AppendMessage) => Promise<void>>(async () => {});
   const queue = useMemo(() => createMessageQueue({ run: (message) => dispatch.current(message) }), []);
   const queueRunning = useRef(false);
-  const queueSnapshot = useRef<ChatSnapshot>();
+  const queueSnapshot = useRef<ChatSnapshot | undefined>(undefined);
   const pause = () => { queue.hold(); setQueuePaused(true); };
   const send = async (message: AppendMessage) => {
     if (transport.readOnly || !chat || !transport.message || pending.current || offline || chat.state === "exited") return;
@@ -364,7 +364,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
       </div> : undefined;
   return <div data-testid={transport.testId} className={sx(paint.s5)}>
     {!transport.readOnly && <header className={sx(paint.s6)}>
-      <Tip label={session.cwd} width="lg"><span className={sx(paint.s7)}>{named ?? session.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? session.cwd}</span></Tip>
+      <Tip label={session.cwd} width="lg"><span role="heading" aria-level={2} aria-label={`${named ?? session.cwd}: ${session.cwd}`} className={sx(paint.s7)}>{named ?? session.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? session.cwd}</span></Tip>
       <span role="status" aria-label="Chat status" className={sx(paint.s8)}>{offline ? "Disconnected" : chat?.state === "waiting" ? chat.approvals.length ? `Waiting for approval (${chat.approvals.length})` : "Waiting for your answer" : running ? "Working" : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span>
       <div className={sx(paint.s9)}>
         <WorktreeArtChip wt={artifacts} className={sx(paint.s10)} />

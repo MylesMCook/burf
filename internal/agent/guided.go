@@ -159,7 +159,7 @@ func (a *Agent) addSSHTerminal(w http.ResponseWriter, r *http.Request) {
 	cols, _ := strconv.Atoi(r.URL.Query().Get("cols"))
 	rows, _ := strconv.Atoi(r.URL.Query().Get("rows"))
 	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		OriginPatterns: []string{"localhost", "localhost:14[23][0-9]", "tauri.localhost"},
+		OriginPatterns: []string{"localhost", "localhost:14[23][0-9]", "tauri.localhost", "wails.localhost"},
 	})
 	if err != nil {
 		return
