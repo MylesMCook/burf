@@ -29,8 +29,7 @@ import { SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN } from "@/lib/sidebar-width";
 import { WhatsNewNudge } from "@/components/whats-new/whats-new-dialog";
 import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
-import { AlphaBadge } from "@/components/alpha-badge";
-import { LINUX_ALPHA, platformKeys } from "@/lib/platform";
+import { platformKeys } from "@/lib/platform";
 
 // The sidebar is always open on a desktop window; coss ui's menu pieces only
 // need to know that.
@@ -70,10 +69,8 @@ export function AppSidebar() {
         className="@container/side relative flex shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground"
       >
         <SidebarResizeHandle />
-        {/* Room for the macOS traffic lights; the strip drags the window. The
-            Linux app has none, and says it is an alpha there instead. */}
+        {/* Room for the macOS traffic lights; the strip drags the window. */}
         <div data-tauri-drag-region className="flex h-10 shrink-0 items-center justify-end px-2">
-          {LINUX_ALPHA && <AlphaBadge link className="mr-auto ml-1" />}
           <NotificationBell />
         </div>
 
@@ -238,7 +235,7 @@ function Rail() {
               <EllipsisIcon className="size-4" />
             </MenuTrigger>
           </Tip>
-          <MenuPopup side="right" align="start" className="min-w-52">
+          <MenuPopup side="right" align="start" className="min-w-72">
             <MoreItems more={more} />
           </MenuPopup>
         </Menu>

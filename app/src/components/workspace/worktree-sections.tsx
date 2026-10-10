@@ -61,6 +61,21 @@ export function SessionWorktreeSections({ box, session, className }: { box: stri
   return ref ? <WorktreeSections worktree={ref} className={className} /> : null;
 }
 
+function PrivateUrl({ url }: { url: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-1 px-2">
+      <Tip label={<span className="font-mono">{url}</span>}>
+        <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground/80">{url}</code>
+      </Tip>
+      <Tip label="Copy URL">
+        <Button size="icon-xs" variant="ghost" aria-label="Copy URL" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => void copyText(url, "Copied the URL")}>
+          <CopyIcon />
+        </Button>
+      </Tip>
+    </div>
+  );
+}
+
 function Heading({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-1 px-2 font-medium text-muted-foreground text-xs">{children}</h2>;
 }
@@ -99,17 +114,19 @@ function LiveServices({ worktree: ref }: { worktree: WorktreeRef }) {
           ))}
         </ul>
       ) : (
-        <p className="px-2 text-muted-foreground text-xs leading-relaxed">
-          Nothing to open yet.{" "}
-          {devPort ? (
-            <>
-              A dev server on <code className="font-mono text-[11px] text-foreground/80">$BERTH_PORT</code> ({devPort}) opens at{" "}
-              {host ? <code className="break-all font-mono text-[11px] text-foreground/80">{`http://${host}${hostSuffix(urlPort)}/`}</code> : "its private URL"}.
-            </>
-          ) : (
-            "Start a dev server here and its private URL shows up."
-          )}
-        </p>
+        <>
+          <p className="px-2 text-muted-foreground text-xs leading-relaxed">
+            Nothing to open yet.{" "}
+            {devPort ? (
+              <>
+                A dev server on <code className="font-mono text-[11px] text-foreground/80">$BERTH_PORT</code> ({devPort}) opens at {host ? "this address" : "its private URL"}.
+              </>
+            ) : (
+              "Start a dev server here and its private URL shows up."
+            )}
+          </p>
+          {devPort && host && <PrivateUrl url={`http://${host}${hostSuffix(urlPort)}/`} />}
+        </>
       )}
       {other.length > 0 && (
         <div className="mt-1">

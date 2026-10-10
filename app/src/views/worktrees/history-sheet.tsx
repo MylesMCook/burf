@@ -91,7 +91,7 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete,
 
   return (
     <Sheet open={!!row} onOpenChange={(o) => !o && onClose()}>
-      <SheetPopup className="w-[min(760px,100vw)] max-w-none">
+      <SheetPopup className="w-[clamp(20rem,calc(100vw-46rem),45rem)] max-w-none">
         {row && (
           <>
             <SheetHeader className="gap-1.5">

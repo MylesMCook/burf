@@ -1,7 +1,6 @@
 import { CheckIcon, GripVerticalIcon, LayoutGridIcon, MoveDiagonal2Icon, PlusIcon, RotateCcwIcon, XIcon } from "lucide-react";
 import { type KeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { Scene } from "@/components/art/scenes";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -450,9 +449,7 @@ function OffCell({ p, onRemove }: { p: Placed; onRemove(): void }) {
 function EmptyGrid({ onAdd, onReset }: { onAdd(): void; onReset(): void }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-6 py-12 text-center">
-      <Scene name="dock" width={150} className="text-muted-foreground" />
-      <h3 className="mt-1 font-medium text-sm">No widgets on Home</h3>
-      <p className="max-w-sm text-balance text-muted-foreground text-sm">Put what you check first here: agents that need you, pull requests, how your boxes are doing.</p>
+      <h3 className="font-medium text-sm">No widgets on Home</h3>
       <div className="mt-2 flex gap-2">
         <Button size="sm" onClick={onAdd}>
           <PlusIcon />

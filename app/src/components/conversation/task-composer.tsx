@@ -22,6 +22,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { toastManager } from "@/components/ui/toast";
 import { copyText } from "@/lib/clipboard";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
+import { resolveAgentChoice } from "@/lib/agent-choice";
 import { agentPresets } from "@/lib/actions";
 import type { Worktree } from "@/lib/api";
 import { type AttachTarget, withAttachments } from "@/lib/attachments";
@@ -357,9 +358,10 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   };
   const [copies, setCopies] = useState(1);
   const [noAgent, setNoAgent] = useState(!!draft.noAgent);
-  const live: Chosen = Object.fromEntries(Object.entries(chosen).filter(([id, c]) => c.models.length && presets.some((p) => p.id === id)));
-  const sel: Chosen = Object.keys(live).length ? live : presets[0] ? { [presets[0].id]: { models: [""], effort: "" } } : {};
-  const picks = noAgent ? [] : expand(sel, comparison ? copies : 1).slice(0, comparison ? undefined : 1);
+  const resolvedChoice = resolveAgentChoice(chosen, presets.map((p) => p.id));
+  const sel: Chosen = resolvedChoice.sel;
+  const missingAgent = resolvedChoice.missing;
+  const picks = noAgent || missingAgent ? [] : expand(sel, comparison ? copies : 1).slice(0, comparison ? undefined : 1);
   const attempts = picks.length > 1;
   const switchComparison = (on: boolean) => {
     agentsTouched.current = true;
@@ -518,8 +520,10 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       ? "Choose a project"
       : !structuredChat && reqCard === "tmux"
         ? `tmux isn't installed on ${box}`
-        : !noAgent && (!picks.length || (!structuredChat && reqCard === "agent"))
-        ? `No agent CLI on ${box}`
+        : missingAgent
+          ? `${agentLabel(missingAgent)} is not on ${box}`
+          : !noAgent && (!picks.length || (!structuredChat && reqCard === "agent"))
+            ? `No agent CLI on ${box}`
         : !noAgent && !text.trim() && (attempts || from || !dialog)
           ? attempts
             ? "Describe the task for the attempts"
@@ -846,6 +850,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
               sel={sel}
               copies={copies}
               none={noAgent}
+              missing={missingAgent ? `${agentLabel(missingAgent)} is not on ${box}` : undefined}
               single={!comparison}
               allowNone={fresh && !from && !fixed}
               onChange={pickAgents}

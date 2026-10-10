@@ -33,7 +33,7 @@ export function ComputersSection() {
       title="Computers"
       description={
         <>
-          Use Burf on more than one computer, a MacBook and a Mac mini say. Each pairs with your boxes with its own key, and they all work at once. <Code>burf invite</Code> and <Code>burf join</Code> do the same.
+          Use Burf on another computer. Each pairs with your boxes with its own key, and they all work at once. <Code>burf invite</Code> and <Code>burf join</Code> do the same.
         </>
       }
     >

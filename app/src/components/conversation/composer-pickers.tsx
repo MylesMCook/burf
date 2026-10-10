@@ -1,4 +1,4 @@
-import { BookMarkedIcon, ChevronsUpDownIcon, CloudOffIcon, FolderPlusIcon, PinIcon, UsersIcon } from "lucide-react";
+import { BookMarkedIcon, ChevronsUpDownIcon, CloudOffIcon, FolderPlusIcon, MinusIcon, PinIcon, UsersIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
@@ -90,6 +90,7 @@ export function AgentsPicker({
   sel,
   copies,
   none,
+  missing,
   single,
   allowNone,
   onChange,
@@ -104,6 +105,8 @@ export function AgentsPicker({
   sel: Chosen;
   copies: number;
   none?: boolean;
+  // A remembered agent this box does not have. Nothing else is started in its place.
+  missing?: string;
   single?: boolean;
   allowNone?: boolean;
   onChange(c: Chosen): void;
@@ -115,9 +118,9 @@ export function AgentsPicker({
   permissions?: string[];
   onPermission?(p: ChatPermission): void;
 }) {
-  if (single) return <SingleAgentPicker presets={presets} sel={sel} none={none} allowNone={allowNone} onChange={onChange} onNone={onNone} onCompare={onCompare} permission={permission} permissions={permissions} onPermission={onPermission} />;
-  const label = none ? "No agent" : pickLabel(sel, copies, presets);
+  if (single) return <SingleAgentPicker presets={presets} sel={sel} none={none} missing={missing} allowNone={allowNone} onChange={onChange} onNone={onNone} onCompare={onCompare} permission={permission} permissions={permissions} onPermission={onPermission} />;
   const ids = none ? [] : Object.keys(sel);
+  const label = missing && !ids.length ? missing : none ? "No agent" : pickLabel(sel, copies, presets);
   // Unticking the last pick leaves it: there is always one agent, unless
   // "No agent" is ticked instead.
   const set = (id: string, next: { models: string[]; effort: string } | undefined) => {
@@ -237,10 +240,11 @@ type ChatPermission = keyof typeof chatPermissions;
 export type PickerPreset = AgentPreset & { model_names?: Record<string, string> };
 const permissionLabels = Object.fromEntries(Object.entries(chatPermissions).map(([id, p]) => [id, p.label]));
 
-function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, onCompare, permission, permissions, onPermission }: {
+function SingleAgentPicker({ presets, sel, none, missing, allowNone, onChange, onNone, onCompare, permission, permissions, onPermission }: {
   presets: PickerPreset[];
   sel: Chosen;
   none?: boolean;
+  missing?: string;
   allowNone?: boolean;
   onChange(c: Chosen): void;
   onNone?(on: boolean): void;
@@ -252,7 +256,7 @@ function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, on
   const id = Object.keys(sel)[0] ?? "";
   const preset = presets.find((p) => p.id === id);
   const choice = sel[id] ?? { models: [""], effort: "" };
-  const label = none ? "No agent" : (preset?.name ?? "Choose agent");
+  const label = none ? "No agent" : missing && !preset ? missing : (preset?.name ?? "Choose agent");
   const value = none ? "__none__" : id;
   const select = (next: unknown) => {
     if (next === "__none__") return onNone?.(true);
@@ -271,8 +275,9 @@ function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, on
   return (
     <>
       <Menu>
-        <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`Provider: ${label}`} className="min-w-0 max-w-48 shrink" />}>
+        <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`Provider: ${label}`} className={cn("min-w-0 shrink", missing && !preset ? "max-w-72" : "max-w-48")} />}>
           {!none && preset && <AgentIcon agent={id} />}
+          {!none && !preset && missing && <MinusIcon className="text-muted-foreground" />}
           <span className="truncate">{label}</span>
           <ChevronsUpDownIcon className="opacity-60" />
         </MenuTrigger>

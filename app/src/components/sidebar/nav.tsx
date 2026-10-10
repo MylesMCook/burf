@@ -233,7 +233,7 @@ export function Nav() {
               <EllipsisIcon />
               <span>{dragging ? "Drop in More" : "More"}</span>
             </MenuTrigger>
-            <MenuPopup side="right" align="start" className="min-w-52">
+            <MenuPopup side="right" align="start" className="min-w-72">
               <MoreItems more={more} />
             </MenuPopup>
           </Menu>

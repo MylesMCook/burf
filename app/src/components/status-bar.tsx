@@ -35,7 +35,14 @@ export function StatusBar() {
   const go = useStore((s) => s.setView);
 
   const outdated = useOutdatedBoxes();
-  const online = status?.boxes.filter((b) => b.state === "online") ?? [];
+  const screenBox = useWorkspaces((s) => {
+    const key = s.current;
+    if (!key || homeBox(key)) return undefined;
+    return s.spaces[key]?.ref.box;
+  });
+  const inWorkspace = useStore((s) => s.view.kind === "workspace");
+  const named = inWorkspace ? screenBox : undefined;
+  const online = [...(status?.boxes.filter((b) => b.state === "online") ?? [])].sort((a, b) => Number(b.name === named) - Number(a.name === named));
   const total = status?.boxes.length ?? 0;
   // Online, over a slow link: still online, said quietly.
   const slow = online.filter((b) => b.link?.slow).length;
@@ -101,11 +108,12 @@ export function StatusBar() {
       <OutdatedItem />
       {online.map((b) => {
         const mem = boxes[b.name]?.stats?.memory;
-        if (!mem?.total) return null;
-        // Each box's memory goes first when the bar runs short of room.
-        // Clicked, it lists the box's browsers and heavy sessions; its tip
-        // names the route Burf reaches the box by.
-        return <BoxMeter key={b.name} box={b.name} mem={mem} route={viaRoute(b)} className="@max-[900px]:hidden" />;
+        const here = b.name === named;
+        if (!mem?.total) return here ? <span key={b.name}>{b.name}</span> : null;
+        // The computer on screen stays named when the bar runs short of room.
+        // The others follow it. Clicked, a meter lists that box's browsers
+        // and heavy sessions; its tip names the route Burf reaches it by.
+        return <BoxMeter key={b.name} box={b.name} mem={mem} route={viaRoute(b)} className={here ? undefined : "@max-[1100px]:hidden"} />;
       })}
       {forwards > 0 && (
         <Item tip="Ports forwarded to this computer" onClick={() => go({ kind: "settings", section: "developer" })}>

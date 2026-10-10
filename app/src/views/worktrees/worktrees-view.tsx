@@ -15,7 +15,7 @@ import { BulkBar } from "@/views/worktrees/bulk-bar";
 import { DeleteDialog } from "@/views/worktrees/delete-dialog";
 import { HistorySheet } from "@/views/worktrees/history-sheet";
 import { type BulkAction, useBulk } from "@/views/worktrees/use-bulk";
-import { type Row, useWorktrees } from "@/views/worktrees/use-worktrees";
+import { openWorktree, type Row, useWorktrees } from "@/views/worktrees/use-worktrees";
 import { type Group, WorktreeTable } from "@/views/worktrees/worktree-table";
 import { BoxError } from "@/components/upgrade-box";
 
@@ -31,7 +31,7 @@ const SORTS: { value: Sort; label: string }[] = [
 
 // WorktreesView is every worktree on every box in one table, to see where
 // each stands against its base and act on many at once: sync, pause, stop,
-// delete. A row opens its commit history.
+// delete. A row opens its latest chat. History stays on the sheet.
 export function WorktreesView() {
   const { rows, boxes, errors, loaded, patch } = useWorktrees();
   const onRowDone = useCallback((r: Row, p: Partial<Row>) => patch(r.box, r.location, r.name, p), [patch]);
@@ -252,7 +252,8 @@ export function WorktreesView() {
             onToggle={toggle}
             onToggleGroup={toggleGroup}
             onToggleAll={(on) => setSelected(on ? new Set(flat.map((r) => r.key)) : new Set())}
-            onOpen={(r) => setOpenKey(r.key)}
+            onOpen={(r) => openWorktree(r)}
+            onHistory={(r) => setOpenKey(r.key)}
             openKey={openKey}
           />
         )}

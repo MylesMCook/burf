@@ -27,6 +27,7 @@ import { agentOf, type SessionState, sessionName, sessionState, worktreeSessions
 import { load, save } from "@/lib/storage";
 import { type BoxData, NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { selectFolder } from "@/lib/open-folder-chat";
 import { addGroup, refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
 import { armDrag } from "@/components/workspace/tab-drag";
 import { WtDot } from "@/components/workspace/worktree-tone";
@@ -235,7 +236,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
   const tree = nest(rows, (r) => r.key, (r) => r.wt.parent);
   const shown = expanded ? tree : prune(tree, isActive);
   const hidden = rows.length - size(shown);
-  const open = (wt: Worktree) => selectWorktree(refOf(box.name, loc, wt));
+  const open = (wt: Worktree) => selectFolder(refOf(box.name, loc, wt));
   const toggle = () => update({ collapsed: { ...prefs.collapsed, [repo.key]: !collapsed } });
 
   return (
@@ -272,8 +273,12 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
               </span>
             </Tip>
             <LeadIcon sessions={!all && main ? mainSessions : []} data={data} icon={<FolderGitIcon />} />
-            <span className="min-w-0 truncate">{loc.name}</span>
-            {chip && <BoxChip box={box} />}
+            <span className="shrink-0">{loc.name}</span>
+            {chip && (
+              <span className="min-w-0 shrink overflow-hidden">
+                <BoxChip box={box} />
+              </span>
+            )}
             <span className="ml-auto" />
             {!all && main && <Glyphs sessions={mainSessions} data={data} />}
           </SidebarMenuButton>
@@ -456,7 +461,7 @@ function WorktreeNodes({ nodes, depth, prefs, update }: { nodes: TreeNode<TreeRo
 function WorktreeNode({ node, depth, prefs, update }: { node: TreeNode<TreeRow>; depth: number; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
   const r = node.row;
   const row = (
-    <WorktreeRow box={r.box} loc={r.loc} wt={r.wt} sessions={r.sessions} data={r.data} selected={r.selected} chip={r.chip} away={r.away} onOpen={() => selectWorktree(refOf(r.box, r.loc, r.wt))} />
+    <WorktreeRow box={r.box} loc={r.loc} wt={r.wt} sessions={r.sessions} data={r.data} selected={r.selected} chip={r.chip} away={r.away} onOpen={() => selectFolder(refOf(r.box, r.loc, r.wt))} />
   );
   if (!node.children.length) return row;
   const fold = `wt:${node.key}`;
@@ -776,7 +781,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
             }}
             isActive={mainSel && !all}
             disabled={!online}
-            onClick={() => defMain && def.box.state === "online" && selectWorktree(refOf(def.box.name, def.loc, defMain))}
+            onClick={() => defMain && def.box.state === "online" && selectFolder(refOf(def.box.name, def.loc, defMain))}
             aria-expanded={!collapsed}
             onKeyDown={(e: React.KeyboardEvent) => {
               if ((e.key === "ArrowRight" && collapsed) || (e.key === "ArrowLeft" && !collapsed)) {
@@ -800,7 +805,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               </span>
             </Tip>
             <LeadIcon sessions={!all ? glyphSessions : []} data={boxes[def.box.name]} icon={<FolderGitIcon />} />
-            <span className="min-w-0 truncate">{p.name}</span>
+            <span className="shrink-0">{p.name}</span>
             {chips && (
               <span className="flex min-w-0 shrink items-center gap-0.5 overflow-hidden">
                 {p.members.slice(0, 3).map((m) => (
@@ -836,7 +841,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               sessions={glyphSessions}
               data={boxes[def.box.name]}
               selected={mainSel}
-              onOpen={() => selectWorktree(refOf(def.box.name, def.loc, defMain))}
+              onOpen={() => selectFolder(refOf(def.box.name, def.loc, defMain))}
               away={def.box.state === "online" ? undefined : def.box}
             />
           )}

@@ -61,10 +61,10 @@ import {
   unsnooze,
   useNotifications,
   useNotifyPrefs,
-  useUnread,
 } from "@/lib/notifications";
 import { type BoxData, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { attentionCount, shownNoteTitle } from "@/lib/attention";
 import { titleAt } from "@/lib/worktree-names";
 
 // useMinute re-renders once a minute, so relative times and snoozes move.
@@ -77,20 +77,17 @@ export function useMinute(): number {
   return now;
 }
 
-// NotificationBell opens the centre. The count is what is unread; it turns
-// amber while anything needs the person.
+// NotificationBell opens the centre. The count is unresolved needs-you, the
+// same set as the header, and it turns amber while that set is not empty.
 export function NotificationBell({ className, size = "sm" }: { className?: string; size?: "sm" | "rail" }) {
   const now = useMinute();
-  const { unread, needs } = useUnread(now);
+  const notes = useNotifications((s) => s.notes);
+  const boxes = useStore((s) => s.boxes);
+  const needs = notes.filter((n) => needsYou(n, now)).length;
+  const count = attentionCount(needs, liveWaiting(boxes, notes).length);
   const open = useNotifications((s) => s.open);
   const quiet = useNotifyPrefs((p) => quietNow(p, new Date(now)));
-  const label = [
-    "Notifications",
-    needs ? `${needs} need${needs === 1 ? "s" : ""} you` : unread ? `${unread} unread` : "",
-    quiet ? "Do not disturb is on" : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const label = ["Notifications", count ? `${count} need${count === 1 ? "s" : ""} you` : "", quiet ? "Do not disturb is on" : ""].filter(Boolean).join(" · ");
   const Icon = quiet ? BellOffIcon : BellIcon;
   return (
     <Tip
@@ -111,19 +108,14 @@ export function NotificationBell({ className, size = "sm" }: { className?: strin
           "relative inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
           size === "rail" ? "size-8 rounded-lg [&_svg]:size-4" : "size-6.5 [&_svg]:size-3.5",
           open && "bg-sidebar-accent text-foreground",
-          needs > 0 && "text-warning-foreground dark:text-warning",
+          count > 0 && "text-warning-foreground dark:text-warning",
           className,
         )}
       >
         <Icon />
-        {unread > 0 && (
-          <span
-            className={cn(
-              "absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-1 font-semibold text-[9px] tabular-nums leading-none",
-              needs > 0 ? "bg-warning text-black" : "bg-foreground/80 text-background",
-            )}
-          >
-            {unread > 99 ? "99+" : unread}
+        {count > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-warning px-1 font-semibold text-[9px] text-black tabular-nums leading-none">
+            {count > 99 ? "99+" : count}
           </span>
         )}
       </button>
@@ -505,7 +497,7 @@ export function NotificationCenter() {
           >
             <div ref={list} className="px-1.5 pt-1.5 pb-2">
               {needs.length + live.length > 0 ? (
-                <Section title="Needs you" count={needs.length + live.length} amber>
+                <Section title="Needs you" count={attentionCount(needs.length, live.length)} amber>
                   {needs.map((i) => (
                     <Row key={i.note.id} item={i} now={now} boxes={boxes} tabStop={tabStop === i.note.id} onFocus={setActive} />
                   ))}
@@ -622,7 +614,7 @@ function Row({
   return (
     <li
       data-note={n.id}
-      aria-label={[n.read ? undefined : "Unread", n.title, line].filter(Boolean).join(", ")}
+      aria-label={[n.read ? undefined : "Unread", shownNoteTitle(n.title, n.resolved), line].filter(Boolean).join(", ")}
       tabIndex={tabStop ? 0 : -1}
       onFocus={(e) => e.target === e.currentTarget && onFocus(n.id)}
       onClick={() => activate(n)}
@@ -633,7 +625,7 @@ function Row({
     >
       {/* Unread: a dot in its own column, so titles stay aligned. */}
       <span className="flex h-5 w-1.5 shrink-0 items-center" aria-hidden>
-        {!n.read && <span className={cn("size-1.5 rounded-full", needs ? "bg-warning" : "bg-info")} />}
+        {!n.read && !n.resolved && <span className={cn("size-1.5 rounded-full", needs ? "bg-warning" : "bg-info")} />}
       </span>
       <Tip label={folded ? `${info.label} · ${status}` : info.label} side="left" delay={600}>
         <span className={cn("flex h-5 shrink-0 items-center [&_svg]:size-4", tone, folded && "opacity-60 [&_svg]:size-3.5")}>
@@ -642,7 +634,7 @@ function Row({
       </Tip>
       {folded ? (
         <div className="flex h-5 min-w-0 flex-1 items-center gap-1.5">
-          <span className="min-w-0 shrink truncate text-muted-foreground text-xs">{n.title}</span>
+          <span className="min-w-0 shrink truncate text-muted-foreground text-xs">{shownNoteTitle(n.title, n.resolved)}</span>
           {item.count > 1 && <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">×{item.count}</span>}
           <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">{line}</span>
           {time}
@@ -651,7 +643,7 @@ function Row({
       ) : (
         <div className="min-w-0 flex-1">
           <div className="flex h-5 items-center gap-1.5">
-            <span className={cn("min-w-0 truncate text-[13px]", n.read ? "text-foreground/80" : "font-medium text-foreground")}>{n.title}</span>
+            <span className={cn("min-w-0 truncate text-[13px]", n.read ? "text-foreground/80" : "font-medium text-foreground")}>{shownNoteTitle(n.title, n.resolved)}</span>
             {item.count > 1 && <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">×{item.count}</span>}
             <span className="flex-1" />
             {time}

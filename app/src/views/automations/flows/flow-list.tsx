@@ -1,6 +1,5 @@
 import { LockIcon, PlusIcon, Settings2Icon, WorkflowIcon } from "lucide-react";
 
-import { Scene } from "@/components/art/scenes";
 import { openProjectSettings } from "@/components/skills/project-settings-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,16 +58,6 @@ export function FlowList({
 
   return (
     <div className="space-y-8">
-      {/* No flows on any box yet: a course plotted, not yet sailed. */}
-      {!total && boxes.length > 0 && loaded.length === boxes.length && (
-        <div className="flex items-center gap-5 px-1">
-          <Scene name="chart" width={112} />
-          <div className="min-w-0">
-            <p className="font-medium text-sm">No flows yet</p>
-            <p className="mt-0.5 max-w-md text-muted-foreground text-xs">A flow runs steps on a box when something happens, or on a schedule. Start with one of these and change it to fit.</p>
-          </div>
-        </div>
-      )}
       <section>
         <h2 className="mb-2.5 font-medium text-[13px] text-muted-foreground">{total ? "Start from a template" : "Start with one of these"}</h2>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-2">
@@ -86,7 +75,7 @@ export function FlowList({
                   {kinds.map((k) => {
                     const m = kindMeta(k);
                     return (
-                      <span key={k} className={cn("inline-flex size-6 items-center justify-center rounded-md bg-muted", m.tone)}>
+                      <span key={k} className="inline-flex size-6 items-center justify-center rounded-md bg-muted text-muted-foreground">
                         <m.Icon className="size-3.5" />
                       </span>
                     );
@@ -199,7 +188,7 @@ function FlowRow({ f, run, onEdit, onToggle, overridden }: { f: ScopedFlow; run?
         {[...new Set(flow.steps.map((s) => s.kind))].slice(0, 3).map((k) => {
           const m = kindMeta(k);
           return (
-            <span key={k} className={cn("inline-flex size-6 items-center justify-center rounded-md border-2 border-card bg-muted", m.tone)}>
+            <span key={k} className="inline-flex size-6 items-center justify-center rounded-md border-2 border-card bg-muted text-muted-foreground">
               <m.Icon className="size-3.5" />
             </span>
           );
