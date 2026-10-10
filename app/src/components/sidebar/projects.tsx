@@ -129,7 +129,7 @@ export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
         boxes.map((b) => (
           <div key={b.name} className="mb-3">
             <BoxHeader box={b} empty={!data[b.name]?.locations?.length} />
-            <SidebarMenu className="gap-px">
+            <SidebarMenu gap="tight">
               {group(
                 repos.filter((r) => r.box.name === b.name),
                 false,
@@ -256,7 +256,8 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
                 toggle();
               }
             }}
-            className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
+            density="place"
+            offline={!online}
           >
             {/* The pointer's way; the keyboard's is ← and → on the row. */}
             <Tip label={collapsed ? `Show ${loc.name}` : `Hide ${loc.name}`} side="right">
@@ -289,7 +290,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
       </ContextRow>
 
       {!collapsed && (all || shown.length > 0 || hidden > 0) && (
-        <SidebarMenuSub className="mx-0 ml-[17px] gap-px py-0.5 pr-0 pl-1.5">
+        <SidebarMenuSub indent="repo">
           {all && main && <WorktreeRow box={box.name} loc={loc} wt={main} sessions={mainSessions} data={data} selected={mainSel} onOpen={() => open(main)} away={online ? undefined : box} />}
           <WorktreeNodes nodes={shown} depth={0} prefs={prefs} update={update} />
           {hidden > 0 && (
@@ -297,7 +298,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
               <SidebarMenuSubButton
                 render={<button type="button" />}
                 size="sm"
-                className="h-6 w-full text-muted-foreground/80"
+                density="quiet"
                 onClick={() => update({ expanded: { ...prefs.expanded, [repo.key]: true } })}
               >
                 <span>
@@ -311,7 +312,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
               <SidebarMenuSubButton
                 render={<button type="button" />}
                 size="sm"
-                className="h-6 w-full text-muted-foreground/80"
+                density="quiet"
                 onClick={() => update({ expanded: { ...prefs.expanded, [repo.key]: false } })}
               >
                 <span>Show fewer</span>
@@ -409,7 +410,8 @@ const WorktreeRow = memo(function WorktreeRow({ box, loc, wt, sessions, data, se
               }
             }}
             onPointerDown={(e: React.PointerEvent<HTMLElement>) => labs && !away && armDrag(e, { kind: "worktree", key }, wt.main ? loc.name : name, wt.main ? <HomeIcon className="size-3" /> : <GitBranchIcon className="size-3" />)}
-            className={cn("h-side-row w-full text-[13px] sm:h-side-row [&>svg]:text-muted-foreground", away && "text-muted-foreground")}
+            density="row"
+            away={!!away}
           >
             <LeadIcon sessions={away ? [] : sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
             <span className={cn("min-w-0 truncate", away && "opacity-70")}>{name}</span>
@@ -495,7 +497,7 @@ function WorktreeNode({ node, depth, prefs, update }: { node: TreeNode<TreeRow>;
         <SidebarMenuSubItem>
           {/* Up to MAX_INDENT levels step in, with a guide; deeper ones line
               up with their parent. */}
-          <SidebarMenuSub className={cn("mx-0 gap-px py-0 pr-0", depth + 1 < MAX_INDENT ? "ml-[9px] pl-1.5" : "ml-0 border-l-0 pl-0")}>
+          <SidebarMenuSub indent={depth + 1 < MAX_INDENT ? "tree" : "flush"}>
             <WorktreeNodes nodes={node.children} depth={depth + 1} prefs={prefs} update={update} />
           </SidebarMenuSub>
         </SidebarMenuSubItem>
@@ -659,7 +661,7 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
   return (
     <>
       <div {...drop(undefined)} className={cn("rounded-md", over === "" && "bg-sidebar-accent/40 ring-1 ring-ring/40")}>
-        <SidebarMenu className="gap-px">{list(loose)}</SidebarMenu>
+        <SidebarMenu gap="tight">{list(loose)}</SidebarMenu>
       </div>
       {sections.map((name) => {
         const inside = projects.filter((p) => p.section === name);
@@ -686,7 +688,7 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
               </div>
             </ContextRow>
             {!closed &&
-              (inside.length ? <SidebarMenu className="gap-px">{list(inside)}</SidebarMenu> : <p className="px-6 py-1 text-muted-foreground text-xs">Drag a project here.</p>)}
+              (inside.length ? <SidebarMenu gap="tight">{list(inside)}</SidebarMenu> : <p className="px-6 py-1 text-muted-foreground text-xs">Drag a project here.</p>)}
           </div>
         );
       })}
@@ -789,7 +791,8 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
                 update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
               }
             }}
-            className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
+            density="place"
+            offline={!online}
           >
             <Tip label={collapsed ? `Show ${p.name}` : `Hide ${p.name}`} side="right">
               <span
@@ -832,7 +835,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
       </ContextRow>
 
       {!collapsed && (all || shown.length > 0 || hidden > 0) && (
-        <SidebarMenuSub className="mx-0 ml-[17px] gap-px py-0.5 pr-0 pl-1.5">
+        <SidebarMenuSub indent="repo">
           {!multi && all && defMain && (
             <WorktreeRow
               box={def.box.name}
@@ -851,7 +854,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               <SidebarMenuSubButton
                 render={<button type="button" />}
                 size="sm"
-                className="h-6 w-full text-muted-foreground/80"
+                density="quiet"
                 onClick={() => update({ expanded: { ...prefs.expanded, [key]: true } })}
               >
                 <span>
@@ -865,7 +868,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               <SidebarMenuSubButton
                 render={<button type="button" />}
                 size="sm"
-                className="h-6 w-full text-muted-foreground/80"
+                density="quiet"
                 onClick={() => update({ expanded: { ...prefs.expanded, [key]: false } })}
               >
                 <span>Show fewer</span>

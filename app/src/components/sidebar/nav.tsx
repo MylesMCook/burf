@@ -155,24 +155,22 @@ function dragProps(id: string) {
 function RowBadge({ badge }: { badge: NonNullable<NavItem["badge"]> }) {
   return (
     <Tip label={badge.title} side="right">
-      <SidebarMenuBadge className={cn("top-1/2 h-4.5 min-w-4.5 -translate-y-1/2 peer-data-[size=sm]/menu-button:top-1/2 rounded-full px-1 text-[10px] leading-none", badge.loud ? "bg-warning/15 text-warning-foreground" : "bg-sidebar-accent text-sidebar-foreground")}>
+      <SidebarMenuBadge pill={badge.loud ? "loud" : "quiet"}>
         {badge.count}
       </SidebarMenuBadge>
     </Tip>
   );
 }
 
-const rowClass = "h-side-row text-[13px] data-[active=true]:font-normal [&>svg]:size-3.5 [&>svg]:text-muted-foreground";
-
 function NavRow({ item, list, index, ids }: { item: NavItem; list: NavList; index: number; ids: string[] }) {
   const over = useDrag((s) => s.over);
   const dragging = useDrag((s) => s.id === item.id);
   const before = over?.list === list && over.index === index;
   return (
-    <SidebarMenuItem {...dropProps(list, index, ids)} className="relative">
+    <SidebarMenuItem {...dropProps(list, index, ids)}>
       {before && <span className="pointer-events-none absolute inset-x-2 -top-px h-0.5 rounded-full bg-ring" />}
       <ContextRow items={() => navItemActions(item.id, list, ids)}>
-        <SidebarMenuButton size="sm" data-testid={`nav-${item.id}`} isActive={item.active} aria-current={item.active ? "page" : undefined} onClick={item.go} {...dragProps(item.id)} className={cn(rowClass, dragging && "opacity-40")}>
+        <SidebarMenuButton size="sm" density="row" dim={dragging} data-testid={`nav-${item.id}`} isActive={item.active} aria-current={item.active ? "page" : undefined} onClick={item.go} {...dragProps(item.id)}>
           {item.icon}
           <span>{item.label}</span>
         </SidebarMenuButton>
@@ -214,20 +212,16 @@ export function Nav() {
   const loud = more.find((n) => n.badge?.loud);
   return (
     <div>
-      <SidebarMenu className="gap-px" {...dropProps("pinned", pinned.length, ids)}>
+      <SidebarMenu gap="tight" {...dropProps("pinned", pinned.length, ids)}>
         {pinned.map((item, i) => (
           <NavRow key={item.id} item={item} list="pinned" index={i} ids={ids} />
         ))}
         {pinned.length === 0 && <li className="px-2 py-1 text-muted-foreground text-xs">Drag places here to pin them.</li>}
-        <SidebarMenuItem {...dropProps("more", more.length, ids)} className="relative">
+        <SidebarMenuItem {...dropProps("more", more.length, ids)}>
           <Menu>
             <MenuTrigger
               render={
-                <SidebarMenuButton
-                  size="sm"
-                  isActive={!!here}
-                  className={cn(rowClass, "data-popup-open:bg-sidebar-accent", dragging && over?.list === "more" && "bg-sidebar-accent ring-1 ring-ring")}
-                />
+                <SidebarMenuButton size="sm" density="row" isActive={!!here} hot={dragging && over?.list === "more"} />
               }
             >
               <EllipsisIcon />
