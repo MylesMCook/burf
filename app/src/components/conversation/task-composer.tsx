@@ -754,19 +754,19 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           hint={noAgent && input.trim() ? <Resolved resolution={resolution} pending={pending} error={resolveError} /> : undefined}
         />
       }
-      summary={collapsible && <div className="flex min-w-0 items-center gap-1 px-1 pt-1">
+      summary={collapsible && <div className="flex min-w-0 items-center gap-1.5">
         <button
           type="button"
           data-testid="task-composer-summary"
           aria-expanded={expanded}
           aria-controls={pickersId}
           onClick={() => setPrefs({ taskComposerExpanded: !expanded })}
-          className="flex min-h-8 min-w-0 items-center gap-1 rounded-md px-2.5 py-1 text-left text-muted-foreground text-xs outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-muted-foreground text-xs outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span className="sr-only">{summary}</span>
           <ChevronDownIcon aria-hidden className={cn("size-3.5 shrink-0 opacity-72 transition-transform", expanded && "rotate-180")} />
+          <span className="min-w-0">{summary}</span>
         </button>
-        {!expanded && <span className="ml-auto flex shrink-0"><SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
+        {!expanded && <SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} />}
       </div>}
       options={!collapsible && options}
       notice={
