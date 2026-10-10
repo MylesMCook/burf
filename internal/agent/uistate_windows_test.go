@@ -6,6 +6,35 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+func uiStateTestDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sd, err := windows.GetNamedSecurityInfo(dir, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sd == nil {
+		t.Fatal("test directory has no security descriptor")
+	}
+	owner, _, err := sd.Owner()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if owner.Equals(user.User.Sid) {
+		return dir
+	}
+	// Elevated CI can give temporary directories a group owner. The fixture
+	// models the account-owned client directory required by the state reader.
+	if err := windows.SetNamedSecurityInfo(dir, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION, user.User.Sid, nil, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 func TestClientUIStateWindowsACLRefusesOtherAccounts(t *testing.T) {
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil {
