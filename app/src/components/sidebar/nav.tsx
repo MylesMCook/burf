@@ -275,12 +275,12 @@ export function CustomizeSidebarSheet() {
   ];
   return (
     <Sheet open={open} onOpenChange={(o) => useCustomize.setState({ open: o })}>
-      <SheetPopup className="sm:max-w-sm">
+      <SheetPopup width="sm">
         <SheetHeader>
           <SheetTitle>Customize sidebar</SheetTitle>
           <SheetDescription>Drag places between lists, or use the buttons. Right-click a place in the sidebar for the same choices.</SheetDescription>
         </SheetHeader>
-        <SheetPanel className="flex flex-col gap-5">
+        <SheetPanel stack={5}>
           {lists.map(([list, title, items, hint]) => (
             <section key={list} {...dropProps(list, items.length, ids)}>
               <h3 className="font-medium text-sm">{title}</h3>

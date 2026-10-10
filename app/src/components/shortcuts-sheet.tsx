@@ -26,7 +26,7 @@ export function ShortcutsSheet() {
     <Sheet open={open} onOpenChange={(o) => useShortcutsSheet.setState({ open: o })}>
       {/* The zoom HUD (⌘+, ⌘−, ⌘0) lives with the sheet that lists those keys. */}
       <ZoomHud />
-      <SheetPopup className="sm:max-w-sm">
+      <SheetPopup width="sm">
         <SheetHeader>
           <SheetTitle>Keyboard shortcuts</SheetTitle>
           <SheetDescription>
@@ -40,7 +40,7 @@ export function ShortcutsSheet() {
             )}
           </SheetDescription>
         </SheetHeader>
-        <SheetPanel className="flex flex-col gap-4">
+        <SheetPanel stack={4}>
           {SHORTCUT_GROUPS.map((group) => (
             <section key={group} aria-label={group}>
               <h3 className="mb-1 font-medium text-muted-foreground text-xs">{group}</h3>

@@ -43,7 +43,7 @@ export function QueueIndicator() {
           Queued ({items.length})
         </PopoverTrigger>
       </Tip>
-      <PopoverPopup initialFocus={list} side="top" align="start" sideOffset={6} className="w-[26rem] p-0 [&_[data-slot=popover-viewport]]:p-0">
+      <PopoverPopup initialFocus={list} side="top" align="start" sideOffset={6} flush width="26">
         <QueuePanel items={items} list={list} />
       </PopoverPopup>
     </Popover>

@@ -91,11 +91,11 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete,
 
   return (
     <Sheet open={!!row} onOpenChange={(o) => !o && onClose()}>
-      <SheetPopup className="w-[clamp(20rem,calc(100vw-46rem),45rem)] max-w-none">
+      <SheetPopup width="history">
         {row && (
           <>
-            <SheetHeader className="gap-1.5">
-              <SheetTitle className="flex items-center gap-2 text-base">
+            <SheetHeader pad="tight">
+              <SheetTitle row size="base">
                 {row.main ? row.location : row.name}
                 {row.paused && (
                   <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/12 px-1.5 py-px font-normal text-[11px] text-warning-foreground">
@@ -104,7 +104,7 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete,
                   </span>
                 )}
               </SheetTitle>
-              <SheetDescription render={<div />} className="space-y-1">
+              <SheetDescription render={<div />} stack>
                 <ProjectLabel box={row.box} scope={`repo:${row.location}`} className="text-xs" />
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                   {row.branch && <code className="font-mono">{row.branch}</code>}
@@ -198,7 +198,7 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete,
               )}
             </div>
 
-            <SheetPanel className="@container pt-2">
+            <SheetPanel container padTop>
               {error ? (
                 <p className="pt-2 text-destructive-foreground text-sm">{error}</p>
               ) : !log ? (
@@ -307,7 +307,7 @@ function CommitRow({
           <span className="hidden w-28 shrink-0 truncate text-muted-foreground text-xs @lg:block">{c.author}</span>
           <span className="w-12 shrink-0 text-right text-muted-foreground text-xs tabular-nums">{ago(c.time)}</span>
         </PopoverTrigger>
-        <PopoverPopup side="bottom" align="start" sideOffset={2} className="w-[min(28rem,var(--available-width))]" style={vars}>
+        <PopoverPopup side="bottom" align="start" sideOffset={2} style={vars} width="fit">
           {open && <CommitDetails row={row} base={base} branch={branch} mergeBase={mergeBase} where={where} />}
         </PopoverPopup>
       </Popover>

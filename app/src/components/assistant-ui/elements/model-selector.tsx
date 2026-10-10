@@ -423,7 +423,6 @@ function ModelSelectorFocusAnchor() {
 }
 
 function ModelSelectorContent({
-  className,
   align = "start",
   side,
   sideOffset = 6,
@@ -443,10 +442,8 @@ function ModelSelectorContent({
       align={align}
       side={renderedSide ?? side ?? "bottom"}
       sideOffset={sideOffset}
-      className={cn(
-        "bg-popover w-72 min-w-(--anchor-width) overflow-hidden rounded-xl p-0",
-        className,
-      )}
+      flush
+      width="72"
       {...props}
     >
       <Command
@@ -672,7 +669,6 @@ export type ModelSelectorProps = Omit<ModelSelectorRootProps, "children"> &
      * trigger sits at the right edge of its container. */
     align?: ModelSelectorContentProps["align"];
     className?: string;
-    contentClassName?: string;
   };
 
 export {

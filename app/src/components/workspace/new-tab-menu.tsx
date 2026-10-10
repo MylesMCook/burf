@@ -157,7 +157,7 @@ export function NewTabMenu() {
           <PlusIcon className="size-4" />
         </PopoverTrigger>
       </Tip>
-      <PopoverPopup aria-label="New tab" align="start" sideOffset={2} className="w-88 p-0 [&_[data-slot=popover-viewport]]:p-0">
+      <PopoverPopup aria-label="New tab" align="start" sideOffset={2} flush width="88">
         <Command items={groups} value={query} onValueChange={setQuery} itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""} ${(i as Item).search ?? ""}`}>
           <CommandInput aria-label="Search open tabs, history and URLs" placeholder="Search open tabs, history and URLs…" className="text-sm" />
           <CommandSeparator className="my-0" />

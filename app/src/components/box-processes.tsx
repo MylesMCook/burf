@@ -91,7 +91,7 @@ export function BoxMeter({ box, mem, route, className }: { box: string; mem: { u
       <Tip label={`${tip}. Click for its browsers and sessions`}>
         <PopoverTrigger render={<button type="button" data-testid={`box-meter-${box}`} className={cls} />}>{body}</PopoverTrigger>
       </Tip>
-      <PopoverPopup side="top" align="end" sideOffset={6} className="w-[32rem] max-w-[calc(100vw-2rem)] p-0 [&_[data-slot=popover-viewport]]:p-0">
+      <PopoverPopup side="top" align="end" sideOffset={6} flush width="32">
         <BoxProcessesPopover box={box} mem={mem} on={open} onSettings={() => setOpen(false)} />
       </PopoverPopup>
     </Popover>

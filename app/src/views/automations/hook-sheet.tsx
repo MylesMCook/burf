@@ -74,12 +74,12 @@ export function HookSheet({ editing, onSave, onClose }: { editing?: Editing; onS
 
   return (
     <Sheet open={!!editing} onOpenChange={(open) => !open && onClose()}>
-      <SheetPopup className="w-[min(512px,100vw)] max-w-none">
+      <SheetPopup width="512">
         <SheetHeader>
           <SheetTitle>{isNew ? "New hook" : "Edit hook"}</SheetTitle>
           <SheetDescription>Runs on {machine === LAPTOP ? "this laptop" : machine}.</SheetDescription>
         </SheetHeader>
-        <SheetPanel className="space-y-5">
+        <SheetPanel stack={5}>
           <section>
             <Label>When</Label>
             <EventPicker machine={machine} value={hook.on} onChange={(on) => setHook({ ...hook, on })} />

@@ -385,14 +385,14 @@ export function NotificationCenter() {
     <Sheet open={open} onOpenChange={setNotificationsOpen}>
       <SheetPopup
         variant="inset"
-        className="outline-none sm:h-auto sm:max-h-[calc(100%-26px)] sm:max-w-[420px] sm:self-start"
+        tone="notices"
         showCloseButton={false}
         initialFocus={panel}
         data-notification-center=""
         onKeyDown={onKeyDown}
       >
         <div ref={panel} tabIndex={-1} className="flex h-12 shrink-0 items-center gap-1 border-b pr-2 pl-4 outline-none">
-          <SheetTitle className="mr-1 font-semibold text-sm">Notifications</SheetTitle>
+          <SheetTitle size="sm">Notifications</SheetTitle>
           {notes.length > 0 && (
             <Menu>
               <MenuTrigger

@@ -85,7 +85,6 @@ const ModelSelectorImpl = ({
   size,
   align,
   className,
-  contentClassName,
   triggerProps, tooltip, effortLabel, effortDisabled,
   ...rootProps
 }: ModelSelectorProps & { triggerProps?: ModelSelectorTriggerProps; tooltip?: string; effortLabel?: string; effortDisabled?: boolean }) => {
@@ -102,7 +101,6 @@ const ModelSelectorImpl = ({
       /></span></Tip>
       <ModelSelectorContent
         {...(align !== undefined ? { align } : {})}
-        className={contentClassName}
         searchable={searchable ?? false}
       >
         {searchable && <ModelSelectorSearch />}
