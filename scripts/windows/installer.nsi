@@ -1,4 +1,5 @@
 Unicode true
+SetCompressor /SOLID lzma
 !include MUI2.nsh
 !include LogicLib.nsh
 !include StrFunc.nsh
@@ -11,7 +12,6 @@ OutFile "@OUTPUT@"
 InstallDir "$LOCALAPPDATA\Burf"
 InstallDirRegKey HKCU "Software\berth\Burf" ""
 RequestExecutionLevel user
-SetCompressor /SOLID lzma
 VIProductVersion "${VERSION}.0"
 VIAddVersionKey /LANG=1033 "ProductName" "Burf"
 VIAddVersionKey /LANG=1033 "ProductVersion" "${VERSION}"
