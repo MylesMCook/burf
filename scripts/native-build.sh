@@ -78,7 +78,10 @@ if [ "$platform" = darwin ]; then
   if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
     for binary in "$executables/burf-cli" "$resources/berthd" "$executables/Burf"; do codesign --force --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$binary"; done
     codesign --force --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$bundle"
-  else codesign --force --deep --sign - "$bundle"; fi
+  else
+    for binary in "$executables/burf-cli" "$resources/berthd" "$executables/Burf"; do codesign --force --options runtime --sign - "$binary"; done
+    codesign --force --options runtime --sign - "$bundle"
+  fi
   codesign --verify --deep --strict "$bundle"
   dmg_stage="$(mktemp -d "$out/.dmg-XXXXXX")"
   trap 'rm -rf "$dmg_stage"' EXIT
