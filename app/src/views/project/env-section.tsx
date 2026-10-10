@@ -403,9 +403,9 @@ function CommittedRef({ value, box }: { value: string; box: string }) {
     <div className={sx(paint.s14)}>
       <div className={sx(paint.s15)}>
         {problem ? <ProblemMark broken /> : <RefMark />}
-        <code className={sx(paint.s16)} title={value}>
-          {value}
-        </code>
+        <Tip label={value} width="lg">
+          <code className={sx(paint.s16)}>{value}</code>
+        </Tip>
         {!problem && <SecretTestButton box={box} t={t} />}
       </div>
       <RefNotes problem={problem} broken t={t} />
@@ -460,17 +460,17 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
             const source = mine ? (inRepo ? "override" : "box") : "repo";
             return (
               <div key={k} className={[sx(paint.s21), [sx(paint.s41), "group"].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
-                <code className={sx(paint.s22)} title={k}>
-                  {k}
-                </code>
+                <Tip label={k} width="lg">
+                  <code className={sx(paint.s22)}>{k}</code>
+                </Tip>
                 {mine ? (
                   <SecretInput name={k} value={own[k]} onChange={(v) => put(k, v)} box={box} />
                 ) : isSecretRef(committed[k]) ? (
                   <CommittedRef value={committed[k]} box={box} />
                 ) : (
-                  <code className={sx(paint.s23)} title={committed[k]}>
-                    {committed[k]}
-                  </code>
+                  <Tip label={committed[k]} width="lg">
+                    <code className={sx(paint.s23)}>{committed[k]}</code>
+                  </Tip>
                 )}
                 <SourceBadge source={source} box={box} />
                 <span className={sx(paint.s24)}>

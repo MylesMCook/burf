@@ -18,6 +18,9 @@ import {
   Skeleton,
   Spinner,
   Textarea,
+  Tooltip,
+  TooltipPopup,
+  TooltipTrigger,
 } from "@berth/plugin/ui";
 import { useEffect, useState } from "react";
 
@@ -688,7 +691,12 @@ function StepIcon({ step }: { step?: Step }) {
 function StepNote({ step, pending }: { step?: Step; pending?: string }) {
   const text = !step ? pending : step.state === "working" ? step.what : step.state === "started" ? step.worktree : step.state === "skipped" || step.state === "failed" ? step.why : undefined;
   if (!text) return null;
-  return <span className={[sx(paint.s41), step?.state === "failed" ? sx(paint.s42) : sx(paint.s43), step?.state === "started" && sx(paint.s44)].filter(Boolean).join(" ")} title={text}>{text}</span>;
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<span className={[sx(paint.s41), step?.state === "failed" ? sx(paint.s42) : sx(paint.s43), step?.state === "started" && sx(paint.s44)].filter(Boolean).join(" ")}>{text}</span>} />
+      <TooltipPopup width="lg">{text}</TooltipPopup>
+    </Tooltip>
+  );
 }
 
 function summary(steps: Step[]) {

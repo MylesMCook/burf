@@ -440,9 +440,9 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
       <div className={sx(paint.s1)}>
         <div ref={list} onKeyDown={onKeyDown} className={sx(paint.s2)}>
           <header className={sx(paint.s3)}>
-            <h1 className={sx(paint.s4)} title={name}>
-              {name}
-            </h1>
+            <Tip label={name} width="lg">
+              <h1 className={sx(paint.s4)}>{name}</h1>
+            </Tip>
             <div className={sx(paint.s5)}>
               {branch && (
                 <Tip label={middle(branch) !== branch ? branch : undefined}>

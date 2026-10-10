@@ -362,7 +362,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
       </div> : undefined;
   return <div data-testid={transport.testId} className={sx(paint.s5)}>
     {!transport.readOnly && <header className={sx(paint.s6)}>
-      <span className={sx(paint.s7)} title={session.cwd}>{named ?? session.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? session.cwd}</span>
+      <Tip label={session.cwd} width="lg"><span className={sx(paint.s7)}>{named ?? session.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? session.cwd}</span></Tip>
       <span role="status" className={sx(paint.s8)}>{offline ? "Disconnected" : chat?.state === "waiting" ? chat.approvals.length ? `Waiting for approval (${chat.approvals.length})` : "Waiting for your answer" : running ? "Working" : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span>
       <div className={sx(paint.s9)}>
         <WorktreeArtChip wt={artifacts} className={sx(paint.s10)} />

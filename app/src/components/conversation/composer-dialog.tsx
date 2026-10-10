@@ -421,9 +421,9 @@ function ResultRow({ row, onQueue }: { row: RunRow; onQueue(): void }) {
       {row.tail && row.tail.length > 0 && (
         <div className={sx(paint.s31)}>
           {row.tail.map((l, i) => (
-            <div key={i} className={sx(paint.s32)} title={l}>
-              {l}
-            </div>
+            <Tip key={i} label={l} width="lg">
+              <div className={sx(paint.s32)}>{l}</div>
+            </Tip>
           ))}
         </div>
       )}

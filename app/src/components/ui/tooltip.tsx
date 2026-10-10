@@ -43,6 +43,7 @@ const styles = stylex.create({
     width: "100%",
     height: "100%",
     overflow: "clip",
+    overflowWrap: "anywhere",
     paddingTop: 4,
     paddingBottom: 4,
     paddingLeft: 8,

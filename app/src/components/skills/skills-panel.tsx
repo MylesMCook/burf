@@ -3,6 +3,7 @@ import { BookOpenIcon, CheckIcon, ArrowUpCircleIcon, Trash2Icon } from "lucide-r
 import { useCallback, useEffect, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Card, CardFrameAction, CardFrameDescription, CardFrameFooter, CardFrameHeader, CardFrameTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
@@ -295,9 +296,9 @@ export function SkillsPanel({ box, location, hideTitle }: { box: string; locatio
                 <span className={sx(paint.s10)}>{s.name}</span>
                 <span className={sx(paint.s11)}>{s.version.slice(0, 7)}</span>
               </div>
-              <p className={sx(paint.s12)} title={s.description}>
-                {skillSummary(s)}
-              </p>
+              <Tip label={s.description || undefined} width="lg">
+                <p className={sx(paint.s12)}>{skillSummary(s)}</p>
+              </Tip>
             </div>
             {(["claude", "codex"] as const).map((a) => {
               const key = `${s.name}:${a}`;
@@ -318,9 +319,9 @@ export function SkillsPanel({ box, location, hideTitle }: { box: string; locatio
       </div>
 
       <CardFrameFooter bar>
-        <span className={sx(paint.s13)} title={dirs ? `${dirs.claude}\n${dirs.codex}` : undefined}>
-          {dirs ? `${shortDir(dirs.claude)} · ${shortDir(dirs.codex)}` : " "}
-        </span>
+        <Tip label={dirs ? <>{dirs.claude}<br />{dirs.codex}</> : undefined} width="lg">
+          <span className={sx(paint.s13)}>{dirs ? `${shortDir(dirs.claude)} · ${shortDir(dirs.codex)}` : " "}</span>
+        </Tip>
         {target === "project" && (
           <label className={sx(paint.s14)}>
             <Switch checked={commit} onCheckedChange={setCommit} />

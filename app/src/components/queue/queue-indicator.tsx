@@ -381,9 +381,9 @@ function Row({ it, online }: { it: QueueItem; online: boolean }) {
         </Tip>
         <span className={sx(paint.s23)}>{ago(it.created)}</span>
       </div>
-      <p className={sx(paint.s24)} title={it.text}>
-        {preview(it.text, 240)}
-      </p>
+      <Tip label={it.text} width="lg">
+        <p className={sx(paint.s24)}>{preview(it.text, 240)}</p>
+      </Tip>
       {/* The agent's errors name the session by id; say it as the row does. */}
       {it.error && <p className={sx(paint.s25)}>{it.error.split(it.session).join(targetName(it.box, it.session))}</p>}
       <div className={sx(paint.s26)}>

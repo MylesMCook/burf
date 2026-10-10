@@ -1074,9 +1074,9 @@ export function NotificationCenter() {
 
         {error && (
           <div className={sx(paint.s23)}>
-            <span className={sx(paint.s24)} title={error}>
-              Not saved: the Burf agent did not take the history.
-            </span>
+            <Tip label={error} width="lg">
+              <span className={sx(paint.s24)}>Not saved: the Burf agent did not take the history.</span>
+            </Tip>
           </div>
         )}
       </SheetPopup>
@@ -1188,9 +1188,9 @@ function Row({
           </div>
           {(line || label) && (
             <div className={sx(paint.s51)}>
-              <span className={sx(paint.s52)} title={line}>
-                {line}
-              </span>
+              <Tip label={line || undefined} width="lg">
+                <span className={sx(paint.s52)}>{line}</span>
+              </Tip>
               {label && (
                 <button
                   type="button"

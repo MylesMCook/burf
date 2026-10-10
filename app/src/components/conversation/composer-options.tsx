@@ -227,9 +227,9 @@ export function WorktreeOptions({
         {scripts?.setup ? (
           <span className={cls(styles.noteText)}>
             <span>Setup script {scripts.from === "repo" ? "from .berth/config.json" : "set on this project"}, runs after creating</span>
-            <code className={cls(styles.code)} title={scripts.setup}>
-              {scripts.setup}
-            </code>
+            <Tip label={scripts.setup} width="lg">
+              <code className={cls(styles.code)}>{scripts.setup}</code>
+            </Tip>
           </span>
         ) : (
           <span>No setup script. One in the repository's .berth/config.json runs in every new worktree.</span>

@@ -360,16 +360,16 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
           {where?.worktree.branch && where.worktree.branch !== place && <span className={sx(paint.s14)}> · {where.worktree.branch}</span>}
         </div>
         {prompt && (!work || !prompt.startsWith(work.replace(/…$/, ""))) && (
-          <div className={sx(paint.s15)} title={prompt}>
-            “{prompt}”
-          </div>
+          <Tip label={prompt} width="lg">
+            <div className={sx(paint.s15)}>“{prompt}”</div>
+          </Tip>
         )}
         {lines && lines.length > 0 && state !== "ready" && (
           <div className={[sx(paint.s16), state === "waiting" ? sx(paint.s17) : sx(paint.s18)].filter(Boolean).join(" ")}>
             {lines.map((l, i) => (
-              <div key={i} className={sx(paint.s19)} title={l}>
-                {l}
-              </div>
+              <Tip key={i} label={l} width="lg">
+                <div className={sx(paint.s19)}>{l}</div>
+              </Tip>
             ))}
           </div>
         )}

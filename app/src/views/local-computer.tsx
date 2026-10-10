@@ -414,13 +414,13 @@ export function LocalComputerView() {
         <div className={sx(paint.s7)}><Input aria-label="Search local conversations" placeholder="Search conversations" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         {!!local?.sessions?.length && <section className={sx(paint.s8)}>
           <h2 className={sx(paint.s9)}>Started in Burf</h2>
-          {local.sessions.map((s) => <button key={s.id} type="button" onClick={() => select({ kind: "session", session: s })} className={[sx(paint.s10), selection?.kind === "session" && selection.session.id === s.id && sx(paint.s11)].filter(Boolean).join(" ")}>
-            {s.mode === "chat" ? <MessageSquareIcon className={sx(paint.s12)} /> : <TerminalIcon className={sx(paint.s13)} />}<span className={sx(paint.s14)}><span className={sx(paint.s15)}>{localAgentName(s.agent)}</span><span className={sx(paint.s16)} title={s.cwd}>{s.cwd}</span></span><span className={sx(paint.s17)}>{s.state}</span>
-          </button>)}
+          {local.sessions.map((s) => <Tip key={s.id} label={s.cwd} width="lg"><button type="button" onClick={() => select({ kind: "session", session: s })} className={[sx(paint.s10), selection?.kind === "session" && selection.session.id === s.id && sx(paint.s11)].filter(Boolean).join(" ")}>
+            {s.mode === "chat" ? <MessageSquareIcon className={sx(paint.s12)} /> : <TerminalIcon className={sx(paint.s13)} />}<span className={sx(paint.s14)}><span className={sx(paint.s15)}>{localAgentName(s.agent)}</span><span className={sx(paint.s16)}>{s.cwd}</span></span><span className={sx(paint.s17)}>{s.state}</span>
+          </button></Tip>)}
         </section>}
         <h2 className={sx(paint.s18)}>Existing conversations</h2>
         {projects.map(([cwd, chats]) => <section key={cwd} className={sx(paint.s19)}>
-          <h3 className={sx(paint.s20)}><FolderIcon className={sx(paint.s21)} /><span className={sx(paint.s22)} title={cwd}>{cwd || "Unknown project"}</span></h3>
+          <h3 className={sx(paint.s20)}><FolderIcon className={sx(paint.s21)} /><Tip label={cwd || undefined} width="lg"><span className={sx(paint.s22)}>{cwd || "Unknown project"}</span></Tip></h3>
           {chats.map((c) => <button type="button" key={c.id} onClick={() => select({ kind: "history", conversation: c })} className={[sx(paint.s23), selection?.kind === "history" && selection.conversation.id === c.id && sx(paint.s24)].filter(Boolean).join(" ")}>
             <MessageSquareIcon className={sx(paint.s25)} /><span className={sx(paint.s26)}><span className={sx(paint.s27)}>{c.title || "Untitled conversation"}</span><span className={sx(paint.s28)}>{localAgentName(c.source)} <time dateTime={c.updated_at}>{new Date(c.updated_at).toLocaleDateString()}</time></span></span>
           </button>)}
@@ -484,7 +484,7 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
     };
   }, [conversation, messages, loading, page, before, load]);
   return <>
-    <div className={sx(paint.s34)}><h2 className={sx(paint.s35)} title={conversation.title}>{conversation.title}</h2><span className={sx(paint.s36)}>Read-only</span></div>
+    <div className={sx(paint.s34)}><Tip label={conversation.title || undefined} width="lg"><h2 className={sx(paint.s35)}>{conversation.title}</h2></Tip><span className={sx(paint.s36)}>Read-only</span></div>
     <div className={sx(paint.s37)}>
       <Tip label={canFork ? "Continue as a new chat; the original stays unchanged" : "Installed CLI does not support continuing a copy"}>
         <Button size="sm" variant="outline" disabled={!canContinue || starting} aria-describedby={continueReason ? "local-continue-reason" : undefined} onClick={async () => {

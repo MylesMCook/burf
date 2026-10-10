@@ -326,9 +326,9 @@ function HookRow({ hook, onEdit, onDelete }: { hook: Hook; onEdit(): void; onDel
         </div>
         <code className={sx(paint.s21)}>{hook.on}</code>
       </div>
-      <code className={sx(paint.s22)} title={hook.run}>
-        {hook.run}
-      </code>
+      <Tip label={hook.run} width="lg">
+        <code className={sx(paint.s22)}>{hook.run}</code>
+      </Tip>
       <div className={sx(paint.s23)}>
         {meta}
         {plugin && (

@@ -373,9 +373,9 @@ export function ZenSwitcher({ className }: { className?: string }) {
         ) : (
           <>
             {here.state ? <StateGlyph state={here.state} /> : <GitBranchIcon />}
-            <span className={sx(paint.s4)} title={here.place !== here.name ? here.place : undefined}>
-              {here.name}
-            </span>
+            <Tip label={here.place !== here.name ? here.place : undefined} width="lg">
+              <span className={sx(paint.s4)}>{here.name}</span>
+            </Tip>
             {/* Two worktrees on screen: whose pane this is, in its colour. */}
             <ZenPlace wsKey={here.key} name={here.name} />
             {here.agent && !placeTone && (

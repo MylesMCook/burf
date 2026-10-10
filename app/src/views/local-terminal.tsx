@@ -3,6 +3,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import { RotateCwIcon, SquareIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { useActiveTheme } from "@/hooks/use-theme";
 import { type Client } from "@/lib/api";
@@ -175,7 +176,7 @@ export function LocalTerminal({ client, session, onChange }: { client: Client; s
 
   return <>
     <div className={sx(paint.s0)}>
-      <h2 className={sx(paint.s1)}>{localAgentName(session.agent)}</h2><span className={sx(paint.s2)} title={session.cwd}>{session.cwd}</span><span className={sx(paint.s3)}>{session.state}</span>
+      <h2 className={sx(paint.s1)}>{localAgentName(session.agent)}</h2><Tip label={session.cwd} width="lg"><span className={sx(paint.s2)}>{session.cwd}</span></Tip><span className={sx(paint.s3)}>{session.state}</span>
       {session.state === "running" && <Button size="sm" variant="outline" disabled={stopping} onClick={async () => {
         setStopping(true); setError("");
         try { await localApi.stop(client, session.id); onChange({ ...session, state: "exited" }); }

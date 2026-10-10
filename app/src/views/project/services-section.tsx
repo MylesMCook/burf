@@ -260,9 +260,9 @@ export function ServicesSection({ repo, draft, setDraft, box, location, urlPort 
                 {mine ? (
                   <Input value={mine.run} onChange={(e) => update(name, { run: e.target.value })} placeholder="pnpm dev --port $BERTH_PORT" size="sm" mono text="xs" spellCheck={false} />
                 ) : (
-                  <code className={sx(paint.s8)} title={s.run}>
-                    {s.run}
-                  </code>
+                  <Tip label={s.run} width="lg">
+                    <code className={sx(paint.s8)}>{s.run}</code>
+                  </Tip>
                 )}
                 <Switch checked={!!s.autostart} disabled={!mine} onCheckedChange={(v) => update(name, { autostart: v })} aria-label={`Start ${name} with each new worktree`} />
                 {terminals && <Switch checked={!!s.terminal} disabled={!mine} onCheckedChange={(v) => update(name, { terminal: v })} aria-label={`Run ${name} in a terminal tab`} />}

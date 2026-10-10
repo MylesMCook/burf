@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { FileIcon, SlashIcon, SquareTerminalIcon, TerminalIcon } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
@@ -561,9 +562,9 @@ function PromptChip({ text, command, prefixes, who, side }: { text: string; comm
       className={[sx(paint.s25), side === "top" ? [sx(paint.s26), sx(paint.q32)].filter(Boolean).join(" ") : sx(paint.s27)].filter(Boolean).join(" ")}
     >
       <span className={sx(paint.s28)}>{icon}</span>
-      <span className={sx(paint.s29)} title={words}>
-        {words}
-      </span>
+      <Tip label={words} width="lg">
+        <span className={sx(paint.s29)}>{words}</span>
+      </Tip>
     </div>
   );
 }

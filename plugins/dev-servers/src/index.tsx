@@ -495,9 +495,10 @@ function ConfiguredRow({ item: c, berth, onChanged }: { item: Configured; berth:
     <li className={sx(paint.s23)}>
       <span className={[sx(paint.n0), running ? sx(paint.n1) : c.state === "failed" ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")} aria-label={c.state} />
       <span className={sx(paint.s26)}>{c.name}</span>
-      <span className={sx(paint.s27)} title={c.run}>
-        {c.run}
-      </span>
+      <Tooltip>
+        <TooltipTrigger render={<span className={sx(paint.s27)}>{c.run}</span>} />
+        <TooltipPopup width="lg">{c.run}</TooltipPopup>
+      </Tooltip>
       <span className={sx(paint.s28)}>{running ? "running, not listening yet" : c.state}</span>
       {running ? (
         <Button size="xs" variant="outline" loading={busy} onClick={() => void act("stop")}>
