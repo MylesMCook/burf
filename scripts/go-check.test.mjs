@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { checksFor } from "./go-check.mjs";
+import { checksFor, testFilterFor } from "./go-check.mjs";
 
 const exists = (path) => !path.endsWith("removed");
 test("changed packages stay in their owning Go module", () => {
@@ -27,4 +27,17 @@ test("manifest changes use quick module smoke checks rather than the local full 
 });
 test("non-Go paths do not select Go tests", () => {
   assert.deepEqual(checksFor(["app/src/App.tsx", "README.md"], exists), []);
+});
+test("chat-only box edits include routes, tools, reports, containment and upgrade guards", () => {
+  const filter = testFilterFor(".", "./internal/box", ["internal/box/chat.go", "internal/box/chatpresent_test.go"]);
+  const selected = new RegExp(filter);
+  for (const name of ["TestPresentationSocketOwnershipStrictInputAndOneUseReply", "TestChatStartingProcessPreventsUpgradeRace", "TestChatRoutesRejectUnpairedClients", "TestManyLongReportsGoAsSeveralMessagesAndNoneIsLost", "TestSwappingAFolderForALinkWhileTheWatchReadsNeverReadsOutside", "TestBrowserAnswersPassTheSendGate"]) {
+    assert.match(name, selected);
+  }
+  assert.doesNotMatch("TestGitHubLooksPickUpWhereTheLastOneRanOutOfCalls", selected);
+});
+test("other box changes and other packages retain their full package checks", () => {
+  assert.equal(testFilterFor(".", "./internal/box", ["internal/box/chat.go", "internal/box/locations.go"]), undefined);
+  assert.equal(testFilterFor(".", "./internal/box", ["internal/box/flowtriggers_test.go"]), undefined);
+  assert.equal(testFilterFor(".", "./internal/localchat", ["internal/localchat/manager.go"]), undefined);
 });
