@@ -1,5 +1,5 @@
 // Keep the build CLI beside the project's other generated tools, never global.
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,7 +28,9 @@ export function wails(args) {
     delete host.CGO_ENABLED;
     execFileSync(process.env.GO || "go", ["install", `github.com/wailsapp/wails/v3/cmd/wails3@${version}`], { cwd: root, env: host, stdio: "inherit" });
   }
-  const actual = execFileSync(executable, ["version"], { encoding: "utf8", env }).trim();
+  const reported = spawnSync(executable, ["version"], { encoding: "utf8", env, timeout: 10000 });
+  if (reported.error || reported.status !== 0) throw new Error("The Wails CLI version check failed.", { cause: reported.error });
+  const actual = (reported.stdout + reported.stderr).trim();
   if (actual !== version) throw new Error(`Wails CLI ${actual} does not match the pinned module ${version}.`);
   execFileSync(executable, args, { cwd: join(root, "app/native"), env, stdio: "inherit" });
 }
