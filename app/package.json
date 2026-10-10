@@ -68,6 +68,7 @@
     "d3-shape": "3.2.0",
     "diff": "9.0.0",
     "ghostty-web": "^0.4.0",
+    "katex": "0.16.47",
     "lucide-react": "^1.48.0",
     "micromark": "^4.0.3",
     "micromark-extension-gfm": "^3.0.0",
@@ -76,7 +77,9 @@
     "radix-ui": "^1.7.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

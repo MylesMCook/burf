@@ -1,7 +1,7 @@
 // Keep changed-package checks inside their owning Go module. Native builds
 // have their own module; root `./...` deliberately cannot reach it.
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { prepareNative } from "./native-prepare.mjs";
@@ -31,6 +31,18 @@ export function checksFor(paths, has = (path) => existsSync(join(root, path))) {
   }));
 }
 
+// Chat-only box edits reach the chat routes, owned tools and upgrade guards.
+// The unrelated worktree/flow/browser suites run on main, not before this push.
+export function testFilterFor(directory, pkg, paths) {
+  if (directory !== "." || pkg !== "./internal/box") return;
+  const boxPaths = paths.filter((path) => path.startsWith("internal/box/") && /\.go$/.test(path));
+  if (!boxPaths.length || !boxPaths.every((path) => /^internal\/box\/chat[^/]*\.go$/.test(path))) return;
+  const names = readdirSync(join(root, "internal/box"))
+    .filter((name) => /^chat.*_test\.go$/.test(name))
+    .flatMap((name) => [...readFileSync(join(root, "internal/box", name), "utf8").matchAll(/^func (Test\w+)\(t \*testing\.T\)/gm)].map((match) => match[1]));
+  if (names.length) return `^(${names.join("|")})$`;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const paths = readFileSync(0, "utf8").split("\n").filter(Boolean);
   const checks = checksFor(paths).filter(({ directory }) => !process.argv.includes("--root-only") || directory === ".");
@@ -40,6 +52,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const cwd = join(root, directory);
     console.log(`go (${directory}): vet and tests of ${packages.join(" ")}`);
     execFileSync("go", ["vet", ...packages], { cwd, stdio: "inherit" });
-    execFileSync("go", ["test", ...packages], { cwd, stdio: "inherit" });
+    const full = packages.filter((pkg) => !testFilterFor(directory, pkg, paths));
+    if (full.length) execFileSync("go", ["test", ...full], { cwd, stdio: "inherit" });
+    for (const pkg of packages) {
+      const filter = testFilterFor(directory, pkg, paths);
+      if (filter) execFileSync("go", ["test", "-run", filter, pkg], { cwd, stdio: "inherit" });
+    }
   }
 }

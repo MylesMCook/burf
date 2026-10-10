@@ -57,12 +57,15 @@ func (e rejection) Error() string   { return string(e) }
 func (e rejection) Is(t error) bool { return t == ErrRejected }
 
 type Item struct {
-	ID         string `json:"id"`
-	Kind       string `json:"kind"`
-	Text       string `json:"text"`
-	Status     string `json:"status,omitempty"`
-	Truncated  bool   `json:"truncated,omitempty"`
-	sourceType string
+	ID               string        `json:"id"`
+	Kind             string        `json:"kind"`
+	Text             string        `json:"text"`
+	Status           string        `json:"status,omitempty"`
+	Truncated        bool          `json:"truncated,omitempty"`
+	Presentation     *Presentation `json:"presentation,omitempty"`
+	Reasoning        bool          `json:"reasoning,omitempty"`
+	sourceType       string
+	reasoningSummary []string
 }
 type Approval struct {
 	ID             string   `json:"id"`
@@ -155,6 +158,7 @@ type running struct {
 	// waiting for the person's answer.
 	tools    bool
 	toolAsks map[string]chan bool
+	forms    map[string]pendingPresentation
 	// permission is what the running turn was started with. The session's
 	// own is only the last one the provider accepted, which a turn that is
 	// starting has not replaced yet.
@@ -416,6 +420,13 @@ func (r *running) snapshot() Session {
 	defer r.mu.Unlock()
 	s := r.session
 	s.Items = append([]Item{}, s.Items...)
+	for i := range s.Items {
+		s.Items[i].reasoningSummary = append([]string(nil), s.Items[i].reasoningSummary...)
+		if s.Items[i].Presentation != nil {
+			p := s.Items[i].Presentation.clone()
+			s.Items[i].Presentation = &p
+		}
+	}
 	s.Approvals = append([]Approval{}, s.Approvals...)
 	s.Permissions = append([]string(nil), s.Permissions...)
 	for i := range s.Approvals {
@@ -563,6 +574,11 @@ func (m *Manager) Interrupt(ctx context.Context, id string) error {
 }
 
 func (codexProvider) interrupt(ctx context.Context, r *running, s Session) error {
+	// Stop withdraws unanswered input before the protocol round trip. Its
+	// acknowledgement need not be followed immediately by turn/completed.
+	r.mu.Lock()
+	r.cancelForms()
+	r.mu.Unlock()
 	_, e := r.call(ctx, "turn/interrupt", map[string]string{"threadId": s.ThreadID, "turnId": s.TurnID})
 	if e != nil {
 		r.finish("Interrupt could not be confirmed; chat stopped.")
@@ -621,7 +637,7 @@ func (codexProvider) decide(r *running, approval, decision string) error {
 			break
 		}
 	}
-	if len(r.approvals)+len(r.toolAsks) == 0 {
+	if len(r.approvals)+len(r.toolAsks)+len(r.forms) == 0 {
 		r.session.State = "running"
 	}
 	result := map[string]any{"decision": value}
@@ -819,12 +835,16 @@ func clip(s string) string {
 func (r *running) put(it Item) {
 	for i, old := range r.session.Items {
 		if old.ID == it.ID {
+			if old.Presentation != nil && it.Presentation == nil {
+				return
+			}
 			r.session.Items[i] = it
 			r.trim()
 			return
 		}
 	}
 	if len(r.session.Items) >= maxItems {
+		r.settleForm(r.session.Items[0].ID, "cancelled", nil)
 		r.session.Items = r.session.Items[1:]
 		r.session.Truncated = true
 	}
@@ -835,10 +855,11 @@ func (r *running) put(it Item) {
 func (r *running) trim() {
 	bytes := 0
 	for _, it := range r.session.Items {
-		bytes += len(it.Text)
+		bytes += itemBytes(it)
 	}
 	for bytes > maxSnapshot && len(r.session.Items) > 1 {
-		bytes -= len(r.session.Items[0].Text)
+		r.settleForm(r.session.Items[0].ID, "cancelled", nil)
+		bytes -= itemBytes(r.session.Items[0])
 		r.session.Items = r.session.Items[1:]
 		r.session.Truncated = true
 	}
@@ -916,12 +937,13 @@ func (r *running) approval(p packet) {
 }
 func (r *running) event(p packet) {
 	var v struct {
-		ThreadID string       `json:"threadId"`
-		TurnID   string       `json:"turnId"`
-		ItemID   string       `json:"itemId"`
-		Delta    string       `json:"delta"`
-		Changes  []fileChange `json:"changes"`
-		Turn     struct {
+		ThreadID     string       `json:"threadId"`
+		TurnID       string       `json:"turnId"`
+		ItemID       string       `json:"itemId"`
+		Delta        string       `json:"delta"`
+		SummaryIndex *int         `json:"summaryIndex"`
+		Changes      []fileChange `json:"changes"`
+		Turn         struct {
 			ID     string `json:"id"`
 			Status string `json:"status"`
 			Error  *struct {
@@ -929,21 +951,20 @@ func (r *running) event(p packet) {
 			} `json:"error"`
 		} `json:"turn"`
 		Item struct {
-			ID       string `json:"id"`
-			ClientID string `json:"clientId"`
-			Type     string `json:"type"`
-			Text     string `json:"text"`
-			Command  string `json:"command"`
-			Status   string `json:"status"`
-			Output   string `json:"aggregatedOutput"`
-			Tool     string `json:"tool"`
-			Server   string `json:"server"`
-			Content  []struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
-			} `json:"content"`
-			Result *struct {
-				Content []struct {
+			ID       string          `json:"id"`
+			ClientID string          `json:"clientId"`
+			Type     string          `json:"type"`
+			Text     string          `json:"text"`
+			Summary  []string        `json:"summary"`
+			Command  string          `json:"command"`
+			Status   string          `json:"status"`
+			Output   string          `json:"aggregatedOutput"`
+			Tool     string          `json:"tool"`
+			Server   string          `json:"server"`
+			Content  json.RawMessage `json:"content"`
+			Result   *struct {
+				StructuredContent json.RawMessage `json:"structuredContent"`
+				Content           []struct {
 					Type string `json:"type"`
 					Text string `json:"text"`
 				} `json:"content"`
@@ -1008,11 +1029,37 @@ func (r *running) event(p packet) {
 		if v.TurnID != r.session.TurnID || v.Item.ID == "" {
 			return
 		}
+		// The owned socket publishes this validated result, including a pending
+		// form before MCP returns. Do not draw the provider's text wrapper twice.
+		if r.tools && v.Item.Type == "mcpToolCall" && v.Item.Server == ToolServer && v.Item.Tool == "burf_present" {
+			if p.Method == "item/started" {
+				return
+			}
+			if v.Item.Result != nil && v.Item.Error == nil && v.Item.Status != "failed" {
+				var result struct {
+					ID string `json:"id"`
+				}
+				if json.Unmarshal(v.Item.Result.StructuredContent, &result) == nil {
+					for _, item := range r.session.Items {
+						if item.ID == result.ID && item.Presentation != nil {
+							return
+						}
+					}
+				}
+			}
+		}
 		it := Item{ID: v.Item.ID, Status: v.Item.Status, sourceType: v.Item.Type}
 		switch v.Item.Type {
 		case "userMessage":
 			it.Kind = "user"
-			for _, c := range v.Item.Content {
+			var content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			}
+			if json.Unmarshal(v.Item.Content, &content) != nil {
+				return
+			}
+			for _, c := range content {
 				if c.Type == "text" {
 					it.Text += c.Text
 				}
@@ -1043,7 +1090,17 @@ func (r *running) event(p packet) {
 			it.Kind = "assistant"
 			it.Text = v.Item.Text
 		case "reasoning":
-			return
+			it.Kind, it.Reasoning = "assistant", true
+			it.reasoningSummary = publicSummary(v.Item.Summary)
+			if len(it.reasoningSummary) == 0 {
+				for _, old := range r.session.Items {
+					if old.ID == it.ID && old.Reasoning {
+						it.reasoningSummary = append([]string(nil), old.reasoningSummary...)
+						break
+					}
+				}
+			}
+			it.Text = strings.Join(it.reasoningSummary, "\n\n")
 		case "commandExecution":
 			it.Kind = "tool"
 			it.Text = v.Item.Command
@@ -1086,6 +1143,27 @@ func (r *running) event(p packet) {
 				}
 			}
 		}
+		r.put(it)
+	case "item/reasoning/summaryTextDelta":
+		if v.TurnID != r.session.TurnID || v.ItemID == "" || v.SummaryIndex == nil || *v.SummaryIndex < 0 || *v.SummaryIndex >= 256 {
+			return
+		}
+		it := Item{ID: v.ItemID, Kind: "assistant", Reasoning: true, Status: "inProgress", sourceType: "reasoning"}
+		for _, old := range r.session.Items {
+			if old.ID == v.ItemID {
+				if !old.Reasoning {
+					return
+				}
+				it = old
+				break
+			}
+		}
+		for len(it.reasoningSummary) <= *v.SummaryIndex {
+			it.reasoningSummary = append(it.reasoningSummary, "")
+		}
+		it.reasoningSummary[*v.SummaryIndex] = clip(it.reasoningSummary[*v.SummaryIndex] + v.Delta)
+		it.reasoningSummary = publicSummary(it.reasoningSummary)
+		it.Text = strings.Join(it.reasoningSummary, "\n\n")
 		r.put(it)
 	case "item/agentMessage/delta":
 		if v.TurnID != r.session.TurnID {

@@ -80,7 +80,7 @@ export interface LocalChat extends LocalSession {
   thread_id: string;
   turn_id?: string;
   // report: Burf's own message, what became of work the chat started (chat.tools).
-  items: { id: string; kind: "user" | "assistant" | "tool" | "report"; text: string; status?: string }[];
+  items: { id: string; kind: "user" | "assistant" | "tool" | "report"; text: string; status?: string; presentation?: unknown; reasoning?: boolean }[];
   // The work each report item tells of, by item id.
   reports?: Record<string, BerthReport[]>;
   // browser and tool: one of Burf's own tools asks before it acts.

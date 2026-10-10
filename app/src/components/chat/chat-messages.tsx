@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { MessagePrimitive, useAui, useAuiState, type ThreadMessageLike, type TextMessagePartProps } from "@assistant-ui/react";
-import { createContext, useContext, type PropsWithChildren, type ReactNode } from "react";
+import { createContext, Fragment, useContext, type PropsWithChildren, type ReactNode } from "react";
 
 import { AssistantMessage, UserMessage, type ThreadGroupPart } from "@/components/assistant-ui/elements/thread.aui";
 import { ToolGroupRoot, ToolGroupTrigger, ToolGroupContent } from "@/components/assistant-ui/elements/tool-group.aui";
@@ -51,7 +51,7 @@ const ExtrasContext = createContext<ChatExtras>({});
 const done = { type: "complete", reason: "stop" } as const;
 
 export function chatMessage(turn: ThreadTurn): ThreadMessageLike {
-  if (turn.role === "user") return { id: turn.id, role: "user", content: turn.parts.map((p) => ({ type: "text" as const, text: p.type === "text" ? p.text : p.command })) };
+  if (turn.role === "user") return { id: turn.id, role: "user", content: turn.parts.map((p) => ({ type: "text" as const, text: p.type === "tool" ? p.command : p.text })) };
   if (turn.role === "report") {
     const text = turn.parts.map((p) => (p.type === "text" ? p.text : "")).join("\n");
     return { id: turn.id, role: "assistant", content: [{ type: "text", text }], status: done, metadata: { custom: { report: turn.id, text } } };
@@ -61,8 +61,8 @@ export function chatMessage(turn: ThreadTurn): ThreadMessageLike {
     role: "assistant",
     status: turn.running ? { type: "running" } : done,
     content: turn.parts.map((p) =>
-      p.type === "text"
-        ? { type: "text" as const, text: p.text }
+      p.type !== "tool"
+        ? { type: p.type, text: p.text }
         : { type: "tool-call" as const, toolCallId: p.id, toolName: p.command, args: { command: p.command }, argsText: p.command, result: p.running ? undefined : p.output },
     ),
   };
@@ -80,7 +80,7 @@ function CallsWithArtifacts({ group, children }: PropsWithChildren<{ group: Thre
       </ToolGroupRoot>
       {group.indices.map((i) => {
         const part = parts[i];
-        return part?.type === "tool-call" ? extras.tool?.(part.toolCallId) : null;
+        return part?.type === "tool-call" ? <Fragment key={part.toolCallId}>{extras.tool?.(part.toolCallId)}</Fragment> : null;
       })}
     </>
   );

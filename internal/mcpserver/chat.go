@@ -49,6 +49,7 @@ var chatTools = []Tool{
 		"id":    str("an artifact's id, to update it instead of adding one"),
 		"note":  str("what changed in this version"),
 	}, "file"), call: artifactAdd},
+	{Name: "burf_present", Description: "Present typed chart, table or form data in this Burf chat. No file or artifact is needed. A form waits for one explicit answer, decline or cancellation; it grants no permission and must not request credentials. A terminal answer is final, never retry it automatically.", InputSchema: presentationSchema(), call: present},
 }
 
 // ServeChat serves one chat's tools on in and out until in ends.
@@ -67,7 +68,7 @@ func (s *Server) chatInstructions() string {
 	if s.Chat == "" {
 		return ""
 	}
-	return "You are in a Burf chat. To show the person a chart, table, diagram, notes or page, write the file and call berth_artifact_add. A tool that starts work or runs a command asks the person first; a refusal is final. "
+	return "You are in a Burf chat. For chart, table or form data in this chat, call burf_present. For files, diagrams, notes or pages, write the file and call berth_artifact_add. A tool that starts work or runs a command asks the person first; a refusal is final. "
 }
 
 // ask has the chat's person allow a tool that acts. Outside a chat there is

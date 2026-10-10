@@ -237,6 +237,9 @@ func (s *Server) handle(ctx context.Context, req request) (any, *rpcError) {
 				if text, ok := out.(plain); ok {
 					return map[string]any{"content": []any{map[string]any{"type": "text", "text": string(text)}}}, nil
 				}
+				if p, ok := out.(presentationResult); ok {
+					return map[string]any{"content": []any{map[string]any{"type": "text", "text": p.Text()}}, "structuredContent": p}, nil
+				}
 				b, _ := json.Marshal(out)
 				return map[string]any{"content": []any{map[string]any{"type": "text", "text": string(b)}}}, nil
 			}

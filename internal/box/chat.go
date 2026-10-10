@@ -229,6 +229,7 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 	})
 	b.mountChatBrowser(add)
 	b.mountChatTools(add)
+	b.mountChatPresent(add)
 }
 
 func (b *Box) startChat(w http.ResponseWriter, r *http.Request) error {
