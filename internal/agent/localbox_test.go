@@ -11,7 +11,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -276,20 +275,20 @@ func TestUseThisMacReusesABerthdTheInstallScriptInstalled(t *testing.T) {
 		t.Fatalf("did not pair with the installed berthd, in its home:\n%s", e.log(e.berthd))
 	}
 
-	// A newer release in the app upgrades that install in place, keeping
-	// where it listens.
+	// A newer release remains pending; reconnecting never installs over
+	// the running daemon or bypasses its own chat upgrade guard.
 	writeFile(t, e.bundled, fakeBerthd("v0.2.0"), 0o755)
 	_, body = uiSend(t, a, "POST", "/v1/boxes/local", tok, "")
 	lines, last = streamed(t, body)
 	all = strings.Join(lines, "\n")
-	if last.Error != "" || !strings.Contains(all, "Updating berthd at "+cliBerthd+" (v0.1.0 → v0.2.0)") {
-		t.Fatalf("upgrade: %s", body)
+	if last.Error != "" || !strings.Contains(all, "use Install bundled") {
+		t.Fatalf("pending update: %s", body)
 	}
-	if !strings.Contains(e.log(e.berthd), cliHome+"|install --keep-listen") || isFile(e.stable) {
-		t.Fatalf("upgrade ran:\n%s", e.log(e.berthd))
+	if strings.Contains(e.log(e.berthd), "|install ") || isFile(e.stable) {
+		t.Fatalf("reconnect changed the service:\n%s", e.log(e.berthd))
 	}
-	if same, _ := sameBuild(e.bundled, cliBerthd); !same {
-		t.Fatal("the install script's berthd was not upgraded")
+	if b, _ := os.ReadFile(cliBerthd); string(b) != fakeBerthd("v0.1.0") {
+		t.Fatal("reconnect replaced the install script's berthd")
 	}
 	// Removing it stops that service but never deletes the person's berthd.
 	_, body = uiSend(t, a, "POST", "/v1/boxes/local/uninstall", tok, `{"remove_data":false}`)
@@ -298,7 +297,96 @@ func TestUseThisMacReusesABerthdTheInstallScriptInstalled(t *testing.T) {
 	}
 }
 
-func TestUseThisMacMovesOffAPortSomethingElseTook(t *testing.T) {
+func TestUseThisMacReconnectKeepsTheOwnedDaemonAndReportsTheUpdate(t *testing.T) {
+	e := newLocalEnv(t)
+	installed := fakeBerthd("v0.1.0")
+	writeFile(t, e.stable, installed, 0o755)
+	writeFile(t, e.bundled, fakeBerthd("v0.2.0"), 0o755)
+	e.installUnit(e.stable, "127.0.0.1:7445", e.root)
+	writeFile(t, filepath.Join(e.root, "box", "serving"), "", 0o600)
+	beforeUnit, err := os.ReadFile(e.unit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := startAgent(t, e.dir)
+	_, body := uiSend(t, a, "POST", "/v1/boxes/local", uiToken(t, a), "")
+	lines, last := streamed(t, body)
+	if last.Error != "" || last.Box != localName() || !strings.Contains(strings.Join(lines, "\n"), "use Install bundled") {
+		t.Fatalf("reconnect did not report the pending update: %s", body)
+	}
+	if b, err := os.ReadFile(e.stable); err != nil || string(b) != installed {
+		t.Fatalf("reconnect replaced the owned daemon: %v", err)
+	}
+	if unit, err := os.ReadFile(e.unit); err != nil || string(unit) != string(beforeUnit) {
+		t.Fatalf("reconnect changed the service definition: %v", err)
+	}
+	if strings.Contains(e.log(e.berthd), "|install ") {
+		t.Fatalf("reconnect restarted the owned daemon: %s", e.log(e.berthd))
+	}
+}
+
+func TestFirstLocalBoxSetupChoosesAFreePort(t *testing.T) {
+	e := newLocalEnv(t)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	taken := ln.Addr().String()
+	a := startAgentConfig(t, e.dir, nil, func(cfg *Config) { cfg.LocalBoxPort = ln.Addr().(*net.TCPAddr).Port })
+	_, body := uiSend(t, a, "POST", "/v1/boxes/local", uiToken(t, a), "")
+	_, last := streamed(t, body)
+	unit, have, err := service.Read(service.BerthdName())
+	if last.Error != "" || err != nil || !have || unit.Arg("--listen") == taken || !loopback(unit.Arg("--listen")) {
+		t.Fatalf("first setup did not choose a free loopback port: %s\n%+v, %v", body, unit, err)
+	}
+}
+
+func TestUseThisMacDoesNotReplaceAMissingInstalledProgram(t *testing.T) {
+	e := newLocalEnv(t)
+	e.installUnit(e.stable, "127.0.0.1:7445", e.root)
+	a := startAgent(t, e.dir)
+	_, body := uiSend(t, a, "POST", "/v1/boxes/local", uiToken(t, a), "")
+	_, last := streamed(t, body)
+	if !strings.Contains(last.Error, "is missing") || !strings.Contains(last.Error, "service was left unchanged") {
+		t.Fatalf("missing installed program was not reported safely: %s", body)
+	}
+	if isFile(e.stable) || strings.Contains(e.log(e.berthd), "|install ") {
+		t.Fatal("reconnect replaced a missing installed program or restarted its service")
+	}
+}
+
+func TestUseThisMacDoesNotTreatAnUnreadableServiceAsFirstSetup(t *testing.T) {
+	e := newLocalEnv(t)
+	if err := os.MkdirAll(e.unit, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	a := startAgent(t, e.dir)
+	_, body := uiSend(t, a, "POST", "/v1/boxes/local", uiToken(t, a), "")
+	_, last := streamed(t, body)
+	if !strings.Contains(last.Error, "cannot be read") || !strings.Contains(last.Error, "left unchanged") {
+		t.Fatalf("unreadable installed service was not reported safely: %s", body)
+	}
+	if isFile(e.stable) || strings.Contains(e.log(e.berthd), "|install ") {
+		t.Fatal("reconnect copied a daemon or restarted an unreadable existing service")
+	}
+}
+
+func TestFirstLocalBoxSetupDoesNotInstallOverAnUnmanagedRunningDaemon(t *testing.T) {
+	e := newLocalEnv(t)
+	writeFile(t, filepath.Join(e.root, "box", "serving"), "", 0o600)
+	a := startAgent(t, e.dir)
+	_, body := uiSend(t, a, "POST", "/v1/boxes/local", uiToken(t, a), "")
+	_, last := streamed(t, body)
+	if !strings.Contains(last.Error, "already running without an installed service") || !strings.Contains(last.Error, "stop it explicitly") {
+		t.Fatalf("unmanaged running daemon was not preserved: %s", body)
+	}
+	if isFile(e.stable) || isFile(e.unit) || strings.Contains(e.log(e.berthd), "|install ") {
+		t.Fatal("first setup replaced an unmanaged running daemon")
+	}
+}
+
+func TestUseThisMacLeavesAnUnreachableServiceForExplicitRepair(t *testing.T) {
 	e := newLocalEnv(t)
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -312,10 +400,16 @@ func TestUseThisMacMovesOffAPortSomethingElseTook(t *testing.T) {
 	a := startAgent(t, e.dir)
 	tok := uiToken(t, a)
 	_, body := uiSend(t, a, "POST", "/v1/boxes/local", tok, "")
-	lines, last := streamed(t, body)
+	_, last := streamed(t, body)
 	unit, _, _ := service.Read(service.BerthdName())
-	if last.Error != "" || !strings.Contains(strings.Join(lines, "\n"), "Something else is using "+taken) || unit.Arg("--listen") == taken || !loopback(unit.Arg("--listen")) {
-		t.Fatalf("set up: %s\nlistens on %s", body, unit.Arg("--listen"))
+	if !strings.Contains(last.Error, "installed but not reachable") || !strings.Contains(last.Error, "install --keep-listen --no-tools") || unit.Arg("--listen") != taken {
+		t.Fatalf("repair guidance: %s\nlistens on %s", body, unit.Arg("--listen"))
+	}
+	if strings.Contains(e.log(e.berthd), "|install ") || strings.Contains(e.log(e.berth), "|pair ") {
+		t.Fatalf("reconnect silently installed or paired with an unreachable service: %s\n%s", e.log(e.berthd), e.log(e.berth))
+	}
+	if b, _ := os.ReadFile(e.stable); string(b) != fakeBerthd("dev-new") {
+		t.Fatal("reconnect replaced the unreachable service's program")
 	}
 }
 
@@ -351,49 +445,34 @@ func TestUseThisMacWithoutABundledBerthd(t *testing.T) {
 	}
 }
 
-// After the app updates, the agent replaces its copy and reinstalls the
-// service where it listens; it never downgrades a newer release.
-func TestAnAppUpdateRefreshesTheCopy(t *testing.T) {
+// Copies outside an existing service still obey source chronology and
+// release ordering. Existing services never enter this copy path.
+func TestOwnedDaemonCopyPreservesDevelopmentAndReleaseOrdering(t *testing.T) {
 	e := newLocalEnv(t)
-	// The installed version writes PATH, as current berthd does. Leave the
-	// legacy-plist recovery behavior to its own test below.
-	tmpl, err := service.Render(service.Spec{Name: service.BerthdName(), Program: "__PROGRAM__", Args: []string{"serve", "--listen", "__LISTEN__"}, Env: map[string]string{"BERTH_HOME": "__HOME__", "PATH": "/usr/bin:/bin"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	writeFile(t, filepath.Join(e.root, "unit.tmpl"), string(tmpl), 0o644)
-	bundled, err := filepath.EvalSymlinks(e.bundled)
-	if err != nil {
-		t.Fatal(err)
-	}
 	nextBuild := localTestBuildInfo("new", "2026-10-10T10:00:00Z", "false")
 	haveBuild := localTestBuildInfo("old", "2026-10-09T10:00:00Z", "false")
 	oldBuildInfo := localBuildInfo
 	localBuildInfo = func(path string) (*debug.BuildInfo, error) {
-		if path == e.bundled || path == bundled {
+		if path == e.bundled {
 			return nextBuild, nil
 		}
 		return haveBuild, nil
 	}
 	t.Cleanup(func() { localBuildInfo = oldBuildInfo })
 	writeFile(t, e.stable, fakeBerthd("dev-old"), 0o755)
-	e.installUnit(e.stable, "127.0.0.1:7445", e.root)
-	a := &Agent{cfg: Config{Dir: e.dir, CLI: filepath.Join(e.dir, "fake-berth"), Log: log.New(io.Discard, "", 0)}, boxes: trust.NewStore(filepath.Join(e.dir, "boxes.json"))}
-	a.refreshLocalBox(context.Background())
-	if e.log(e.berthd) != "" {
-		t.Fatal("refreshed a box this agent never set up")
+	a := &Agent{}
+	say := func(string, ...any) {}
+	updated, err := a.updateLocalBerthd(context.Background(), e.bundled, e.stable, e.root, true, say)
+	if err != nil || !updated {
+		t.Fatalf("newer development copy: updated=%v, err=%v", updated, err)
 	}
-	if err := a.saveLocalRecord(&localBoxRecord{Fingerprint: e.fp.String(), Program: e.stable, Home: e.root, Owned: true}); err != nil {
-		t.Fatal(err)
-	}
-	a.refreshLocalBox(context.Background())
-	if same, _ := sameBuild(e.bundled, e.stable); !same || !strings.Contains(e.log(e.berthd), e.root+"|install --keep-listen") {
-		t.Fatalf("not refreshed:\n%s", e.log(e.berthd))
+	if same, _ := sameBuild(e.bundled, e.stable); !same {
+		t.Fatal("newer development copy did not match the bundle")
 	}
 	before := e.log(e.berthd)
-	a.refreshLocalBox(context.Background())
-	if e.log(e.berthd) != before {
-		t.Fatal("checked again with nothing new in the app")
+	updated, err = a.updateLocalBerthd(context.Background(), e.bundled, e.stable, e.root, true, say)
+	if err != nil || updated || e.log(e.berthd) != before {
+		t.Fatalf("identical build copied again: updated=%v, err=%v", updated, err)
 	}
 	// A direct development rollout is newer than the stale bundled copy.
 	// The next app check keeps it, even though the bundle's mtime changed.
@@ -401,18 +480,21 @@ func TestAnAppUpdateRefreshesTheCopy(t *testing.T) {
 	installed := fakeBerthd("dev-newer")
 	writeFile(t, e.stable, installed, 0o755)
 	os.Chtimes(e.bundled, time.Now(), time.Now().Add(time.Minute))
-	a.refreshLocalBox(context.Background())
+	updated, err = a.updateLocalBerthd(context.Background(), e.bundled, e.stable, e.root, true, say)
+	if err != nil || updated {
+		t.Fatalf("stale development copy: updated=%v, err=%v", updated, err)
+	}
 	if b, err := os.ReadFile(e.stable); err != nil || string(b) != installed {
 		t.Fatalf("downgraded a newer development daemon: %v", err)
-	}
-	if n := strings.Count(e.log(e.berthd), "install --keep-listen"); n != 1 {
-		t.Fatalf("reinstalled the daemon after refusing the stale bundle: %s", e.log(e.berthd))
 	}
 	// The box was upgraded past what the app now carries.
 	writeFile(t, e.stable, fakeBerthd("v0.3.0"), 0o755)
 	writeFile(t, e.bundled, fakeBerthd("v0.2.0"), 0o755)
 	os.Chtimes(e.bundled, time.Now(), time.Now().Add(time.Minute))
-	a.refreshLocalBox(context.Background())
+	updated, err = a.updateLocalBerthd(context.Background(), e.bundled, e.stable, e.root, true, say)
+	if err != nil || updated {
+		t.Fatalf("stale release copy: updated=%v, err=%v", updated, err)
+	}
 	if b, _ := os.ReadFile(e.stable); !strings.Contains(string(b), "VERSION=v0.3.0") {
 		t.Fatal("downgraded the box")
 	}
@@ -438,40 +520,48 @@ func TestAStaleDevelopmentBundleDoesNotReplaceTheOwnedDaemon(t *testing.T) {
 	}
 }
 
-// A Mac's berthd installed before plists carried a PATH can't find
-// Homebrew's tmux: the agent's next start installs it again, once, which
-// writes the user's PATH into the plist.
-func TestAPlistWithoutAPATHIsInstalledAgainOnce(t *testing.T) {
+func TestAutomaticRefreshLeavesExistingDaemonBytesAndServiceAlone(t *testing.T) {
+	e := newLocalEnv(t)
+	installed := fakeBerthd("v0.1.0")
+	writeFile(t, e.stable, installed, 0o755)
+	writeFile(t, e.bundled, fakeBerthd("v0.2.0"), 0o755)
+	e.installUnit(e.stable, "127.0.0.1:7445", e.root)
+	// A missing service PATH also must not authorize a silent restart.
+	a := &Agent{cfg: Config{Dir: e.dir, CLI: filepath.Join(e.dir, "fake-berth"), Log: log.New(io.Discard, "", 0)}, boxes: trust.NewStore(filepath.Join(e.dir, "boxes.json"))}
+	if err := a.saveLocalRecord(&localBoxRecord{Fingerprint: e.fp.String(), Program: e.stable, Home: e.root, Owned: true}); err != nil {
+		t.Fatal(err)
+	}
+	a.refreshLocalBox(context.Background())
+	if b, err := os.ReadFile(e.stable); err != nil || string(b) != installed {
+		t.Fatalf("automatic refresh replaced an existing daemon: %v", err)
+	}
+	if strings.Contains(e.log(e.berthd), "|install ") {
+		t.Fatalf("automatic refresh reinstalled an existing service: %s", e.log(e.berthd))
+	}
+}
+
+// Legacy PATH repair is reported without restarting a daemon whose chats
+// live in another process and cannot be guarded by this client.
+func TestAPlistWithoutAPATHIsReportedWithoutRestartingTheService(t *testing.T) {
 	e := newLocalEnv(t)
 	old := localGOOS
 	t.Cleanup(func() { localGOOS = old })
 	localGOOS = "darwin"
 	copyFile(t, e.bundled, e.stable)
 	e.installUnit(e.stable, "127.0.0.1:7445", e.root)
-	a := &Agent{cfg: Config{Dir: e.dir, CLI: filepath.Join(e.dir, "fake-berth"), Log: log.New(io.Discard, "", 0)}, boxes: trust.NewStore(filepath.Join(e.dir, "boxes.json"))}
+	var reports strings.Builder
+	a := &Agent{cfg: Config{Dir: e.dir, CLI: filepath.Join(e.dir, "fake-berth"), Log: log.New(&reports, "", 0)}, boxes: trust.NewStore(filepath.Join(e.dir, "boxes.json"))}
 	if err := a.saveLocalRecord(&localBoxRecord{Fingerprint: e.fp.String(), Program: e.stable, Home: e.root, Owned: true}); err != nil {
 		t.Fatal(err)
 	}
 	a.refreshLocalBox(context.Background())
-	if n := strings.Count(e.log(e.berthd), "install --keep-listen"); n != 1 {
-		t.Fatalf("installed %d times:\n%s", n, e.log(e.berthd))
+	if strings.Contains(e.log(e.berthd), "|install ") || !strings.Contains(reports.String(), localBoxRepairCommand(e.stable)) {
+		t.Fatalf("repair was not safely reported: %s\n%s", reports.String(), e.log(e.berthd))
 	}
+	before := reports.String()
 	a.refreshLocalBox(context.Background())
-	if n := strings.Count(e.log(e.berthd), "install --keep-listen"); n != 1 {
-		t.Fatalf("installed again (%d times)", n)
-	}
-
-	// One that has a PATH is left alone.
-	b := &Agent{cfg: a.cfg, boxes: a.boxes}
-	unit, _ := os.ReadFile(e.unit)
-	withPath := strings.Replace(string(unit), "<key>BERTH_HOME</key>", "<key>PATH</key><string>/opt/homebrew/bin:/usr/bin</string>\n<key>BERTH_HOME</key>", 1)
-	if goos := runtime.GOOS; goos != "darwin" {
-		withPath = strings.Replace(string(unit), "Environment=", "Environment=PATH=/usr/bin\nEnvironment=", 1)
-	}
-	writeFile(t, e.unit, withPath, 0o644)
-	b.refreshLocalBox(context.Background())
-	if n := strings.Count(e.log(e.berthd), "install --keep-listen"); n != 1 {
-		t.Fatalf("installed one with a PATH again:\n%s", e.log(e.berthd))
+	if reports.String() != before {
+		t.Fatalf("reported the same unchanged bundle again: %s", reports.String())
 	}
 }
 

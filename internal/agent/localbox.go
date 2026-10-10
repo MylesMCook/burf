@@ -43,10 +43,9 @@ import (
 // that install is found by its service (dev.berth.berthd) and reused, not
 // installed a second time.
 //
-// The agent keeps the copy current: at start, then every few minutes, it
-// compares the berthd the app carries with the copy (by build ID) and, when
-// the app was updated, replaces the copy and re-runs `berthd install
-// --keep-listen`. Agent sessions keep running through it.
+// The agent reports a different bundled build at start and periodically.
+// Existing daemons update through the box's guarded upgrade API; copying
+// and reinstalling a service here would bypass its structured-chat guard.
 
 // The first port tried for this Mac's berthd. 7444, berthd's usual port, is
 // often held by another berthd on a developer's Mac; Burf never takes it.
@@ -324,53 +323,40 @@ func (a *Agent) setUpLocalBox(ctx context.Context, say sayFunc) (string, error) 
 	prog, owned := stable, true
 	unit, have, home, err := a.installedUnit()
 	if err != nil {
-		say("The installed berthd service can't be read (%v); Burf replaces it.", err)
-		have, home = false, a.localHome()
+		return "", fmt.Errorf("the installed berthd service cannot be read; it was left unchanged: %w", err)
 	}
-	if have && unit.Program != stable {
-		if isFile(unit.Program) {
+	if have {
+		prog, owned = unit.Program, unit.Program == stable
+		if !isFile(prog) {
+			return "", fmt.Errorf("the installed berthd program %s is missing; restore it or reinstall Burf before reconnecting; its service was left unchanged", prog)
+		}
+		if !owned {
 			// The install script (or burf add ssh) installed berthd here
 			// already: one berthd per computer, so use that one.
-			prog, owned = unit.Program, false
 			say("berthd is already installed on this computer (%s); using it rather than installing a second one.", unit.Program)
-		} else {
-			say("A berthd service is installed, but its program (%s) is gone; Burf replaces it.", unit.Program)
-			have, home = false, a.localHome()
 		}
-	}
-
-	updated, err := a.updateLocalBerthd(ctx, src, prog, home, owned, say)
-	if err != nil {
-		return "", err
-	}
-	running := serving(home)
-	switch {
-	case owned && (!have || updated || !running):
-		listen := ""
-		if have {
-			cur := unit.Arg("--listen")
-			if loopback(cur) && (running || portFree(cur)) {
-				listen = cur
-			} else if loopback(cur) {
-				say("Something else is using %s now; berthd moves to another port.", cur)
-			}
+		if !serving(home) {
+			return "", fmt.Errorf("berthd is installed but not reachable; its service was left unchanged. After stopping any chats and checking its listen address, repair it explicitly with: %s", localBoxRepairCommand(prog))
 		}
-		if listen == "" {
-			if listen, err = freeLoopbackPort(a.localPort()); err != nil {
-				return "", err
-			}
+		say("berthd is installed and running.")
+		reportLocalBoxUpdate(src, unit, say)
+	} else {
+		// An unreachable socket does not prove a daemon process is stopped.
+		// A readable installed service above is therefore never reinstalled.
+		if serving(home) {
+			return "", errors.New("berthd is already running without an installed service; stop it explicitly before setting up this computer")
+		}
+		if _, err := a.updateLocalBerthd(ctx, src, prog, home, owned, say); err != nil {
+			return "", err
+		}
+		listen, err := freeLoopbackPort(a.localPort())
+		if err != nil {
+			return "", err
 		}
 		say("Installing the berthd service, listening on %s: this computer only…", listen)
 		if err := runBerthd(ctx, say, prog, home, "install", "--listen", listen, "--no-tools"); err != nil {
 			return "", err
 		}
-	case !owned && (updated || !running):
-		say("Restarting berthd…")
-		if err := runBerthd(ctx, say, prog, home, "install", "--keep-listen", "--no-tools"); err != nil {
-			return "", err
-		}
-	default:
-		say("berthd is installed and running.")
 	}
 
 	name, err := a.pairLocal(ctx, prog, home, owned, say)
@@ -380,6 +366,21 @@ func (a *Agent) setUpLocalBox(ctx context.Context, say sayFunc) (string, error) 
 	a.sync()
 	a.checkAll(ctx)
 	return name, nil
+}
+
+func localBoxRepairCommand(prog string) string {
+	return "'" + strings.ReplaceAll(prog, "'", "'\"'\"'") + "' install --keep-listen --no-tools"
+}
+
+func reportLocalBoxUpdate(src string, unit service.Unit, say sayFunc) {
+	if same, err := sameBuild(src, unit.Program); err != nil {
+		say("The bundled berthd could not be compared with the installed program (%v); its service is unchanged.", err)
+	} else if !same {
+		say("A different berthd build is available; use Install bundled after stopping this box's chats. Its service is unchanged.")
+	}
+	if localGOOS == "darwin" && unit.Env["PATH"] == "" {
+		say("berthd's service has no PATH; it was left unchanged. After stopping its chats, repair it explicitly with: %s", localBoxRepairCommand(unit.Program))
+	}
 }
 
 // updateLocalBerthd puts the bundled berthd at dst when dst is missing or
@@ -731,9 +732,9 @@ func (a *Agent) removeLocalBox(ctx context.Context, removeData bool, say sayFunc
 	return a.saveLocalRecord(nil)
 }
 
-// keepLocalBoxCurrent refreshes this computer's berthd when the app carries
-// a new one: shortly after the agent starts, then every few minutes, since
-// the agent outlives the app being updated.
+// keepLocalBoxCurrent reports a different bundled daemon without replacing
+// or restarting an existing service. Only the daemon can atomically guard
+// an upgrade against its own chat starts and live provider processes.
 func (a *Agent) keepLocalBoxCurrent(ctx context.Context) {
 	timer := time.NewTimer(3 * time.Second)
 	defer timer.Stop()
@@ -748,8 +749,8 @@ func (a *Agent) keepLocalBoxCurrent(ctx context.Context) {
 	}
 }
 
-// refreshLocalBox is one such check: it does nothing unless this computer
-// was set up as a box and the bundled berthd changed since the last check.
+// refreshLocalBox only reports pending work for an existing service. It
+// never copies executable bytes or silently repairs its service definition.
 func (a *Agent) refreshLocalBox(ctx context.Context) {
 	rec := a.localRecord()
 	if rec == nil {
@@ -764,8 +765,7 @@ func (a *Agent) refreshLocalBox(ctx context.Context) {
 		return
 	}
 	stamp := fmt.Sprint(st.Size(), st.ModTime().UnixNano())
-	// A restart waits for an update under way (restart.go).
-	done, err := a.work.begin("updating this computer's box")
+	done, err := a.work.begin("checking this computer's box")
 	if err != nil {
 		return
 	}
@@ -778,7 +778,7 @@ func (a *Agent) refreshLocalBox(ctx context.Context) {
 	if a.local.seen == stamp {
 		return
 	}
-	unit, have, home, err := a.installedUnit()
+	unit, have, _, err := a.installedUnit()
 	if err != nil || !have || !isFile(unit.Program) {
 		return
 	}
@@ -787,33 +787,7 @@ func (a *Agent) refreshLocalBox(ctx context.Context) {
 		say("%v", err)
 		return
 	}
-	owned := unit.Program == stableBerthd(a.localHome())
-	updated, err := a.updateLocalBerthd(ctx, src, unit.Program, home, owned, say)
-	if err != nil {
-		say("%v", err)
-		return
-	}
-	// A plist from before berthd wrote one has launchd's bare PATH, under
-	// which berthd can't find Homebrew's tmux, so no agent starts:
-	// installing again writes the user's PATH into it. Once per agent run
-	// (seen), so a berthd that writes none isn't reinstalled again and again.
-	heal := !updated && localGOOS == "darwin" && unit.Env["PATH"] == ""
-	if heal {
-		say("berthd's service has no PATH, so it can't find tools such as Homebrew's tmux; installing it again with yours")
-	}
-	if updated || heal {
-		// This Mac's own box says how to get tmux in the app, rather than
-		// install it unasked. A berthd healed in place may predate --no-tools.
-		args := []string{"install", "--keep-listen"}
-		if updated {
-			args = []string{"install", "--keep-listen", "--no-tools"}
-		}
-		if err := runBerthd(ctx, say, unit.Program, home, args...); err != nil {
-			say("reinstalling berthd: %v", err)
-			return
-		}
-		a.checkSoon()
-	}
+	reportLocalBoxUpdate(src, unit, say)
 	a.local.seen = stamp
 }
 
