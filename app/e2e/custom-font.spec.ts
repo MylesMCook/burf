@@ -20,6 +20,27 @@ test("the interface default loads the bundled Paper Mono face", async ({ app }) 
   expect((await response.body()).equals(readFileSync(new URL("../src/assets/fonts/paper-mono.ttf", import.meta.url)))).toBe(true);
 });
 
+test("Newsreader headings and both bundled styles use local font assets", async ({ app }) => {
+  await app.open();
+  await app.openSettings("boxes");
+  await app.page.getByRole("button", { name: "Add a box", exact: true }).first().click();
+  await expect(app.page.getByRole("dialog", { name: "Add a box", exact: true }).getByRole("heading", { name: "Add a box", exact: true })).toHaveCSS("font-family", /Newsreader/);
+  await app.page.evaluate(async () => {
+    await document.fonts.load('400 18px "Newsreader"');
+    await document.fonts.load('italic 400 18px "Newsreader"');
+  });
+  const faces = await app.page.evaluate(() => Array.from(document.fonts).filter((face) => face.family === "Newsreader").map((face) => ({ style: face.style, status: face.status })));
+  expect(faces).toEqual(expect.arrayContaining([{ style: "normal", status: "loaded" }, { style: "italic", status: "loaded" }]));
+  for (const name of ["newsreader-regular", "newsreader-italic"]) {
+    const fontUrl = await app.page.evaluate((name) => performance.getEntriesByType("resource").map((entry) => entry.name).find((url) => url.includes(name) && url.endsWith(".ttf")), name);
+    if (!fontUrl) throw new Error(`The bundled ${name} resource was not loaded.`);
+    expect(new URL(fontUrl).origin).toBe(new URL(app.page.url()).origin);
+    const response = await app.page.request.get(fontUrl);
+    expect(response.ok()).toBe(true);
+    expect((await response.body()).equals(readFileSync(new URL(`../src/assets/fonts/${name}.ttf`, import.meta.url)))).toBe(true);
+  }
+});
+
 async function addFont(app: App) {
   const settings = await app.openSettings("appearance");
   await expect(settings.getByRole("button", { name: "Add a font", exact: true })).toBeVisible();
