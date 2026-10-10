@@ -5,7 +5,7 @@
 /* Every target owns this value. A button inside window chrome must never
    inherit dragging from its parent. */
 * { --wails-draggable: no-drag; }
-[data-tauri-drag-region] { --wails-draggable: drag; }
+[data-burf-drag-region] { --wails-draggable: drag; }
 
 .desktop-startup-error {
   margin: auto;

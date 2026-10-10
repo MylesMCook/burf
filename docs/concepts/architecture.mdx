@@ -61,12 +61,14 @@ if they were local. Nothing is public unless someone explicitly shares it.
   laptop hooks, holds the offline prompt queue, and owns the embedded tailnet
   nodes. The CLI and the app talk to it, so closing the app drops nothing.
   See [the laptop agent](/concepts/laptop-agent).
-- **The desktop app** is a Tauri shell around a React UI. It talks to the
-  laptop agent over a loopback HTTP and WebSocket API guarded by a token
-  ([the app's API](/reference/app-api)): box APIs pass through the agent's
-  one connection per box, and terminals are bridged over WebSocket. The app
-  holds no connection and no state worth losing; it can crash or close at any
-  time.
+- **The desktop app** is a Go/Wails shell around a strict TypeScript React
+  UI styled with StyleX. Wails v3 `3.0.0-beta.28` is pinned in the native
+  module and frontend lockfile; it is a prerelease. There is no Rust desktop
+  build. The trusted application page talks to the laptop agent over a
+  token-protected loopback HTTP and WebSocket API ([the app's API](/reference/app-api)).
+  General browsing uses separate WKWebView or WebView2 children that receive
+  no desktop command bridge or agent token. Preferences, drafts and fonts
+  remain local; closing the window leaves remote sessions running.
 
 ## Where things live
 

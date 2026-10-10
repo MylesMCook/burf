@@ -6,7 +6,7 @@ import { create } from "zustand";
 
 import { Button } from "@/components/ui/button";
 import { isMock } from "@/hooks/use-burf-connection";
-import { ApiError, isTauri } from "@/lib/api";
+import { ApiError, isDesktop } from "@/lib/api";
 import { useIsLocalBox } from "@/lib/local-box";
 import { openUrl } from "@/lib/open-url";
 import { parseRequirements, type Requirements, type RequirementsCard as CardKind, requirementsCard, requirementsCopy } from "@/lib/requirements";
@@ -235,7 +235,7 @@ export function useRequirementsCard(box: string | undefined, o: { agent?: string
 
 // openTerminalApp brings up Terminal on this Mac (the app only).
 async function openTerminalApp(): Promise<boolean> {
-  if (!isTauri()) return false;
+  if (!isDesktop()) return false;
   try {
     await invoke("open_terminal");
     return true;
@@ -270,7 +270,7 @@ export function RequirementsCard({ box, agent, noAgent, className }: { box: stri
   if (card === "hidden" || !copyText) return null;
   const mac = entry.req?.os === "darwin";
   // The app can bring up Terminal; mock mode acts as the app does.
-  const canOpen = local && mac && (isTauri() || isMock());
+  const canOpen = local && mac && (isDesktop() || isMock());
   // The line the main button copies: Homebrew's installer first, when it
   // comes first (brew is only on PATH in a new shell once it has run).
   const line = copyText.first ?? copyText.command;

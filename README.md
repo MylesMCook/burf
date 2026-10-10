@@ -33,7 +33,7 @@ stops them; the app is a view you can close and reopen at any time.
 | --- | --- |
 | `burfd` | The daemon on each box: worktrees, sessions (tmux), services, hooks, flows. |
 | `burf` | The laptop CLI and background agent: connections, private URLs, the app's API. |
-| `app/` | The desktop app (Tauri, React, coss ui). |
+| `app/` | The React/StyleX frontend and Go/Wails desktop in `app/native`. |
 | `plugins/` | Built-in plugins, written against `packages/plugin-sdk`. |
 
 ## Getting started
@@ -73,18 +73,19 @@ burf task new my-box/app/fix-login --agent claude --prompt "Fix the login redire
 
 ### Build from source
 
-With Go 1.27, Node 22, pnpm and Rust. `make all` builds `burf` and
-`burfd` into `bin/`; the app runs the clone's `bin/burf` for the laptop
-agent:
+With Go 1.27, Node 22 and pnpm. `make all` builds `burf` and
+`burfd` into `bin/`. The frontend development server uses the clone's
+existing client or synthetic fixtures:
 
 ```sh
 git clone https://github.com/MylesMCook/burf
 cd burf && make all
-cd app && pnpm install && pnpm tauri dev
+cd app && pnpm install --frozen-lockfile && pnpm dev
 ```
 
-`make app-build` builds `Burf.app` and its disk image, with the CLI and the
-Linux daemons inside.
+`make app-build` builds the Go/Wails desktop bundle with its CLI and daemon
+resources. See [native builds](scripts/NATIVE.md) for platform prerequisites,
+outputs and the pinned Wails CLI.
 
 ## Docs
 

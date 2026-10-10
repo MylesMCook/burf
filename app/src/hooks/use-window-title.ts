@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { isTauri } from "@/lib/api";
+import { isDesktop } from "@/lib/api";
 import { setWindowTitle } from "@/lib/desktop";
 import { LINUX_ALPHA } from "@/lib/platform";
 import { useStore } from "@/lib/store";
@@ -19,6 +19,6 @@ export function useWindowTitle() {
     // The Linux app is an alpha, and its title bar says so.
     if (LINUX_ALPHA) title += " (alpha)";
     if (document.title !== title) document.title = title;
-    if (isTauri()) void setWindowTitle(title).catch(() => {});
+    if (isDesktop()) void setWindowTitle(title).catch(() => {});
   }, [inWorkspace, label]);
 }

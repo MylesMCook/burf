@@ -31,9 +31,8 @@
   if (w.__berthPreview) return;
   w.__berthPreview = true;
 
-  // The app: the release (tauri://localhost, or tauri.localhost on Windows)
-  // or a development build on localhost.
-  var APP = /^(tauri:\/\/localhost|https?:\/\/tauri\.localhost|https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?)$/;
+  // The app: Wails, supported older clients, or localhost development.
+  var APP = /^((?:wails|tauri):\/\/localhost|https?:\/\/(?:wails|tauri)\.localhost|https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?)$/;
   var parentOrigin = "";
   try {
     var anc = location.ancestorOrigins;

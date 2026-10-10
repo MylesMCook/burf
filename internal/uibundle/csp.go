@@ -30,9 +30,9 @@ func SnapshotHTML(finalHTML []byte) (string, error) {
 				return "", err
 			}
 			loopback := " http://localhost:* http://127.0.0.1:* http://[::1]:*"
-			return "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'" + strings.Join(hashes, "") +
+			return "default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'" + strings.Join(hashes, "") +
 				"; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://avatars.githubusercontent.com" + loopback +
-				"; font-src 'self' data: blob:; connect-src 'self'" + loopback +
+				"; font-src 'self' data: blob:; connect-src 'self' data:" + loopback +
 				" ws://localhost:* ws://127.0.0.1:* ws://[::1]:*; worker-src 'self' blob:; frame-src http://*.localhost:*" + loopback + " https:; object-src 'none'; base-uri 'self'; form-action 'self'", nil
 		case html.StartTagToken, html.SelfClosingTagToken:
 			name, _ := z.TagName()

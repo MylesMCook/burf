@@ -1,6 +1,6 @@
 import { invoke } from "@/lib/desktop";
 
-import { isTauri } from "@/lib/api";
+import { isDesktop } from "@/lib/api";
 
 // The berth command in a terminal: Burf.app carries the CLI, and Settings →
 // General can link ~/.local/bin/berth to its bundled command.
@@ -16,7 +16,7 @@ export interface CliLink {
 }
 
 export async function cliLinkStatus(): Promise<CliLink | null> {
-  if (!isTauri()) return null;
+  if (!isDesktop()) return null;
   return invoke<CliLink>("cli_link_status");
 }
 

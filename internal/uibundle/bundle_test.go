@@ -258,3 +258,39 @@ func TestSnapshotHTMLHashesFinalScriptsAndImportMaps(t *testing.T) {
 		t.Fatal("invalid HTML accepted")
 	}
 }
+
+func TestDesktopCSPAllowsPluginsImagesWorkersAndTerminalWasm(t *testing.T) {
+	policy, err := SnapshotHTML([]byte("<html><head></head><body></body></html>"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	directives := make(map[string][]string)
+	for _, directive := range strings.Split(policy, ";") {
+		fields := strings.Fields(directive)
+		if len(fields) > 0 {
+			directives[fields[0]] = fields[1:]
+		}
+	}
+	for directive, sources := range map[string][]string{
+		"connect-src": {"'self'", "http://127.0.0.1:*", "data:"},
+		"script-src":  {"'self'", "blob:", "'wasm-unsafe-eval'"},
+		"worker-src":  {"'self'", "blob:"},
+		"img-src":     {"data:", "blob:"},
+		"font-src":    {"data:", "blob:"},
+	} {
+		for _, source := range sources {
+			found := false
+			for _, allowed := range directives[directive] {
+				found = found || allowed == source
+			}
+			if !found {
+				t.Errorf("%s needs %s for desktop plugins, images, workers or terminal WebAssembly", directive, source)
+			}
+		}
+	}
+	for _, source := range directives["script-src"] {
+		if source == "'unsafe-inline'" || source == "'unsafe-eval'" || source == "https:" || source == "http:" {
+			t.Errorf("trusted desktop scripts allow %s", source)
+		}
+	}
+}

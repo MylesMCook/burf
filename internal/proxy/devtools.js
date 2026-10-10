@@ -4,7 +4,7 @@
 // the app's Console drawer. The page's console still gets every call.
 //
 // In the Burf app the page is a native webview, which runs this at the
-// start of every document (src-tauri/src/browser.rs) and asks it for what
+// start of every document (app/native/nativebrowser) and asks it for what
 // is new a few times a second: window.__berthDevtools.drain() returns a
 // JSON string, or "" when there is nothing new. In an iframe (devtools.go)
 // it acts only in a frame the app named berth-devtools:<pane>, and posts
@@ -39,9 +39,8 @@
       if (typeof w.name === "string" && w.name.indexOf(KEY) === 0) pane = w.name.slice(KEY.length);
     } catch (e) {}
     if (!pane) return;
-    // The app: the release (tauri://localhost, or tauri.localhost on
-    // Windows) or a development build on localhost.
-    var APP = /^(tauri:\/\/localhost|https?:\/\/tauri\.localhost|https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?)$/;
+    // The app: Wails, supported older clients, or localhost development.
+    var APP = /^((?:wails|tauri):\/\/localhost|https?:\/\/(?:wails|tauri)\.localhost|https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?)$/;
     try {
       var anc = location.ancestorOrigins;
       if (anc && anc.length) parentOrigin = anc[0];

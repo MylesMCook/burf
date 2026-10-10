@@ -18,16 +18,20 @@ The agent serves the app on `http://127.0.0.1:1378`.
 - **Token.** Every request carries `Authorization: Bearer <token>`. WebSocket
   upgrades, which cannot set headers from a browser, pass `?token=<token>`
   instead; on any other request a query token is ignored, so it never lands
-  in logs or history. The token is in `<state>/client/ui-token` (mode 0600); the Tauri
+  in logs or history. The token is in `<state>/client/ui-token` (mode 0600); the Wails
   shell reads it with the `ui_endpoint` command, which returns
   `{ "url": "http://127.0.0.1:1378", "token": "…" }`. For browser-only UI
   work, `burf ui-token` prints the same JSON.
 - **Host check.** Requests whose `Host` is not `127.0.0.1:1378` or
   `localhost:1378` are refused, so a web page cannot reach the agent through
   DNS rebinding.
-- **CORS.** Allowed origins are `tauri://localhost`, `http://tauri.localhost`,
-  `https://tauri.localhost`, and `http://localhost:1420` to `:1439` (Vite in
-  development). The token, not the origin, is what keeps other pages out.
+- **CORS.** The Wails application origins are `wails://localhost` on macOS
+  and `http://wails.localhost` on Windows. Older client origins
+  `tauri://localhost`, `http://tauri.localhost` and
+  `https://tauri.localhost` remain allowed for mixed-version compatibility,
+  along with `http://localhost:1420` to `:1439` for Vite development.
+  Every API request still requires the token. Native browsing children never
+  receive it or the application's command bridge.
 - **Errors.** A failed request answers `{ "error": "…", "code": "…" }`. The
   message is for people and logs; branch on the code. The box's codes are
   `not_found`, `session_exited` (the session's program has ended, so it takes
@@ -47,6 +51,7 @@ The agent serves the app on `http://127.0.0.1:1378`.
 | Method and path | Returns |
 | --- | --- |
 | `GET /v1/status` | `{ boxes: BoxStatus[], forwards, routes, proxy }`. A box that isn't online carries `retry_at` (when the agent tries it next) and `attempts` (failed tries in a row). `link` says how well it is reached: `slow` (still online; requests go through) and `reason`, the recent `max_ms` and `jitter_ms`, and `path` (`via`: `direct`, `relay` with `relay` and `relay_name`, or `peer-relay`) when Tailscale can tell |
+| `GET /v1/client/ui-state`, `POST /v1/client/ui-state` | Read or save the explicit desktop-origin migration snapshot: allowlisted preferences, drafts, fonts and background images, at most 32 MB. Authentication is required; credentials and arbitrary plugin storage are excluded. |
 | `GET /v1/events` | Server-sent events: one `data: <Event JSON>` per event, from this laptop and every online box (box events carry `box`) |
 | `POST /v1/forwards` | `{ box, local, remote }` → the forward |
 | `DELETE /v1/forwards/{id}` | the removed forward |

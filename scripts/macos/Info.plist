@@ -11,6 +11,14 @@
   <key>CFBundleVersion</key><string>@VERSION@</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>NSAppTransportSecurity</key><dict>
+    <key>NSExceptionDomains</key><dict>
+      <key>localhost</key><dict>
+        <key>NSIncludesSubdomains</key><true/>
+        <key>NSExceptionAllowsInsecureHTTPLoads</key><true/>
+      </dict>
+    </dict>
+  </dict>
   <key>CFBundleURLTypes</key><array><dict>
     <key>CFBundleURLName</key><string>berth</string>
     <key>CFBundleURLSchemes</key><array><string>berth</string></array>

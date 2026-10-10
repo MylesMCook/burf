@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import { toastManager } from "@/components/ui/toast";
-import { type BerthEvent, isTauri } from "@/lib/api";
+import { type BerthEvent, isDesktop } from "@/lib/api";
 import { isNotificationPermissionGranted, requestNotificationPermission, sendNotification } from "@/lib/desktop";
 import { plainError } from "@/lib/errors";
 import { usePrefs } from "@/lib/prefs";
@@ -605,7 +605,7 @@ export async function systemNotification(title: string, body?: string) {
   // The live demo never asks a visitor's browser for notifications.
   if (__BERTH_DEMO__) return;
   try {
-    if (isTauri()) {
+    if (isDesktop()) {
       if (permitted === undefined) {
         permitted = (await isNotificationPermissionGranted()) || (await requestNotificationPermission());
       }

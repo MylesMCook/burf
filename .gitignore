@@ -1,7 +1,5 @@
 /bin/
 /dist/
-/app/src-tauri/binaries/
-/app/src-tauri/target/
 /app/node_modules/
 /app/dist/
 /app/native/assets/
@@ -10,7 +8,6 @@
 /app/native/*.syso
 /app/native/desktop/cli-path.ps1
 .e2e/
-/app/src-tauri/gen/
 /packages/*/node_modules/
 /plugins/*/node_modules/
 /plugins/*/dist/

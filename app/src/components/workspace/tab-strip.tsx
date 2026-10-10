@@ -441,13 +441,13 @@ export function TabStrip() {
   const fade = edges.left && edges.right ? sx(paint.s49) : edges.left ? sx(paint.s50) : edges.right ? sx(paint.s51) : "";
 
   return (
-    <div data-tauri-drag-region data-tab-bar className={sx(paint.s0)}>
+    <div data-burf-drag-region data-tab-bar className={sx(paint.s0)}>
       {/* Tabs scroll when they do not fit (a wheel scrolls them sideways),
           with a fade at each end that has more; + stays just after them,
           outside the scroller, so it never scrolls away. */}
       <div
         ref={scroller}
-        data-tauri-drag-region
+        data-burf-drag-region
         data-tab-strip
         onScroll={measure}
         onWheel={(e) => {
@@ -495,9 +495,9 @@ export function TabStrip() {
           <NewTabMenu />
         </div>
       )}
-      <div data-tauri-drag-region className={sx(paint.s4)} />
+      <div data-burf-drag-region className={sx(paint.s4)} />
       {ws && (
-        <div data-tauri-drag-region className={sx(paint.s5)}>
+        <div data-burf-drag-region className={sx(paint.s5)}>
           {leaving && (
             <Tip label={leaving.script ? "The repo's archive script is running on the box. This worktree closes when it finishes, or stays if it fails." : "Waiting for the box."} side="bottom">
               <span role="status" className={sx(paint.s6)}>
@@ -516,7 +516,7 @@ export function TabStrip() {
               front; the breadcrumb only speaks up for a guest pane. */}
           {hereRef && !tiny && !(grouped && hereKey === key) && (
             <Tip label={`${hereTitle && !hereRef.main ? `${hereRef.worktree} · ` : ""}${hereRef.box}:${hereRef.path}`} side="bottom">
-              <span data-tauri-drag-region className={sx(paint.s8)}>
+              <span data-burf-drag-region className={sx(paint.s8)}>
                 <WtDot wsKey={hereKey} />
                 <span className={sx(paint.s9)}>
                   {hereRef.location}

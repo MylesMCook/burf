@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-burf-connection";
-import { endpoint, isTauri } from "@/lib/api";
+import { endpoint, isDesktop } from "@/lib/api";
 import { useEventLog } from "@/lib/events";
 import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -180,7 +180,7 @@ export function DeveloperSection() {
             Reload window
           </Button></span>
         </SettingsRow>
-        {isTauri() && (
+        {isDesktop() && (
           <SettingsRow label="Developer tools" description="The Web Inspector for Burf's own window. A Browser tab's page has its own: Inspect in its toolbar.">
             <span {...stylex.props(styles.slot)}><Button
               size="xs"

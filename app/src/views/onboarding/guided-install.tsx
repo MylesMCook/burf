@@ -1079,7 +1079,7 @@ function useInstallPlan(host: string, agents: string[]) {
 
 function Header({ icon, title, sub, right }: { icon: ReactNode; title: ReactNode; sub?: ReactNode; right?: ReactNode }) {
   return (
-    <header className={sx(paint.s2)} data-tauri-drag-region>
+    <header className={sx(paint.s2)} data-burf-drag-region>
       <span className={sx(paint.s3)}>{icon}</span>
       <div className={sx(paint.s4)}>
         <h1 className={sx(paint.s5)}>{title}</h1>

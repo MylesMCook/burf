@@ -19,10 +19,10 @@ test("only the trusted top-level Wails page uses the native adapter", () => {
   assert.equal(desktopKind(scope), "browser");
 });
 
-test("legacy top-level windows retain their transition adapter", () => {
+test("a retired shell cannot use the Wails adapter", () => {
   const scope: { top?: unknown; __TAURI_INTERNALS__: object } = { __TAURI_INTERNALS__: {} };
   scope.top = scope;
-  assert.equal(desktopKind(scope), "tauri");
+  assert.equal(desktopKind(scope), "browser");
   scope.top = {};
   assert.equal(desktopKind(scope), "browser");
 });

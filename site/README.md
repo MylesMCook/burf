@@ -78,7 +78,7 @@ pnpm -C app build:demo    # about 3.3 MB in 55 files; ~640 KB gzipped to open
 ```
 
 Demo mode is always mock mode, follows the system's light or dark, starts
-afresh on every load, and leaves out what needs a laptop agent or Tauri:
+afresh on every load, and leaves out what needs a laptop agent or native shell:
 no system notifications, no plugins from `~/.berth/plugins`, and a box's
 dev server is a page drawn in place. Its own code is in `app/src/demo/`:
 the guide (open checkout-fix, answer the waiting agent, press ⌘K, and Reset

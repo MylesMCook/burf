@@ -152,6 +152,23 @@ test("a frame the app named posts its reports to the app, and only to it", () =>
   }
 });
 
+test("named preview frames report to Wails origins and reject look-alike sites", () => {
+  for (const parent of ["wails://localhost", "http://wails.localhost"]) {
+    const p = page({ frame: { name: "berth-devtools:pane1", parent } });
+    p.run(`console.warn("Wails preview")`);
+    p.tick();
+    assert.equal(p.posted.length, 1);
+    assert.equal(p.posted[0].origin, parent);
+    assert.deepEqual(parseReport(p.posted[0].msg)?.entries.map((e) => e.text), ["Wails preview"]);
+  }
+  for (const parent of ["wails://evil.example", "http://wails.localhost.evil.example"]) {
+    const p = page({ frame: { name: "berth-devtools:pane1", parent } });
+    p.run(`console.warn("private")`);
+    p.tick();
+    assert.equal(p.posted.length, 0);
+  }
+});
+
 test("a report from the page is checked field by field", () => {
   assert.equal(parseReport("not json"), undefined);
   assert.equal(parseReport({ entries: [] }), undefined);

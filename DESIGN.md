@@ -54,6 +54,14 @@ Decide what the element is, then take its radius. Burf's scale is
 - Never round a surface that runs edge to edge.
 - Larger radii are never decoration.
 
+Floating surfaces use the shared `overlay.shadow` optical black shadow. Do not
+derive shadows from the foreground: that creates a white halo in dark themes.
+Dialog backdrops dim without blur. Desktop dialogs retain a finite width and
+an 80dvh height cap; longer content must scroll with every action reachable.
+Form panels opt into container-width content. Long commands scroll inside their
+own code block rather than widening the form. Notifications have one opaque
+boundary around header and rows, with vertical scrolling and no sideways list.
+
 ## Color
 
 - **The theme owns every neutral.** Use the semantic tokens (`background`,

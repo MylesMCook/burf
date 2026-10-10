@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
 import { agentEndpointLine, updateUnavailableCopy } from "@/lib/about-status";
-import { endpoint, isTauri } from "@/lib/api";
+import { endpoint, isDesktop } from "@/lib/api";
 import { copyDiagnostics } from "@/lib/diagnostics";
 import { ago, bytes, errorMessage } from "@/lib/format";
 import { openDocs, openUrl } from "@/lib/open-url";
@@ -130,7 +130,7 @@ export function AboutSection() {
         </SettingsRow>
         <SettingsRow label="Interface" description="Reload closes and reopens this window to use the installed interface. Agents keep running.">
           <span className={sx(paint.s2)}>{interfaceVersion}</span>
-          {isTauri() && (
+          {isDesktop() && (
             <Button size="xs" variant="outline" onClick={() => void invoke("restart_app").catch((err) => toastManager.add({ title: "Could not reload interface", description: errorMessage(err), type: "error" }))}>
               Reload interface
             </Button>
@@ -213,7 +213,7 @@ const RELEASES = "https://github.com/MylesMCook/burf/releases";
 function UpdatesGroup() {
   const u = useUpdater();
   if (!updatesSupported()) {
-    const copy = updateUnavailableCopy(isTauri());
+    const copy = updateUnavailableCopy(isDesktop());
     return (
       <SettingsGroup title="Updates">
         <SettingsRow label={copy.label} description={copy.description} />

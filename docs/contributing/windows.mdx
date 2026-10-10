@@ -3,7 +3,13 @@ title: Windows client
 description: Building and checking the native Windows desktop and command-line client.
 ---
 
-Burf on Windows x64 connects to already-running Linux and macOS boxes. The first Windows release includes the desktop app and `burf.exe` client (with a `berth.exe` alias). Windows cannot be a box. Install and start `berthd` on a Unix box, then paste its pairing link into Burf or use `burf pair`. Remote terminals, agents, previews, files, and port forwards run through the local client.
+Burf's Windows source preview targets x64 and ARM64. It includes the Go/Wails
+desktop app and `burf.exe` client with a `berth.exe` alias. The client can run
+installed local agent CLIs and connect to already-running Linux or macOS boxes;
+Windows has no box daemon. Install and start `berthd` on a Unix box, then paste
+its pairing link into Burf or use `burf pair`. Remote terminals, agents,
+previews, files and port forwards run through the local client. Signed Windows
+downloads and an application update feed remain unavailable.
 
 ## SSH provisioning and editors
 
@@ -15,19 +21,45 @@ Editors found only through a `.cmd` or `.bat` launcher open remote folders throu
 
 ## Build
 
-Use the repository's existing Go and pnpm versions, Rust's `x86_64-pc-windows-msvc` target, Visual Studio C++ build tools, and WebView2. These are prerequisites, not installed by the build script. Restore the locked app dependencies with `pnpm install --frozen-lockfile` in `app`.
+Use Go 1.27, Node 22 and the repository's pnpm lockfile. The desktop module and
+frontend runtime pin Wails v3 `3.0.0-beta.28`, a prerelease. Rust is not part of
+the build. Native execution needs Windows 10 or 11 with the Microsoft WebView2
+Evergreen Runtime already installed. Creating an installer also needs an
+existing NSIS `makensis.exe`; `NSIS_COMPILER` may name its absolute path.
+The script does not install these prerequisites or change machine policy.
+Restore frontend dependencies with `pnpm install --frozen-lockfile` in `app`.
 
 Build the pinned Linux tmux helpers on a Docker host with `scripts/build-tmux.sh bin amd64 arm64`, then copy `bin/tmux-linux-amd64` and `bin/tmux-linux-arm64` into the Windows checkout. The Windows script builds the matching Linux daemon helpers itself. It does not build a Windows daemon.
 
 ```powershell
-./scripts/windows-build.ps1 -Version 0.3.9
-# Only stage Go resources for a native Rust build:
-./scripts/windows-build.ps1 -Version 0.3.9 -StageOnly
+./scripts/windows-build.ps1 -Architecture amd64
+# Build the Go app and ZIPs without compiling an NSIS installer:
+./scripts/windows-build.ps1 -Architecture amd64 -StageOnly
+# ARM64 uses the same pinned runtime and matching loader:
+./scripts/windows-build.ps1 -Architecture arm64 -StageOnly
 ```
 
-`make app-build-windows` invokes the same script. `make app-build APP_TARGET=x86_64-pc-windows-msvc` selects it too. A debug app finds only `bin/burf.exe` after its explicit development override and bundled copy. A release app executes only its adjacent `berth-cli.exe`; it never finds an agent executable on PATH. The terminal command lives separately at `cli/berth.exe`, avoiding a case-insensitive collision with the app's `Burf.exe`.
+`make app-build-windows` invokes the same script on Windows, as does
+`make app-build APP_GOOS=windows APP_GOARCH=amd64`. A native app compiled with
+the Go `dev` tag checks its absolute `BERTH_CLI` override, bundled CLI, then
+the repository's `bin/burf.exe`. Packaged apps execute only their adjacent
+`berth-cli.exe`; they never find an agent executable on PATH. Terminal commands
+live separately at `cli/burf.exe` and the compatible `cli/berth.exe`, avoiding
+a case-insensitive collision with the app's `Burf.exe`.
 
-The script writes `dist/windows/Burf-windows-x64-setup.exe`, `berth-windows-amd64.zip`, and `windows-checksums.txt`. The CLI archive includes the Linux daemon and tmux helpers used when upgrading remote boxes. It contains no Windows daemon.
+The app folder is `dist/native/windows-amd64/` or `windows-arm64/`. Archives
+and optional installers are in `dist/windows/`, including
+`Burf-windows-x64.zip`, `Burf-windows-x64-setup.exe`,
+`burf-windows-amd64.zip` and `windows-checksums.txt`; ARM64 uses the matching
+architecture names. The CLI archive includes Linux daemon helpers and any
+staged tmux helpers used to upgrade remote boxes. It contains no Windows daemon.
+
+The raw browsing child uses the loader from Microsoft.Web.WebView2 SDK
+`1.0.4258.31`. Package and loader SHA256 digests are pinned, and the Windows
+build requires its Microsoft Authenticode signature to validate before staging.
+`WEBVIEW2_SDK_PACKAGE` may point to the exact cached NuGet archive. Its license
+and notice ship beside the loader. A matching hash or cross-build alone does
+not prove native execution or Windows certificate-chain trust.
 
 ## Install and update
 
@@ -37,22 +69,29 @@ installer upgrade; it does not establish an enabled feed.
 
 NSIS installs for the current user without elevation. Installation does not change PATH or register a login task. The app's **Start at login** checkbox explicitly enables the per-user login task. Settings > General > Command line explicitly adds the `cli` folder to the user's PATH, with a removal control. Uninstall removes only Burf's owned PATH entry and login task. Agent keys and paired-box state remain in the user's Burf config directory.
 
-The installer checks both bundled CLI candidates and stops only a process owned by one of them with `burf agent stop --drain`. That command waits for the process to exit; a timeout cancels installation instead of killing it. A failed installation restores the old client executables and starts the previously running client again. Remote sessions remain on their boxes. Recovery belongs to the installer because the Windows updater exits the app after launching it.
+The installer checks both bundled CLI candidates and stops only a process owned by one of them with `burf agent stop --drain`. That command waits for the process to exit; a timeout cancels installation instead of killing it. A failed installation restores the old client executables and starts the previously running client again. Remote sessions remain on their boxes.
 
-Both a normal higher-version installer and the in-app updater replace files in place, preserving explicit PATH and login consent. The build script obtains the exact locked Tauri CLI's NSIS template, verifies its pinned SHA256, and generates a small maintenance-page patch in the ignored `binaries` directory. No copy of the full template is maintained in the repository. A CLI update requires reviewing that patch and its pinned template version. PATH integration uses a command embedded in the app, and uninstall runs the old app's headless cleanup mode. No unsigned PowerShell script file is executed and no execution-policy setting changes.
+An intentional higher-version installer replaces files in place and preserves
+explicit PATH and login consent. The project-owned NSIS template and recovery
+hooks live in `scripts/windows`; they do not depend on a downloaded bundler
+template. PATH integration uses the reviewed PowerShell command embedded in
+the Go app, and uninstall uses the app's headless cleanup mode. No unsigned
+PowerShell script file is executed and no execution-policy setting changes.
 
-A future Windows feed would use `latest-windows.json` and the
-`windows-x86_64` platform key, separate from macOS. `-Release` produces
-a signed updater artifact only with explicitly supplied fork-owned signing
-configuration. No upstream signing identity or feed is adopted. Local builds
-do not require or create an Authenticode certificate; Windows may show its
-standard unsigned-app warning.
+`-Release` currently refuses because no approved Windows signing and
+publication workflow exists. No upstream signing identity or feed is adopted.
+Local app builds do not create an Authenticode certificate; Windows may show
+its standard unsigned-app warning. This is separate from the mandatory
+Microsoft signature check on the WebView2 loader.
 
 ## Verify
 
 ```powershell
 go test ./internal/service ./internal/agent ./cmd/burf
-cargo test --locked --manifest-path app/src-tauri/Cargo.toml --lib
+node scripts/native-prepare.mjs bindings
+Push-Location app/native
+go test ./desktop ./nativebrowser
+Pop-Location
 cd app
 node --experimental-strip-types --test src/lib/platform.test.ts
 pnpm exec playwright test e2e/windows-client.spec.ts
@@ -74,7 +113,13 @@ It creates, runs and removes one uniquely named task with synthetic state. Norma
 
 Long Windows state paths keep their data in place and use a stable, private socket under the user's local cache `berth-ipc` directory. Ordinary state paths retain their in-directory socket.
 
-The Windows CI job compiles Rust, runs native Go tests, and builds an unsigned installer without release secrets. Browser tests exercise Windows shortcut labels and capability-based onboarding with isolated fixtures. A maintainer must still check the native window, WebView2 child panes, terminal clipboard, pairing with a real Unix box, opt-in login startup, installed CLI lookup, upgrade with an active agent, failed upgrade recovery, and ownership-safe uninstall on Windows. Compilation and fixtures do not establish those native GUI outcomes.
+The Windows CI job builds the Go/Wails app, runs native Go tests and builds an
+unsigned installer without release secrets. Browser tests exercise Windows
+shortcut labels and capability-based onboarding with isolated fixtures. A
+maintainer must still check the native window, WebView2 children, terminal
+clipboard, real pairing, opt-in login startup, installed CLI lookup, active
+agent upgrade, failure recovery and ownership-safe uninstall on Windows.
+Compilation and fixtures do not establish those native outcomes.
 
 ## Manual installer acceptance
 

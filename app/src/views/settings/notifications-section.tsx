@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { isTauri } from "@/lib/api";
+import { isDesktop } from "@/lib/api";
 import { useMinute } from "@/components/notifications/notification-center";
 import {
   CATEGORIES,
@@ -74,7 +74,7 @@ function daysOf(days: number[]): string {
 export function NotificationsSection() {
   const prefs = useNotifyPrefs();
   const count = useNotifications((s) => s.notes.length);
-  const mac = isTauri() && IS_MAC;
+  const mac = isDesktop() && IS_MAC;
   const dnd = prefs.dnd;
   // Re-render each minute, so a schedule that starts or ends shows.
   const now = new Date(useMinute());

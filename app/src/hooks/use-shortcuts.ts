@@ -6,7 +6,7 @@ import { toggleShortcuts } from "@/components/shortcuts-sheet";
 import { submitConfirm } from "@/components/sidebar/confirm";
 import { toastManager } from "@/components/ui/toast";
 import { closePane, openBrowserAt, startSession } from "@/lib/actions";
-import { isTauri } from "@/lib/api";
+import { isDesktop } from "@/lib/api";
 import { IS_LINUX, primaryModifier } from "@/lib/platform";
 import { toggleNotifications } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
@@ -179,7 +179,7 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
     case "close-group":
       // With one group, ⌘⇧W closes the window, as it always has.
       if (wsKey && closeGroup(wsKey)) return true;
-      if (!isTauri()) return false;
+      if (!isDesktop()) return false;
       void closeWindow();
       return true;
     case "focus":
@@ -313,7 +313,7 @@ export function useShortcuts() {
     // The native menu sends the same shortcut IDs as the key handler.
     let unlisten: (() => void) | undefined;
     let gone = false;
-    if (isTauri())
+    if (isDesktop())
       void listen<string>("berth://menu", (e) => {
         const [id, arg] = fromMenu(e.payload);
         runShortcut(id, "menu", arg);

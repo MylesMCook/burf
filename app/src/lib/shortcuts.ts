@@ -13,7 +13,7 @@ export interface Shortcut {
   // The menu item's name; with count, {n} is each item's number.
   label: string;
   keys: string;
-  // Set when the item is in the menu bar, as a Tauri accelerator.
+  // Set when the item is in the menu bar, as a native accelerator.
   accel?: string;
   count?: number;
   sep?: boolean;

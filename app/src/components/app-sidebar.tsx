@@ -209,7 +209,7 @@ export function AppSidebar() {
       >
         <SidebarResizeHandle />
         {/* Room for the macOS traffic lights; the strip drags the window. */}
-        <div data-tauri-drag-region {...stylex.props(styles.drag)}>
+        <div data-burf-drag-region {...stylex.props(styles.drag)}>
           <NotificationBell />
         </div>
 
@@ -333,7 +333,7 @@ function Rail() {
   return (
     <aside aria-label="Sidebar" data-testid="sidebar-rail" {...stylex.props(styles.rail)}>
       <SidebarResizeHandle folded />
-      <div data-tauri-drag-region {...stylex.props(styles.railDrag)} />
+      <div data-burf-drag-region {...stylex.props(styles.railDrag)} />
       <div {...stylex.props(styles.railCol)}>
         {item("Search (⌘K)", <SearchIcon />, false, () => useStore.getState().setPaletteOpen(true))}
         <NotificationBell size="rail" />

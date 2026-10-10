@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { color } from "@/styles/tokens.stylex";
-import { isTauri } from "@/lib/api";
+import { isDesktop } from "@/lib/api";
 import { IS_LINUX, LINUX_TERMINAL_KEYS, platformKeys } from "@/lib/platform";
 import { usePrefs } from "@/lib/prefs";
 import { describe, SHORTCUT_GROUPS, SHORTCUTS } from "@/lib/shortcuts";
@@ -43,7 +43,7 @@ export function ShortcutsSection() {
   return (
     <SettingsPage
       title="Shortcuts"
-      description={IS_LINUX ? LINUX_TERMINAL_KEYS : `They work everywhere in the window, terminals included: the app sees them first.${isTauri() ? " Most are in the menu bar too." : ""}`}
+      description={IS_LINUX ? LINUX_TERMINAL_KEYS : `They work everywhere in the window, terminals included: the app sees them first.${isDesktop() ? " Most are in the menu bar too." : ""}`}
     >
       <div {...stylex.props(styles.search)}>
         <SearchIcon {...stylex.props(styles.icon)} />

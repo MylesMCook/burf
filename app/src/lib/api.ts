@@ -50,19 +50,18 @@ export interface OutdatedBox {
   error?: string;
 }
 
-// Compatibility name for existing desktop callers during the shell migration.
-export const isTauri = isDesktop;
+export { isDesktop };
 
 // hasTrafficLights says whether the window's own buttons sit over its top
 // left (the native window's overlay title bar), so a strip there leaves them
 // room. ?traffic=1 in the mock draws and counts them, for screenshots.
-export const fakeTrafficLights = (): boolean => !isTauri() && new URLSearchParams(location.search).has("mock") && new URLSearchParams(location.search).has("traffic");
-export const hasTrafficLights = (): boolean => (isTauri() && isMac()) || fakeTrafficLights();
+export const fakeTrafficLights = (): boolean => !isDesktop() && new URLSearchParams(location.search).has("mock") && new URLSearchParams(location.search).has("traffic");
+export const hasTrafficLights = (): boolean => (isDesktop() && isMac()) || fakeTrafficLights();
 
 // endpoint finds the agent and its token: from the native shell, which reads
 // the token file, or in a plain browser from ?token= or the Vite env.
 export async function endpoint(): Promise<Endpoint> {
-  if (isTauri()) return invoke<Endpoint>("ui_endpoint");
+  if (isDesktop()) return invoke<Endpoint>("ui_endpoint");
   const params = new URLSearchParams(location.search);
   const token = params.get("token") ?? import.meta.env.VITE_BERTH_TOKEN;
   const url = params.get("agent") ?? import.meta.env.VITE_BERTH_URL ?? "http://127.0.0.1:1378";
