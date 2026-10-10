@@ -200,14 +200,14 @@ function WorktreeGroup({ group: g, berth, here, onChanged }: { group: Group; ber
   const listeningPorts = new Set(g.listening.map((l) => l.port));
   return (
     <Frame variant="card">
-      <FrameHeader className="flex-row items-center gap-2 py-2.5">
+      <FrameHeader row gap={2} pad="snug">
         <Icon name="GitBranch" className="size-3.5 text-muted-foreground" />
-        <FrameTitle className="truncate">{g.worktree}</FrameTitle>
+        <FrameTitle truncate>{g.worktree}</FrameTitle>
         <span className="truncate text-muted-foreground text-xs">{g.main ? g.box : `${g.location} · ${g.box}`}</span>
         {g.main && <Badge variant="outline" size="sm">main checkout</Badge>}
         {here && <Badge variant="secondary" size="sm">current worktree</Badge>}
       </FrameHeader>
-      <FramePanel className="p-0">
+      <FramePanel pad="none">
         <ul className="divide-y">
           {g.listening.map((l) => (
             <ServerRow key={`l${l.port}`} item={l} berth={berth} service={g.configured.find((c) => c.state === "running" && c.port === l.port)} onChanged={onChanged} />

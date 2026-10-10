@@ -76,7 +76,6 @@ export interface TaskComposerProps {
   onDone?(how: { mode: "start" | "send"; results?: boolean }): void;
   // The dialog's "Create more": stay open after starting.
   keepOpen?: boolean;
-  className?: string;
 }
 
 export type ComposerKind = "start" | "attempts" | "worktree" | "send" | "loop";
@@ -133,7 +132,7 @@ interface BodyProps extends TaskComposerProps {
 }
 
 // Local work uses the same editor, frame and pickers, with folders instead of worktrees.
-function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, placeholder, onDone, onKind, className, onPlace }: BodyProps & { local: LocalComputer; onPlace(place: NonNullable<ComposerDraft["place"]>): void }) {
+function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, placeholder, onDone, onKind, onPlace }: BodyProps & { local: LocalComputer; onPlace(place: NonNullable<ComposerDraft["place"]>): void }) {
   const client = useStore((s) => s.client)!;
   const boxes = useStore((s) => s.status?.boxes ?? NONE_BOXES);
   const [conversations, setConversations] = useState<LocalConversation[]>([]);
@@ -213,7 +212,7 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
   const summary = `${folderName(cwd) || "Choose folder"} on ${local.name} · this folder · ${agent ? localAgentName(agent.id) : "Choose agent"}`;
   const folderOptions = [...new Set([...folders, cwd].filter(Boolean))].map((path) => ({ value: path, label: folderName(path), detail: path }));
   return <fieldset disabled={busy} className="w-full min-w-0">
-    <Shell className={className} head={tabs}
+    <Shell head={tabs}
       editor={<Editor value={text} onChange={setText} onSubmit={() => void submit()} autoFocus={autoFocus} label="What should your agents work on?" placeholder={placeholder ?? "Describe a task, a bug to fix, an idea to try…"} />}
       summary={<div className="flex min-w-0 items-center gap-1 px-1 pt-1">
         <button type="button" data-testid="task-composer-summary" aria-expanded={expanded} aria-controls={pickersId} onClick={() => setPrefs({ taskComposerExpanded: !expanded })} className="flex min-h-8 min-w-0 items-center gap-1 rounded-md px-2.5 py-1 text-left text-muted-foreground text-xs outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
@@ -243,7 +242,7 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
 
 // ---- Starting work ------------------------------------------------------
 
-function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, placeholder, onDone, onKind, keepOpen, className, local, onLocal }: BodyProps) {
+function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, placeholder, onDone, onKind, keepOpen, local, onLocal }: BodyProps) {
   const collapsible = !fixed && !draft.from;
   const rememberedExpanded = usePrefs((s) => s.taskComposerExpanded);
   const pickersId = useId();
@@ -704,7 +703,6 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
 
   return (
     <Shell
-      className={className}
       drop={files}
       head={
         (tabs || followed || ((!collapsible || expanded) && hasOptions)) && (
@@ -800,7 +798,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       footer={
         <div className="w-full min-w-0">
           <div id={collapsible ? pickersId : undefined} hidden={collapsible && !expanded}>
-          {collapsible && options && <FramePanel className="mb-1 flex max-h-[min(46vh,30rem)] flex-col gap-4 overflow-y-auto p-3.5">{options}</FramePanel>}
+          {collapsible && options && <FramePanel pad="compact" stack gap={4} scroll drop>{options}</FramePanel>}
           {/* One wrapping row of everything: a pick that does not fit starts the next row at the left edge, whole, and Send ends the last row. */}
           <div data-slot="launch-toolbar" className="flex w-full min-w-0 flex-wrap items-center gap-x-0.5 gap-y-1">
           <div data-slot="launch-place" className="contents">
@@ -900,7 +898,7 @@ function Resolved({ resolution, pending, error }: { resolution?: { name?: string
 
 const free = (e: SessionEntry) => e.state === "ready" || e.state === "finished";
 
-function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKind, className }: BodyProps) {
+function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKind }: BodyProps) {
   const prompts = usePrompts((s) => s.prompts);
   const boxes = useStore((s) => s.boxes);
   const status = useStore((s) => s.status);
@@ -1007,7 +1005,6 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
 
   return (
     <Shell
-      className={className}
       drop={files}
       head={
         <>
@@ -1107,7 +1104,7 @@ function sessionLocationSafe(box: string, session: string): string {
 
 // ---- The first prompt for one agent --------------------------------------
 
-function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps & { to: NonNullable<TaskComposerProps["to"]> }) {
+function ToBody({ to, onSend, onFail, autoFocus }: TaskComposerProps & { to: NonNullable<TaskComposerProps["to"]> }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const who = to.agent ? agentLabel(to.agent) : "the agent";
@@ -1133,7 +1130,6 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
   };
   return (
     <Shell
-      className={className}
       drop={att}
       editor={
         <Editor
@@ -1167,15 +1163,15 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
 
 // drop: the composer's attachments, which a file dropped anywhere on the
 // frame joins; while one is held over it, the frame is outlined.
-function Shell({ head, editor, summary, options, notice, footer, drop, className }: { head?: React.ReactNode; editor: React.ReactNode; summary?: React.ReactNode; options?: React.ReactNode; notice?: React.ReactNode; footer: React.ReactNode; drop?: Attachments; className?: string }) {
+function Shell({ head, editor, summary, options, notice, footer, drop }: { head?: React.ReactNode; editor: React.ReactNode; summary?: React.ReactNode; options?: React.ReactNode; notice?: React.ReactNode; footer: React.ReactNode; drop?: Attachments }) {
   return (
-    <Frame data-testid="task-composer" data-dragging={drop?.dragging || undefined} {...drop?.dropProps} className={cn("w-full shadow-lg/5", drop?.dragging && "outline-2 outline-ring/60 outline-dashed outline-offset-4", className)}>
+    <Frame data-testid="task-composer" data-dragging={drop?.dragging || undefined} {...drop?.dropProps} width="full" lift dragging={!!drop?.dragging}>
       {head && <div className="-mt-0.5 mb-0.5 flex h-8 min-w-0 items-center gap-0.5 px-0.5">{head}</div>}
-      <FramePanel className="p-0 ring-ring/24 transition-shadow has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-[3px]">{editor}</FramePanel>
+      <FramePanel pad="none" focus>{editor}</FramePanel>
       {summary}
-      {options && <FramePanel className="flex max-h-[min(46vh,30rem)] flex-col gap-4 overflow-y-auto p-3.5">{options}</FramePanel>}
+      {options && <FramePanel pad="compact" stack gap={4} scroll>{options}</FramePanel>}
       {notice}
-      <FrameFooter className="flex min-w-0 items-center gap-0.5 px-1 pt-1 pb-0">{footer}</FrameFooter>
+      <FrameFooter bar>{footer}</FrameFooter>
     </Frame>
   );
 }
@@ -1285,7 +1281,7 @@ function ModeTabs({ mode, onMode }: { mode: "start" | "send"; onMode(m: "start" 
 
 // NoProjects is the composer when no online box has a project: with no box
 // yet, add one; with none online, see to them; otherwise add a project.
-function NoProjects({ className, tabs }: { className?: string; tabs?: React.ReactNode }) {
+function NoProjects({ tabs }: { tabs?: React.ReactNode }) {
   const boxes = useStore((s) => s.status?.boxes ?? NONE_BOXES);
   const online = boxes.some((b) => b.state === "online");
   const state = boxes.length === 0 ? "no-boxes" : !online ? "offline" : "no-projects";
@@ -1300,9 +1296,9 @@ function NoProjects({ className, tabs }: { className?: string; tabs?: React.Reac
     else useStore.getState().openAddProject();
   };
   return (
-    <Frame className={cn("w-full shadow-lg/5", className)}>
+    <Frame width="full" lift>
       {tabs && <div className="-mt-0.5 mb-0.5 flex h-8 items-center px-0.5">{tabs}</div>}
-      <FramePanel className="flex flex-col items-center justify-center gap-1 px-8 py-8 text-center">
+      <FramePanel pad="center">
         <Scene name={copy.scene} width={120} className="mb-3" />
         <p className="font-medium text-sm">{copy.title}</p>
         <p className="max-w-xs text-balance text-muted-foreground text-xs">{copy.text}</p>

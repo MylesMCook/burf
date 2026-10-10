@@ -60,8 +60,8 @@ export function StartFrom({
   }, [kind, branches, value]);
 
   return (
-    <Frame className="rounded-xl p-0.5">
-      <FramePanel className="rounded-[10px] p-0 shadow-none before:hidden dark:bg-input/32">
+    <Frame radius="xl" tray>
+      <FramePanel bare>
         <div className="flex items-center gap-1 ps-1.5 pe-2">
           <Menu>
             <MenuTrigger

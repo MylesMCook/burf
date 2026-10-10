@@ -236,7 +236,7 @@ function PRView({ pr, berth, box, path, onRefresh }: { pr: PR; berth: WorktreePa
       </header>
 
       <Frame variant="card">
-        <FrameHeader className="flex-row items-center gap-2 py-3">
+        <FrameHeader row gap={2} pad="tight">
           <FrameTitle>Checks</FrameTitle>
           <span className="ml-auto flex gap-3 text-xs tabular-nums">
             {counts.fail > 0 && <span className="text-destructive">{counts.fail} failing</span>}
@@ -244,7 +244,7 @@ function PRView({ pr, berth, box, path, onRefresh }: { pr: PR; berth: WorktreePa
             <span className="text-muted-foreground">{counts.pass} passed</span>
           </span>
         </FrameHeader>
-        <FramePanel className="p-0">
+        <FramePanel pad="none">
           {checks.length === 0 ? (
             <p className="px-4 py-5 text-center text-muted-foreground text-sm">No checks on this pull request.</p>
           ) : (
@@ -274,11 +274,11 @@ function PRView({ pr, berth, box, path, onRefresh }: { pr: PR; berth: WorktreePa
       </Frame>
 
       <Frame variant="card">
-        <FrameHeader className="flex-row items-center gap-2 py-3">
+        <FrameHeader row gap={2} pad="tight">
           <FrameTitle>Reviews</FrameTitle>
           {pr.reviewDecision && decision[pr.reviewDecision] && <span className={cn("ml-auto text-xs", decision[pr.reviewDecision].tone)}>{decision[pr.reviewDecision].label}</span>}
         </FrameHeader>
-        <FramePanel className="p-0">
+        <FramePanel pad="none">
           {reviews.length === 0 ? (
             <p className="px-4 py-5 text-center text-muted-foreground text-sm">Nobody has reviewed it yet.</p>
           ) : (
@@ -299,10 +299,10 @@ function PRView({ pr, berth, box, path, onRefresh }: { pr: PR; berth: WorktreePa
 
       {comments.length > 0 && (
         <Frame variant="card">
-          <FrameHeader className="py-3">
+          <FrameHeader pad="tight">
             <FrameTitle>Latest comments</FrameTitle>
           </FrameHeader>
-          <FramePanel className="p-0">
+          <FramePanel pad="none">
             <ul className="divide-y">
               {comments.map((c, i) => (
                 <li key={i} className={cn("group/row flex gap-2.5 px-4 py-3 text-sm", picked.has(commentPick(c).key) && "bg-accent/40")}>

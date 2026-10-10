@@ -89,7 +89,7 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
 
       {period > 1 && (
         <Frame variant="card">
-          <FrameHeader className="flex-row items-center gap-2 py-3">
+          <FrameHeader row gap={2} pad="tight">
             <FrameTitle>Tokens per day</FrameTitle>
             {showBox && (
               <PickOne
@@ -104,7 +104,7 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
               />
             )}
           </FrameHeader>
-          <FramePanel className="p-4">
+          <FramePanel pad="room">
             <DailyChart days={days(sum.today, period)} byDay={byDay} series={series} />
           </FramePanel>
         </Frame>
@@ -112,10 +112,10 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
 
       <div className={cn("grid gap-4", !showBox && "lg:grid-cols-2")}>
         <Frame variant="card">
-          <FrameHeader className="py-3">
+          <FrameHeader pad="tight">
             <FrameTitle>By model</FrameTitle>
           </FrameHeader>
-          <FramePanel className="p-0">
+          <FramePanel pad="none">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -152,10 +152,10 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
           </FramePanel>
         </Frame>
         <Frame variant="card">
-          <FrameHeader className="py-3">
+          <FrameHeader pad="tight">
             <FrameTitle>By project</FrameTitle>
           </FrameHeader>
-          <FramePanel className="p-0">
+          <FramePanel pad="none">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -187,13 +187,13 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
       </div>
 
       <Frame variant="card">
-        <FrameHeader className="flex-row items-center gap-2 py-3">
+        <FrameHeader row gap={2} pad="tight">
           <FrameTitle>Sessions</FrameTitle>
           <span className="ml-auto text-muted-foreground text-xs">
             Cost is Claude Code's own estimate at API list prices{subscription ? "; your Claude subscription covers this use" : ""}.
           </span>
         </FrameHeader>
-        <FramePanel className="p-0">
+        <FramePanel pad="none">
           <SessionList berth={berth} sessions={sum.sessions.slice(0, 30)} sources={sources} running={running} allBoxes={allBoxes} showBox={showBox} />
         </FramePanel>
       </Frame>
@@ -323,7 +323,7 @@ function AgentTile({
   const sumBoxes = boxes.reduce((n, [, v]) => n + v, 0) || 1;
   return (
     <Frame variant="card">
-      <FrameHeader className="flex-row flex-wrap items-center gap-2 py-3">
+      <FrameHeader row wrap gap={2} pad="tight">
         <span className={cn("size-2.5 rounded-[3px]", SERIES[agent].dot)} />
         <FrameTitle>{AGENT_NAME[agent]}</FrameTitle>
         <span className="ml-auto text-muted-foreground text-xs">{period === 1 ? "today" : `last ${period} days`}</span>
@@ -336,7 +336,7 @@ function AgentTile({
           </Badge>
         ))}
       </FrameHeader>
-      <FramePanel className="space-y-3 p-4">
+      <FramePanel pad="room" space={3}>
         <div className="flex items-baseline gap-2">
           <span className="font-semibold text-2xl tabular-nums tracking-tight">{compact(total(tokens))}</span>
           <span className="text-muted-foreground text-sm">

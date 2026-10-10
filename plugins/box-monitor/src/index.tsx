@@ -158,10 +158,10 @@ function BoxCard({ view: v }: { view: BoxView }) {
   if (!s) {
     return (
       <Frame variant="card">
-        <FrameHeader className="py-3">
+        <FrameHeader pad="tight">
           <FrameTitle>{v.box}</FrameTitle>
         </FrameHeader>
-        <FramePanel className="text-muted-foreground text-sm">{v.error ?? "No stats yet."}</FramePanel>
+        <FramePanel tone>{v.error ?? "No stats yet."}</FramePanel>
       </Frame>
     );
   }
@@ -171,7 +171,7 @@ function BoxCard({ view: v }: { view: BoxView }) {
   const waiting = s.agents.filter((a) => a.state === "waiting").length;
   return (
     <Frame variant="card">
-      <FrameHeader className="flex-row items-center gap-2 py-2.5">
+      <FrameHeader row gap={2} pad="snug">
         <Icon name="Server" className="size-3.5 text-muted-foreground" />
         <FrameTitle>{v.box}</FrameTitle>
         <span className="truncate text-muted-foreground text-xs">
@@ -183,7 +183,7 @@ function BoxCard({ view: v }: { view: BoxView }) {
           </Badge>
         )}
       </FrameHeader>
-      <FramePanel className="space-y-4 p-4">
+      <FramePanel pad="room" space={4}>
         {s.memory.total > 0 ? (
           <Row label="Memory" value={`${gib(s.memory.used)} of ${gib(s.memory.total)}`} frac={m} history={v.history.map((h) => h.mem)} />
         ) : (

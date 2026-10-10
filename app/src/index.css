@@ -237,6 +237,7 @@
     --card-hover: color-mix(in srgb, var(--card), black 2%);
     --card-selected: color-mix(in srgb, var(--card), black 4%);
     --footer-fill: color-mix(in srgb, var(--card), black 2%);
+    --well-fill: transparent;
 }
 
 .dark {
@@ -264,6 +265,7 @@
     --card-hover: color-mix(in srgb, var(--card), white 2%);
     --card-selected: color-mix(in srgb, var(--card), white 4%);
     --footer-fill: color-mix(in srgb, var(--card), white 2%);
+    --well-fill: color-mix(in oklab, var(--input) 32%, transparent);
     --destructive-foreground: var(--color-red-400);
     --info: var(--color-blue-500);
     --info-foreground: var(--color-blue-400);

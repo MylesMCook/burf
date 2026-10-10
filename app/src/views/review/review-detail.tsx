@@ -171,13 +171,13 @@ function AgentBrowserArtifacts({ entry }: { entry: ReviewEntry }) {
   return (
     <Frame>
       <FrameHeader>
-        <FrameTitle className="flex items-center gap-2">
+        <FrameTitle row>
           <GlobeIcon className="size-3.5 text-muted-foreground" />
           The agent's browser
           {b.url && <span className="truncate font-mono font-normal text-[11px] text-muted-foreground">{b.url}</span>}
         </FrameTitle>
       </FrameHeader>
-      <FramePanel className="flex flex-col gap-2">
+      <FramePanel stack gap={2}>
         {(b.shots?.length ?? 0) > 0 && (
           <div className="grid grid-cols-3 gap-2">
             {b.shots!.map((name) => (
@@ -221,11 +221,11 @@ function LastWords({ entry }: { entry: ReviewEntry }) {
   }, [client, entry.box, entry.session, entry.state_since]);
   return (
     <Frame variant="card">
-      <FrameHeader className="flex-row items-center gap-2 px-4 py-2.5">
+      <FrameHeader row gap={2} pad="bar">
         <AgentIcon agent={entry.agent} />
-        <FrameTitle className="font-medium text-[13px]">{agentLabel(entry.agent)}'s last message</FrameTitle>
+        <FrameTitle size="13">{agentLabel(entry.agent)}'s last message</FrameTitle>
       </FrameHeader>
-      <FramePanel className="px-4 py-3">
+      <FramePanel pad="field">
         {lines === undefined ? (
           <div className="h-12 animate-pulse rounded bg-muted/60" />
         ) : lines.length === 0 ? (
@@ -255,18 +255,18 @@ function LastCheck({ run, loop }: { run?: ReturnType<typeof useReview.getState>[
   const when = useLoop ? ago(new Date(loop!.ended ?? loop!.started).toISOString()) : ago(run!.finished ?? run!.started);
   return (
     <Frame variant="card">
-      <FrameHeader className="flex-row items-center gap-2 px-4 py-2.5">
+      <FrameHeader row gap={2} pad="bar">
         <span className={cn("inline-flex size-4 items-center justify-center rounded-full", pending ? "bg-muted" : passed ? "bg-success/15 text-success-foreground" : "bg-destructive/15 text-destructive-foreground")}>
           {pending ? <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" /> : passed ? <CheckIcon className="size-3" /> : <XIcon className="size-3" />}
         </span>
-        <FrameTitle className="min-w-0 truncate font-medium text-[13px]">
+        <FrameTitle size="13" truncate>
           Last check {pending ? "running" : passed ? "passed" : "failed"}
         </FrameTitle>
         <span className="min-w-0 truncate font-mono text-muted-foreground text-xs">{what}</span>
         <span className="ml-auto shrink-0 text-muted-foreground text-xs">{when}</span>
       </FrameHeader>
       {!passed && output && (
-        <FramePanel className="px-4 py-3">
+        <FramePanel pad="field">
           <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-muted-foreground">{output.trim()}</pre>
         </FramePanel>
       )}
@@ -324,7 +324,7 @@ function Changes({ entry }: { entry: ReviewEntry }) {
   const removed = current.files.reduce((n, f) => n + (f.removed ?? 0), 0);
   return (
     <Frame variant="card">
-      <FrameHeader className="flex-row items-center gap-1 px-2 py-1.5">
+      <FrameHeader row gap={1} pad="short">
         {groups.map((g) => (
           <button
             key={g.id}
@@ -343,7 +343,7 @@ function Changes({ entry }: { entry: ReviewEntry }) {
           <span className="text-success-foreground">+{added}</span> <span className="text-destructive-foreground">−{removed}</span>
         </span>
       </FrameHeader>
-      <FramePanel className="flex h-[30rem] min-h-0 overflow-hidden p-0">
+      <FramePanel tall pad="none">
         <ul className="w-60 shrink-0 overflow-y-auto border-r p-1.5">
           {current.files.map((f) => (
             <FileRow key={`${current.id}:${f.path}`} file={f} active={f.path === file?.path} onSelect={() => setSelected(f.path)} comments={counts[f.path]} />
@@ -400,9 +400,9 @@ function CommentsBar({ entry }: { entry: ReviewEntry }) {
   }
   return (
     <Frame variant="card">
-      <FrameHeader className="flex-row items-center gap-2 px-4 py-2.5">
+      <FrameHeader row gap={2} pad="bar">
         <MessageSquareTextIcon className="size-3.5 text-muted-foreground" />
-        <FrameTitle className="min-w-0 flex-1 truncate font-medium text-[13px]">
+        <FrameTitle size="13" truncate grow>
           {todo.length} comment{todo.length === 1 ? "" : "s"} for {who}
         </FrameTitle>
         <Button size="xs" variant="ghost" onClick={() => dismissComments(entry.key, false)}>
@@ -413,7 +413,7 @@ function CommentsBar({ entry }: { entry: ReviewEntry }) {
           Send to {who}
         </Button>
       </FrameHeader>
-      <FramePanel className="px-4 py-2.5">
+      <FramePanel pad="text">
         <ul className="flex flex-col gap-1 text-[13px]">
           {todo.slice(0, 5).map((c) => (
             <li key={c.id} className="flex min-w-0 gap-2">
@@ -439,13 +439,13 @@ function CommentsBar({ entry }: { entry: ReviewEntry }) {
 function Commits({ entry }: { entry: ReviewEntry }) {
   return (
     <Frame variant="card">
-      <FrameHeader className="flex-row items-center gap-2 px-4 py-2.5">
+      <FrameHeader row gap={2} pad="bar">
         <GitCommitHorizontalIcon className="size-3.5 text-muted-foreground" />
-        <FrameTitle className="font-medium text-[13px]">
+        <FrameTitle size="13">
           {entry.base_ahead} commit{entry.base_ahead === 1 ? "" : "s"} not on {(entry.base ?? "base").replace(/^origin\//, "")}
         </FrameTitle>
       </FrameHeader>
-      <FramePanel className="p-0">
+      <FramePanel pad="none">
         <ul className="divide-y">
           {entry.commits.map((c) => (
             <li key={c.sha} className="flex items-center gap-3 px-4 py-2 text-[13px]">

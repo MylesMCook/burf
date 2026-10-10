@@ -80,8 +80,8 @@ export function CloneForm({ box, onAdded, onCancel }: { box: string; onAdded(loc
           Clones to <span className="font-mono text-foreground/80">{`${parent.replace(/\/+$/, "") || "~/work"}/${shownName || "…"}`}</span> on {box}
         </p>
         {(busy || lines.length > 0) && (
-          <Frame className="rounded-xl p-0.5">
-            <FramePanel className="rounded-[10px] p-0 shadow-none before:hidden dark:bg-input/32">
+          <Frame radius="xl" tray>
+            <FramePanel bare>
               <pre ref={logRef} aria-live="polite" className="max-h-40 overflow-y-auto whitespace-pre-wrap p-3 font-mono text-[12px] text-muted-foreground leading-relaxed">
                 {lines.length ? lines.join("\n") : "Starting git clone…"}
               </pre>

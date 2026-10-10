@@ -116,7 +116,7 @@ export function FolderBrowser({ box, start, onAdded }: { box: string; start?: st
             className="h-9 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 font-mono text-[13px] shadow-xs/5 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 sm:h-8 dark:bg-input/32"
           />
         </div>
-        <Frame className="rounded-xl p-0.5">
+        <Frame radius="xl" tray>
           <nav aria-label="Folder" className="flex h-7 min-w-0 items-center gap-1 overflow-hidden px-2.5 text-muted-foreground text-xs">
             {crumbs.map((c, i) => (
               <span key={c.path} className="flex min-w-0 items-center gap-1">
@@ -128,7 +128,7 @@ export function FolderBrowser({ box, start, onAdded }: { box: string; start?: st
             ))}
             {loading && listing && <LoaderIcon className="ml-auto size-3 shrink-0 animate-spin" />}
           </nav>
-          <FramePanel className="rounded-[10px] p-0 shadow-none before:hidden dark:bg-input/32">
+          <FramePanel bare>
             <div ref={listRef} role="listbox" aria-label="Folders" className="h-64 overflow-y-auto p-1">
               {loading && !listing ? (
                 <p className="flex items-center gap-2 px-2.5 py-2 text-[13px] text-muted-foreground">

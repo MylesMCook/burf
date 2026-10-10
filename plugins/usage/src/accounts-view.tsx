@@ -166,7 +166,7 @@ export function AccountsView({
         const onBox = boxAccount(agent);
         return (
           <Frame key={agent} variant="card">
-            <FrameHeader className="flex-row items-center gap-2 py-3">
+            <FrameHeader row gap={2} pad="tight">
               <span className={cn("size-2.5 rounded-[3px]", SERIES[agent].dot)} />
               <FrameTitle>{AGENT_NAME[agent]}</FrameTitle>
               <span className="text-muted-foreground text-xs">
@@ -177,7 +177,7 @@ export function AccountsView({
                 Add account…
               </Button>
             </FrameHeader>
-            <FramePanel className="p-0">
+            <FramePanel pad="none">
               {adding === agent && <AddAccount agent={agent} taken={list.map((a) => a.id)} busy={busy === `add:${agent}`} where={here ? `${here.location}/${here.worktree}` : locations[0]?.name} onCancel={() => setAdding(undefined)} onAdd={(name) => void add(agent, name)} />}
               <ul className="divide-y">
                 {list.map((a) => {
@@ -260,10 +260,10 @@ export function AccountsView({
       })}
 
       <Frame variant="card">
-        <FrameHeader className="py-3">
+        <FrameHeader pad="tight">
           <FrameTitle>Running sessions</FrameTitle>
         </FrameHeader>
-        <FramePanel className="p-0">
+        <FramePanel pad="none">
           {sessions.length === 0 ? (
             <p className="px-4 py-6 text-center text-muted-foreground text-sm">No Claude Code or Codex sessions are running on {box}.</p>
           ) : (
