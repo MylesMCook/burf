@@ -10,6 +10,7 @@ import { boxApi, type WorktreeService } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { toastManager } from "@/components/ui/toast";
 import { openBrowserAt, openPreviewAt } from "@/lib/actions";
+import { hostSuffix, worktreeHost } from "@/lib/browser-url";
 import { copyText } from "@/lib/clipboard";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -89,6 +90,7 @@ function LiveServices({ worktree: ref }: { worktree: WorktreeRef }) {
   const services = useStore((s) => s.boxes[ref.box]?.services ?? NONE);
   const urlPort = useStore((s) => s.status?.proxy.url_port);
   const devPort = useStore((s) => s.boxes[ref.box]?.locations?.find((l) => l.name === ref.location)?.worktrees?.find((w) => w.path === ref.path)?.port);
+  const host = worktreeHost(ref);
   const own = useWorktreeServices(ref);
   const sessions = useStore((s) => s.boxes[ref.box]?.sessions);
   // What listens on the worktree's own port is its running service when the
