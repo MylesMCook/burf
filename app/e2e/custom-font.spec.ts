@@ -8,6 +8,39 @@ const file = { name: `${name}.woff2`, mimeType: "font/woff2", buffer: bytes };
 
 test.beforeEach(() => mockOnly("custom fonts use isolated browser storage"));
 
+test("the interface default loads the bundled Paper Mono face", async ({ app }) => {
+  await app.open();
+  await app.page.evaluate(() => document.fonts.load('400 13px "Paper Mono"'));
+  await expectBodyFont(app, "Paper Mono");
+  const fontUrl = await app.page.evaluate(() => performance.getEntriesByType("resource").map((entry) => entry.name).find((url) => url.includes("paper-mono") && url.endsWith(".ttf")));
+  if (!fontUrl) throw new Error("The bundled Paper Mono resource was not loaded.");
+  expect(new URL(fontUrl).origin).toBe(new URL(app.page.url()).origin);
+  const response = await app.page.request.get(fontUrl);
+  expect(response.ok()).toBe(true);
+  expect((await response.body()).equals(readFileSync(new URL("../src/assets/fonts/paper-mono.ttf", import.meta.url)))).toBe(true);
+});
+
+test("Newsreader headings and both bundled styles use local font assets", async ({ app }) => {
+  await app.open();
+  await app.openSettings("boxes");
+  await app.page.getByRole("button", { name: "Add a box", exact: true }).first().click();
+  await expect(app.page.getByRole("dialog", { name: "Add a box", exact: true }).getByRole("heading", { name: "Add a box", exact: true })).toHaveCSS("font-family", /Newsreader/);
+  await app.page.evaluate(async () => {
+    await document.fonts.load('400 18px "Newsreader"');
+    await document.fonts.load('italic 400 18px "Newsreader"');
+  });
+  const faces = await app.page.evaluate(() => Array.from(document.fonts).filter((face) => face.family === "Newsreader").map((face) => ({ style: face.style, status: face.status })));
+  expect(faces).toEqual(expect.arrayContaining([{ style: "normal", status: "loaded" }, { style: "italic", status: "loaded" }]));
+  for (const name of ["newsreader-regular", "newsreader-italic"]) {
+    const fontUrl = await app.page.evaluate((name) => performance.getEntriesByType("resource").map((entry) => entry.name).find((url) => url.includes(name) && url.endsWith(".ttf")), name);
+    if (!fontUrl) throw new Error(`The bundled ${name} resource was not loaded.`);
+    expect(new URL(fontUrl).origin).toBe(new URL(app.page.url()).origin);
+    const response = await app.page.request.get(fontUrl);
+    expect(response.ok()).toBe(true);
+    expect((await response.body()).equals(readFileSync(new URL(`../src/assets/fonts/${name}.ttf`, import.meta.url)))).toBe(true);
+  }
+});
+
 async function addFont(app: App) {
   const settings = await app.openSettings("appearance");
   await expect(settings.getByRole("button", { name: "Add a font", exact: true })).toBeVisible();
@@ -81,7 +114,7 @@ test("removing a font in use quietly restores defaults for all uses", async ({ a
   await expect(settings.getByRole("list", { name: "Added fonts" })).toHaveCount(0);
   await expect(settings.getByRole("combobox", { name: "Interface font", exact: true })).toContainText("Default");
   await expect(settings.getByRole("combobox", { name: "Code font", exact: true })).toContainText("Default");
-  await expect(app.page.locator("body")).toHaveCSS("font-family", /Inter Variable/);
+  await expectBodyFont(app, "Paper Mono");
   await expect(settings.locator("pre").first()).toHaveCSS("font-family", /JetBrains Mono Variable/);
   await expect(settings.getByRole("status")).toHaveCount(0);
   const prefs = await app.stored("berth.prefs") as Record<string, unknown>;
@@ -133,7 +166,7 @@ test("a stored font that cannot load falls back and names the font in Settings",
   await app.page.reload();
   const settings = await app.openSettings("appearance");
   await expect(settings.getByText(`“${name}” could not be loaded.`, { exact: false })).toBeVisible();
-  await expect(app.page.locator("body")).toHaveCSS("font-family", /Inter Variable/);
+  await expectBodyFont(app, "Paper Mono");
   await expect(settings.getByRole("combobox", { name: "Interface font", exact: true })).toContainText("Default");
   await expect(settings.getByRole("combobox", { name: "Code font", exact: true })).toContainText("Default");
   await expect(settings.locator("pre").first()).toHaveCSS("font-family", /JetBrains Mono Variable/);

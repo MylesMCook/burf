@@ -29,6 +29,11 @@ test("Add a box keeps machine labels and pairing controls reachable at 1024px", 
   }).toBe(true);
   await dialog.getByText("Or let Burf set it up over SSH", { exact: true }).click();
   const host = dialog.getByLabel("SSH host, like me@my-box");
+  // Scroll after the disclosure has expanded, while its height is stable.
+  await expect.poll(() => host.evaluate((field) => {
+    const panel = field.closest('[data-slot="collapsible-panel"]');
+    return !!panel && !panel.getAnimations().some((animation) => animation.pending || animation.playState === "running") && panel.getBoundingClientRect().height >= panel.scrollHeight - 1;
+  })).toBe(true);
   await host.scrollIntoViewIfNeeded();
   await expect.poll(async () => {
     const panel = await dialog.boundingBox();

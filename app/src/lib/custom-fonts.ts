@@ -7,7 +7,7 @@ import { DEFAULT_TERMINAL_PREFS } from "@/lib/terminal";
 
 const DB = "berth-custom-fonts";
 const STORE = "fonts";
-const SANS = "'Inter Variable', sans-serif";
+const SANS = "'Paper Mono', ui-monospace, monospace";
 const MONO = "'JetBrains Mono Variable', ui-monospace, monospace";
 const faces = new Map<string, FontFace>();
 export const useCustomFonts = create<{ status: Record<string, "loaded" | "failed"> }>(() => ({ status: {} }));
