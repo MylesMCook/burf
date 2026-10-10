@@ -81,6 +81,45 @@ test("state permits known dynamic project choices but rejects unrecognized and c
   }
 });
 
+test("an absent export starts a fresh profile without touching saved files or importing later exports", async () => {
+  const storage = new MemoryStorage();
+  const fonts = new MemoryFonts();
+  const images = new MemoryImages();
+  assert.equal(await restoreDesktopState(null, storage, fonts, images), "fresh");
+  assert.deepEqual([...storage.values.entries()], [["burf.desktop-state.v1", "complete"]]);
+  assert.equal(fonts.reads, 0);
+  assert.equal(fonts.writes, 0);
+  assert.equal(images.writes, 0);
+  storage.setItem("berth.prefs", "preferences created here");
+  assert.equal(await restoreDesktopState(state(), storage, fonts, images), "already-restored");
+  assert.equal(storage.getItem("berth.prefs"), "preferences created here");
+  assert.equal(storage.getItem("berth.workspaces"), null);
+});
+
+test("a missing export cannot abandon a pending import; the next valid export resumes it", async () => {
+  const storage = new MemoryStorage();
+  const fonts = new MemoryFonts();
+  storage.setItem("burf.desktop-state.v1", "pending");
+  storage.setItem("berth.ui", "selected during recovery");
+  await assert.rejects(restoreDesktopState(null, storage, fonts), /missing.*export/i);
+  assert.equal(storage.getItem("burf.desktop-state.v1"), "pending");
+  assert.equal(await restoreDesktopState(state(), storage, fonts), "restored");
+  assert.equal(storage.getItem("berth.ui"), "selected during recovery");
+  assert.equal(storage.getItem("berth.workspaces"), state().storage["berth.workspaces"]);
+});
+
+test("invalid exports and failed fresh-profile marker writes remain retryable", async () => {
+  const storage = new MemoryStorage();
+  const fonts = new MemoryFonts();
+  for (const value of [undefined, {}, false]) await assert.rejects(restoreDesktopState(value, storage, fonts));
+  assert.equal(storage.length, 0);
+  storage.failKey = "burf.desktop-state.v1";
+  await assert.rejects(restoreDesktopState(null, storage, fonts), /quota/);
+  assert.equal(storage.length, 0);
+  storage.failKey = undefined;
+  assert.equal(await restoreDesktopState(null, storage, fonts), "fresh");
+});
+
 test("fresh-origin import completes once and never replays a later source snapshot", async () => {
   const storage = new MemoryStorage();
   const fonts = new MemoryFonts();

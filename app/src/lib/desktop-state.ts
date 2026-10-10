@@ -228,9 +228,16 @@ export async function captureDesktopState(storage: Storage = localStorage, fontS
   return parseDesktopState({ version: 1, storage: captured, fonts, images });
 }
 
-export async function restoreDesktopState(value: unknown, storage: Storage = localStorage, fontStore: DesktopFontStore = desktopFontStore, imageStore: DesktopImageStore = desktopImageStore): Promise<"restored" | "existing" | "already-restored"> {
+export async function restoreDesktopState(value: unknown, storage: Storage = localStorage, fontStore: DesktopFontStore = desktopFontStore, imageStore: DesktopImageStore = desktopImageStore): Promise<"fresh" | "restored" | "existing" | "already-restored"> {
   const marker = storage.getItem(MARKER);
   if (marker === "complete") return "already-restored";
+  // Only an explicit absent export starts fresh. A partial import still needs
+  // its source; read errors and invalid snapshots must remain recoverable.
+  if (value === null) {
+    if (marker === "pending") throw new Error("Missing saved state export. Reopen the previous Burf app to export it again.");
+    storage.setItem(MARKER, "complete");
+    return "fresh";
+  }
   const snapshot = parseDesktopState(value);
   if (marker !== "pending" && Object.keys(captureStorage(storage)).length) {
     storage.setItem(MARKER, "complete");

@@ -69,11 +69,17 @@ Claude on the Mini was signed out; actual Claude turns remain unverified.
 All four legacy desktop windows exported owned private UI state before cutover.
 Preferences/drafts/fonts/backgrounds restore before settings imports. Imports fill
 missing records and commit their marker last, preserving retries and both origins.
-A fresh installation without an exported snapshot still needs a first-run path;
-current fleet migration has exports. Installed builds/rollback paths and unfinished
-rollout are in tasks.md. Local checks alone never establish installed parity.
+A missing export initializes a new profile. A missing export during a pending
+import still blocks and keeps recovery retryable. Legacy upgrades must export
+before cutover: absence does not detect an old WebView profile, and a completed
+new origin does not later import one. Current fleet migration has exports.
+Installed builds/rollback paths are in tasks.md. Local checks alone never
+establish installed parity.
 
 The bounded Act selector job passed in 5.1s. Native portable checks passed, while
 cold Windows dependency downloads hit a 120s external deadline under emulation.
-Hosted timing and artifact transfer are not yet observed. Publication/signing
+Hosted app checks passed in 93s and native quick checks in 66s. The first cold
+Go job failed a route-probe fixture race; its assertions now wait on both route
+states, and root/native caches have separate keys. Final timing is in tasks.md.
+Hosted browser artifact transfer runs after merge. Publication/signing
 and signed-in provider/native site behavior require their own evidence.

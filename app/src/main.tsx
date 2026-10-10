@@ -8,7 +8,7 @@ import "@/index.css";
 async function migrateDesktopState() {
   if (isWails()) {
     // Nothing that reads preferences, workspaces or font records can load
-    // until the old origin's explicit snapshot has been restored.
+    // until the explicit snapshot is restored or a new profile is initialized.
     await restoreDesktopState(await invoke<unknown>("ui_state"));
   }
 }
