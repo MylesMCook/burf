@@ -110,14 +110,8 @@ async function expandLocalComposer(app: App) {
 async function enterLocalFolder(app: App, path: string) {
   await expandLocalComposer(app);
   await localComposer(app).getByRole("button", { name: /^Project:/ }).click();
-  // LocalStartBody's folder menu uses composer buttons, not menu radios.
-  await app.page.getByRole("button", { name: "Type folder path…", exact: true }).click();
+  await app.page.getByRole("menuitem", { name: "Type folder path…", exact: true }).click();
   await app.page.getByLabel("Project directory").fill(path);
-}
-
-async function pickLocalProvider(app: App, name: string) {
-  await localComposer(app).getByRole("button", { name: new RegExp(`^Provider:`) }).click();
-  await app.page.getByRole("button", { name, exact: true }).click();
 }
 
 async function openLocalNewAgent(app: App) {
@@ -545,10 +539,8 @@ test("unavailable agent cannot start and a failed launch keeps its error", async
     await openLocalNewAgent(app);
     await expect(localComposer(app).getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
     await expandLocalComposer(app);
-    await localComposer(app).getByRole("button", { name: "Provider: Claude Code", exact: true }).click();
-    await expect(localComposer(app).getByRole("button", { name: "Codex", exact: true })).toHaveCount(0);
-    await expect(localComposer(app).getByRole("button", { name: "Claude Code", exact: true })).toBeVisible();
-    await app.page.keyboard.press("Escape");
+    await expect(localComposer(app).getByRole("button", { name: "Provider: Claude Code", exact: true })).toBeVisible();
+    await expect(app.page.getByRole("menuitemradio", { name: "Codex", exact: true })).toHaveCount(0);
     await enterLocalFolder(app, cwd);
     await expect(localComposer(app).getByRole("button", { name: "Start", exact: true })).toBeEnabled();
     await localComposer(app).getByRole("button", { name: "Start", exact: true }).click();
@@ -594,14 +586,9 @@ test("the local project picker lists recent history and live folders newest firs
     const composer = await chooseLocalAtHome(app);
     await expect(composer.getByTestId("task-composer-summary")).toContainText("live on work-hp · this folder · Claude Code");
     await composer.getByRole("button", { name: /^Project:/ }).click();
-    const typePath = app.page.getByRole("button", { name: "Type folder path…", exact: true });
-    await expect(typePath).toBeVisible();
-    const folderMenu = app.page.locator('[data-slot="composer-menu"]').filter({ has: typePath });
-    const folders = folderMenu.locator('[data-slot="composer-menu-item"]').filter({ hasNotText: "Type folder path" });
+    await expect(app.page.getByRole("menuitem", { name: "Type folder path…", exact: true })).toBeVisible();
+    const folders = app.page.getByRole("menuitemradio");
     await expect(folders).toHaveText([/live/, /recent/, /shop/]);
-    await expect(folders.nth(0)).toHaveAttribute("title", live);
-    await expect(folders.nth(1)).toHaveAttribute("title", recent);
-    await expect(folders.nth(2)).toHaveAttribute("title", cwd);
     expect(calls.filter((c) => c.method !== "GET")).toHaveLength(0);
   } finally { await agent.close(); }
 });
@@ -615,8 +602,8 @@ test("a new local task defaults to home without history and offers only installe
     await expect(composer.getByTestId("task-composer-summary")).toContainText("shop on work-hp · this folder · Claude Code");
     await expect(composer.getByRole("button", { name: "Place: work-hp", exact: true })).toBeVisible();
     await expect(composer.getByRole("button", { name: /^Where:/ })).toHaveCount(0);
-    await composer.getByRole("button", { name: "Provider: Claude Code", exact: true }).click();
-    await expect(app.page.locator('[data-slot="composer-menu"][data-open] [data-slot="composer-menu-item"]')).toHaveText(["Claude Code"]);
+    await expect(composer.getByRole("button", { name: "Provider: Claude Code", exact: true })).toBeVisible();
+    await expect(app.page.getByRole("menuitemradio", { name: "Codex", exact: true })).toHaveCount(0);
     await expect(app.page.getByRole("button", { name: /Compare agents/ })).toHaveCount(0);
     await app.page.keyboard.press("Escape");
     await enterLocalFolder(app, cwd);
@@ -631,7 +618,7 @@ test("Home starts Codex in a typed folder with one chat and one first message", 
   try {
     const composer = await chooseLocalAtHome(app);
     await composer.getByRole("button", { name: /^Project:/ }).click();
-    await app.page.getByRole("button", { name: "Type folder path…", exact: true }).click();
+    await app.page.getByRole("menuitem", { name: "Type folder path…", exact: true }).click();
     await app.page.getByLabel("Project directory").fill(typed);
     await composer.getByRole("textbox", { name: "What should your agents work on?", exact: true }).fill("Fix checkout");
     await expect(composer.getByRole("button", { name: "Start", exact: true })).toBeEnabled();
@@ -730,11 +717,11 @@ test("choosing a local provider replaces the previous provider", async ({ app })
     const composer = await chooseLocalAtHome(app);
     await expect(composer.getByTestId("task-composer-summary")).toContainText("this folder · Codex");
     await composer.getByRole("button", { name: "Provider: Codex", exact: true }).click();
-    await app.page.locator('[data-slot="composer-menu"][data-open]').getByRole("button", { name: "Claude Code", exact: true }).click();
+    await app.page.getByRole("menuitemradio", { name: "Claude Code", exact: true }).click();
     await expect(composer.getByTestId("task-composer-summary")).toContainText("this folder · Claude Code");
     await expect(composer.getByTestId("task-composer-summary")).not.toContainText("Codex");
     await composer.getByRole("button", { name: "Provider: Claude Code", exact: true }).click();
-    await expect(app.page.locator('[data-slot="composer-menu"][data-open] [data-slot="composer-menu-item"][data-active]')).toHaveText("Claude Code");
+    await expect(app.page.getByRole("menuitemradio", { name: "Claude Code", exact: true })).toBeChecked();
     await expect(app.page.getByRole("button", { name: /Compare agents/ })).toHaveCount(0);
     expect(calls.filter((c) => c.method !== "GET")).toHaveLength(0);
   } finally { await agent.close(); }

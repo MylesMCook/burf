@@ -2,7 +2,7 @@ import { ArrowUpIcon, ChevronDownIcon, FolderIcon, GitBranchIcon, SendIcon, Serv
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { AgentIcon, StatusDot } from "@/components/agent-glyph";
-import { Composer, ComposerActions, ComposerBar, ComposerInput, ComposerMenu as AuiComposerMenu, ComposerMenuItem as AuiComposerMenuItem, ComposerModelTrigger, ComposerSend, ComposerToolbar } from "@/components/assistant-ui/elements/composer";
+import { ChatBox, chatBoxInputClass } from "@/components/assistant-ui/chat-box";
 import { Scene } from "@/components/art/scenes";
 import { AttemptsOptions, type AttemptValues, SendOptions, type SendValues, WorktreeOptions, type WorktreeValues } from "@/components/conversation/composer-options";
 import { AddProjectItem, AgentsPicker, type Chosen, DefaultBoxItem, entryKey, expand, nice, Pick, type PickerPreset, SavedPrompts, TargetsPicker, toChosen } from "@/components/conversation/composer-pickers";
@@ -16,7 +16,8 @@ import { ErrorText, toastError } from "@/components/error-note";
 import { Tip } from "@/components/tip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Frame, FrameFooter, FramePanel } from "@/components/ui/frame";
+import { Frame, FramePanel } from "@/components/ui/frame";
+import { MenuItem } from "@/components/ui/menu";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { toastManager } from "@/components/ui/toast";
@@ -54,8 +55,8 @@ export type { AgentPick } from "@/lib/composer";
 // which project and box, in a new worktree or the main checkout, and with
 // which agents (one is a task, several are attempts, none is the worktree
 // alone); or, as "Running agents", a prompt for agents already at work. The
-// same frame sits on home, in an empty worktree, before an agent's first
-// prompt, and in the ⌘N dialog.
+// same chat box sits on home, in an empty worktree, on This computer, before
+// an agent's first prompt, and in the ⌘N dialog.
 
 export interface TaskComposerProps {
   draft?: ComposerDraft;
@@ -209,45 +210,39 @@ function LocalStartBody({ local, draft, text, setText, tabs, autoFocus, placehol
   };
   const summary = `${folderName(cwd) || "Choose folder"} on ${local.name} · this folder · ${agent ? localAgentName(agent.id) : "Choose agent"}`;
   const folderOptions = folderChoices([...new Set([...folders, cwd].filter(Boolean))]);
-  const [menu, setMenu] = useState<"folder" | "place" | "agent" | null>(null);
-  const [folderQuery, setFolderQuery] = useState("");
-  const q = folderQuery.trim().toLowerCase();
-  const shownFolders = !q ? folderOptions : folderOptions.filter((o) => `${o.label} ${o.hint}`.toLowerCase().includes(q));
-  const openMenu = (next: "folder" | "place" | "agent") => setMenu(menu === next ? null : next);
+  const places = [
+    { value: "local", label: local.name },
+    ...boxes.filter((b) => b.state === "online").map((b) => ({ value: `box:${b.name}`, label: b.name })),
+  ];
   return <fieldset data-testid="task-composer" disabled={busy} className={cn("w-full min-w-0", className)}>
     {tabs}
     <span data-testid="task-composer-summary" aria-expanded="true" className="sr-only">{summary}</span>
-    <Composer className="max-w-none">
-      <AuiComposerMenu open={menu === "folder"} className="max-h-72 w-full max-w-none overflow-y-auto">
-        {folderOptions.length > 6 && <Input aria-label="Search Project" value={folderQuery} placeholder="Search" onChange={(e) => setFolderQuery(e.target.value)} onKeyDown={(e) => e.stopPropagation()} className="mb-1 h-7" />}
-        {shownFolders.map((o) => (
-          <AuiComposerMenuItem key={o.value} title={o.hint} active={o.value === cwd} onClick={() => { chooseFolder(o.value); setMenu(null); setFolderQuery(""); }}>
-            <span className="min-w-0 flex-1 truncate text-start">{o.label}</span>
-          </AuiComposerMenuItem>
-        ))}
-        {q && shownFolders.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-xs">No matches.</p>}
-        <AuiComposerMenuItem onClick={() => { setTypingFolder(true); setMenu(null); }}>Type folder path…</AuiComposerMenuItem>
-      </AuiComposerMenu>
-      <AuiComposerMenu open={menu === "place"}>
-        <AuiComposerMenuItem active onClick={() => setMenu(null)}>{local.name}</AuiComposerMenuItem>
-        {boxes.filter((b) => b.state === "online").map((b) => <AuiComposerMenuItem key={b.name} onClick={() => { if (!busy) onPlace({ kind: "box", box: b.name }); setMenu(null); }}>{b.name}</AuiComposerMenuItem>)}
-      </AuiComposerMenu>
-      <AuiComposerMenu open={menu === "agent"}>
-        {presets.map((p) => <AuiComposerMenuItem key={p.id} active={p.id === agent?.id} onClick={() => { if (!busy) setAgent(p.id); setMenu(null); }}>{p.name}</AuiComposerMenuItem>)}
-      </AuiComposerMenu>
-      <ComposerBar>
+    <ChatBox>
         {typingFolder && <label className="block px-1 text-xs text-muted-foreground">Folder path<Input aria-label="Project directory" value={cwd} onChange={(e) => chooseFolder(e.target.value)} placeholder="Full folder path" /></label>}
-        <ComposerInput aria-label="What should your agents work on?" placeholder={placeholder ?? "Describe a task, a bug to fix, an idea to try…"} value={text} autoFocus={autoFocus} onChange={(e) => setText(e.target.value)} onSubmit={() => void submit()} />
-        <ComposerToolbar>
-          <ComposerActions>
-            <ComposerModelTrigger aria-label={`Project: ${folderName(cwd) || "Choose folder"}`} model={folderName(cwd) || "Folder"} open={menu === "folder"} onClick={() => openMenu("folder")} />
-            <ComposerModelTrigger aria-label={`Place: ${local.name}`} model={local.name} open={menu === "place"} onClick={() => openMenu("place")} />
-            <ComposerModelTrigger aria-label={`Provider: ${agent ? localAgentName(agent.id) : "Choose agent"}`} model={agent ? localAgentName(agent.id) : "Agent"} open={menu === "agent"} onClick={() => openMenu("agent")} />
-          </ComposerActions>
-          <ComposerSend aria-label="Start" streaming={busy} idle={!text.trim() || !!blocker} disabled={!!blocker || busy} onClick={() => void submit()} />
-        </ComposerToolbar>
-      </ComposerBar>
-    </Composer>
+        <textarea
+          aria-label="What should your agents work on?"
+          placeholder={placeholder ?? "Describe a task, a bug to fix, an idea to try…"}
+          value={text}
+          autoFocus={autoFocus}
+          rows={1}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void submit();
+            }
+          }}
+          className={chatBoxInputClass}
+        />
+        <div className="flex items-center justify-between gap-1">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+            <Pick label="Project" icon={<FolderIcon />} value={cwd} options={folderOptions} onPick={chooseFolder} empty="Choose folder" footer={<MenuItem onClick={() => setTypingFolder(true)}>Type folder path…</MenuItem>} />
+            <Pick label="Place" icon={<StatusDot state="online" />} value="local" options={places} onPick={(value) => { if (value.startsWith("box:")) onPlace({ kind: "box", box: value.slice(4) }); }} />
+            <Pick label="Provider" icon={<AgentIcon agent={agent?.id} />} value={agent?.id ?? ""} options={presets.map((p) => ({ value: p.id, label: p.name }))} onPick={setAgent} empty="Choose agent" />
+          </div>
+          <SendButton label="Start" blocker={blocker} busy={busy} onClick={() => void submit()} named />
+        </div>
+      </ChatBox>
     {!structured && agent && <p className="px-1 pt-2 text-xs text-muted-foreground">{localAgentName(agent.id)} starts in its terminal. Your prompt is copied for you to paste there.</p>}
     {historyError && <p className="px-1 pt-2 text-xs text-muted-foreground">{historyError}</p>}
     {error && <p role="alert" className="px-1 pt-2 text-sm text-destructive">{error}</p>}
@@ -1182,14 +1177,16 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
 // frame joins; while one is held over it, the frame is outlined.
 function Shell({ head, editor, summary, options, notice, footer, drop, className }: { head?: React.ReactNode; editor: React.ReactNode; summary?: React.ReactNode; options?: React.ReactNode; notice?: React.ReactNode; footer: React.ReactNode; drop?: Attachments; className?: string }) {
   return (
-    <Frame data-testid="task-composer" data-dragging={drop?.dragging || undefined} {...drop?.dropProps} className={cn("w-full shadow-lg/5", drop?.dragging && "outline-2 outline-ring/60 outline-dashed outline-offset-4", className)}>
-      {head && <div className="-mt-0.5 mb-0.5 flex h-8 min-w-0 items-center gap-0.5 px-0.5">{head}</div>}
-      <FramePanel className="p-0 ring-ring/24 transition-shadow has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-[3px]">{editor}</FramePanel>
-      {summary}
-      {options && <FramePanel className="flex max-h-[min(46vh,30rem)] flex-col gap-4 overflow-y-auto p-3.5">{options}</FramePanel>}
+    <div data-testid="task-composer" {...drop?.dropProps} className={cn("flex w-full flex-col gap-2", className)}>
+      {head && <div className="flex h-8 min-w-0 items-center gap-0.5 px-0.5">{head}</div>}
+      <ChatBox data-dragging={drop?.dragging || undefined}>
+        {editor}
+        {summary}
+        {options && <FramePanel className="flex max-h-[min(46vh,30rem)] flex-col gap-4 overflow-y-auto p-3.5">{options}</FramePanel>}
+        <div className="flex min-w-0 items-center gap-0.5 empty:hidden">{footer}</div>
+      </ChatBox>
       {notice}
-      <FrameFooter className="flex min-w-0 items-center gap-0.5 px-1 pt-1 pb-0">{footer}</FrameFooter>
-    </Frame>
+    </div>
   );
 }
 
@@ -1213,16 +1210,16 @@ function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, p
         }}
         aria-label={label}
         placeholder={placeholder}
-        className="field-sizing-content block max-h-60 min-h-[76px] w-full resize-none rounded-[inherit] bg-transparent px-3.5 py-3 text-[0.875rem] outline-none placeholder:text-muted-foreground/72"
+        className={chatBoxInputClass}
       />
-      {hint && <p className="-mt-1 truncate px-3.5 pb-2.5 text-xs">{hint}</p>}
+      {hint && <p className="px-2.5 text-xs">{hint}</p>}
       {menu?.chip}
       {menu?.menu}
     </>
   );
 }
 
-function SendButton({ label, icon, dialog, blocker, busy, onClick }: { label: string; icon?: React.ReactNode; dialog?: boolean; blocker?: string; busy?: boolean; onClick(): void }) {
+function SendButton({ label, icon, dialog, blocker, busy, named, onClick }: { label: string; icon?: React.ReactNode; dialog?: boolean; blocker?: string; busy?: boolean; named?: boolean; onClick(): void }) {
   const tip = blocker ?? (
     <span className="flex items-center gap-1.5">
       {label} <Kbd>⏎</Kbd>
@@ -1245,7 +1242,7 @@ function SendButton({ label, icon, dialog, blocker, busy, onClick }: { label: st
   return (
     <Tip label={tip}>
       <span className="inline-flex">
-        <Button size="icon-sm" aria-label={blocker ? `${label}: ${blocker}` : label} disabled={!!blocker} loading={busy} onClick={onClick}>
+        <Button size="icon-sm" className="rounded-full" aria-label={named ? label : blocker ? `${label}: ${blocker}` : label} disabled={!!blocker} loading={busy} onClick={onClick}>
           <ArrowUpIcon />
         </Button>
       </span>
