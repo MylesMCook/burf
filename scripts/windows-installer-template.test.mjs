@@ -6,6 +6,11 @@ import { renderInstaller } from "./windows-installer-template.mjs";
 const template = await readFile(new URL("./windows/installer.nsi", import.meta.url), "utf8");
 const options = { stage: "C:\\Burf's & $Literal Tools\\stage", output: "C:\\out\\setup.exe", version: "1.2.3", architecture: "amd64", icon: "C:\\icon.ico", hooks: "C:\\hooks.nsh" };
 
+test("compression is selected before includes can write installer data", () => {
+  const rendered = renderInstaller(template, options);
+  assert.match(rendered, /^Unicode true\r?\nSetCompressor \/SOLID lzma\r?\n/);
+});
+
 test("an upgrade replaces files without invoking the previous uninstaller", () => {
   const rendered = renderInstaller(template, options);
   assert.ok(rendered.indexOf("!insertmacro NSIS_HOOK_PREINSTALL") < rendered.indexOf('!insertmacro InstallFile "Burf.exe"'));
