@@ -16,11 +16,32 @@ colors:
   muted: "#595955"
   border: "#8a8a86"
   divider: "#e1e1de"
-  link: "#125ab8"
-  focus: "#125ab8"
-  success: "#087d60"
+  hover: "#ecece9"
+  selected: "#e4e4e0"
+  disabled: "#767672"
+  accent: "#125ab8"
+  link: "{colors.accent}"
+  focus: "{colors.accent}"
+  success: "#066e53"
   warning: "#8a5100"
   danger: "#a7282a"
+  primary-dark: "#f5f5f2"
+  on-primary-dark: "#171717"
+  background-dark: "#171717"
+  surface-dark: "#222222"
+  foreground-dark: "#f5f5f2"
+  muted-dark: "#b8b8b4"
+  border-dark: "#777773"
+  divider-dark: "#454545"
+  hover-dark: "#2a2a2a"
+  selected-dark: "#333333"
+  disabled-dark: "#8a8a86"
+  accent-dark: "#9cc8ff"
+  link-dark: "{colors.accent-dark}"
+  focus-dark: "{colors.accent-dark}"
+  success-dark: "#89d8b8"
+  warning-dark: "#ffd08a"
+  danger-dark: "#ff9e9e"
 typography:
   display:
     fontFamily: Newsreader
@@ -65,9 +86,13 @@ spacing:
   lg: 24px
   xl: 40px
   section: 64px
+  narrow-below: 640px
+  window-min-width: 900px
+  window-min-height: 560px
 rounded:
   content: 2px
   control: 2px
+  button: 2px
 ---
 
 ## Overview
@@ -78,37 +103,29 @@ This product is a Wails desktop workspace for managing agents and following thei
 
 Use the neutral background, surface, and foreground roles to establish hierarchy. Keep navigation and ordinary controls neutral. Reserve semantic color for links, focus, and status that changes a user's decision; pair every status color with a readable label.
 
-Use success for verified completion, warning for a task that needs attention, and danger for a failure or destructive action. Running and selected states should remain distinguishable without animation or color. Use the stronger border for controls and the quieter divider only where groups need separation.
+The accent is the one hue that is not a status. Links and the focus indicator take it, and nothing else does: navigation, ordinary controls, selection, and running stay neutral. Appearance settings let a person change the accent. Every accent offered has a light and a dark value that reaches 4.5:1 as text on the background, surface, hover, and selected fills. Changing the accent never changes success, warning, or danger, and a hue that could be mistaken for one of them is not offered.
+
+Use success for verified completion, warning for a task that needs attention, and danger for a failure or destructive action. Running has no hue: show it with a foreground label and a persistent activity mark that stays visible when motion is reduced. Use the stronger border for controls and the quieter divider only where groups need separation.
+
+Use the hover fill for a row or neutral control under the pointer, and the selected fill for the current agent, task, or menu item. Fill alone does not mark selection: a selected row also carries a 2px primary marker on its leading edge and a label at weight 500. Hover adds neither. A bordered control on a hover or selected fill keeps the background fill inside its border.
+
+Use the disabled color for the label of an unavailable control. Keep its label and border visible; do not lower opacity, and do not apply hover or selected fills to it.
 
 ## Themes
 
 Light and dark mode are required for every screen and interaction state. Follow the system appearance by default and provide an accessible appearance control with System, Light, and Dark choices. Save the chosen preference and follow later system changes only while System is selected.
 
-Apply the active appearance before the first visible frame to prevent a flash of the wrong theme. Match the native window background to the frontend background during startup and loading. Synchronize title-bar appearance where the target platform and Wails version support it; leave system-owned surfaces under operating-system control. Switching appearance preserves the selected agent, task, draft, scroll position, and keyboard focus.
+Apply the active appearance before the first visible frame to prevent a flash of the wrong theme. Match the native window background to the frontend background during startup and loading. Synchronize title-bar appearance where the target platform and Wails version support it; leave system-owned surfaces under operating-system control. Switching appearance preserves the selected agent, task, draft, scroll position, and keyboard focus. The font, button radius, and accent choices in appearance settings follow the same rules: each is saved, applied before the first visible frame, and changed without losing that state.
 
-Use the frontmatter palette for light mode and the corresponding dark values below for dark mode. Apply these roles to navigation, task histories, composers, code panels, dialogs, menus, tooltips, loading placeholders, and empty and error states. Frontend controls and scrollbars follow the active appearance. Native menus and dialogs retain platform styling. Keep status meanings, typography, and corner treatment consistent between appearances.
+Every color role has a light value and a `-dark` counterpart in the frontmatter, such as `background` and `background-dark`. Use the unsuffixed value in light mode and the `-dark` value in dark mode. Add both values when adding a role. Apply these roles to navigation, task histories, composers, code panels, dialogs, menus, tooltips, loading placeholders, and empty and error states. Frontend controls and scrollbars follow the active appearance. Native menus and dialogs retain platform styling. Keep status meanings, typography, and corner treatment consistent between appearances.
 
-Verify text contrast, control boundaries, focus, selection, hover, disabled, pending, success, warning, and error states in both modes. Check narrow-screen reflow in each appearance, and verify the saved preference after reopening the application.
-
-| Token | Dark value |
-| --- | --- |
-| primary | `#f5f5f2` |
-| on-primary | `#171717` |
-| background | `#171717` |
-| surface | `#222222` |
-| foreground | `#f5f5f2` |
-| muted | `#b8b8b4` |
-| border | `#777773` |
-| divider | `#454545` |
-| link | `#9cc8ff` |
-| focus | `#9cc8ff` |
-| success | `#89d8b8` |
-| warning | `#ffd08a` |
-| danger | `#ff9e9e` |
+Verify text contrast, control boundaries, focus, selection, hover, disabled, pending, success, warning, and error states in both modes. Check narrow-screen reflow in each appearance, and verify the saved preference after reopening the application. Repeat these checks with a replacement font, each button radius, and each accent offered.
 
 ## Typography
 
 Use Newsreader for page headings, task summaries, and sustained reading such as agent responses. Use Paper Mono for navigation, agent lists, controls, timestamps, identifiers, code, and operational metadata. Keep those assignments stable across screens. Bundle the required Newsreader and Paper Mono font files and their licenses with the application assets so typography works offline without a system font installation.
+
+Newsreader and Paper Mono are the defaults. Appearance settings let a person replace the reading face and the interface face. Style by type role, never by face name, so a replacement reaches every screen. Code stays in a monospace face whatever the interface face is. A layout must hold when a replacement is wider or taller than the default, and a face that fails to load falls back to the bundled default.
 
 Use the heading role on routine work screens. Reserve display typography for a spacious introduction, and use the reading role for full responses. A short operational message uses body typography; a long explanation uses reading typography. Render code as code rather than applying monospace to an entire response.
 
@@ -116,7 +133,7 @@ Use sentence case and preserve the spelling of commands, paths, and names. Align
 
 ## Layout
 
-Design for a resizable desktop window. Preserve native window controls, resizing, and platform menu conventions. Keep application controls clear of title-bar buttons and draggable regions; restrict any custom drag area to noninteractive chrome.
+Design for a resizable desktop window no smaller than 900 by 560 px (`window-min-width`, `window-min-height`). A window is narrow when its viewport is under 640 CSS px wide (`narrow-below`). Measure the WebView viewport, not the native window, so zoom and text scaling reach the narrow layout: the minimum window at 150% zoom is 600 px wide. Preserve native window controls, resizing, and platform menu conventions. Keep application controls clear of title-bar buttons and draggable regions; restrict any custom drag area to noninteractive chrome.
 
 Give the selected task the main reading area. Use a navigation rail to identify the current project and agent, with secondary details available on demand. Keep the task title, status, and next action together so the user can orient before reading its history.
 
@@ -130,7 +147,7 @@ Use spacing, tonal surfaces, and restrained rules for ordinary grouping. Reserve
 
 ## Shapes
 
-Use the content corner token for reading panels and the control corner token for fields, buttons, composers, menus, and dialogs. Keep this nearly square treatment across both themes. Full-width navigation and page regions stay square. A shadow indicates elevation; it does not require a softer corner style. Apply these corner tokens to frontend surfaces; the operating system governs the outer window shape and native dialogs.
+Use the content corner token for reading panels and the control corner token for fields, composers, menus, and dialogs. Buttons take the button corner token, which starts at the same 2px. Appearance settings offer a button radius of 2px, 4px, or 8px; the choice changes buttons only. Keep the default nearly square treatment across both themes. Full-width navigation and page regions stay square. A shadow indicates elevation; it does not require a softer corner style. Apply these corner tokens to frontend surfaces; the operating system governs the outer window shape and native dialogs.
 
 ## Components
 
@@ -148,7 +165,7 @@ Use motion to clarify a state change, preserve continuity, or confirm an action.
 
 ## Do's and Don'ts
 
-- Do verify contrast, keyboard access, visible focus, text scaling, and narrow-screen reflow in both light and dark mode.
+- Do verify contrast, keyboard access, visible focus, text scaling, and narrow-screen reflow in both light and dark mode. Test reflow at 639 and 640 CSS px.
 - Do reuse the project's shared controls and type roles across task screens.
 - Do verify fonts, appearance changes, keyboard behavior, native menus and dialogs, and resizing in the packaged Wails application on each supported operating system. Browser previews establish frontend behavior only.
 - Don't add decorative gradients, glows, glass, textures, or ornamental shadows.
