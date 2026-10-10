@@ -57,12 +57,12 @@ export function AddWidgetDialog({ open, onOpenChange, defs, have, onAdd }: { ope
   const on = have.includes(def.id);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup className="h-[min(620px,88vh)] max-w-[min(940px,calc(100vw-2rem))] overflow-hidden p-0" bottomStickOnMobile={false} data-testid="widget-picker">
+      <DialogPopup bottomStickOnMobile={false} data-testid="widget-picker" frame="picker">
         <div className="flex h-full min-h-0 max-[720px]:flex-col">
           <div className="flex w-[340px] shrink-0 flex-col border-r max-[720px]:h-1/2 max-[720px]:w-full max-[720px]:border-r-0 max-[720px]:border-b">
             <div className="flex flex-col gap-0.5 px-4 pt-3.5 pb-2.5">
-              <DialogTitle className="font-semibold text-base">Add a widget</DialogTitle>
-              <DialogDescription className="text-muted-foreground text-xs">Pick one to see it with your data.</DialogDescription>
+              <DialogTitle size="base">Add a widget</DialogTitle>
+              <DialogDescription size="xs">Pick one to see it with your data.</DialogDescription>
             </div>
             <label className="mx-3 flex h-8 items-center gap-2 rounded-lg border bg-background px-2 text-sm focus-within:ring-2 focus-within:ring-ring">
               <SearchIcon className="size-3.5 text-muted-foreground" />

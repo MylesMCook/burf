@@ -35,7 +35,7 @@ export function AddProjectDialog() {
     <Dialog open={!!draft} onOpenChange={(open) => !open && useStore.getState().closeAddLocation()}>
       {/* Anchored at the top, as New worktree is: Browse and the box's
           states differ in height, and a centred dialog would move its title. */}
-      <DialogPopup anchored className="sm:max-w-[38rem]" showCloseButton={false}>
+      <DialogPopup anchored width="38" showCloseButton={false}>
         {draft && <Body key={draft.box ?? ""} startBox={draft.box} />}
       </DialogPopup>
     </Dialog>
@@ -223,7 +223,7 @@ function Body({ startBox }: { startBox?: string }) {
       }}
     >
       <StepHeader title="Add a project" description={boxes.length > 1 ? "Projects live on your boxes. Pick one, then type what to add: the box works out the rest." : `Projects live on your boxes. Type what to add on ${box || "it"}: the box works out the rest.`} />
-      <DialogPanel className="flex flex-col gap-3 px-5 pt-1 pb-4">
+      <DialogPanel inset="section" stack={3}>
         {boxes.length > 0 && <BoxStrip boxes={boxes} value={box} onChange={(b) => !busy && setBox(b)} />}
 
         {!online ? (
@@ -284,7 +284,7 @@ function Body({ startBox }: { startBox?: string }) {
         )}
       </DialogPanel>
 
-      <DialogFooter className="h-14 items-center gap-3 px-5 py-0 sm:justify-between">
+      <DialogFooter pad="tall">
         <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
           {online && canSpread && others.length > 0 ? (
             <>
@@ -579,7 +579,7 @@ function NoBoxes({ onCancel }: { onCancel(): void }) {
   return (
     <>
       <StepHeader title="Add a project" description="Projects live on your boxes, and there isn't one yet." />
-      <DialogPanel className="px-5 pt-1 pb-4">
+      <DialogPanel inset="section">
         <div className="flex h-[22.5rem] flex-col items-center justify-center gap-1 rounded-lg border border-dashed px-8 text-center">
           {/* A quay with an empty hook: nothing loaded yet. */}
           <Scene name="dock" width={136} className="mb-3" />
@@ -587,7 +587,7 @@ function NoBoxes({ onCancel }: { onCancel(): void }) {
           <p className="max-w-xs text-balance text-muted-foreground text-xs">A box is any VPS or dev machine: projects and their agents run there. Add one, then add a project on it.</p>
         </div>
       </DialogPanel>
-      <DialogFooter className="h-14 items-center gap-2 px-5 py-0">
+      <DialogFooter pad="bar">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>

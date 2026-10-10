@@ -169,7 +169,7 @@ function DeleteHook({ target, hook, onClose, onConfirm }: { target?: { machine: 
   const [busy, setBusy] = useState(false);
   return (
     <AlertDialog open={!!target} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogPopup className="sm:max-w-md">
+      <AlertDialogPopup width="md">
         <AlertDialogHeader>
           <AlertDialogTitle>Delete this hook?</AlertDialogTitle>
           <AlertDialogDescription>

@@ -243,7 +243,7 @@ function Body({ req, onRunning, onClose }: { req: StopRequest; onRunning(r: bool
   return (
     // The keyboard starts on Cancel: Enter right after ⌫ or a menu item must
     // never stop agents mid-turn.
-    <AlertDialogPopup className="sm:max-w-lg" initialFocus={cancel}>
+    <AlertDialogPopup initialFocus={cancel}>
       <AlertDialogHeader>
         <AlertDialogTitle>{title}</AlertDialogTitle>
         <AlertDialogDescription>{description}</AlertDialogDescription>

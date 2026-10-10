@@ -87,8 +87,8 @@ const AttachmentPreviewDialog: FC<AttachmentPreviewDialogProps> = ({
           )
         }
       />
-      <DialogContent className="aui-attachment-preview-dialog-content [&>button]:bg-foreground/60 [&>button]:hover:bg-foreground/80 [&_svg]:text-background p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:p-1 [&>button]:opacity-100 [&>button]:ring-0!">
-        <DialogTitle className="aui-sr-only sr-only">
+      <DialogContent closeTone="media" frame="preview" marker="aui-attachment-preview-dialog-content" width="3xl">
+        <DialogTitle hidden marker="aui-sr-only">
           Preview {name}
         </DialogTitle>
         <div className="aui-attachment-preview bg-background relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden rounded-sm">

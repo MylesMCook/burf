@@ -29,7 +29,7 @@ export function AddToBoxDialog() {
   const project = useAddToBox((s) => s.project);
   return (
     <Dialog open={!!project} onOpenChange={(o) => !o && useAddToBox.setState({ project: undefined })}>
-      <DialogPopup className="sm:max-w-lg">{project && <Body key={project.id} project={project} />}</DialogPopup>
+      <DialogPopup>{project && <Body key={project.id} project={project} />}</DialogPopup>
     </Dialog>
   );
 }
@@ -104,7 +104,7 @@ function Body({ project }: { project: Project }) {
         <DialogTitle>Add {project.name} to a box</DialogTitle>
         <DialogDescription>Clones its repository there; it joins this project with the boxes that already have it.</DialogDescription>
       </DialogHeader>
-      <DialogPanel className="flex flex-col gap-4">
+      <DialogPanel stack={4}>
         {phase === "form" ? (
           candidates.length === 0 ? (
             <p className="text-muted-foreground text-sm">Every online box already has {project.name}.</p>

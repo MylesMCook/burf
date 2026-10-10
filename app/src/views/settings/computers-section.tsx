@@ -56,7 +56,7 @@ export function ComputersSection() {
 
       <InviteDialog open={inviting} onOpenChange={setInviting} boxes={boxes} />
       <Dialog open={joining} onOpenChange={setJoining}>
-        <DialogPopup className="sm:max-w-xl" anchored>
+        <DialogPopup anchored width="xl">
           {joining && (
             <JoinFlow
               variant="dialog"
@@ -171,7 +171,7 @@ function ComputerRow({ box, computer, onRemoved }: { box: string; computer: Trus
 function InviteDialog({ open, onOpenChange, boxes }: { open: boolean; onOpenChange(open: boolean): void; boxes: BoxStatus[] }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup className="sm:max-w-xl" anchored>
+      <DialogPopup anchored width="xl">
         {open && <InviteFlow boxes={boxes} onClose={() => onOpenChange(false)} />}
       </DialogPopup>
     </Dialog>
@@ -204,7 +204,7 @@ function InviteFlow({ boxes, onClose }: { boxes: BoxStatus[]; onClose(): void })
   return (
     <>
       <StepHeader title="Add another computer" description="Choose the boxes the other computer should use. It pairs with each with its own key; this computer stays paired." />
-      <DialogPanel className="px-5 pb-4">
+      <DialogPanel inset="tight">
         <ul className="divide-y divide-border/70 rounded-xl border" aria-label="Boxes">
           {boxes.map((b) => {
             const online = b.state === "online";
@@ -244,7 +244,7 @@ function InviteFlow({ boxes, onClose }: { boxes: BoxStatus[]; onClose(): void })
         </div>
         {error && <ErrorText className="mt-3 text-destructive-foreground text-sm" text={error} />}
       </DialogPanel>
-      <DialogFooter variant="bare" className="px-5">
+      <DialogFooter variant="bare" pad="edge">
         <Button variant="ghost" onClick={onClose}>
           Cancel
         </Button>
@@ -281,7 +281,7 @@ function InviteLink({ invite, again, onBack, onAgain, onClose }: { invite: Invit
         onBack={onBack}
         backLabel="Choose other boxes"
       />
-      <DialogPanel className="px-5 pb-4">
+      <DialogPanel inset="tight">
         <div className="flex gap-5 max-sm:flex-col">
           <div className={cn("size-40 shrink-0 overflow-hidden rounded-lg bg-white p-1.5 [&_svg]:size-full", expired && "opacity-24")} aria-label="QR code of the join link" role="img" dangerouslySetInnerHTML={{ __html: svg }} />
           <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -332,7 +332,7 @@ function InviteLink({ invite, again, onBack, onAgain, onClose }: { invite: Invit
         </div>
         <p className="mt-4 text-muted-foreground text-xs leading-relaxed">The QR code is the same link, for your phone's camera to copy across. The link holds a one-time code per box and the boxes' addresses and keys; never this computer's key.</p>
       </DialogPanel>
-      <DialogFooter variant="bare" className="px-5">
+      <DialogFooter variant="bare" pad="edge">
         <Button onClick={onClose}>Done</Button>
       </DialogFooter>
     </>

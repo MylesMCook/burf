@@ -156,8 +156,8 @@ export function ApproveDialog({ entry, initial, onClose }: { entry?: ReviewEntry
 
   return (
     <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
-      <DialogPopup className="sm:max-w-[34rem]" showCloseButton={false} onKeyDown={submitOnCmdEnter(() => void go())}>
-        <DialogHeader className="gap-1.5 px-5 pt-5 pb-3">
+      <DialogPopup width="34" showCloseButton={false} onKeyDown={submitOnCmdEnter(() => void go())}>
+        <DialogHeader pad="step">
           <div className="flex items-center justify-between gap-3">
             <DialogTitle>Approve</DialogTitle>
             <Target entry={entry} />
@@ -168,7 +168,7 @@ export function ApproveDialog({ entry, initial, onClose }: { entry?: ReviewEntry
             {mode === "pr" && openPR && ` and opens a pull request into ${baseBranch(entry)}`}.
           </DialogDescription>
         </DialogHeader>
-        <DialogPanel className="flex flex-col gap-3 px-5 pb-5">
+        <DialogPanel inset="body" stack={3}>
           <PickOne<ApproveMode> label="What to do" value={mode} options={options} onChange={setMode} />
           {hasFiles && (
             <label className="flex flex-col gap-1.5">
@@ -194,7 +194,7 @@ export function ApproveDialog({ entry, initial, onClose }: { entry?: ReviewEntry
           )}
           {(error || output) && <pre className={cn("max-h-40 overflow-auto whitespace-pre-wrap rounded-md p-2 font-mono text-[11px]", error ? "bg-destructive/8 text-destructive-foreground" : "bg-muted/60 text-muted-foreground")}>{error ?? output}</pre>}
         </DialogPanel>
-        <DialogFooter className="items-center px-5 py-3">
+        <DialogFooter pad="actions">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
@@ -240,15 +240,15 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
   };
   return (
     <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
-      <DialogPopup className="sm:max-w-[32rem]" showCloseButton={false} onKeyDown={submitOnCmdEnter(() => void go())}>
-        <DialogHeader className="gap-1.5 px-5 pt-5 pb-3">
+      <DialogPopup showCloseButton={false} onKeyDown={submitOnCmdEnter(() => void go())}>
+        <DialogHeader pad="step">
           <div className="flex items-center justify-between gap-3">
             <DialogTitle>Send back</DialogTitle>
             <Target entry={entry} />
           </div>
           <DialogDescription>Typed into {agentLabel(entry.agent)}'s session as your next prompt. It leaves the inbox while it works.</DialogDescription>
         </DialogHeader>
-        <DialogPanel {...files.dropProps} className={cn("flex flex-col gap-2 px-5 pb-5", files.dragging && "outline-2 outline-ring/60 outline-dashed -outline-offset-4")}>
+        <DialogPanel {...files.dropProps} drop={files.dragging} inset="body" stack={2}>
           <AttachmentChips items={files.items} onRemove={files.remove} onRetry={files.retry} />
           <Textarea
             value={note}
@@ -260,7 +260,7 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
           />
           {error && <ErrorText className="rounded-md bg-destructive/8 p-2 text-xs text-destructive-foreground" text={error} />}
         </DialogPanel>
-        <DialogFooter className="items-center px-5 py-3">
+        <DialogFooter pad="actions">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
@@ -297,8 +297,8 @@ export function DiscardDialog({ entry, onClose }: { entry?: ReviewEntry; onClose
   const lost = entry.added + entry.removed;
   return (
     <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
-      <DialogPopup className="sm:max-w-[32rem]" showCloseButton={false}>
-        <DialogHeader className="gap-1.5 px-5 pt-5 pb-3">
+      <DialogPopup showCloseButton={false}>
+        <DialogHeader pad="step">
           <div className="flex items-center justify-between gap-3">
             <DialogTitle>Discard these changes?</DialogTitle>
             <Target entry={entry} />
@@ -308,7 +308,7 @@ export function DiscardDialog({ entry, onClose }: { entry?: ReviewEntry; onClose
             {entry.base_ahead > 0 && ` Its ${entry.base_ahead} commit${entry.base_ahead === 1 ? "" : "s"} on ${entry.branch} are kept.`}
           </DialogDescription>
         </DialogHeader>
-        <DialogPanel className="flex flex-col gap-2 px-5 pb-5">
+        <DialogPanel inset="body" stack={2}>
           <div className="flex items-baseline justify-between text-xs">
             <span className="font-medium">
               {entry.files.length} file{entry.files.length === 1 ? "" : "s"} lost
@@ -331,7 +331,7 @@ export function DiscardDialog({ entry, onClose }: { entry?: ReviewEntry; onClose
           <p className="font-mono text-[11px] text-muted-foreground">{DISCARD_COMMAND}</p>
           {error && <ErrorText className="rounded-md bg-destructive/8 p-2 text-xs text-destructive-foreground" text={error} />}
         </DialogPanel>
-        <DialogFooter className="items-center px-5 py-3">
+        <DialogFooter pad="actions">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Keep them
           </Button>

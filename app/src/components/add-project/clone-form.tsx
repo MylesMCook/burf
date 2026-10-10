@@ -54,7 +54,7 @@ export function CloneForm({ box, onAdded, onCancel }: { box: string; onAdded(loc
         void clone();
       }}
     >
-      <DialogPanel className="flex flex-col gap-3 px-5 pb-5">
+      <DialogPanel inset="body" stack={3}>
         <Labelled label="Repository URL">
           <Input autoFocus mono disabled={busy} value={url} spellCheck={false} placeholder="https://github.com/acme/shop" onChange={(e) => setUrl(e.target.value)} />
         </Labelled>
@@ -90,7 +90,7 @@ export function CloneForm({ box, onAdded, onCancel }: { box: string; onAdded(loc
         )}
         {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
-      <DialogFooter className="items-center px-5 py-3">
+      <DialogFooter pad="actions">
         {busy ? (
           <Button type="button" variant="ghost" onClick={() => abort.current?.abort()}>
             Stop

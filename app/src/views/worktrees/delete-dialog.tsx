@@ -33,7 +33,7 @@ export function DeleteDialog({ rows, progress, running, onRun, onClose, archive 
 
   return (
     <AlertDialog open={!!rows} onOpenChange={(o) => !o && !running && onClose()}>
-      <AlertDialogPopup className="sm:max-w-lg">
+      <AlertDialogPopup>
         <AlertDialogHeader>
           <AlertDialogTitle>
             {done

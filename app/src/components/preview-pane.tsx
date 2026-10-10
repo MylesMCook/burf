@@ -1049,7 +1049,7 @@ function ShotDialog({ shot, worktree, onClose }: { shot?: { blob: Blob; url: str
   };
   return (
     <Dialog open={!!shot} onOpenChange={(o) => !o && onClose()}>
-      <DialogPopup className="max-w-4xl">
+      <DialogPopup width="4xl">
         <DialogHeader>
           <DialogTitle>Screenshot of all frames</DialogTitle>
           <DialogDescription>Each frame as it is now, side by side.</DialogDescription>

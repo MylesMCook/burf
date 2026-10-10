@@ -225,6 +225,7 @@
     --tint-success: color-mix(in oklab, var(--success) 8%, transparent);
     --tint-warning: color-mix(in oklab, var(--warning) 8%, transparent);
     --alert-fill: transparent;
+    --dialog-edge: 0 1px color-mix(in oklab, black 4%, transparent);
 }
 
 .dark {
@@ -240,6 +241,7 @@
     --tint-success: color-mix(in oklab, var(--success) 16%, transparent);
     --tint-warning: color-mix(in oklab, var(--warning) 16%, transparent);
     --alert-fill: color-mix(in oklab, var(--input) 32%, transparent);
+    --dialog-edge: 0 -1px color-mix(in oklab, white 6%, transparent);
     --destructive-foreground: var(--color-red-400);
     --info: var(--color-blue-500);
     --info-foreground: var(--color-blue-400);

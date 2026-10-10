@@ -72,7 +72,7 @@ export function ErrorDetailsHost() {
 function DetailsPopup({ text, title, message }: DetailsReq) {
   const [copied, setCopied] = useState(false);
   return (
-    <DialogPopup className="max-w-2xl">
+    <DialogPopup width="2xl">
       <DialogHeader>
         <DialogTitle>{title ?? "Details"}</DialogTitle>
         <DialogDescription>{message ?? "What was said, word for word."}</DialogDescription>

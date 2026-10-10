@@ -200,7 +200,7 @@ export function AddBoxFlow({
     return (
       <>
         <StepHeader title={head.title} description={head.description} onBack={onBack} />
-        <DialogPanel className="px-5 pb-5">{body}</DialogPanel>
+        <DialogPanel inset="body">{body}</DialogPanel>
       </>
     );
   }

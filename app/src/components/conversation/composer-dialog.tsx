@@ -33,7 +33,7 @@ export function ComposerDialog() {
     <Dialog open={!!draft} onOpenChange={(open) => !open && closeComposer()}>
       {/* Anchored at the top: options open below, and a centred dialog would
           move its title as they do. */}
-      <DialogPopup anchored className="max-h-[min(calc(88vh-2rem),60rem)] sm:max-w-[40rem]" showCloseButton={false}>
+      <DialogPopup anchored frame="composer" showCloseButton={false} width="40">
         {draft && (draft.results && run ? <Results /> : <Compose key={seq} draft={draft} />)}
       </DialogPopup>
     </Dialog>
@@ -59,7 +59,7 @@ function Compose({ draft }: { draft: ComposerDraft }) {
   return (
     <>
       <StepHeader title={t.title} description={t.description} />
-      <DialogPanel className="px-5 pb-4">
+      <DialogPanel inset="tight">
         <TaskComposer
           draft={draft}
           dialog
@@ -73,7 +73,7 @@ function Compose({ draft }: { draft: ComposerDraft }) {
           }}
         />
       </DialogPanel>
-      <DialogFooter className="items-center px-5 py-2.5 sm:justify-between">
+      <DialogFooter pad="split10">
         <span className="flex items-center gap-3 text-muted-foreground text-xs">
           <span className="flex items-center gap-1">
             <Kbd>⇧⏎</Kbd> new line
@@ -131,12 +131,12 @@ function Results() {
           </span>
         }
       />
-      <DialogPanel className="flex flex-col gap-2 px-5 pb-5">
+      <DialogPanel inset="body" stack={2}>
         {run.rows.map((r, i) => (
           <ResultRow key={`${r.box}/${r.session}`} row={r} onQueue={() => void queueRow(run.id, i)} />
         ))}
       </DialogPanel>
-      <DialogFooter className="items-center px-5 py-3">
+      <DialogFooter pad="actions">
         {!run.done ? (
           <>
             <Button type="button" variant="ghost" onClick={stopBroadcast}>

@@ -49,7 +49,7 @@ export function PromptPicker() {
   return (
     <Dialog open={!!d} onOpenChange={(open) => !open && closePromptPicker()}>
       {/* Anchored at the top: the list filters and the fill step is taller, and a centred dialog would move its title. */}
-      <DialogPopup anchored className="sm:max-w-[36rem]" showCloseButton={false}>
+      <DialogPopup anchored showCloseButton={false} width="xl">
         {d && <Body key={`${d.box}:${d.session}:${d.promptId}:${!!d.onInsert}`} d={d} />}
       </DialogPopup>
     </Dialog>
@@ -109,7 +109,7 @@ function Body({ d }: { d: PickerDraft }) {
           {list.length === 0 && <p className="px-2.5 py-6 text-center text-muted-foreground text-sm">{query ? "No prompt matches." : "No saved prompts yet."}</p>}
         </div>
       </div>
-      <DialogFooter className="items-center px-5 py-3 sm:justify-between">
+      <DialogFooter pad="split">
         <LibraryButton />
         <div className="flex items-center gap-2">
           {!insert && (
@@ -219,7 +219,7 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
         hideDescription
       />
 
-      <DialogPanel className="flex flex-col gap-4 px-5 pb-5">
+      <DialogPanel inset="body" stack={4}>
         {!insert && !d.session && (
           <label className="flex min-w-0 flex-col gap-1.5">
             <span className="font-medium text-[13px]">Send to</span>
@@ -252,7 +252,7 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
         {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
 
-      <DialogFooter className="items-center px-5 py-3">
+      <DialogFooter pad="actions">
         <Button type="button" variant="ghost" onClick={closePromptPicker}>
           Cancel
         </Button>

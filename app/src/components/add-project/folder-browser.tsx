@@ -88,7 +88,7 @@ export function FolderBrowser({ box, start, onAdded }: { box: string; start?: st
 
   return (
     <>
-      <DialogPanel className="flex flex-col gap-2 px-5 pb-5">
+      <DialogPanel inset="body" stack={2}>
         <div className="flex items-center gap-2">
           <Button size="icon" variant="outline" aria-label="Up a folder" disabled={!listing?.parent} onClick={() => listing?.parent && void go(listing.parent)}>
             <ArrowUpIcon />
@@ -168,7 +168,7 @@ export function FolderBrowser({ box, start, onAdded }: { box: string; start?: st
         )}
         {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
-      <DialogFooter className="items-center px-5 py-3 sm:justify-between">
+      <DialogFooter pad="split">
         <span className="min-w-0 truncate text-[13px] text-muted-foreground">↵ opens a folder or adds a repository</span>
         <span className="shrink-0"><Button  loading={adding} disabled={!target || loading} onClick={() => target && void add(target)}>
           {existing(target) ? "Go to" : "Add"} {target?.name ? <span className="max-w-40 truncate">{target.name}</span> : "this folder"}

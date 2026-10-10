@@ -50,16 +50,16 @@ export function StepHeader({
     );
   }
   return (
-    <DialogHeader className={cn("gap-1.5 px-5 pt-5 pb-3", className)}>
+    <DialogHeader pad="step">
       {/* One line, as tall as the arrow, whatever sits on it: the title
           stays put from step to step. */}
       <div className="flex h-6 min-w-0 items-center gap-2">
         {back}
         {/* The title is short and says what this is; the aside gives way. */}
-        <DialogTitle className={cn("text-base leading-6", aside ? "shrink-0" : "min-w-0 truncate")}>{title}</DialogTitle>
+        <DialogTitle shrink={!!aside} size="line" truncate={!aside}>{title}</DialogTitle>
         {aside && <span className="flex min-w-0">{aside}</span>}
       </div>
-      {description && <DialogDescription className={hideDescription ? "sr-only" : "text-[13px]"}>{description}</DialogDescription>}
+      {description && <DialogDescription hidden={hideDescription} size="13">{description}</DialogDescription>}
     </DialogHeader>
   );
 }

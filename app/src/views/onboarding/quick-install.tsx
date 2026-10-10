@@ -67,19 +67,19 @@ export function QuickInstall({ target, onClose, onReady, readyLabel }: { target?
 
   return (
     <Dialog open={!!target} onOpenChange={(o) => !o && !busy && onClose()}>
-      <DialogPopup data-testid="quick-install" data-state={ready ? "ready" : run.state} data-needs={needed ? "password" : asking ? "ask" : question ? "answer" : ""} className={cn("transition-[max-width]", showTerminal || output ? "sm:max-w-2xl" : "sm:max-w-md")} showCloseButton={!busy}>
-        <DialogHeader className="pb-3">
+      <DialogPopup data-testid="quick-install" data-state={ready ? "ready" : run.state} data-needs={needed ? "password" : asking ? "ask" : question ? "answer" : ""} showCloseButton={!busy} width={showTerminal || output ? "2xl" : "md"}>
+        <DialogHeader pad="short">
           <div className="flex items-center gap-2.5">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted/50 text-muted-foreground">
               <ServerIcon className="size-4" />
             </span>
             <div className="min-w-0">
-              <DialogTitle className="truncate text-base leading-tight">{title}</DialogTitle>
-              <DialogDescription className="mt-0.5 text-xs">{sub}</DialogDescription>
+              <DialogTitle size="tight" truncate>{title}</DialogTitle>
+              <DialogDescription nudge size="xs">{sub}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
-        <DialogPanel className="pt-1">
+        <DialogPanel>
           <ol data-testid="quick-steps" className="-mx-2 space-y-0.5">
             {run.steps.map((s) => (
               <QuickRow key={s.id} step={s} run={run} host={where} user={user} busy={busy} agents={target?.agents ?? []} needed={needed?.id === s.id} onRetry={() => run.start(request(), s.id === "connect" ? undefined : s.id)} />

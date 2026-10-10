@@ -52,9 +52,9 @@ export function PluginConsentDialog() {
 
   return (
     <Dialog open={!!plugin} onOpenChange={(open) => !open && answerConsent(false)}>
-      <DialogPopup className="max-w-lg">
+      <DialogPopup>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle row>
             <PuzzleIcon className="size-4" />
             {again ? `${name} has changed` : `Allow ${name}?`}
           </DialogTitle>
@@ -63,7 +63,7 @@ export function PluginConsentDialog() {
             app's own access.
           </DialogDescription>
         </DialogHeader>
-        <DialogPanel className="flex flex-col gap-4 px-5 pb-5">
+        <DialogPanel inset="body" stack={4}>
           <div className="rounded-lg border border-warning/40 bg-warning/8 px-3 py-2.5">
             <div className="flex items-center gap-2 font-medium text-sm">
               <TriangleAlertIcon className="size-4 shrink-0 text-warning" />

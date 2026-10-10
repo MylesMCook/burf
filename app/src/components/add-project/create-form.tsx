@@ -42,7 +42,7 @@ export function CreateForm({ box, onAdded, onCancel }: { box: string; onAdded(lo
         void create();
       }}
     >
-      <DialogPanel className="flex flex-col gap-3 px-5 pb-5">
+      <DialogPanel inset="body" stack={3}>
         <div className="grid grid-cols-[1fr_11rem] gap-2">
           <Labelled label="Name">
             <Input autoFocus value={name} spellCheck={false} placeholder="my-app" onChange={(e) => setName(e.target.value)} />
@@ -62,7 +62,7 @@ export function CreateForm({ box, onAdded, onCancel }: { box: string; onAdded(lo
         {taken && <p className="text-sm text-warning-foreground">{box} already has a project called {clean}.</p>}
         {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
-      <DialogFooter className="items-center px-5 py-3">
+      <DialogFooter pad="actions">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>

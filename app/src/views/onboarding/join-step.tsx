@@ -236,7 +236,7 @@ export function JoinFlow({
     return (
       <>
         <StepHeader title={head.title} description={head.description} onBack={onExit} />
-        <DialogPanel className="px-5 pb-5">{body}</DialogPanel>
+        <DialogPanel inset="body">{body}</DialogPanel>
       </>
     );
   }

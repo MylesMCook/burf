@@ -99,15 +99,15 @@ export function GuardDialog({ box, open, onOpenChange }: { box: string; open: bo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup className="max-w-lg">
+      <DialogPopup>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle row>
             <ShieldIcon className="size-4" />
             Resource guard on {box}
           </DialogTitle>
           <DialogDescription>Keeps {box} usable when it runs short of memory, without touching agents that are working or waiting for you.</DialogDescription>
         </DialogHeader>
-        <DialogPanel className="flex flex-col gap-4 px-5 pb-5">
+        <DialogPanel inset="body" stack={4}>
           {status && status.memory.total > 0 && (
             <div className="rounded-lg border bg-muted/30 px-3 py-2.5">
               <div className="flex items-baseline justify-between text-xs">

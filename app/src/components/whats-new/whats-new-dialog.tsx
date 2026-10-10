@@ -95,7 +95,7 @@ function SpotlightCard({ open, release }: { open: boolean; release: Release }) {
       <DialogPopup
         ref={popup}
         initialFocus={popup}
-        className="max-w-[880px] overflow-hidden"
+        frame="notes"
         showCloseButton={false}
         data-testid="whats-new"
         onKeyDown={(e) => {
@@ -113,9 +113,9 @@ function SpotlightCard({ open, release }: { open: boolean; release: Release }) {
       >
         <TabsPrimitive.Root value={at} onValueChange={(v) => setAt(Number(v))} orientation="vertical" className="flex min-h-0">
           <div className="flex w-[248px] shrink-0 flex-col border-r bg-muted/40 max-sm:hidden">
-            <DialogHeader className="gap-1 px-5 pt-5 pb-4">
-              <DialogTitle className="text-base">What's new</DialogTitle>
-              <DialogDescription className="font-mono text-xs">Burf {release.version}</DialogDescription>
+            <DialogHeader pad="notes">
+              <DialogTitle size="base">What's new</DialogTitle>
+              <DialogDescription mono size="xs">Burf {release.version}</DialogDescription>
             </DialogHeader>
             <TabsPrimitive.List activateOnFocus aria-label="Highlights" className="flex flex-col gap-px px-2.5">
               {items.map((it, i) => (
@@ -151,7 +151,7 @@ function SpotlightCard({ open, release }: { open: boolean; release: Release }) {
                 {i === items.length - 1 && <Also release={release} className="hidden max-sm:flex" />}
               </TabsPrimitive.Panel>
             ))}
-            <DialogFooter variant="bare" className="mx-8 mt-auto flex-row items-center justify-between gap-3 border-t px-0 pt-4 pb-6 max-sm:mx-5 max-sm:flex-row max-sm:px-0 sm:justify-between">
+            <DialogFooter variant="bare" pad="notes">
               <div className="flex min-w-0 items-center gap-3">
                 {s && (
                   <Button size="sm" onClick={() => go(s)} data-testid="whats-new-show">
