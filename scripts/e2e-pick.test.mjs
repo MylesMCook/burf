@@ -33,3 +33,11 @@ test("launcher deletions reach the composer and workspace specs", () => {
 test("terminal pane changes reach restoration, terminal and surviving chat specs", () => {
   assert.deepEqual(specsFor(["app/src/components/workspace/pane.tsx"], all), ["chat-experience", "keyboard", "local-computer", "predict", "remote-chat", "workspace"]);
 });
+
+test("native Go and generated binding paths do not pull in unrelated browser smoke", () => {
+  assert.deepEqual(specsFor(["app/native/desktop/service.go", "app/bindings/desktop/service.ts"], all), []);
+});
+
+test("shared overlay changes run geometry assertions as well as smoke", () => {
+  assert.ok(specsFor(["app/src/components/ui/sheet.tsx"], all).includes("overlay-layout"));
+});
