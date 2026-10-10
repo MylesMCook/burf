@@ -94,13 +94,13 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <div className="flex">
-            <Button size="sm" className="rounded-r-none" onClick={() => actions.approve(hasFiles ? "commit" : "push")}>
+            <span className="rounded-r-none"><Button size="sm"  onClick={() => actions.approve(hasFiles ? "commit" : "push")}>
               <CheckIcon />
               Approve…
               <span className="ml-0.5 hidden h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground xl:inline-flex"><Kbd>A</Kbd></span>
-            </Button>
+            </Button></span>
             <Menu>
-              <MenuTrigger render={<Button size="sm" className="rounded-l-none border-l border-l-primary-foreground/20 px-1.5" aria-label="More ways to approve" />}>
+              <MenuTrigger render={<span className="rounded-l-none border-l border-l-primary-foreground/20 px-1.5"><Button size="sm"  aria-label="More ways to approve" /></span>}>
                 <ChevronDownIcon />
               </MenuTrigger>
               <MenuPopup align="start">
@@ -141,11 +141,11 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
             <span className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex"><Kbd>↵</Kbd></span>
           </Button>
           <Tip label="Mark reviewed (E): it comes back if the agent changes anything">
-            <Button size="sm" variant="ghost" className="ml-auto text-muted-foreground" onClick={actions.markReviewed}>
+            <span className="ml-auto"><Button size="sm" variant="ghost"  onClick={actions.markReviewed} muted>
               <CheckCheckIcon />
               <span className="hidden xl:inline">Mark reviewed</span>
               <span className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex"><Kbd>E</Kbd></span>
-            </Button>
+            </Button></span>
           </Tip>
         </div>
       </header>

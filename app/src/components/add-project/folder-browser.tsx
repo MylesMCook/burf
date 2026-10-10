@@ -170,9 +170,9 @@ export function FolderBrowser({ box, start, onAdded }: { box: string; start?: st
       </DialogPanel>
       <DialogFooter className="items-center px-5 py-3 sm:justify-between">
         <span className="min-w-0 truncate text-[13px] text-muted-foreground">↵ opens a folder or adds a repository</span>
-        <Button className="shrink-0" loading={adding} disabled={!target || loading} onClick={() => target && void add(target)}>
+        <span className="shrink-0"><Button  loading={adding} disabled={!target || loading} onClick={() => target && void add(target)}>
           {existing(target) ? "Go to" : "Add"} {target?.name ? <span className="max-w-40 truncate">{target.name}</span> : "this folder"}
-        </Button>
+        </Button></span>
       </DialogFooter>
     </>
   );

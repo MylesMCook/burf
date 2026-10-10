@@ -145,9 +145,9 @@ function Body({ project }: { project: Project }) {
             <DialogClose render={<Button variant="ghost" />} onClick={() => abort.current?.abort()}>
               {busy ? "Stop" : "Cancel"}
             </DialogClose>
-            <Button className={cn(phase === "failed" && "min-w-24")} loading={busy} disabled={!box || !project.remote || candidates.length === 0} onClick={() => void run()}>
+            <span className={cn(phase === "failed" && "min-w-24")}><Button  loading={busy} disabled={!box || !project.remote || candidates.length === 0} onClick={() => void run()}>
               {phase === "failed" ? "Try again" : `Clone to ${box || "box"}`}
-            </Button>
+            </Button></span>
           </>
         )}
       </DialogFooter>

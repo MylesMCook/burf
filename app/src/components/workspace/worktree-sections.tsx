@@ -68,9 +68,9 @@ function PrivateUrl({ url }: { url: string }) {
         <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground/80">{url}</code>
       </Tip>
       <Tip label="Copy URL">
-        <Button size="icon-xs" variant="ghost" aria-label="Copy URL" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => void copyText(url, "Copied the URL")}>
+        <span className="shrink-0"><Button size="icon-xs" variant="ghost" aria-label="Copy URL"  onClick={() => void copyText(url, "Copied the URL")} muted>
           <CopyIcon />
-        </Button>
+        </Button></span>
       </Tip>
     </div>
   );
@@ -197,14 +197,14 @@ function TerminalServices({ worktree: ref, own: { services, reload } }: { worktr
               <span aria-hidden className="size-6 shrink-0" />
             ) : (
               <Tip label={`Start ${svc.title || svc.name}`}>
-                <Button size="icon-xs" variant="ghost" aria-label={`Start ${svc.title || svc.name}`} disabled={busy === svc.name} className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => void start(svc)}>
+                <span className="shrink-0"><Button size="icon-xs" variant="ghost" aria-label={`Start ${svc.title || svc.name}`} disabled={busy === svc.name}  onClick={() => void start(svc)} muted>
                   {busy === svc.name ? <Spinner  size="sm"/> : <PlayIcon />}
-                </Button>
+                </Button></span>
               </Tip>
             )}
-            <Button size="xs" variant="outline" className="shrink-0" onClick={() => void showServiceTerminal(ref, svc)}>
+            <span className="shrink-0"><Button size="xs" variant="outline"  onClick={() => void showServiceTerminal(ref, svc)}>
               Show terminal
-            </Button>
+            </Button></span>
           </li>
         );
       })}
@@ -232,27 +232,27 @@ function ServiceRow({ row: r }: { row: LiveService }) {
       </Tip>
       <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[11px] text-muted-foreground tabular-nums">:{r.port}</span>
       <Tip label={web ? "Copy URL" : "Copy address"}>
-        <Button size="icon-xs" variant="ghost" aria-label={`Copy ${r.label}'s ${web ? "URL" : "address"}`} className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => void copyText(address, web ? "Copied the URL" : "Copied the address")}>
+        <span className="shrink-0"><Button size="icon-xs" variant="ghost" aria-label={`Copy ${r.label}'s ${web ? "URL" : "address"}`}  onClick={() => void copyText(address, web ? "Copied the URL" : "Copied the address")} muted>
           <CopyIcon />
-        </Button>
+        </Button></span>
       </Tip>
       {web && (
         <Tip label="This page at every size: phones, tablet and Tailwind's breakpoints">
-          <Button size="xs" variant="ghost" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => openPreviewAt(r.url)}>
+          <span className="shrink-0"><Button size="xs" variant="ghost"  onClick={() => openPreviewAt(r.url)} muted>
             <MonitorSmartphoneIcon />
             Preview
-          </Button>
+          </Button></span>
         </Tip>
       )}
       {web ? (
-        <Button size="xs" variant="outline" className="shrink-0" onClick={() => openBrowserAt(r.url)}>
+        <span className="shrink-0"><Button size="xs" variant="outline"  onClick={() => openBrowserAt(r.url)}>
           Open in tab
-        </Button>
+        </Button></span>
       ) : (
         // Keeps the rows' buttons in one column.
-        <Button aria-hidden tabIndex={-1} size="xs" variant="outline" className="invisible shrink-0">
+        <span className="invisible shrink-0"><Button aria-hidden tabIndex={-1} size="xs" variant="outline">
           Open in tab
-        </Button>
+        </Button></span>
       )}
     </li>
   );

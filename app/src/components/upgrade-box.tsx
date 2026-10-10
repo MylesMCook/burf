@@ -17,10 +17,10 @@ export function UpgradeBox({ box, size = "default", variant = "default", label, 
   const u = useOutdated((s) => s.updating[box]);
   const busy = u?.state === "queued" || u?.state === "running";
   const button = (
-    <Button size={size} variant={variant} className={className} onClick={() => void updateBoxes([box])} disabled={busy}>
+    <span className={className}><Button size={size} variant={variant}  onClick={() => void updateBoxes([box])} disabled={busy}>
       {busy ? <Spinner /> : <RefreshCwIcon />}
       {busy ? (u?.state === "queued" ? `${box} is next…` : `Updating ${box}…`) : (label ?? `Install bundled agent on ${box}`)}
-    </Button>
+    </Button></span>
   );
   // While it runs, the upgrade's latest line is a hover away.
   return busy && u?.line ? <Tip label={u.line}>{button}</Tip> : button;

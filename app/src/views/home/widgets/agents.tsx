@@ -155,18 +155,18 @@ function WaitingRow({ r }: { r: AgentRow }) {
           <span className="shrink-0 text-[11px]">{answered === "Deny" ? "Denied" : "Allowed"} · resuming</span>
         ) : allow && deny ? (
           <span className="flex shrink-0 items-center gap-1">
-            <Button size="xs" variant="outline" className="h-5 rounded-[5px] px-1.5 text-[11px]" onClick={() => answer(deny.key, "Deny")} aria-label={`Deny: ${r.title}`}>
+            <span className="h-5 rounded-[5px] px-1.5 text-[11px]"><Button size="xs" variant="outline"  onClick={() => answer(deny.key, "Deny")} aria-label={`Deny: ${r.title}`}>
               Deny
-            </Button>
-            <Button size="xs" className="h-5 rounded-[5px] px-1.5 text-[11px]" onClick={() => answer(allow.key, "Allow")} aria-label={`Allow once: ${r.title}`}>
+            </Button></span>
+            <span className="h-5 rounded-[5px] px-1.5 text-[11px]"><Button size="xs"  onClick={() => answer(allow.key, "Allow")} aria-label={`Allow once: ${r.title}`}>
               Allow once
-            </Button>
+            </Button></span>
           </span>
         ) : (
-          <Button size="xs" variant="outline" className="h-5 shrink-0 rounded-[5px] px-1.5 text-[11px]" onClick={open} aria-label={`Answer: ${r.title}`}>
+          <span className="h-5 shrink-0 rounded-[5px] px-1.5 text-[11px]"><Button size="xs" variant="outline"  onClick={open} aria-label={`Answer: ${r.title}`}>
             Answer
             <CornerDownLeftIcon className="size-3" />
-          </Button>
+          </Button></span>
         )}
       </span>
     </div>

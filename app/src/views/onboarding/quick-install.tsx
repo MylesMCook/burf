@@ -109,9 +109,9 @@ export function QuickInstall({ target, onClose, onReady, readyLabel }: { target?
             </div>
           )}
           {run.state === "failed" && !failed && !run.failure && (
-            <Button size="sm" variant="outline" className="mt-3" onClick={() => run.start(request())}>
+            <span className="mt-3"><Button size="sm" variant="outline"  onClick={() => run.start(request())}>
               <RotateCwIcon /> Start again
-            </Button>
+            </Button></span>
           )}
         </DialogPanel>
         <DialogFooter>

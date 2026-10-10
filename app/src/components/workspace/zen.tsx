@@ -108,7 +108,7 @@ export function ZenSwitcher({ className }: { className?: string }) {
 
   return (
     <Menu>
-      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label="Go to" className={cn("min-w-0 max-w-96 gap-2", className)} />}>
+      <MenuTrigger render={<span className={cn("min-w-0 max-w-96 gap-2", className)}><Button size="sm" variant="ghost" aria-label="Go to" /></span>}>
         {here.kind === "home" ? (
           <>
             <HouseIcon />
@@ -378,7 +378,7 @@ export function ZenBar() {
       )}
       <WorktreeMenu />
       <div data-tauri-drag-region className="flex-1 self-stretch" />
-      <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => useStore.getState().setPaletteOpen(true)}>
+      <Button size="sm" variant="ghost"  onClick={() => useStore.getState().setPaletteOpen(true)} muted>
         Search
         <Kbd>⌘K</Kbd>
       </Button>

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonClass } from "@/components/ui/button";
 import { type Box, useModalBox } from "@/hooks/use-modal-open";
 
 const TOAST_ICONS = {
@@ -212,12 +212,11 @@ function Toasts({
                       render={<div />}
                     />
                     {toast.actionProps && (
-                      <Toast.Action
-                        className={cn(buttonVariants({ size: "xs", variant: "outline" }), "mt-1.5 w-fit max-w-full")}
-                        data-slot="toast-action"
-                      >
-                        {toast.actionProps.children}
-                      </Toast.Action>
+                      <div className="mt-1.5 w-fit max-w-full">
+                        <Toast.Action className={buttonClass("outline", "xs")} data-slot="toast-action">
+                          {toast.actionProps.children}
+                        </Toast.Action>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -313,7 +312,7 @@ function AnchoredToasts({
                     </div>
                     {toast.actionProps && (
                       <Toast.Action
-                        className={buttonVariants({ size: "xs" })}
+                        className={buttonClass("default", "xs")}
                         data-slot="toast-action"
                       >
                         {toast.actionProps.children}

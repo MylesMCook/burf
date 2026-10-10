@@ -396,7 +396,7 @@ export function NotificationCenter() {
           {notes.length > 0 && (
             <Menu>
               <MenuTrigger
-                render={<Button size="xs" variant="ghost" data-filter="" aria-label={`Show: ${current.label}`} className="gap-1 px-1.5 text-muted-foreground" />}
+                render={<span className="gap-1 px-1.5"><Button size="xs" variant="ghost" data-filter="" aria-label={`Show: ${current.label}`} muted /></span>}
               >
                 {current.label}
                 <ChevronDownIcon className="size-3 opacity-70" />
@@ -423,13 +423,13 @@ export function NotificationCenter() {
           )}
           <div className="ml-auto flex items-center gap-0.5">
             {notes.length > 0 && (
-              <Button size="xs" variant="ghost" disabled={!unread} onClick={markAllRead} className="text-muted-foreground">
+              <Button size="xs" variant="ghost" disabled={!unread} onClick={markAllRead} muted>
                 <CheckCheckIcon />
                 Mark all read
               </Button>
             )}
             <Menu>
-              <MenuTrigger render={<Button size="icon-xs" variant="ghost" aria-label="More" className="text-muted-foreground" />}>
+              <MenuTrigger render={<Button size="icon-xs" variant="ghost" aria-label="More" muted />}>
                 <EllipsisIcon />
               </MenuTrigger>
               <MenuPopup align="end" width={menuWidths.w56}>
@@ -461,7 +461,7 @@ export function NotificationCenter() {
                 </MenuItem>
               </MenuPopup>
             </Menu>
-            <Button size="icon-xs" variant="ghost" aria-label="Close" className="text-muted-foreground" onClick={() => setNotificationsOpen(false)}>
+            <Button size="icon-xs" variant="ghost" aria-label="Close"  onClick={() => setNotificationsOpen(false)} muted>
               <XIcon />
             </Button>
           </div>

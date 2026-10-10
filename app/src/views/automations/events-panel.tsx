@@ -23,9 +23,9 @@ export function EventsPanel({ onClose, onNewHook }: { onClose(): void; onNewHook
         <ActivityIcon className="size-3.5 text-muted-foreground" />
         <h2 className="font-medium text-sm">Live events</h2>
         <span className="text-muted-foreground text-xs tabular-nums">{events.length}</span>
-        <Button size="icon-xs" variant="ghost" className="ml-auto" aria-label="Hide events" onClick={onClose}>
+        <span className="ml-auto"><Button size="icon-xs" variant="ghost"  aria-label="Hide events" onClick={onClose}>
           <PanelRightCloseIcon />
-        </Button>
+        </Button></span>
       </header>
       {/* Wraps rather than scrolls: a hidden scrollbar read as chips cut off. */}
       <div className="flex flex-wrap gap-1 px-3 pb-2" role="group" aria-label="Show only">

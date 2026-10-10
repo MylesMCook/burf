@@ -280,7 +280,6 @@ export function Sidebar({
 }
 
 export function SidebarTrigger({
-  className,
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>): React.ReactElement {
@@ -288,7 +287,6 @@ export function SidebarTrigger({
 
   return (
     <Button
-      className={cn("size-7", className)}
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
       onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
@@ -296,6 +294,7 @@ export function SidebarTrigger({
         toggleSidebar();
       }}
       size="icon"
+      square={7}
       variant="ghost"
       {...props}
     >

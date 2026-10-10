@@ -201,9 +201,9 @@ export function CommentNote({ c, onRemove }: { c: LineComment; onRemove(): void 
         </Badge>
       ) : (
         <Tip label="Delete this comment">
-          <Button size="icon-xs" variant="ghost" aria-label="Delete this comment" className="-my-0.5 shrink-0 text-muted-foreground" onClick={onRemove}>
+          <span className="-my-0.5 shrink-0"><Button size="icon-xs" variant="ghost" aria-label="Delete this comment"  onClick={onRemove} muted>
             <Trash2Icon />
-          </Button>
+          </Button></span>
         </Tip>
       )}
     </div>
@@ -238,9 +238,9 @@ export function CommentComposer({ line, onSave, onCancel }: { line: number; onSa
       />
       <div className="flex items-center gap-1.5">
         <span className="text-muted-foreground text-xs">Line {line} · ⌘↵ to add</span>
-        <Button size="xs" variant="ghost" className="ml-auto" onClick={onCancel}>
+        <span className="ml-auto"><Button size="xs" variant="ghost"  onClick={onCancel}>
           Cancel
-        </Button>
+        </Button></span>
         <Button size="xs" disabled={!text.trim()} onClick={save}>
           Add comment
         </Button>

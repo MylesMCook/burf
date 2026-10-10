@@ -39,9 +39,9 @@ export function WidgetEmpty({ scene = "calm", title, hint, action, onAction, com
       <p className="font-medium text-sm">{title}</p>
       {hint && <p className="line-clamp-2 max-w-72 text-balance text-muted-foreground text-xs">{hint}</p>}
       {action && onAction && (
-        <Button size="xs" variant="outline" className="mt-1.5" onClick={onAction}>
+        <span className="mt-1.5"><Button size="xs" variant="outline"  onClick={onAction}>
           {action}
-        </Button>
+        </Button></span>
       )}
     </div>
   );

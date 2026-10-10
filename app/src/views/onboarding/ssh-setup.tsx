@@ -124,9 +124,9 @@ export function SshSetup({
           }}
           className="h-full min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:font-sans placeholder:text-muted-foreground/72 placeholder:text-sm disabled:opacity-64"
         />
-        <Button type="submit" size="xs" variant="outline" className="shrink-0" disabled={running || (!host.trim() && active < 0)} data-testid="ssh-set-up">
+        <span className="shrink-0"><Button type="submit" size="xs" variant="outline"  disabled={running || (!host.trim() && active < 0)} data-testid="ssh-set-up">
           Set up
-        </Button>
+        </Button></span>
       </form>
 
       {/* What Burf will use, before it connects: a wrong agent is obvious here. */}
@@ -290,9 +290,9 @@ export function FailurePanel({
       break;
     default:
       action = (
-        <Button size="sm" variant="outline" className="self-start" onClick={() => onRetry()}>
+        <span className="self-start"><Button size="sm" variant="outline"  onClick={() => onRetry()}>
           Try again
-        </Button>
+        </Button></span>
       );
   }
   return (

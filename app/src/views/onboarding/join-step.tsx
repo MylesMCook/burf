@@ -161,9 +161,9 @@ export function JoinFlow({
           className="h-full min-w-0 flex-1 truncate bg-transparent font-mono text-[13px] outline-none placeholder:font-sans placeholder:text-muted-foreground/72 placeholder:text-sm disabled:opacity-64"
         />
         {phase === "paste" || phase === "checking" ? (
-          <Button type="submit" size="xs" className="shrink-0" disabled={!text.trim()} loading={phase === "checking"}>
+          <span className="shrink-0"><Button type="submit" size="xs"  disabled={!text.trim()} loading={phase === "checking"}>
             Continue
-          </Button>
+          </Button></span>
         ) : (
           <Tip label="Use another link">
             <Button
@@ -309,9 +309,9 @@ function BoxRow({
             </Button>
           </span>
         ) : (
-          <Button size="xs" variant="outline" className="shrink-0" disabled={busy} onClick={onSignIn}>
+          <span className="shrink-0"><Button size="xs" variant="outline"  disabled={busy} onClick={onSignIn}>
             Sign in
-          </Button>
+          </Button></span>
         ))}
     </li>
   );

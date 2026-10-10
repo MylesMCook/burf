@@ -285,20 +285,19 @@ export function RunTimeline({ box, id, summary }: { box: string; id: string; sum
         )}
         {run.error && <span className="text-destructive-foreground">{run.error}</span>}
         {isActive(run) && (
-          <Button
+          <span className="ml-auto"><Button
             size="xs"
             variant="ghost"
-            className="ml-auto"
+            
             onClick={() =>
               void runsApi
                 .cancel(box, id)
                 .then(() => scheduleRuns(box, 0))
                 .catch((err) => toastManager.add({ type: "error", title: "Couldn't cancel", description: errorMessage(err) }))
-            }
-          >
+            }>
             <CircleStopIcon />
             Cancel run
-          </Button>
+          </Button></span>
         )}
       </div>
       {run.gate && (

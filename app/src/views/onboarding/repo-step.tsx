@@ -119,9 +119,9 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
                     <span className="font-mono">hello</span>: a tiny Node web server and its test, made in ~/work/hello on {where}. A good size for a first task.
                   </p>
                 </div>
-                <Button autoFocus={existing.length === 0} className="shrink-0" disabled={canSample === undefined} loading={making} onClick={() => void sample()}>
+                <span className="shrink-0"><Button autoFocus={existing.length === 0}  disabled={canSample === undefined} loading={making} onClick={() => void sample()}>
                   Use the sample <ArrowRightIcon />
-                </Button>
+                </Button></span>
               </div>
               {error && <p className="mt-2 ps-13 text-destructive-foreground text-xs">{error}</p>}
             </section>

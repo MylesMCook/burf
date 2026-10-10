@@ -827,14 +827,14 @@ function AgentBar({
       )}
       {logKey && <DevtoolsToggle logKey={logKey} />}
       {here && (
-        <Button size="xs" variant="ghost" className="shrink-0" onClick={() => onOpenHere(here)}>
+        <span className="shrink-0"><Button size="xs" variant="ghost"  onClick={() => onOpenHere(here)}>
           Open in your view
-        </Button>
+        </Button></span>
       )}
-      <Button size="xs" variant="outline" className="shrink-0" onClick={onBack}>
+      <span className="shrink-0"><Button size="xs" variant="outline"  onClick={onBack}>
         <XIcon />
         Your view
-      </Button>
+      </Button></span>
     </div>
   );
 }
@@ -849,10 +849,10 @@ function SandboxBar({ box, fixed, onBack }: { box: string; fixed: boolean; onBac
         {fixed ? "Agent's browser" : "Agent's browser · blocked"}
       </span>
       <span className="min-w-0 flex-1 truncate text-muted-foreground">on {box}</span>
-      <Button size="xs" variant="outline" className="shrink-0" onClick={onBack}>
+      <span className="shrink-0"><Button size="xs" variant="outline"  onClick={onBack}>
         <XIcon />
         Your view
-      </Button>
+      </Button></span>
     </div>
   );
 }

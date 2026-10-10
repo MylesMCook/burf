@@ -223,10 +223,10 @@ export function DashboardView() {
               {pickedEntries.length ? `Send to ${pickedEntries.length} agent${pickedEntries.length === 1 ? "" : "s"}…` : "Send to agents…"}
             </Button>
             <Tip label={pickedEntries.length ? "Stop the selected agents (⌫)" : undefined}>
-              <Button size="xs" variant="outline" className="text-destructive-foreground" disabled={!pickedEntries.length} onClick={stopPicked}>
+              <span className="text-destructive-foreground"><Button size="xs" variant="outline"  disabled={!pickedEntries.length} onClick={stopPicked}>
                 <SquareIcon />
                 {pickedEntries.length ? `Stop ${pickedEntries.length}…` : "Stop…"}
-              </Button>
+              </Button></span>
             </Tip>
             <span className="h-5 w-px bg-border" />
             <Button size="xs" variant="ghost" onClick={() => setPicked(undefined)}>

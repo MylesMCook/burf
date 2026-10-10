@@ -40,10 +40,10 @@ export function ArtifactCard({ it }: { it: Extract<TranscriptItem, { kind: "arti
       {sub && <span className="hidden min-w-0 max-w-[22rem] flex-1 truncate text-muted-foreground @[640px]:block">· {sub}</span>}
       {it.url && (
         <Tip label={host(it.url) ? `Open on ${host(it.url)}` : "Open in your browser"}>
-          <Button size="xs" variant="ghost" className="ml-auto shrink-0 text-muted-foreground hover:text-foreground" onClick={() => void openUrl(it.url!)}>
+          <span className="ml-auto shrink-0"><Button size="xs" variant="ghost"  onClick={() => void openUrl(it.url!)} muted>
             Open
             <ExternalLinkIcon />
-          </Button>
+          </Button></span>
         </Tip>
       )}
     </div>

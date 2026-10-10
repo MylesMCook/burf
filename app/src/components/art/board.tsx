@@ -107,12 +107,12 @@ function Tile({ art, lead }: { art: Art; lead?: boolean }) {
           </div>
         </div>
         <Tip label="Open beside">
-          <Button size="icon-xs" variant="ghost" className="text-muted-foreground opacity-0 focus-visible:opacity-100 group-hover:opacity-100" aria-label={`Open ${art.title} beside`} onClick={() => open(true)}>
+          <span className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"><Button size="icon-xs" variant="ghost"  aria-label={`Open ${art.title} beside`} onClick={() => open(true)} muted>
             <PanelRightIcon />
-          </Button>
+          </Button></span>
         </Tip>
         <Tip label="Open in a tab">
-          <Button size="icon-xs" variant="ghost" className="text-muted-foreground" aria-label={`Open ${art.title}`} onClick={() => open(false)}>
+          <Button size="icon-xs" variant="ghost"  aria-label={`Open ${art.title}`} onClick={() => open(false)} muted>
             <ArrowUpRightIcon />
           </Button>
         </Tip>

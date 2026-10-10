@@ -145,12 +145,12 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
           </span>
         )}
         <span className="ml-auto flex items-center gap-0.5" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-          <Button size="xs" variant="ghost" className="h-6 text-[11px]" onClick={open}>
+          <span className="h-6 text-[11px]"><Button size="xs" variant="ghost"  onClick={open}>
             Open
-          </Button>
-          <Button size="xs" variant="ghost" className="h-6 text-[11px]" onClick={() => openOrchestrate("send", box, session.name)}>
+          </Button></span>
+          <span className="h-6 text-[11px]"><Button size="xs" variant="ghost"  onClick={() => openOrchestrate("send", box, session.name)}>
             {state === "ready" ? "Prompt…" : "Reply…"}
-          </Button>
+          </Button></span>
           <SessionActions box={box} session={session.name}>
             <StopMenuItems entry={entry} />
           </SessionActions>

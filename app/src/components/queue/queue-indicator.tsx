@@ -127,17 +127,17 @@ function Row({ it, online }: { it: QueueItem; online: boolean }) {
         {it.state === "failed" && <MoveTo it={it} />}
         {it.state === "failed" && (
           <Tip label="Put it back in line, to send when the agent is free">
-            <Button size="xs" variant="ghost" className="h-6 text-[11px]" loading={busy === "retry"} onClick={() => act("retry", () => retry(it.id))}>
+            <span className="h-6 text-[11px]"><Button size="xs" variant="ghost"  loading={busy === "retry"} onClick={() => act("retry", () => retry(it.id))}>
               <RotateCcwIcon />
               Retry
-            </Button>
+            </Button></span>
           </Tip>
         )}
         <Tip label={online ? "Type it in now, without waiting for the agent's turn to end" : `${it.box} is offline`}>
-          <Button
+          <span className="h-6 text-[11px]"><Button
             size="xs"
             variant="ghost"
-            className="h-6 text-[11px]"
+            
             disabled={!online || it.state === "sending"}
             loading={busy === "send"}
             onClick={() =>
@@ -146,11 +146,10 @@ function Row({ it, online }: { it: QueueItem; online: boolean }) {
                 if (r.state === "delivered") toastManager.add({ title: `Sent to ${targetName(it.box, it.session)}`, type: "success" });
                 else if (r.state === "failed") toastManager.add({ title: "Couldn't send it", description: r.error, type: "error" });
               })
-            }
-          >
+            }>
             <SendIcon />
             Send now
-          </Button>
+          </Button></span>
         </Tip>
         <Tip label="Discard this prompt">
           <Button size="icon-xs" variant="ghost" aria-label="Discard" disabled={it.state === "sending"} loading={busy === "discard"} onClick={() => act("discard", () => discard(it.id))}>
@@ -201,18 +200,17 @@ function Simulator() {
     <div className="flex flex-wrap items-center gap-1.5 border-t bg-muted/40 px-4 py-2 text-[11px] text-muted-foreground">
       <span className="font-medium">Simulate</span>
       {boxes.map((b) => (
-        <Button
+        <span className="h-6 text-[11px]"><Button
           key={b.name}
           size="xs"
           variant="outline"
-          className="h-6 text-[11px]"
+          
           onClick={() => {
             mockSetBoxOnline(b.name, !b.online);
-          }}
-        >
+          }}>
           <span className={cn("size-1.5 rounded-full", b.online ? "bg-success" : "bg-muted-foreground/50")} />
           {b.online ? `Take ${b.name} offline` : `Bring ${b.name} back`}
-        </Button>
+        </Button></span>
       ))}
     </div>
   );

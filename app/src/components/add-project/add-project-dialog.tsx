@@ -262,10 +262,10 @@ function Body({ startBox }: { startBox?: string }) {
                 }}
                 className="h-full min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:font-sans placeholder:text-muted-foreground/72 placeholder:text-sm disabled:opacity-64"
               />
-              <Button type="button" size="xs" variant="ghost" className="shrink-0 text-muted-foreground" disabled={busy} onClick={() => setBrowsing(true)}>
+              <span className="shrink-0"><Button type="button" size="xs" variant="ghost"  disabled={busy} onClick={() => setBrowsing(true)} muted>
                 <FolderOpenIcon />
                 Browse
-              </Button>
+              </Button></span>
             </div>
 
             <PlanLine plan={shown} pending={pending && !!input.trim() && shown === plan} box={box} home={home} target={active < 0 || shown !== plan || rows[active]?.kind === "new"} dest={dest} setDest={setDest} busy={busy} onEnter={() => (pending ? (queued.current = true) : plan && void run(plan))} />
@@ -557,19 +557,18 @@ function Moored({ box, others }: { box: string; others: boolean }) {
       <p className="max-w-xs text-balance text-muted-foreground text-xs">
         {others ? "Projects are added on a box that is online. Pick another above, or check on this one in Boxes." : "Projects are added on a box that is online. Check on your boxes in Settings."}
       </p>
-      <Button
+      <span className="mt-3"><Button
         size="sm"
         variant="outline"
-        className="mt-3"
+        
         onClick={() => {
           // Boxes is a page: the dialog goes, or it would sit over it.
           useStore.getState().closeAddLocation();
           useStore.getState().setView({ kind: "settings", section: "boxes" });
-        }}
-      >
+        }}>
         <ServerIcon />
         Open Boxes
-      </Button>
+      </Button></span>
     </div>
   );
 }

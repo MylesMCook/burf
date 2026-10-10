@@ -174,14 +174,13 @@ function StateCell({ state, committed, busy, disabled, onInstall, onRemove }: { 
         <Tooltip>
           <TooltipTrigger
             render={
-              <Button
+              <span className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover/cell:opacity-100"><Button
                 size="icon-xs"
                 variant="ghost"
                 aria-label="Remove"
                 disabled={disabled}
-                className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover/cell:opacity-100"
-                onClick={onRemove}
-              />
+                
+                onClick={onRemove} /></span>
             }
           >
             <Trash2Icon />
@@ -194,10 +193,10 @@ function StateCell({ state, committed, busy, disabled, onInstall, onRemove }: { 
   if (state === "outdated") {
     return (
       <span className="flex h-6 items-center">
-        <Button size="xs" variant="outline" disabled={disabled} onClick={onInstall} className="text-warning-foreground">
+        <span className="text-warning-foreground"><Button size="xs" variant="outline" disabled={disabled} onClick={onInstall}>
           <ArrowUpCircleIcon />
           Update
-        </Button>
+        </Button></span>
       </span>
     );
   }

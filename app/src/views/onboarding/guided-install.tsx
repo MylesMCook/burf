@@ -699,7 +699,7 @@ export function CommandLine({ command, onRun }: { command: string; onRun?: () =>
         <Button
           size="xs"
           variant="ghost"
-          className="text-muted-foreground"
+          
           onClick={() =>
             navigator.clipboard?.writeText(command).then(
               () => {
@@ -708,12 +708,11 @@ export function CommandLine({ command, onRun }: { command: string; onRun?: () =>
               },
               () => toastManager.add({ type: "error", title: "Could not copy", description: "Select the line and copy it instead." }),
             )
-          }
-        >
+          } muted>
           {copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copied" : "Copy"}
         </Button>
         {onRun && (
-          <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={onRun}>
+          <Button size="xs" variant="ghost"  onClick={onRun} muted>
             <SquareTerminalIcon /> Run in terminal
           </Button>
         )}

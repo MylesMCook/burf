@@ -41,7 +41,7 @@ export function TerminalSection() {
       title="Terminal"
       description="Applies to every terminal pane; open ones update as you change these."
       actions={
-        <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => setPrefs({ terminal: DEFAULT_TERMINAL_PREFS, terminalFont: null })}>
+        <Button size="xs" variant="ghost"  onClick={() => setPrefs({ terminal: DEFAULT_TERMINAL_PREFS, terminalFont: null })} muted>
           Restore defaults
         </Button>
       }

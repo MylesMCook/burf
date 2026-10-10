@@ -144,7 +144,7 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete,
                 Open
               </Button>
               <Menu>
-                <MenuTrigger render={<Button size="icon-sm" variant="ghost" className="ml-auto" aria-label="More actions" />}>
+                <MenuTrigger render={<span className="ml-auto"><Button size="icon-sm" variant="ghost"  aria-label="More actions" /></span>}>
                   <EllipsisIcon />
                 </MenuTrigger>
                 <MenuPopup align="end">

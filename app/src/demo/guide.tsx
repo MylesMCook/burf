@@ -69,9 +69,9 @@ export default function DemoGuide() {
   if (folded) {
     return (
       <div className="fixed bottom-[38px] left-3 z-40">
-        <Button size="xs" variant="outline" onClick={() => setFolded(false)} className="shadow-md">
+        <span className="shadow-md"><Button size="xs" variant="outline" onClick={() => setFolded(false)}>
           Demo guide
-        </Button>
+        </Button></span>
       </div>
     );
   }
@@ -86,9 +86,9 @@ export default function DemoGuide() {
           <p className="text-[11.5px] text-muted-foreground leading-snug">Invented boxes and repositories; nothing runs.</p>
         </div>
         <Tip label="Fold the guide">
-          <Button size="icon-xs" variant="ghost" aria-label="Fold the guide" onClick={() => setFolded(true)} className="-mt-0.5 -mr-1.5 text-muted-foreground">
+          <span className="-mt-0.5 -mr-1.5"><Button size="icon-xs" variant="ghost" aria-label="Fold the guide" onClick={() => setFolded(true)} muted>
             <XIcon />
-          </Button>
+          </Button></span>
         </Tip>
       </header>
       <ol className="mt-2 space-y-1 px-3 text-[12.5px]">
@@ -105,7 +105,7 @@ export default function DemoGuide() {
         </Step>
       </ol>
       <footer className="mt-2.5 flex items-center justify-between gap-2 border-t px-1.5 py-1">
-        <Button size="xs" variant="ghost" onClick={resetDemo} className="text-muted-foreground">
+        <Button size="xs" variant="ghost" onClick={resetDemo} muted>
           <RotateCcwIcon />
           Reset demo
         </Button>

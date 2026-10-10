@@ -39,14 +39,14 @@ export function ComputersSection() {
     >
       <SettingsGroup>
         <SettingsRow label="Add another computer" description="A link that pairs another computer of yours with the boxes you choose. It works once per box, for ten minutes.">
-          <Button size="xs" variant="outline" className="min-w-24" disabled={boxes.length === 0} onClick={() => setInviting(true)}>
+          <span className="min-w-24"><Button size="xs" variant="outline"  disabled={boxes.length === 0} onClick={() => setInviting(true)}>
             Add another computer
-          </Button>
+          </Button></span>
         </SettingsRow>
         <SettingsRow label="Join from another computer" description="Paste a link made on your other computer to pair this one with its boxes.">
-          <Button size="xs" variant="outline" className="min-w-24" onClick={() => setJoining(true)}>
+          <span className="min-w-24"><Button size="xs" variant="outline"  onClick={() => setJoining(true)}>
             Use a join link
-          </Button>
+          </Button></span>
         </SettingsRow>
       </SettingsGroup>
 
@@ -139,7 +139,7 @@ function ComputerRow({ box, computer, onRemoved }: { box: string; computer: Trus
         </div>
       </div>
       {!computer.you && (
-        <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => setRemoving(true)}>
+        <Button size="xs" variant="ghost"  onClick={() => setRemoving(true)} muted>
           Remove…
         </Button>
       )}
@@ -287,9 +287,9 @@ function InviteLink({ invite, again, onBack, onAgain, onClose }: { invite: Invit
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div className="flex h-9 items-center gap-2 rounded-lg border bg-muted/40 ps-3 pe-1">
               <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-muted-foreground">{invite.link}</code>
-              <Button size="xs" variant="outline" className="shrink-0" disabled={expired} onClick={() => void copy()}>
+              <span className="shrink-0"><Button size="xs" variant="outline"  disabled={expired} onClick={() => void copy()}>
                 <CopyIcon /> Copy
-              </Button>
+              </Button></span>
             </div>
             <div aria-live="polite" className={cn("text-xs", expired ? "text-warning-foreground" : "text-muted-foreground")}>
               {expired ? (

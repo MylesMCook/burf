@@ -100,9 +100,9 @@ export function UseThisMac({
             <CheckIcon className="size-4" /> Paired
           </span>
         ) : (
-          <Button size="sm" variant="outline" className="shrink-0" autoFocus={autoFocus} loading={state === "running"} onClick={() => void run()}>
+          <span className="shrink-0"><Button size="sm" variant="outline"  autoFocus={autoFocus} loading={state === "running"} onClick={() => void run()}>
             {state === "failed" ? "Try again" : thisComputer("Set up this Mac")}
-          </Button>
+          </Button></span>
         )}
       </div>
       {state === "ready" && !compact && (

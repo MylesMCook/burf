@@ -261,18 +261,15 @@ const ThreadListItemGroups: FC<{ searchQuery?: string }> = ({
 
 export const ThreadListNew = forwardRef<
   HTMLButtonElement,
-  ComponentPropsWithoutRef<typeof Button> & { labelClassName?: string }
->(({ className, labelClassName, children, ...props }, ref) => {
+  Omit<ComponentPropsWithoutRef<typeof Button>, "className" | "style"> & { labelClassName?: string }
+>(({ labelClassName, children, ...props }, ref) => {
   return (
     <ThreadListPrimitive.New asChild>
       <Button
         ref={ref}
         variant="ghost"
+        align="start"
         data-slot="aui_thread-list-new"
-        className={cn(
-          "hover:bg-muted data-active:bg-muted h-8 justify-start gap-2 rounded-md px-2.5 text-sm font-normal",
-          className,
-        )}
         {...props}
       >
         {children ?? (
@@ -441,15 +438,13 @@ const ThreadListItemMore: FC<{ onRename: () => void }> = ({ onRename }) => {
   return (
     <ThreadListItemMorePrimitive.Root sharedFocusGroup>
       <ThreadListItemMorePrimitive.Trigger asChild>
-        <Button
+        <span className="data-[state=open]:bg-accent absolute end-1.5 top-1/2 size-6 -translate-y-1/2 p-0 opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100 group-data-active:opacity-100 data-[state=open]:opacity-100"><Button
           variant="ghost"
           size="icon"
-          data-slot="aui_thread-list-item-more"
-          className="data-[state=open]:bg-accent absolute end-1.5 top-1/2 size-6 -translate-y-1/2 p-0 opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100 group-data-active:opacity-100 data-[state=open]:opacity-100"
-        >
+          data-slot="aui_thread-list-item-more">
           <MoreHorizontalIcon className="size-3.5" />
           <span className="sr-only">More options</span>
-        </Button>
+        </Button></span>
       </ThreadListItemMorePrimitive.Trigger>
       <ThreadListItemMorePrimitive.Content
         side="right"

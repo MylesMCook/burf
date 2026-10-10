@@ -140,12 +140,12 @@ function Card({ art }: { art: Art }) {
           <span className="ml-auto" />
           <span className="flex shrink-0 items-center">
             <Tip label="Open beside the chat · ⌘-click">
-              <Button size="icon-xs" variant="ghost" className="text-muted-foreground hover:text-foreground" aria-label={`Open ${art.title} beside the chat`} onClick={(e) => open(e, true)}>
+              <Button size="icon-xs" variant="ghost"  aria-label={`Open ${art.title} beside the chat`} onClick={(e) => open(e, true)} muted>
                 <PanelRightIcon />
               </Button>
             </Tip>
             <Tip label="Open in a tab · ⌘-click opens it beside">
-              <Button size="xs" variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={(e) => open(e)}>
+              <Button size="xs" variant="ghost"  onClick={(e) => open(e)} muted>
                 Open
                 <ArrowUpRightIcon />
               </Button>
@@ -185,10 +185,10 @@ function UpdateLine({ art, it }: { art: Art; it: Extract<TranscriptItem, { kind:
       {note && <span className="hidden min-w-0 truncate text-muted-foreground text-xs @[520px]:inline">· {note}</span>}
       <span className="ml-auto" />
       <Tip label="Open · ⌘-click beside the chat">
-        <Button size="xs" variant="ghost" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={(e) => open(e)}>
+        <span className="shrink-0"><Button size="xs" variant="ghost"  onClick={(e) => open(e)} muted>
           Open
           <ArrowUpRightIcon />
-        </Button>
+        </Button></span>
       </Tip>
     </div>
   );

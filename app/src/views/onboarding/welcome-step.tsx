@@ -49,9 +49,9 @@ export function WelcomeStep({ local, onThisMac, onRemote, onJoin }: { local?: bo
         />
       </div>
       {onJoin && (
-        <Button variant="ghost" className="mt-4 -ml-3 text-muted-foreground" onClick={onJoin}>
+        <span className="mt-4 -ml-3"><Button variant="ghost"  onClick={onJoin} muted>
           I already use Burf on another computer
-        </Button>
+        </Button></span>
       )}
     </div>
   );

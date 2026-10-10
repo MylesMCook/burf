@@ -32,10 +32,10 @@ export function InstallCommand({ className }: { className?: string }) {
         $
       </span>
       <code className="min-w-0 flex-1 select-all truncate font-mono text-[13px]">{INSTALL_COMMAND}</code>
-      <Button type="button" size="xs" variant="ghost" className="shrink-0 text-muted-foreground" onClick={copy} aria-label="Copy the install command">
+      <span className="shrink-0"><Button type="button" size="xs" variant="ghost"  onClick={copy} aria-label="Copy the install command" muted>
         {copied ? <CheckIcon /> : <CopyIcon />}
         {copied ? "Copied" : "Copy"}
-      </Button>
+      </Button></span>
     </div>
   );
 }

@@ -56,9 +56,9 @@ export function TailnetMachines({
           On your tailnet
         </h2>
         {sources.length === 1 && <span className="min-w-0 truncate text-muted-foreground text-xs">{source.label}</span>}
-        <Button size="xs" variant="ghost" data-focus-skip="" className="-me-2 ms-auto shrink-0 text-muted-foreground" disabled={running} onClick={onSignIn}>
+        <span className="-me-2 ms-auto shrink-0"><Button size="xs" variant="ghost" data-focus-skip=""  disabled={running} onClick={onSignIn} muted>
           <PlusIcon /> Sign in to another tailnet
-        </Button>
+        </Button></span>
       </div>
       {sources.length > 1 && (
         <Tabs value={source.key} onValueChange={(v) => !running && onActive(String(v))} className="mb-2">
@@ -244,7 +244,7 @@ function MachineRow({ machine: m, picked, locked, autoFocus, onPick }: { machine
         ) : !m.online ? (
           <span className="pe-1 text-muted-foreground text-xs">Offline</span>
         ) : picked ? (
-          <Button size="xs" variant="ghost" className="text-muted-foreground" disabled={locked} onClick={onPick}>
+          <Button size="xs" variant="ghost"  disabled={locked} onClick={onPick} muted>
             Cancel
           </Button>
         ) : (
@@ -353,9 +353,9 @@ function MachineSetup({
           />
           <span className="min-w-0 truncate text-muted-foreground">@{host}</span>
         </div>
-        <Button type="submit" size="sm" className="shrink-0" disabled={!!userError || running} data-testid="machine-install">
+        <span className="shrink-0"><Button type="submit" size="sm"  disabled={!!userError || running} data-testid="machine-install">
           Install and pair
-        </Button>
+        </Button></span>
       </form>
       <div aria-live="polite" className="mt-2 flex min-h-5 min-w-0 items-center gap-1.5 text-muted-foreground text-xs leading-5">
         {userError ? (
@@ -437,7 +437,7 @@ export function UseTailscale({ system, onRefresh, onSignIn }: { system?: SystemT
             <RefreshCwIcon /> Check again
           </Button>
         )}
-        <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={onSignIn}>
+        <Button size="sm" variant="ghost"  onClick={onSignIn} muted>
           Sign in to a tailnet in Burf
         </Button>
       </div>

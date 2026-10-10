@@ -187,7 +187,7 @@ export function HomeGrid({ className }: { className?: string }) {
         ) : (
           <>
             <span className="flex-1" />
-            <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setEdit(true)} data-testid="home-customize">
+            <Button size="sm" variant="ghost"  onClick={() => setEdit(true)} data-testid="home-customize" muted>
               <LayoutGridIcon />
               Customize
             </Button>
@@ -438,9 +438,9 @@ function OffCell({ p, onRemove }: { p: Placed; onRemove(): void }) {
         <p className="font-medium text-foreground text-sm">{plugin ? "Its plugin is off" : "Not available"}</p>
         <p className="font-mono text-[11px]">{p.id}</p>
         <p className="text-balance">{plugin ? `Turn ${plugin} on in Settings → Plugins and it comes back here.` : "This version of Burf has no such widget."}</p>
-        <Button size="xs" variant="outline" className="mt-1" onClick={onRemove}>
+        <span className="mt-1"><Button size="xs" variant="outline"  onClick={onRemove}>
           Remove
-        </Button>
+        </Button></span>
       </div>
     </div>
   );

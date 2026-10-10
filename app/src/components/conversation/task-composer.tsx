@@ -1243,9 +1243,9 @@ function SendButton({ label, icon, dialog, blocker, busy, onClick }: { label: st
 function OptionsToggle({ open, onOpen }: { open: boolean; onOpen(open: boolean): void }) {
   return (
     <Tip label={open ? "Hide options" : "Options"}>
-      <Button size="icon-sm" variant="ghost" aria-label="Options" aria-pressed={open} className={cn("text-muted-foreground hover:text-foreground", open && "bg-background/70 text-foreground")} onClick={() => onOpen(!open)}>
+      <span className={cn("text-muted-foreground hover:text-foreground", open && "bg-background/70 text-foreground")}><Button size="icon-sm" variant="ghost" aria-label="Options" aria-pressed={open}  onClick={() => onOpen(!open)}>
         <SlidersHorizontalIcon />
-      </Button>
+      </Button></span>
     </Tip>
   );
 }
@@ -1306,10 +1306,10 @@ function NoProjects({ className, tabs }: { className?: string; tabs?: React.Reac
         <Scene name={copy.scene} width={120} className="mb-3" />
         <p className="font-medium text-sm">{copy.title}</p>
         <p className="max-w-xs text-balance text-muted-foreground text-xs">{copy.text}</p>
-        <Button size="sm" className="mt-3" onClick={go}>
+        <span className="mt-3"><Button size="sm"  onClick={go}>
           <ServerIcon />
           {state === "no-boxes" ? "Add a box" : state === "offline" ? "Open Boxes" : "Add a project"}
-        </Button>
+        </Button></span>
       </FramePanel>
     </Frame>
   );

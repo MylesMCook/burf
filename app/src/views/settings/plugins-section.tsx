@@ -61,9 +61,9 @@ export function PluginsSection() {
       <SettingsGroup
         title="Installed"
         actions={
-          <Button size="xs" variant="outline" className="gap-1.5" loading={reloading} onClick={() => void reload()}>
+          <span className="gap-1.5"><Button size="xs" variant="outline"  loading={reloading} onClick={() => void reload()}>
             <RefreshCwIcon className="mr-0.5" /> Reload
-          </Button>
+          </Button></span>
         }
       >
         {installed === undefined ? (

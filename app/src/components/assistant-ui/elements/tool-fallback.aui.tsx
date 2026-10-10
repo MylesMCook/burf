@@ -596,26 +596,25 @@ function ToolFallbackApprovalQuestions({
                 {question.options.map((option) => {
                   const pressed = chosen.includes(option.id);
                   return (
-                    <Button
-                      key={option.id}
-                      size="sm"
-                      variant={pressed ? "default" : "outline"}
-                      className={cn(
+                    <span className={cn(
                         pressable,
                         described &&
                           "h-auto flex-col items-start gap-0.5 py-2 text-start whitespace-normal",
-                      )}
+                      )}><Button
+                      key={option.id}
+                      size="sm"
+                      variant={pressed ? "default" : "outline"}
+                      
                       aria-pressed={pressed}
                       onClick={() => toggle(question, option.id)}
-                      disabled={locked}
-                    >
+                      disabled={locked}>
                       <span>{option.label}</span>
                       {option.description ? (
                         <span className="text-xs font-normal opacity-80">
                           {option.description}
                         </span>
                       ) : null}
-                    </Button>
+                    </Button></span>
                   );
                 })}
               </div>
@@ -641,24 +640,22 @@ function ToolFallbackApprovalQuestions({
         );
       })}
       <div className="flex items-center gap-2">
-        <Button
+        <span className={pressable}><Button
           size="sm"
-          className={pressable}
+          
           onClick={send}
-          disabled={locked || !complete}
-        >
+          disabled={locked || !complete}>
           Send
-        </Button>
+        </Button></span>
         {dismissible ? (
-          <Button
+          <span className={pressable}><Button
             size="sm"
             variant="outline"
-            className={pressable}
+            
             onClick={onDismiss}
-            disabled={locked}
-          >
+            disabled={locked}>
             Dismiss
-          </Button>
+          </Button></span>
         ) : null}
       </div>
     </>
@@ -835,15 +832,14 @@ function ToolFallbackApprovalImpl({
     question && respondToApproval != null && approval?.dismissible === true;
 
   const dismissButton = dismissible ? (
-    <Button
+    <span className={pressable}><Button
       size="sm"
       variant="outline"
-      className={pressable}
+      
       onClick={dismiss}
-      disabled={locked}
-    >
+      disabled={locked}>
       Dismiss
-    </Button>
+    </Button></span>
   ) : null;
 
   const errorText = error ? (
@@ -868,14 +864,13 @@ function ToolFallbackApprovalImpl({
       />
       {question && (
         <div className="flex items-center gap-2">
-          <Button
+          <span className={pressable}><Button
             size="sm"
-            className={pressable}
+            
             onClick={submitAnswer}
-            disabled={locked}
-          >
+            disabled={locked}>
             Send
-          </Button>
+          </Button></span>
           {dismissButton}
         </div>
       )}
@@ -939,23 +934,21 @@ function ToolFallbackApprovalImpl({
           </ul>
         )}
         <div className="flex items-center gap-2">
-          <Button
+          <span className={pressable}><Button
             size="sm"
-            className={pressable}
+            
             onClick={() => respondWithOption(confirming)}
-            disabled={locked}
-          >
+            disabled={locked}>
             Confirm
-          </Button>
-          <Button
+          </Button></span>
+          <span className={pressable}><Button
             size="sm"
             variant="outline"
-            className={pressable}
+            
             onClick={() => setConfirmingId(null)}
-            disabled={locked}
-          >
+            disabled={locked}>
             Back
-          </Button>
+          </Button></span>
         </div>
       </div>
     );
@@ -980,28 +973,26 @@ function ToolFallbackApprovalImpl({
         <div className="flex flex-wrap items-center gap-2">
           {[...allowOptions, ...customOptions, ...rejectOptions].map(
             (option) => (
-              <Button
+              <span className={pressable}><Button
                 key={option.id}
                 size="sm"
                 variant={option === allowOptions[0] ? "default" : "outline"}
-                className={pressable}
+                
                 onClick={() => handleOption(option)}
-                disabled={locked}
-              >
+                disabled={locked}>
                 {approvalOptionLabel(option)}
-              </Button>
+              </Button></span>
             ),
           )}
           {rejectOptions.length === 0 && !question && (
-            <Button
+            <span className={pressable}><Button
               size="sm"
               variant="outline"
-              className={pressable}
+              
               onClick={() => respond(false)}
-              disabled={locked}
-            >
+              disabled={locked}>
               Deny
-            </Button>
+            </Button></span>
           )}
           {!acceptsText && dismissButton}
         </div>
@@ -1044,23 +1035,21 @@ function ToolFallbackApprovalImpl({
     >
       {promptText}
       <div className="flex items-center gap-2">
-        <Button
+        <span className={pressable}><Button
           size="sm"
-          className={pressable}
+          
           onClick={() => respond(true)}
-          disabled={locked}
-        >
+          disabled={locked}>
           Allow
-        </Button>
-        <Button
+        </Button></span>
+        <span className={pressable}><Button
           size="sm"
           variant="outline"
-          className={pressable}
+          
           onClick={() => respond(false)}
-          disabled={locked}
-        >
+          disabled={locked}>
           Deny
-        </Button>
+        </Button></span>
       </div>
       {answerField}
       {errorText}

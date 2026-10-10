@@ -155,9 +155,9 @@ function UpdatesGroup() {
   }
   const busy = u.status === "checking" || u.status === "downloading" || u.status === "installing";
   const checkNow = (
-    <Button size="xs" variant="outline" className="min-w-24" loading={u.status === "checking"} disabled={busy} onClick={() => void checkForUpdate({ manual: true })}>
+    <span className="min-w-24"><Button size="xs" variant="outline"  loading={u.status === "checking"} disabled={busy} onClick={() => void checkForUpdate({ manual: true })}>
       Check now
-    </Button>
+    </Button></span>
   );
   let row;
   switch (u.status) {
@@ -168,9 +168,9 @@ function UpdatesGroup() {
           <Button size="xs" variant="ghost" onClick={() => void openUrl(`${RELEASES}/tag/v${u.version}`)}>
             What's new
           </Button>
-          <Button size="xs" className="min-w-24" loading={u.status === "installing"} onClick={() => void restartToUpdate()}>
+          <span className="min-w-24"><Button size="xs"  loading={u.status === "installing"} onClick={() => void restartToUpdate()}>
             Restart to update
-          </Button>
+          </Button></span>
         </SettingsRow>
       );
       break;

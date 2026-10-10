@@ -197,37 +197,35 @@ function ResultRow({ row, onQueue }: { row: RunRow; onQueue(): void }) {
         </span>
         {row.state === "offline" && (
           <Tip label={`Send it when ${row.box} is back`}>
-            <Button type="button" size="xs" variant="outline" className="h-6 text-[0.6875rem]" onClick={onQueue}>
+            <span className="h-6 text-[0.6875rem]"><Button type="button" size="xs" variant="outline"  onClick={onQueue}>
               Queue
-            </Button>
+            </Button></span>
           </Tip>
         )}
         {row.state === "deferred" ? (
-          <Button
+          <span className="h-6 text-[0.6875rem]"><Button
             type="button"
             size="xs"
             variant="ghost"
-            className="h-6 text-[0.6875rem]"
+            
             onClick={() => {
               closeComposer();
               openQueue();
-            }}
-          >
+            }}>
             View queue
-          </Button>
+          </Button></span>
         ) : (
-          <Button
+          <span className="h-6 text-[0.6875rem]"><Button
             type="button"
             size="xs"
             variant="ghost"
-            className="h-6 text-[0.6875rem]"
+            
             onClick={() => {
               closeComposer();
               void focusSession(row.box, row.session);
-            }}
-          >
+            }}>
             Open
-          </Button>
+          </Button></span>
         )}
       </div>
       {row.error && <p className="border-t px-3 py-1.5 text-destructive-foreground text-xs">{row.error}</p>}

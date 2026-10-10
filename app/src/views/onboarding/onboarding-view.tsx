@@ -78,9 +78,9 @@ export function OnboardingView() {
           <Progress at={step.kind === "join" || step.kind === "mac" ? "box" : step.kind} />
           {/* Skipping makes sense once there is a box to work on. */}
           {hasBoxes && (
-            <Button size="xs" variant="ghost" className="-mr-2 ml-auto text-muted-foreground" onClick={finish}>
+            <span className="-mr-2 ml-auto"><Button size="xs" variant="ghost"  onClick={finish} muted>
               Skip setup
-            </Button>
+            </Button></span>
           )}
         </div>
         <div ref={area} className="contents">

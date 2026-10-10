@@ -245,15 +245,13 @@ function OwnImages({ selected }: { selected?: string }) {
       onClick={() => setChatBackground(selected === img.id ? {} : { source: "image", image: img, ...(bg.source === "image" ? {} : PICTURE_PRESET) })}
       extra={
         <Tip label="Remove this picture">
-          <Button
+          <span className="absolute -top-1.5 -right-1.5 size-5 rounded-full opacity-0 shadow-sm transition-opacity focus-visible:opacity-100 group-hover:opacity-100"><Button
             size="icon-xs"
             variant="secondary"
             aria-label={`Remove ${img.prompt ? "the generated picture" : img.name}`}
-            onClick={() => void forget(img)}
-            className="absolute -top-1.5 -right-1.5 size-5 rounded-full opacity-0 shadow-sm transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
-          >
+            onClick={() => void forget(img)}>
             <XIcon className="size-3" />
-          </Button>
+          </Button></span>
         </Tip>
       }
     >
@@ -465,10 +463,10 @@ function Generate({ onClose }: { onClose(): void }) {
           <AlertTitle>{gens instanceof Error ? "Can't look for an image generator" : !gen ? "No image generator found" : !gen.installed ? "Codex isn't installed" : "Codex isn't signed in"}</AlertTitle>
           <AlertDescription>
             <p>{gens instanceof Error ? gens.message : (gen?.note ?? "Burf generates backgrounds with Codex's CLI.")} Meanwhile, you can add a picture of your own.</p>
-            <Button size="xs" variant="outline" className="mt-2 w-fit" onClick={check}>
+            <span className="mt-2 w-fit"><Button size="xs" variant="outline"  onClick={check}>
               <RefreshCwIcon />
               Check again
-            </Button>
+            </Button></span>
           </AlertDescription>
         </Alert>
       ) : (
@@ -490,9 +488,9 @@ function Generate({ onClose }: { onClose(): void }) {
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
             {IDEAS.map((i) => (
-              <Button key={i} size="xs" variant="outline" disabled={!!busy} onClick={() => setPrompt(i)} className="font-normal text-muted-foreground">
+              <span className="font-normal"><Button key={i} size="xs" variant="outline" disabled={!!busy} onClick={() => setPrompt(i)} muted>
                 {i}
-              </Button>
+              </Button></span>
             ))}
           </div>
           <div className="mt-3 text-muted-foreground text-xs">

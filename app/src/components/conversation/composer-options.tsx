@@ -355,9 +355,9 @@ function TargetRow({ entry, expanded, onExpand, text, edited, missing, onEdit }:
         <div className="flex flex-col gap-1 px-3 pb-2.5 pl-9">
           <Textarea rows={4} className="text-[0.8125rem]" value={text} onChange={(e) => onEdit(e.target.value)} aria-label={`Prompt for ${short}`} />
           {edited && (
-            <Button type="button" size="xs" variant="ghost" className="self-start text-muted-foreground" onClick={() => onEdit(undefined)}>
+            <span className="self-start"><Button type="button" size="xs" variant="ghost"  onClick={() => onEdit(undefined)} muted>
               Use the prompt above again
-            </Button>
+            </Button></span>
           )}
         </div>
       )}

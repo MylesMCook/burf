@@ -171,15 +171,15 @@ function SpotlightCard({ open, release }: { open: boolean; release: Release }) {
                 <span className="mr-1 text-muted-foreground text-xs tabular-nums" aria-hidden>
                   {at + 1} / {items.length}
                 </span>
-                <Button size="icon-sm" variant="ghost" aria-label="Previous" className={cn(at === 0 && "invisible")} onClick={() => step(-1)}>
+                <span className={cn(at === 0 && "invisible")}><Button size="icon-sm" variant="ghost" aria-label="Previous"  onClick={() => step(-1)}>
                   <ChevronLeftIcon />
-                </Button>
+                </Button></span>
                 {last ? (
-                  <DialogClose render={<Button size="sm" variant="ghost" className="min-w-14" />}>Done</DialogClose>
+                  <DialogClose render={<span className="min-w-14"><Button size="sm" variant="ghost" /></span>}>Done</DialogClose>
                 ) : (
-                  <Button size="sm" variant="ghost" className="min-w-14" onClick={() => step(1)}>
+                  <span className="min-w-14"><Button size="sm" variant="ghost"  onClick={() => step(1)}>
                     Next
-                  </Button>
+                  </Button></span>
                 )}
               </div>
             </DialogFooter>
@@ -201,17 +201,17 @@ export function WhatsNewNudge() {
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 font-medium text-xs">New in Burf {release.version}</span>
-          <Button size="icon-xs" variant="ghost" aria-label="Dismiss" className="-my-1 -mr-1.5" onClick={dismissNudge}>
+          <span className="-my-1 -mr-1.5"><Button size="icon-xs" variant="ghost" aria-label="Dismiss"  onClick={dismissNudge}>
             <XIcon />
-          </Button>
+          </Button></span>
         </div>
         <span className="text-muted-foreground text-xs leading-snug">
           {a.title}, {b.title.toLowerCase()} and more.
         </span>
       </div>
-      <Button size="xs" variant="outline" className="self-start" onClick={() => openWhatsNew("update", release)}>
+      <span className="self-start"><Button size="xs" variant="outline"  onClick={() => openWhatsNew("update", release)}>
         See what's new
-      </Button>
+      </Button></span>
     </div>
   );
 }

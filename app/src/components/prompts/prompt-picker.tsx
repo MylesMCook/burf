@@ -231,14 +231,14 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
           <span className="flex items-center gap-2 font-medium text-[13px]">
             {edited == null ? "Preview" : "Text"}
             {edited == null ? (
-              <Button type="button" size="xs" variant="ghost" className="ml-auto h-6 text-muted-foreground" onClick={() => setEdited(text)}>
+              <span className="ml-auto h-6"><Button type="button" size="xs" variant="ghost"  onClick={() => setEdited(text)} muted>
                 <PencilIcon />
                 Edit text
-              </Button>
+              </Button></span>
             ) : (
-              <Button type="button" size="xs" variant="ghost" className="ml-auto h-6 text-muted-foreground" onClick={() => setEdited(undefined)}>
+              <span className="ml-auto h-6"><Button type="button" size="xs" variant="ghost"  onClick={() => setEdited(undefined)} muted>
                 Reset to the prompt
-              </Button>
+              </Button></span>
             )}
           </span>
           {edited == null ? (

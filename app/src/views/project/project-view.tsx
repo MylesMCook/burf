@@ -86,9 +86,9 @@ export function ProjectView({ box, location }: { box: string; location: string }
               ) : (
                 trust?.state === "trusted" &&
                 (runsAnything(repo) ? (
-                  <Button size="xs" variant="ghost" className="shrink-0" onClick={() => void untrust()}>
+                  <span className="shrink-0"><Button size="xs" variant="ghost"  onClick={() => void untrust()}>
                     Stop trusting
-                  </Button>
+                  </Button></span>
                 ) : null)
               )}
             </span>

@@ -203,10 +203,10 @@ export function BulkBar({
           </Button>
         </Hint>
         <Hint text={deletable ? (deletable < selected.length ? `Main checkouts are skipped (${selected.length - deletable})` : undefined) : "Main checkouts can't be deleted"}>
-          <Button size="xs" variant="outline" className="text-destructive-foreground" disabled={!deletable} onClick={onDelete}>
+          <span className="text-destructive-foreground"><Button size="xs" variant="outline"  disabled={!deletable} onClick={onDelete}>
             <Trash2Icon />
             {counted(deletable) !== undefined ? `Delete ${deletable}…` : "Delete…"}
-          </Button>
+          </Button></span>
         </Hint>
         <span className="h-5 w-px bg-border" />
         <Button size="xs" variant="ghost" onClick={onClear}>

@@ -42,7 +42,7 @@ export function AgentStep({ box, location, sample, onFinish }: { box: string; lo
         <p className="text-muted-foreground text-xs">
           Later: <Kbd>⌘N</Kbd> new task · <Kbd>⌘K</Kbd> everything else
         </p>
-        <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={onFinish}>
+        <Button variant="ghost" size="sm"  onClick={onFinish} muted>
           I'll explore first
         </Button>
       </div>

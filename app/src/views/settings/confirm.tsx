@@ -50,9 +50,9 @@ export function ConfirmButton({ label, disabled, ...props }: ConfirmProps & { la
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button size="xs" variant="outline" className="min-w-24" disabled={disabled} onClick={() => setOpen(true)}>
+      <span className="min-w-24"><Button size="xs" variant="outline"  disabled={disabled} onClick={() => setOpen(true)}>
         {label}
-      </Button>
+      </Button></span>
       <ConfirmDialog open={open} onOpenChange={setOpen} {...props} />
     </>
   );

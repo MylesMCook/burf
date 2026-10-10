@@ -135,7 +135,7 @@ export function AgentsPicker({
   };
   return (
     <Menu>
-      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`Agents: ${label}`} className="min-w-0 max-w-60 shrink" />}>
+      <MenuTrigger render={<span className="min-w-0 max-w-60 shrink"><Button size="sm" variant="ghost" aria-label={`Agents: ${label}`} /></span>}>
         {ids.length > 0 && (
           <span className="flex shrink-0 gap-0.5">
             {ids.map((id) => (
@@ -274,7 +274,7 @@ function SingleAgentPicker({ presets, sel, none, missing, allowNone, onChange, o
   return (
     <>
       <Menu>
-        <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`Provider: ${label}`} className={cn("min-w-0 shrink", missing && !preset ? "max-w-72" : "max-w-48")} />}>
+        <MenuTrigger render={<span className={cn("min-w-0 shrink", missing && !preset ? "max-w-72" : "max-w-48")}><Button size="sm" variant="ghost" aria-label={`Provider: ${label}`} /></span>}>
           {!none && preset && <AgentIcon agent={id} />}
           {!none && !preset && missing && <MinusIcon className="text-muted-foreground" />}
           <span className="truncate">{label}</span>
@@ -329,7 +329,7 @@ function AgentOption({ label, value, values, labels, required, onChange }: { lab
   const shown = text(value);
   return (
     <Menu>
-      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} className="min-w-0 max-w-64 text-muted-foreground" />}>
+      <MenuTrigger render={<span className="min-w-0 max-w-64"><Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} muted /></span>}>
         <span className="truncate">
           {label}: {shown}
         </span>
@@ -384,7 +384,7 @@ export function Pick({
   return (
     <Menu>
       <MenuTrigger
-        render={<Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} disabled={fixed && !options.length} className={cn("min-w-0 max-w-44 shrink-0 text-muted-foreground hover:text-foreground", fixed && "pointer-events-none", className)} />}
+        render={<span className={cn("min-w-0 max-w-44 shrink-0 text-muted-foreground hover:text-foreground", fixed && "pointer-events-none", className)}><Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} disabled={fixed && !options.length} /></span>}
       >
         {icon}
         <span className="truncate">{shown}</span>
@@ -463,7 +463,7 @@ export function TargetsPicker({
   const label = chosen.length === 0 ? "Pick agents" : chosen.length === 1 ? sessionName(chosen[0].session, { sessions: boxes[chosen[0].box]?.sessions }) : `${chosen.length} agents`;
   return (
     <Menu>
-      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`Send to: ${label}`} className={cn("min-w-0 max-w-80 shrink", !chosen.length && "text-muted-foreground")} />}>
+      <MenuTrigger render={<span className={cn("min-w-0 max-w-80 shrink", !chosen.length && "text-muted-foreground")}><Button size="sm" variant="ghost" aria-label={`Send to: ${label}`} /></span>}>
         {chosen.length === 1 ? <AgentIcon agent={chosen[0].session.agent} /> : <UsersIcon />}
         <span className="truncate">{label}</span>
         <ChevronsUpDownIcon className="opacity-60" />
@@ -518,7 +518,7 @@ export function SavedPrompts({ onPick }: { onPick(id: string, body: string): voi
   return (
     <Menu>
       <Tip label="Start from a saved prompt">
-        <MenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Saved prompts" className="text-muted-foreground hover:text-foreground" />}>
+        <MenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Saved prompts" muted />}>
           <BookMarkedIcon />
         </MenuTrigger>
       </Tip>

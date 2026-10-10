@@ -475,18 +475,16 @@ const ThreadLoadEarlier: FC = () => {
       </span>
       {visible && (
         <ThreadPrimitive.LoadEarlier asChild>
-          <Button
+          <span className="aui-thread-load-earlier mb-6 self-center rounded-full"><Button
             variant="ghost"
             size="sm"
-            data-slot="aui_thread-load-earlier"
-            className="aui-thread-load-earlier text-muted-foreground mb-6 self-center rounded-full"
-          >
+            data-slot="aui_thread-load-earlier" muted>
             <span
               className={cn(loading && "shimmer motion-reduce:animate-none")}
             >
               {loading ? "Loading earlier messages" : "Load earlier messages"}
             </span>
-          </Button>
+          </Button></span>
         </ThreadPrimitive.LoadEarlier>
       )}
     </div>
@@ -583,22 +581,21 @@ const ThreadSuggestions: FC = () => {
       <div className="w-full scrollbar-none overflow-x-auto">
         <div className="mx-auto flex w-max items-center gap-2">
           {SUGGESTION_GROUPS.map((group) => (
-            <Button
-              key={group.label}
-              variant="ghost"
-              className={cn(
+            <span className={cn(
                 suggestionChipClass,
                 group.label === expandedLabel && "bg-muted",
-              )}
+              )}><Button
+              key={group.label}
+              variant="ghost"
+              
               onClick={() =>
                 setExpandedLabel(
                   group.label === expandedLabel ? null : group.label,
                 )
-              }
-            >
+              }>
               {group.icon}
               {group.label}
-            </Button>
+            </Button></span>
           ))}
         </div>
       </div>
@@ -609,14 +606,13 @@ const ThreadSuggestions: FC = () => {
         >
           <div className="mx-auto flex w-max items-center gap-2">
             {expandedGroup.options.map((option) => (
-              <Button
+              <span className={suggestionChipClass}><Button
                 key={option.label}
                 variant="ghost"
-                className={suggestionChipClass}
-                onClick={() => sendPrompt(option.prompt)}
-              >
+                
+                onClick={() => sendPrompt(option.prompt)}>
                 {option.label}
-              </Button>
+              </Button></span>
             ))}
           </div>
         </div>
@@ -734,15 +730,14 @@ const ComposerAction: FC = () => {
           }
         >
           <ComposerPrimitive.Cancel asChild>
-            <Button
+            <span className="aui-composer-cancel size-7 rounded-full"><Button
               type="button"
               variant="default"
               size="icon"
-              className="aui-composer-cancel size-7 rounded-full"
-              aria-label={isSending ? "Cancel sending" : "Stop generating"}
-            >
+              
+              aria-label={isSending ? "Cancel sending" : "Stop generating"}>
               <SquareIcon className="aui-composer-cancel-icon size-3.5 fill-current" />
-            </Button>
+            </Button></span>
           </ComposerPrimitive.Cancel>
         </AuiIf>
       </div>
@@ -1021,14 +1016,14 @@ const EditComposer: FC = () => {
         />
         <div className="aui-edit-composer-footer mx-2.5 mb-2.5 flex items-center gap-1.5 self-end">
           <ComposerPrimitive.Cancel asChild>
-            <Button variant="ghost" size="sm" className="h-8 px-3">
+            <span className="h-8 px-3"><Button variant="ghost" size="sm">
               Cancel
-            </Button>
+            </Button></span>
           </ComposerPrimitive.Cancel>
           <ComposerPrimitive.Send asChild>
-            <Button size="sm" className="h-8 px-3">
+            <span className="h-8 px-3"><Button size="sm">
               Update
-            </Button>
+            </Button></span>
           </ComposerPrimitive.Send>
         </div>
       </ComposerPrimitive.Root>

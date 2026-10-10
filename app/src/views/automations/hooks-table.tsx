@@ -92,18 +92,17 @@ function HookRow({ hook, onEdit, onDelete }: { hook: Hook; onEdit(): void; onDel
           </Chip>
         )}
         {!plugin && (
-          <Button
+          <span className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"><Button
             size="icon-xs"
             variant="ghost"
             aria-label="Delete hook"
-            className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
+            
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
-            }}
-          >
+            }}>
             <Trash2Icon />
-          </Button>
+          </Button></span>
         )}
       </div>
     </div>

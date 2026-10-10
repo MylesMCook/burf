@@ -110,13 +110,13 @@ function Shown({ art }: { art: Art }) {
             {kind.compact && <VersionMenu art={art} cur={cur} v={v} pulse={pulse} onPick={pick} className="hidden @max-[40rem]/art:inline-flex" />}
             <span className="ml-auto flex shrink-0 items-center gap-0.5">
               <Tip label={source ? "Show the artifact" : "Show its source"}>
-                <Button size="xs" variant={source ? "secondary" : "ghost"} className="text-muted-foreground" onClick={() => setSource((s) => !s)} aria-pressed={source} data-testid="art-source-toggle">
+                <Button size="xs" variant={source ? "secondary" : "ghost"}  onClick={() => setSource((s) => !s)} aria-pressed={source} data-testid="art-source-toggle" muted>
                   {source ? <EyeIcon /> : <CodeIcon />}
                   <span className={narrow("@max-[40rem]/art:sr-only")}>{source ? "Artifact" : "Source"}</span>
                 </Button>
               </Tip>
               <Tip label="All of this worktree's artifacts">
-                <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => pane && openBoard(pane.worktree, { focus: art.id })} data-testid="art-board-link">
+                <Button size="xs" variant="ghost"  onClick={() => pane && openBoard(pane.worktree, { focus: art.id })} data-testid="art-board-link" muted>
                   <LayoutGridIcon />
                   <span className={narrow("@max-[40rem]/art:sr-only")}>Board</span>
                 </Button>
@@ -158,9 +158,9 @@ function Shown({ art }: { art: Art }) {
           <span>
             Showing v{v.n} from {when(v.at)}. The latest is v{cur.n}.
           </span>
-          <Button size="xs" variant="outline" className="ml-auto" onClick={() => setN(null)}>
+          <span className="ml-auto"><Button size="xs" variant="outline"  onClick={() => setN(null)}>
             Back to latest
-          </Button>
+          </Button></span>
         </div>
       )}
       {/* Focusable, so the keyboard can scroll it when nothing in it takes

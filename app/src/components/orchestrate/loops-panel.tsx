@@ -98,11 +98,11 @@ export function LoopsPanel() {
   if (folded && !loops.some((l) => l.outcome === "needs-you")) {
     return (
       <div ref={ref} style={{ bottom, right: `calc(${GAP}px + var(--berth-dock-w, 0px))` }} className="fixed z-40" role="region" aria-label="Loops">
-        <Button size="sm" variant="outline" className="rounded-full bg-popover shadow-lg/5" onClick={() => setFolded(false)} aria-expanded={false}>
+        <span className="rounded-full bg-popover shadow-lg/5"><Button size="sm" variant="outline"  onClick={() => setFolded(false)} aria-expanded={false}>
           {live ? <Spinner  size="md"/> : <RepeatIcon />}
           {`${loops.length} loop${loops.length === 1 ? "" : "s"}${live ? ` · ${live} running` : ""}`}
           <ChevronUpIcon />
-        </Button>
+        </Button></span>
       </div>
     );
   }
@@ -111,10 +111,10 @@ export function LoopsPanel() {
       {loops.map((l) => (
         <LoopCard key={l.id} loop={l} />
       ))}
-      <Button size="xs" variant="ghost" className="self-end bg-popover/80 text-muted-foreground shadow-xs/5 backdrop-blur-sm" onClick={() => setFolded(true)} aria-expanded>
+      <span className="self-end bg-popover/80 shadow-xs/5 backdrop-blur-sm"><Button size="xs" variant="ghost"  onClick={() => setFolded(true)} aria-expanded muted>
         <ChevronDownIcon />
         Fold
-      </Button>
+      </Button></span>
     </div>
   );
 }
@@ -221,7 +221,7 @@ function LoopCard({ loop: l }: { loop: Loop }) {
           Open session
         </Button>
         {live && (
-          <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => l.cancel()}>
+          <Button size="xs" variant="ghost"  onClick={() => l.cancel()} muted>
             <CircleStopIcon />
             Stop loop
           </Button>

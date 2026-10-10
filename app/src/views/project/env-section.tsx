@@ -69,17 +69,15 @@ type Tested = ReturnType<typeof useSecretTest>;
 function SecretTestButton({ box, t }: { box: string; t: Tested }) {
   return (
     <Tip label={t.said ? `${t.said}. Test again` : `Ask ${box} to read it now`}>
-      <Button
+      <span className={cn("shrink-0", t.done?.ok && "text-success-foreground dark:text-success", t.done && !t.done.ok && "text-destructive-foreground")}><Button
         size={t.done ? "icon-xs" : "xs"}
         variant="ghost"
         aria-label={t.done ? `Test again: ${t.said}` : undefined}
         onClick={() => void t.test()}
-        disabled={!t.ready || t.testing}
-        className={cn("shrink-0", t.done?.ok && "text-success-foreground dark:text-success", t.done && !t.done.ok && "text-destructive-foreground")}
-      >
+        disabled={!t.ready || t.testing}>
         {t.testing ? <LoaderIcon className="animate-spin" /> : t.done?.ok ? <CheckIcon /> : t.done ? <CircleAlertIcon /> : null}
         {!t.done && "Test"}
-      </Button>
+      </Button></span>
     </Tip>
   );
 }

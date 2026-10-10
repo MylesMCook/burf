@@ -36,9 +36,9 @@ export function StepHeader({
   className?: string;
 }) {
   const back = onBack && (
-    <Button type="button" size="icon-sm" variant="ghost" aria-label={backLabel} data-focus-skip="" className={variant === "page" ? "absolute top-0 -left-10 text-muted-foreground" : "-ms-1.5 -my-1 shrink-0"} onClick={onBack}>
+    <span className={variant === "page" ? "absolute top-0 -left-10 text-muted-foreground" : "-ms-1.5 -my-1 shrink-0"}><Button type="button" size="icon-sm" variant="ghost" aria-label={backLabel} data-focus-skip=""  onClick={onBack}>
       <ArrowLeftIcon />
-    </Button>
+    </Button></span>
   );
   if (variant === "page") {
     return (

@@ -197,9 +197,9 @@ export function WorktreesView() {
           </FilterChip>
         </div>
         {filtered && (
-          <Button size="xs" variant="ghost" className="shrink-0" onClick={clearFilters}>
+          <span className="shrink-0"><Button size="xs" variant="ghost"  onClick={clearFilters}>
             Clear filters
-          </Button>
+          </Button></span>
         )}
         <div className="ml-auto w-44 min-w-32 shrink">
           <SimpleSelect

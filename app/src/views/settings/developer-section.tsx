@@ -111,64 +111,61 @@ export function DeveloperSection() {
           />
         </SettingsRow>
         <SettingsRow label="Show onboarding again" description="In this window, until you finish or skip it, even though you have boxes. The next launch starts without it.">
-          <Button
+          <span className="min-w-24"><Button
             size="xs"
             variant="outline"
-            className="min-w-24"
+            
             onClick={() => {
               showOnboardingAgain();
               useStore.getState().setView({ kind: "workspace" });
-            }}
-          >
+            }}>
             Show again
-          </Button>
+          </Button></span>
         </SettingsRow>
       </SettingsGroup>
 
       <SettingsGroup title="Reload">
         <SettingsRow label="Reload plugins" description="Re-read ~/.berth/plugins and load them again.">
-          <Button
+          <span className="min-w-24"><Button
             size="xs"
             variant="outline"
-            className="min-w-24"
+            
             onClick={async () => {
               const client = useStore.getState().client;
               if (client) await loadPlugins(client);
               toastManager.add({ title: "Plugins reloaded", type: "success" });
-            }}
-          >
+            }}>
             Reload plugins
-          </Button>
+          </Button></span>
         </SettingsRow>
         <SettingsRow label="Reload window">
-          <Button size="xs" variant="outline" className="min-w-24" onClick={() => location.reload()}>
+          <span className="min-w-24"><Button size="xs" variant="outline"  onClick={() => location.reload()}>
             Reload window
-          </Button>
+          </Button></span>
         </SettingsRow>
         {isTauri() && (
           <SettingsRow label="Developer tools" description="The Web Inspector for Burf's own window. A Browser tab's page has its own: Inspect in its toolbar.">
-            <Button
+            <span className="min-w-24"><Button
               size="xs"
               variant="outline"
-              className="min-w-24"
-              onClick={() => invoke("open_devtools").catch((err) => toastManager.add({ title: "No developer tools", description: errorMessage(err), type: "error" }))}
-            >
+              
+              onClick={() => invoke("open_devtools").catch((err) => toastManager.add({ title: "No developer tools", description: errorMessage(err), type: "error" }))}>
               Open tools
-            </Button>
+            </Button></span>
           </SettingsRow>
         )}
       </SettingsGroup>
 
       <SettingsGroup title="Mock data">
         <SettingsRow label="Mock mode" description="Run the app on built-in sample boxes, without the agent.">
-          <Button size="xs" variant="outline" className="min-w-24" onClick={() => withQuery(mock ? null : { mock: "1" })}>
+          <span className="min-w-24"><Button size="xs" variant="outline"  onClick={() => withQuery(mock ? null : { mock: "1" })}>
             {mock ? "Turn mock off" : "Turn mock on"}
-          </Button>
+          </Button></span>
         </SettingsRow>
         <SettingsRow label="Fresh account preview" description="Mock mode with no boxes, to see onboarding.">
-          <Button size="xs" variant="outline" className="min-w-24" onClick={() => withQuery({ mock: "1", fresh: "1" })}>
+          <span className="min-w-24"><Button size="xs" variant="outline"  onClick={() => withQuery({ mock: "1", fresh: "1" })}>
             Open preview
-          </Button>
+          </Button></span>
         </SettingsRow>
       </SettingsGroup>
 
@@ -198,9 +195,9 @@ export function DeveloperSection() {
           </CollapsiblePanel>
         </Collapsible>
         <SettingsRow label="Diagnostics" description="Versions, connection, boxes, plugins and the last 50 events, as JSON for a bug report. The token is left out.">
-          <Button size="xs" variant="outline" className="min-w-24" onClick={async () => void copy(await diagnostics(), "diagnostics")}>
+          <span className="min-w-24"><Button size="xs" variant="outline"  onClick={async () => void copy(await diagnostics(), "diagnostics")}>
             <CopyIcon /> Copy diagnostics
-          </Button>
+          </Button></span>
         </SettingsRow>
       </SettingsGroup>
     </SettingsPage>
