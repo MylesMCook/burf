@@ -29,6 +29,7 @@ async function manifestFor(dist, commit) {
   if (!(await lstat(dist)).isDirectory()) throw new Error("Expected a built dist folder");
   await walk(dist);
   if (!files["index.html"]) throw new Error("Missing index.html");
+  if ((await readFile(join(dist, "index.html"), "utf8")).includes("wails-native-feedback")) throw new Error("Feedback bundles cannot be installed as release UI.");
   const manifest = { shell, version: `${version}+${commit}`, files };
   return manifest;
 }

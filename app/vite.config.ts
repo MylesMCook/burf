@@ -5,6 +5,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { withNativeFeedback } from "./src/native-feedback/feature.mjs";
 
 const host = process.env.BURF_DEV_HOST;
 
@@ -132,7 +133,7 @@ function appVersion(): string {
 // library's internals, and Base UI's contexts stop matching.
 const argPort = process.argv.includes("--port") ? process.argv[process.argv.indexOf("--port") + 1] : undefined;
 
-export default defineConfig(({ mode }) => ({
+export default withNativeFeedback(defineConfig(({ mode }) => ({
   cacheDir: argPort && argPort !== "1420" ? `node_modules/.vite-${argPort}` : "node_modules/.vite",
   plugins: [
     // StyleX before React so Fast Refresh still sees the compiled output.
@@ -163,6 +164,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
   base: mode === "demo" ? "./" : "/",
+  // The native dev window otherwise requests one chunk per Lucide icon.
+  optimizeDeps: { rolldownOptions: { output: { codeSplitting: { groups: [{ name: "icons", test: /node_modules[\\/]lucide-react[\\/]/ }] } } } },
   // A desktop app loads from disk; one large chunk (xterm, React) is fine.
   build:
     mode === "demo"
@@ -195,4 +198,4 @@ export default defineConfig(({ mode }) => ({
       ignored: ["**/native/**"],
     },
   },
-}));
+})), ["/src/main.tsx","/src/plugins/host.ts","/src/App.tsx","/bindings/github.com/MylesMCook/burf/app/native/desktop/service.ts","/src/native-feedback/FeedbackGate.tsx","/src/native-feedback/FeedbackOverlay.tsx"]);

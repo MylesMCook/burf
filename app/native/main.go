@@ -17,6 +17,7 @@ import (
 	"github.com/MylesMCook/burf/internal/uicontract"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/MylesMCook/burf/app/native/internal/nativefeedback"
 )
 
 // Populated from app/dist by the repository's existing frontend build.
@@ -64,11 +65,16 @@ func run() error {
 	if runtime.GOOS == "windows" {
 		identity = "dev.myles.berth.windows"
 	}
+	feedbackBridge, feedbackErr := nativefeedback.Start(nativefeedback.Config{CompanionURL: os.Getenv("WAILS_FEEDBACK_COMPANION_URL")})
+	if feedbackErr != nil {
+		return feedbackErr
+	}
+	defer nativefeedback.Stop(feedbackBridge)
 	app := application.New(application.Options{
 		Name:        "Burf",
 		Description: "Coding agents on your own computers",
 		LogLevel:    slog.LevelInfo, // SDK debug logging includes binding results, including the UI token.
-		Services:    []application.Service{application.NewService(service)},
+		Services:    nativefeedback.Services(feedbackBridge, []application.Service{application.NewService(service)}),
 		Assets: application.AssetOptions{
 			Handler:        application.BundledAssetFileServer(assets),
 			Middleware:     desktop.AssetMiddleware,
@@ -77,7 +83,7 @@ func run() error {
 		Mac:     application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
 		Windows: application.WindowsOptions{WebviewUserDataPath: filepath.Join(home, "client", "wails")},
 		SingleInstance: &application.SingleInstanceOptions{
-			UniqueID:               identity,
+			UniqueID:               nativefeedback.InstanceID(feedbackBridge, identity),
 			OnSecondInstanceLaunch: func(data application.SecondInstanceData) { desktop.ReceiveLinks(service, data.Args) },
 		},
 		PostShutdown: func() {
@@ -91,6 +97,7 @@ func run() error {
 		MinWidth: 900, MinHeight: 560, UseApplicationMenu: runtime.GOOS != "linux",
 		Mac: application.MacWindow{TitleBar: application.MacTitleBarHidden},
 	})
+	nativefeedback.Attach(feedbackBridge, window)
 	desktop.Attach(service, app, window)
 	if err := desktop.SetMenu(app, service, shortcuts); err != nil {
 		return err

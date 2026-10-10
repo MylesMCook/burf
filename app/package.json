@@ -21,7 +21,8 @@
     "perf:guard": "node perf/guard.mjs",
     "perf:soak": "node perf/soak.mjs",
     "perf:terminals": "node perf/terminals.mjs",
-    "test": "node --experimental-strip-types --test \"src/lib/**/*.test.ts\" \"src/components/**/*.test.ts\" \"src/hooks/**/*.test.ts\" \"src/views/**/*.test.ts\" && node --test ../scripts/ui-manifest.test.mjs"
+    "test": "node --experimental-strip-types --test \"src/lib/**/*.test.ts\" \"src/components/**/*.test.ts\" \"src/hooks/**/*.test.ts\" \"src/views/**/*.test.ts\" && node --test ../scripts/ui-manifest.test.mjs",
+    "dev:feedback": "node wails-feedback/run.mjs"
   },
   "dependencies": {
     "@assistant-ui/react": "^0.15.25",
@@ -96,6 +97,8 @@
     "@vitejs/plugin-react": "^6.0.2",
     "esbuild": "^0.25.12",
     "typescript": "~6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "agentation": "3.1.2",
+    "agentation-mcp": "1.3.2"
   }
 }

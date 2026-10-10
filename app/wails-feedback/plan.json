@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "root": "../..",
+  "frontend": "app",
+  "native": "app/native",
+  "module": "github.com/MylesMCook/burf/app/native",
+  "framework": "React",
+  "packageManager": "pnpm",
+  "lock": "app/pnpm-lock.yaml",
+  "config": "app/vite.config.ts",
+  "entry": "app/src/main.tsx",
+  "main": "app/native/main.go",
+  "devScript": "dev",
+  "buildScript": "build",
+  "trustedMarker": "__BURF_WAILS__",
+  "appName": "burf",
+  "burf": true,
+  "nativePrepare": "scripts/native-prepare.mjs",
+  "windowsLoader": "scripts/webview2-loader.mjs"
+}

@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import { invoke, isDesktop, isWails, openExternalUrl } from "@/lib/desktop";
 import { restoreDesktopState } from "@/lib/desktop-state";
 import "@/index.css";
+import { NativeFeedback } from "./native-feedback/NativeFeedback";
 
 async function migrateDesktopState() {
   if (isWails()) {
@@ -43,6 +44,7 @@ async function start() {
     <React.StrictMode>
       <ErrorBoundary>
         <App />
+        <NativeFeedback />
       </ErrorBoundary>
     </React.StrictMode>,
   );
