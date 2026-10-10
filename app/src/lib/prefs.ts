@@ -14,6 +14,7 @@ export interface Prefs {
   // Custom font bytes live in IndexedDB, not in these preferences.
   customFonts: CustomFontInfo[];
   interfaceFont: string | null;
+  readingFont: string | null;
   codeFont: string | null;
   terminalFont: string | null;
   notify: { waiting: boolean; finished: boolean; setupFailed: boolean; sound: boolean };
@@ -84,6 +85,7 @@ const DEFAULTS: Prefs = {
   terminal: DEFAULT_TERMINAL_PREFS,
   customFonts: [],
   interfaceFont: null,
+  readingFont: null,
   codeFont: null,
   terminalFont: null,
   notify: { waiting: true, finished: true, setupFailed: true, sound: false },

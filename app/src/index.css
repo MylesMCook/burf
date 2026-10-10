@@ -11,18 +11,18 @@
 }
 
 @font-face {
-  font-family: "Newsreader";
-  src: url("./assets/fonts/newsreader-regular.ttf") format("truetype");
+  font-family: "Geist";
+  src: url("./assets/fonts/geist.woff2") format("woff2");
   font-style: normal;
-  font-weight: 200 800;
+  font-weight: 100 900;
   font-display: swap;
 }
 
 @font-face {
-  font-family: "Newsreader";
-  src: url("./assets/fonts/newsreader-italic.ttf") format("truetype");
-  font-style: italic;
-  font-weight: 200 800;
+  font-family: "Geist Pixel Square";
+  src: url("./assets/fonts/geist-pixel-square.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
   font-display: swap;
 }
 
@@ -95,10 +95,10 @@
   --color-zinc-500: oklch(55.2% 0.016 285.938);
   --color-white: #fff;
   --color-black: #000;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
-  --font-sans: "Paper Mono", ui-monospace, monospace;
-  --font-heading: "Newsreader", ui-serif, Georgia, serif;
-  --font-reading: "Newsreader", ui-serif, Georgia, serif;
+  --font-mono: "Paper Mono", ui-monospace, monospace;
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-reading: "Geist", ui-sans-serif, system-ui, sans-serif;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -312,7 +312,12 @@ img, video { max-width: 100%; height: auto; }
 [hidden] { display: none !important; }
 html, body { overscroll-behavior: none; }
 html, body, #root { height: 100%; }
-code, kbd, samp, pre { font-family: var(--font-mono); font-size: 1em; }
+/* Pixel belongs to the interface. Reading, headings and code retain their own roles. */
+:root[data-interface-font="geist-pixel"] { font-synthesis: none; }
+[data-slot="aui_assistant-message-content"] { font-family: var(--font-reading); font-synthesis: initial; }
+h1, h2, h3, h4, h5, h6,
+[data-slot="dialog-title"], [data-slot="sheet-title"], [data-slot="card-title"] { font-family: var(--font-heading); font-synthesis: initial; }
+code, kbd, samp, pre { font-family: var(--font-mono); font-size: 1em; font-synthesis: initial; }
 /* JetBrains Mono's ligatures draw "//" as one glyph that reads as a gap
    ("https: //"), so mono text never uses them. Inputs inherit it. */
 .font-mono, code, kbd, samp, pre, [data-mono] { font-variant-ligatures: none; font-feature-settings: "calt" 0; }

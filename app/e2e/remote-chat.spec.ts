@@ -543,6 +543,9 @@ for (const lost of [false, true]) test(`Home retains its worktree and prompt aft
     await draft.fill("Keep this worktree");
     await app.page.getByRole("button", { name: "Start", exact: true }).click();
     await expect(app.page.getByText("Couldn't start Codex", { exact: true })).toBeVisible();
+    const notice = app.page.getByRole("dialog", { name: "Couldn't start Codex", exact: true });
+    await expect(notice).toHaveCSS("box-shadow", "none");
+    await expect.poll(() => notice.evaluate((element) => getComputedStyle(element, "::before").boxShadow)).toBe("none");
     await expect(app.page.getByText(`The worktree is at /w/shop-keep-this-worktree on ${BOX}. Start again to use it without creating another worktree.`, { exact: true })).toBeVisible();
     if (lost) await expect(app.page.getByText(/Codex may have started/)).toBeVisible();
     await expect(draft).toHaveValue("Keep this worktree");

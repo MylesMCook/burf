@@ -7,8 +7,10 @@ import { DEFAULT_TERMINAL_PREFS } from "@/lib/terminal";
 
 const DB = "berth-custom-fonts";
 const STORE = "fonts";
-const SANS = "'Paper Mono', ui-monospace, monospace";
-const MONO = "'JetBrains Mono Variable', ui-monospace, monospace";
+const SANS = "'Geist', ui-sans-serif, system-ui, sans-serif";
+const MONO = "'Paper Mono', ui-monospace, monospace";
+const PIXEL = "'Geist Pixel Square', ui-monospace, monospace";
+export const GEIST_PIXEL_FONT_ID = "builtin-geist-pixel";
 const faces = new Map<string, FontFace>();
 export const useCustomFonts = create<{ status: Record<string, "loaded" | "failed"> }>(() => ({ status: {} }));
 
@@ -42,6 +44,7 @@ function clearUses(id: string) {
   const p = usePrefs.getState();
   setPrefs({
     ...(p.interfaceFont === id ? { interfaceFont: null } : {}),
+    ...(p.readingFont === id ? { readingFont: null } : {}),
     ...(p.codeFont === id ? { codeFont: null } : {}),
     ...(p.terminalFont === id ? { terminalFont: null, terminal: { ...p.terminal, fontFamily: DEFAULT_TERMINAL_PREFS.fontFamily } } : {}),
   });
@@ -54,8 +57,12 @@ function stack(id: string | null, fallback: string): string {
 function applyFonts() {
   const p = usePrefs.getState();
   const root = document.documentElement;
-  root.style.setProperty("--font-sans", stack(p.interfaceFont, SANS));
+  root.style.setProperty("--font-sans", p.interfaceFont === GEIST_PIXEL_FONT_ID ? PIXEL : stack(p.interfaceFont, SANS));
   root.style.setProperty("--font-mono", stack(p.codeFont, MONO));
+  root.style.setProperty("--font-reading", stack(p.readingFont, SANS));
+  root.style.setProperty("--font-heading", stack(p.readingFont, SANS));
+  if (p.interfaceFont === GEIST_PIXEL_FONT_ID) root.dataset.interfaceFont = "geist-pixel";
+  else delete root.dataset.interfaceFont;
 }
 
 // The first draw uses the built-in stacks. Stored fonts arrive without
@@ -63,11 +70,12 @@ function applyFonts() {
 export function initCustomFonts() {
   applyFonts();
   usePrefs.subscribe((p, prev) => {
-    if (p.interfaceFont !== prev.interfaceFont || p.codeFont !== prev.codeFont) applyFonts();
+    if (p.interfaceFont !== prev.interfaceFont || p.readingFont !== prev.readingFont || p.codeFont !== prev.codeFont) applyFonts();
   });
   useCustomFonts.subscribe(applyFonts);
   const p = usePrefs.getState();
-  for (const id of [p.interfaceFont, p.codeFont, p.terminalFont]) {
+  if (p.interfaceFont && p.interfaceFont !== GEIST_PIXEL_FONT_ID && !p.customFonts.some((font) => font.id === p.interfaceFont)) clearUses(p.interfaceFont);
+  for (const id of [p.readingFont, p.codeFont, p.terminalFont]) {
     if (id && !p.customFonts.some((font) => font.id === id)) clearUses(id);
   }
   for (const font of p.customFonts) void loadStoredFont(font);
@@ -137,5 +145,5 @@ export function useCustomTerminalPrefs() {
   const chosen = usePrefs((p) => p.terminalFont);
   const loaded = useCustomFonts((s) => s.status[chosen ?? code ?? ""] === "loaded");
   const id = chosen ?? (terminal.fontFamily === DEFAULT_TERMINAL_PREFS.fontFamily ? code : null);
-  return useMemo(() => loaded && id ? { ...terminal, fontFamily: stack(id, DEFAULT_TERMINAL_PREFS.fontFamily) } : terminal, [terminal, id, loaded]);
+  return useMemo(() => ({ ...terminal, fontFamily: stack(id, terminal.fontFamily === DEFAULT_TERMINAL_PREFS.fontFamily ? MONO : terminal.fontFamily) }), [terminal, id, loaded]);
 }

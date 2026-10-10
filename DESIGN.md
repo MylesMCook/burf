@@ -44,33 +44,33 @@ colors:
   danger-dark: "#ff9e9e"
 typography:
   display:
-    fontFamily: Newsreader
+    fontFamily: Geist
     fontSize: 64px
     fontWeight: 400
     lineHeight: "1.05"
     letterSpacing: 0.005em
   heading:
-    fontFamily: Newsreader
+    fontFamily: Geist
     fontSize: 36px
     fontWeight: 400
     lineHeight: "1.15"
   reading:
-    fontFamily: Newsreader
+    fontFamily: Geist
     fontSize: 18px
     fontWeight: 400
     lineHeight: "1.55"
   body:
-    fontFamily: Paper Mono
+    fontFamily: Geist
     fontSize: 16px
     fontWeight: 400
     lineHeight: "1.5"
   label:
-    fontFamily: Paper Mono
+    fontFamily: Geist
     fontSize: 14px
     fontWeight: 500
     lineHeight: "1.35"
   brand:
-    fontFamily: Paper Mono
+    fontFamily: Geist
     fontSize: 12px
     fontWeight: 400
     lineHeight: "1.2"
@@ -123,13 +123,13 @@ Verify text contrast, control boundaries, focus, selection, hover, disabled, pen
 
 ## Typography
 
-Use Newsreader for page headings, task summaries, and sustained reading such as agent responses. Use Paper Mono for navigation, agent lists, controls, timestamps, identifiers, code, and operational metadata. Keep those assignments stable across screens. Bundle the required Newsreader and Paper Mono font files and their licenses with the application assets so typography works offline without a system font installation.
+Use Geist for page headings, task summaries, navigation, ordinary controls, and sustained reading such as agent responses. Paper Mono remains the default for code, terminals, and literal operational metadata. Geist Pixel Square is an optional interface face; keep sustained responses and headings in the reading face when it is selected. Bundle Geist, Geist Pixel Square, and Paper Mono with their licenses so typography works offline without a system font installation. Newsreader is no longer part of the bundle.
 
-Newsreader and Paper Mono are the defaults. Appearance settings let a person replace the reading face and the interface face. Style by type role, never by face name, so a replacement reaches every screen. Code stays in a monospace face whatever the interface face is. A layout must hold when a replacement is wider or taller than the default, and a face that fails to load falls back to the bundled default.
+Geist is the default reading and interface face. Offer Geist Pixel as the built-in interface alternative, using Square at its actual regular weight without synthetic bold. Appearance settings let a person replace the reading face and the interface face. Style by type role, never by face name, so a replacement reaches every screen. Code and terminals stay in a monospace face whatever the interface or reading face is; their choice and Paper Mono fallback remain independent. A layout must hold when a replacement is wider or taller than the default, and a face that fails to load falls back to the bundled default.
 
 Use the heading role on routine work screens. Reserve display typography for a spacious introduction, and use the reading role for full responses. A short operational message uses body typography; a long explanation uses reading typography. Render code as code rather than applying monospace to an entire response.
 
-Use sentence case and preserve the spelling of commands, paths, and names. Align comparable numbers with tabular figures. Disable code ligatures where literal characters matter. Preserve text scaling and provide serif and monospace fallbacks. Resolve density through layout and disclosure before reducing text size.
+Use sentence case and preserve the spelling of commands, paths, and names. Align comparable numbers with tabular figures. Disable code ligatures where literal characters matter. Preserve text scaling and provide sans-serif and monospace fallbacks. Resolve density through layout and disclosure before reducing text size.
 
 ## Layout
 
