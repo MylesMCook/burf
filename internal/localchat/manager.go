@@ -63,6 +63,7 @@ type Item struct {
 	Status           string        `json:"status,omitempty"`
 	Truncated        bool          `json:"truncated,omitempty"`
 	Presentation     *Presentation `json:"presentation,omitempty"`
+	Reasoning        bool          `json:"reasoning,omitempty"`
 	sourceType       string
 	reasoningSummary []string
 }
@@ -1089,11 +1090,11 @@ func (r *running) event(p packet) {
 			it.Kind = "assistant"
 			it.Text = v.Item.Text
 		case "reasoning":
-			it.Kind = "reasoning"
+			it.Kind, it.Reasoning = "assistant", true
 			it.reasoningSummary = publicSummary(v.Item.Summary)
 			if len(it.reasoningSummary) == 0 {
 				for _, old := range r.session.Items {
-					if old.ID == it.ID && old.Kind == "reasoning" {
+					if old.ID == it.ID && old.Reasoning {
 						it.reasoningSummary = append([]string(nil), old.reasoningSummary...)
 						break
 					}
@@ -1147,10 +1148,10 @@ func (r *running) event(p packet) {
 		if v.TurnID != r.session.TurnID || v.ItemID == "" || v.SummaryIndex == nil || *v.SummaryIndex < 0 || *v.SummaryIndex >= 256 {
 			return
 		}
-		it := Item{ID: v.ItemID, Kind: "reasoning", Status: "inProgress", sourceType: "reasoning"}
+		it := Item{ID: v.ItemID, Kind: "assistant", Reasoning: true, Status: "inProgress", sourceType: "reasoning"}
 		for _, old := range r.session.Items {
 			if old.ID == v.ItemID {
-				if old.Kind != "reasoning" {
+				if !old.Reasoning {
 					return
 				}
 				it = old

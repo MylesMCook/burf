@@ -8,6 +8,7 @@ import { PaneContext } from "@/lib/pane-context";
 import { useWorktreeRef } from "@/lib/workspaces";
 import { filesApi } from "@/lib/files";
 import { localAgentName, type LocalAgent, type ChatDecision, type ChatOptions } from "@/lib/local-computer";
+import type { PresentationAnswer } from "@/lib/chat-presentations";
 
 const paint = stylex.create({
   s0: {
@@ -51,6 +52,7 @@ export function RemoteChatPane({ box, id, cwd, agent, draft, options, onSaved }:
     stop: () => remoteChatApi.stop(client, box, id),
     interrupt: () => remoteChatApi.interrupt(client, box, id),
     approve: (approval: string, decision: ChatDecision) => remoteChatApi.approve(client, box, id, approval, decision),
+    answerPresentation: (presentation: string, answer: PresentationAnswer) => remoteChatApi.answerPresentation(client, box, id, presentation, answer),
   }), [client, box, id, cwd, provider, attachments, target]);
   return transport
     ? <Chat key={key} transport={transport} />

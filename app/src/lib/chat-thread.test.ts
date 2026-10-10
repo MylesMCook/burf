@@ -46,3 +46,9 @@ test("a message on its way shows until the box lists it", () => {
 test("no items, no turns", () => {
   assert.deepEqual(threadTurns([], true), []);
 });
+
+test("public reasoning summaries stay in the assistant turn as reasoning", () => {
+  assert.deepEqual(shape([user("u", "Inspect"), { id: "r", kind: "assistant", reasoning: true, text: "Checking the public plan" }, tool("t", "git status"), says("a", "Done")]), [
+    "user:u:text", "assistant:r:reasoning+tool+text",
+  ]);
+});

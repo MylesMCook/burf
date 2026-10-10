@@ -10,7 +10,7 @@ test("a spec that changed runs itself, and only itself", () => {
 });
 
 test("a change to the chat runs the chat's specs", () => {
-  assert.deepEqual(specsFor(["app/src/components/chat/chat.tsx"], all), ["chat-experience", "local-chat", "remote-chat"]);
+  assert.deepEqual(specsFor(["app/src/components/chat/chat.tsx"], all), ["chat-experience", "chat-features", "local-chat", "remote-chat"]);
 });
 
 test("a path nothing knows runs the smoke set, never everything", () => {

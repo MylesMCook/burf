@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ApiError, type Client } from "@/lib/api";
 import type { LocalChat, ChatOptions, ChatModel, ChatDecision, LocalAgent } from "@/lib/local-computer";
 import { localAgentName } from "@/lib/local-computer";
+import type { PresentationAnswer } from "@/lib/chat-presentations";
 import { useStore } from "@/lib/store";
 import { supportsStructuredChat } from "@/lib/structured-chat";
 import { leaves } from "@/lib/layout";
@@ -30,6 +31,7 @@ export const remoteChatApi = {
   interrupt: (client: Client, box: string, id: string) => mutation(client.box(box, "POST", `${path(id)}/interrupt`)),
   stop: (client: Client, box: string, id: string) => mutation(client.box(box, "DELETE", path(id))),
   approve: (client: Client, box: string, id: string, approval: string, decision: ChatDecision) => mutation(client.box(box, "POST", `${path(id)}/approvals`, { id: approval, decision })),
+  answerPresentation: (client: Client, box: string, id: string, presentation: string, answer: PresentationAnswer) => mutation(client.box(box, "POST", `${path(id)}/presentations/${encodeURIComponent(presentation)}/answer`, answer)),
 };
 
 // Older daemons reject unknown message fields, so options go only to boxes that say they take them.

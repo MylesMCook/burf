@@ -51,7 +51,7 @@ const ExtrasContext = createContext<ChatExtras>({});
 const done = { type: "complete", reason: "stop" } as const;
 
 export function chatMessage(turn: ThreadTurn): ThreadMessageLike {
-  if (turn.role === "user") return { id: turn.id, role: "user", content: turn.parts.map((p) => ({ type: "text" as const, text: p.type === "text" ? p.text : p.command })) };
+  if (turn.role === "user") return { id: turn.id, role: "user", content: turn.parts.map((p) => ({ type: "text" as const, text: p.type === "tool" ? p.command : p.text })) };
   if (turn.role === "report") {
     const text = turn.parts.map((p) => (p.type === "text" ? p.text : "")).join("\n");
     return { id: turn.id, role: "assistant", content: [{ type: "text", text }], status: done, metadata: { custom: { report: turn.id, text } } };
@@ -61,8 +61,8 @@ export function chatMessage(turn: ThreadTurn): ThreadMessageLike {
     role: "assistant",
     status: turn.running ? { type: "running" } : done,
     content: turn.parts.map((p) =>
-      p.type === "text"
-        ? { type: "text" as const, text: p.text }
+      p.type !== "tool"
+        ? { type: p.type, text: p.text }
         : { type: "tool-call" as const, toolCallId: p.id, toolName: p.command, args: { command: p.command }, argsText: p.command, result: p.running ? undefined : p.output },
     ),
   };

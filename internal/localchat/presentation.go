@@ -248,6 +248,18 @@ func (m *Manager) Present(ctx context.Context, id string, p Presentation) (Prese
 		return Presentation{}, err
 	}
 	p.ID = "present-" + hex.EncodeToString(token[:])
+	if p.Type == "form" {
+		p.State, p.Server = "request", "Burf"
+		for i := range p.Fields {
+			if p.Fields[i].Kind == "toggle" && p.Fields[i].Value == "" {
+				p.Fields[i].Value = "false"
+			}
+		}
+	}
+	encoded, _ := json.Marshal(p)
+	if len(encoded) > MaxPresentationBytes {
+		return Presentation{}, errors.New("presentation including its identity must fit 16 KiB")
+	}
 	r.mu.Lock()
 	if !r.tools || (r.session.State != "running" && r.session.State != "waiting") || r.session.TurnID == "" {
 		r.mu.Unlock()
@@ -259,8 +271,6 @@ func (m *Manager) Present(ctx context.Context, id string, p Presentation) (Prese
 			r.mu.Unlock()
 			return Presentation{}, errors.New("too many forms are waiting")
 		}
-		p.State = "request"
-		p.Server = "Burf"
 		ch = make(chan Presentation, 1)
 		if r.forms == nil {
 			r.forms = map[string]pendingPresentation{}

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { RotateCwIcon, XIcon } from "lucide-react";
-import { AssistantRuntimeProvider, useExternalStoreRuntime, WebSpeechDictationAdapter, type AppendMessage, type AssistantRuntime, type DictationAdapter, type ThreadMessage } from "@assistant-ui/react";
+import { AssistantRuntimeProvider, useExternalStoreRuntime, WebSpeechDictationAdapter, type AppendMessage, type AssistantRuntime, type DictationAdapter, type SpeechSynthesisAdapter, type ThreadMessage } from "@assistant-ui/react";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, useReducer, type ReactNode, type KeyboardEvent } from "react";
 import { ApprovalCard } from "@/components/assistant-ui/elements/approval-card";
 import { ErrorState } from "@/components/assistant-ui/elements/error-state";
@@ -25,6 +25,9 @@ import { refFor } from "@/lib/workspaces";
 import { useTitleAt } from "@/lib/worktree-names";
 import { BASE_PERMISSIONS, savedChatPermission, saveChatPermission, type ChatOptions, type ChatModel } from "@/lib/local-computer";
 import type { ChatSnapshot, ChatTransport } from "./chat-transport";
+import { ChatPresentation } from "./chat-presentation";
+import { chatPresentation } from "@/lib/chat-presentations";
+import { createChatSpeech } from "@/lib/chat-speech";
 import { chatStore } from "./chat-store";
 
 const paint = stylex.create({
@@ -241,13 +244,27 @@ export function Chat({ transport, messageList, after, children }: { transport: C
     if (ref && madeIds.split(" ").some((key) => { const [id, n] = key.split("@"); return (have.get(id) ?? 0) < Number(n); })) void loadArtifacts(ref);
   }, [artifacts, madeIds]);
   const turns = useMemo(() => threadTurns(chat?.items ?? [], running, submitted ? { text: submitted, before: submittedItems.current } : undefined), [chat?.items, running, submitted]);
-  const toolExtra = useCallback((id: string) => made.get(id)?.map((artifact) => <div key={artifact.id} className={sx(paint.s0)}><ChatArtifact it={artifact} /></div>), [made]);
+  const presentations = useMemo(() => new Map((chat?.items ?? []).flatMap((item) => {
+    const presentation = item.kind === "tool" ? chatPresentation(item.presentation) : undefined;
+    return presentation ? [[item.id, presentation] as const] : [];
+  })), [chat?.items]);
+  const toolExtra = useCallback((id: string) => {
+    const presentation = presentations.get(id);
+    return <>
+      {made.get(id)?.map((artifact) => <div key={artifact.id} className={sx(paint.s0)}><ChatArtifact it={artifact} /></div>)}
+      {presentation && <ChatPresentation key={presentation.id} presentation={presentation}
+        disabled={busy || offline || !!transport.readOnly || !chat?.turn_id || !(chat.state === "running" || chat.state === "waiting")}
+        onAnswer={transport.answerPresentation ? (answer) => mutate(() => transport.answerPresentation!(presentation.id, answer)) : undefined} />}
+    </>;
+  }, [made, presentations, busy, offline, transport, chat?.turn_id, chat?.state]);
   const reports = chat?.reports;
   const reportCards = useCallback((id: string) => (reports?.[id]?.length ? reports[id].map((report, index) => <ReportCard key={index} it={{ kind: "report", id: `${id}:${index}`, report }} />) : undefined), [reports]);
   const input = useRef<HTMLTextAreaElement>(null);
   const keyDown = useRef<((event: KeyboardEvent<HTMLTextAreaElement>) => void) | undefined>(undefined);
   const [composerBlocked, setComposerBlocked] = useState(false);
   const [voiceError, setVoiceError] = useState("");
+  const [speechError, setSpeechError] = useState("");
+  const speechUtterance = useRef<SpeechSynthesisAdapter.Utterance | undefined>(undefined);
   const [queuePaused, setQueuePaused] = useState(!!transport.initialQueueHeld);
   const pausedRef = useRef(queuePaused); pausedRef.current = queuePaused;
   const runtimeRef = useRef<AssistantRuntime | undefined>(undefined);
@@ -319,6 +336,18 @@ export function Chat({ transport, messageList, after, children }: { transport: C
       } catch (error) { setVoiceError("Voice input failed. Check microphone access, or type your message."); throw error; }
     } };
   }, []);
+  const speech = useMemo<SpeechSynthesisAdapter | undefined>(() => {
+    const failed = () => { if (alive.current) setSpeechError("Read-aloud failed. Check audio output and try again."); };
+    const adapter = createChatSpeech(failed);
+    if (!adapter) return;
+    return { speak(text) {
+      setSpeechError("");
+      const utterance = adapter.speak(text);
+      speechUtterance.current = utterance;
+      return utterance;
+    } };
+  }, []);
+  useEffect(() => () => { speechUtterance.current?.cancel(); }, []);
   const messages = useMemo(() => [...(transport.prefixMessages ?? []), ...(chat?.messages ?? turns.map(chatMessage))], [transport.prefixMessages, chat?.messages, turns]);
   const store = useMemo(() => chatStore(messages), [messages]);
   const runtime = useExternalStoreRuntime<ThreadMessage>({
@@ -330,7 +359,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
     onNew: transport.queueOnServer ? async (message) => { await send(message); } : send,
     onCancel: transport.interrupt ? async () => { if (!transport.queueOnServer) pause(); await mutate(() => transport.interrupt!()); } : undefined,
     queue: transport.message ? (transport.queueOnServer ? { ...queueAdapter, enqueue: (message) => void send({ ...message, runConfig: { ...message.runConfig, custom: { choices: { ...optionRef.current } } } }), steer: (message) => void send({ ...message, runConfig: { ...message.runConfig, custom: { choices: { ...optionRef.current } } } }) } : queueAdapter) : undefined,
-    adapters: { attachments: transport.message && chat?.cwd === session.cwd ? transport.attachments : undefined, dictation: transport.message ? dictation : undefined },
+    adapters: { attachments: transport.message && chat?.cwd === session.cwd ? transport.attachments : undefined, dictation: transport.message ? dictation : undefined, speech },
   });
   runtimeRef.current = runtime;
   const extras = useMemo<ChatExtras>(() => ({ tool: toolExtra, report: reportCards }), [toolExtra, reportCards]);
@@ -383,7 +412,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
         {transport.stop && chat?.state !== "exited" && <Tip label="Stop chat"><Button size="icon-sm" variant="ghost" aria-label="Stop chat" disabled={busy || !chat} onClick={() => void mutate(() => transport.stop!())}><XIcon /></Button></Tip>}
       </div>
     </header>}
-    {(error || chat?.error || readError || modelsError || voiceError) && <ErrorState title="Chat error" detail={error || chat?.error || readError || modelsError || voiceError} retrying={false} onRetry={() => { if (!busy) void load(); }} />}
+    {(error || chat?.error || readError || modelsError || voiceError || speechError) && <ErrorState title="Chat error" detail={error || chat?.error || readError || modelsError || voiceError || speechError} retrying={false} onRetry={() => { if (!busy) void load(); }} />}
     {chat?.truncated && <p className={sx(paint.s11)}>Earlier output is no longer in this live view.</p>}
     <AssistantRuntimeProvider runtime={runtime}>
       {children}

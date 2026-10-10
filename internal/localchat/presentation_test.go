@@ -109,6 +109,45 @@ func TestPresentOnlyDuringOwnedToolTurnAndSnapshotIsIndependent(t *testing.T) {
 	}
 }
 
+func TestPresentationGeneratedIdentityStaysWithinWireBudget(t *testing.T) {
+	m, _, s := newToolChat(t)
+	startTurn(t, m, s.ID)
+	p := Presentation{Type: "table", Columns: []PresentationColumn{{Key: "a", Label: "A"}, {Key: "b", Label: "B"}, {Key: "c", Label: "C"}, {Key: "d", Label: "D"}}, Rows: []map[string]any{{"a": strings.Repeat("x", 4000), "b": strings.Repeat("x", 4000), "c": strings.Repeat("x", 4000), "d": ""}}}
+	raw, _ := json.Marshal(p)
+	p.Rows[0]["d"] = strings.Repeat("x", MaxPresentationBytes-len(raw)-1)
+	raw, _ = json.Marshal(p)
+	if len(raw) >= MaxPresentationBytes {
+		t.Fatal("fixture does not leave room for the input", len(raw))
+	}
+	if _, err := m.Present(context.Background(), s.ID, p); err == nil {
+		t.Fatal("generated identity exceeded the advertised wire budget")
+	}
+}
+
+func TestOmittedToggleStartsOffAndCanBeAnswered(t *testing.T) {
+	m, _, s := newToolChat(t)
+	startTurn(t, m, s.ID)
+	done := make(chan Presentation, 1)
+	go func() {
+		p, err := m.Present(context.Background(), s.ID, presentation(t, `{"type":"form","message":"Notify?","fields":[{"name":"notify","label":"Notify","kind":"toggle"}]}`))
+		if err != nil {
+			t.Error(err)
+		}
+		done <- p
+	}()
+	snapshot := waitChat(t, m, s.ID, func(s Session) bool { return len(s.Items) > 0 && s.Items[len(s.Items)-1].Presentation != nil })
+	p := snapshot.Items[len(snapshot.Items)-1].Presentation
+	if p.Fields[0].Value != "false" {
+		t.Fatal("toggle is not a valid off value", p.Fields[0].Value)
+	}
+	if err := m.AnswerPresentation(s.ID, p.ID, PresentationAnswer{Action: "accept", Values: map[string]string{"notify": "false"}}); err != nil {
+		t.Fatal(err)
+	}
+	if formResult(t, done).State != "accepted" {
+		t.Fatal("off toggle could not be submitted")
+	}
+}
+
 func TestFormAnswerValidatesThenConsumesOnceWithoutGrantingPermission(t *testing.T) {
 	m, _, s := newToolChat(t)
 	startTurn(t, m, s.ID)

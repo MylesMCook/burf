@@ -118,12 +118,12 @@ const styles = stylex.create({
   success: {
     width: 14,
     height: 14,
-    color: "light-dark(var(--color-emerald-600), var(--color-emerald-400))"
+    color: color.mutedForeground
   }
 });
 const sx = (...parts: readonly (false | null | undefined | object)[]) => mark(undefined, ...parts).className;
 
-export type ElicitationState = "request" | "accepted" | "declined";
+export type ElicitationState = "request" | "accepted" | "declined" | "cancelled";
 
 export interface ElicitationField {
   name: string;
@@ -215,7 +215,7 @@ export function ElicitationForm({
                 >
                   {item.label}
                   {item.required && (
-                    <span className={sx(styles.muted)}> *</span>
+                    <span aria-hidden className={sx(styles.muted)}> *</span>
                   )}
                 </label>
               ) : (
@@ -225,7 +225,7 @@ export function ElicitationForm({
                 >
                   {item.label}
                   {item.required && (
-                    <span className={sx(styles.muted)}> *</span>
+                    <span aria-hidden className={sx(styles.muted)}> *</span>
                   )}
                 </span>
               )}
@@ -339,7 +339,7 @@ export function ElicitationForm({
             ) : (
               <>
                 <XIcon className={sx(styles.icon)} />
-                Declined
+                {state === "cancelled" ? "Cancelled" : "Declined"}
               </>
             )}
           </span>

@@ -1526,6 +1526,18 @@ const AssistantActionBar: FC = () => {
           </AuiIf>
         </TooltipIconButton>
       </ActionBarPrimitive.Copy>
+      <AuiIf condition={(s) => s.thread.capabilities.speech}>
+        <AuiIf condition={(s) => s.message.speech == null}>
+          <ActionBarPrimitive.Speak asChild>
+            <TooltipIconButton tooltip="Read aloud"><AudioLinesIcon /></TooltipIconButton>
+          </ActionBarPrimitive.Speak>
+        </AuiIf>
+        <AuiIf condition={(s) => s.message.speech != null}>
+          <ActionBarPrimitive.StopSpeaking asChild>
+            <TooltipIconButton tooltip="Stop reading"><SquareIcon /></TooltipIconButton>
+          </ActionBarPrimitive.StopSpeaking>
+        </AuiIf>
+      </AuiIf>
       <AuiIf condition={(s) => s.thread.capabilities.feedback}>
         <ActionBarPrimitive.FeedbackPositive asChild>
           <TooltipIconButton tooltip="Helpful">

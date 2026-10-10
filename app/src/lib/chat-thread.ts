@@ -12,10 +12,13 @@ export interface ChatItem {
   kind: "user" | "assistant" | "tool" | "report";
   text: string;
   status?: string;
+  presentation?: unknown;
+  reasoning?: boolean;
 }
 
 export type ThreadPart =
   | { type: "text"; text: string }
+  | { type: "reasoning"; text: string }
   // A tool's line is the command, then what it printed.
   | { type: "tool"; id: string; command: string; output: string; running: boolean };
 
@@ -29,6 +32,7 @@ export interface ThreadTurn {
 }
 
 const part = (item: ChatItem): ThreadPart => {
+  if (item.kind === "assistant" && item.reasoning) return { type: "reasoning", text: item.text };
   if (item.kind !== "tool") return { type: "text", text: item.text };
   const cut = item.text.indexOf("\n");
   return { type: "tool", id: item.id, command: cut < 0 ? item.text : item.text.slice(0, cut), output: cut < 0 ? "" : item.text.slice(cut + 1), running: item.status === "inProgress" };
@@ -41,7 +45,8 @@ export function threadTurns(items: readonly ChatItem[], working: boolean, sendin
   const turns: ThreadTurn[] = [];
   for (const item of items) {
     const last = turns[turns.length - 1];
-    if ((item.kind === "assistant" || item.kind === "tool") && last?.role === "assistant") last.parts.push(part(item));
+    const assistant = item.kind === "assistant" || item.kind === "tool";
+    if (assistant && last?.role === "assistant") last.parts.push(part(item));
     else turns.push({ id: item.id, role: item.kind === "tool" ? "assistant" : item.kind, parts: [part(item)], running: false });
   }
   if (sending && !items.some((item) => item.kind === "user" && !sending.before.has(item.id))) {

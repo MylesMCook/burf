@@ -16,7 +16,7 @@ export const SMOKE = ["first-run", "home-composer", "remote-chat", "local-comput
 
 // First match wins per path: put the narrower prefix first.
 export const RULES = [
-  { paths: ["app/src/components/chat/", "app/src/views/local-chat", "app/src/views/remote-chat", "app/src/lib/remote-chat", "app/src/lib/chat-", "app/src/components/assistant-ui/"], specs: ["remote-chat", "local-chat", "chat-experience"] },
+  { paths: ["app/src/components/chat/", "app/src/views/local-chat", "app/src/views/remote-chat", "app/src/lib/remote-chat", "app/src/lib/chat-", "app/src/components/assistant-ui/"], specs: ["remote-chat", "local-chat", "chat-experience", "chat-features"] },
   { paths: ["app/src/views/local-computer", "app/src/views/local-terminal", "app/src/lib/local-"], specs: ["local-computer", "local-chat"] },
   { paths: ["app/src/components/conversation/task-composer", "app/src/components/conversation/composer-", "app/src/lib/start-work", "app/src/lib/composer"], specs: ["home-composer", "composer", "agent-picker", "drop"] },
   { paths: ["app/src/views/home/"], specs: ["home-composer", "home-widgets", "home-terminal"] },

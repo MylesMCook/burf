@@ -23,7 +23,7 @@ func TestOnlyPublicReasoningSummaryReachesTheChat(t *testing.T) {
 	found := false
 	for _, it := range got.Items {
 		if it.ID == "summary" {
-			found = it.Kind == "reasoning" && it.Text == "Comparing the requested choices."
+			found = it.Kind == "assistant" && it.Reasoning && it.Text == "Comparing the requested choices."
 		}
 		if strings.Contains(it.Text, "private") {
 			t.Fatal("private reasoning escaped", it)

@@ -1,6 +1,7 @@
 import type { AttachmentAdapter, ThreadMessageLike } from "@assistant-ui/react";
 import type { ChatDecision, ChatModel, ChatOptions, LocalChat, LocalSession } from "@/lib/local-computer";
 import type { SavedQueueMessage } from "@/lib/chat-queue";
+import type { PresentationAnswer } from "@/lib/chat-presentations";
 
 // A transport supplies session data and capabilities, never a composer or a view.
 export type ChatSession = Omit<LocalSession, "agent"> & { agent: string };
@@ -43,6 +44,7 @@ export interface ChatTransport {
   stop?(): Promise<unknown>;
   interrupt?(): Promise<unknown>;
   approve?(id: string, decision: ChatDecision): Promise<unknown>;
+  answerPresentation?(id: string, answer: PresentationAnswer): Promise<unknown>;
   attachments?: AttachmentAdapter;
   searchFiles?(query: string, signal?: AbortSignal): Promise<string[]>;
 }
