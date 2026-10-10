@@ -48,8 +48,8 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 		a.initLocalClient()
 		name, _ := os.Hostname()
 		home, _ := os.UserHomeDir()
-		agents := make([]map[string]any, 0, 2)
-		for _, id := range []string{"claude", "codex"} {
+		agents := make([]map[string]any, 0, 3)
+		for _, id := range []string{"claude", "codex", "cursor"} {
 			command := a.localClient.commands[id]
 			agents = append(agents, map[string]any{"id": id, "available": command.Program != "", "can_fork": command.CanFork, "can_chat": command.CanChat})
 		}
@@ -100,6 +100,52 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 			return
 		}
 		writeJSON(w, 200, result)
+	})
+	handle("POST /v1/local/conversations/{id}/continue", func(w http.ResponseWriter, r *http.Request) {
+		a.localClient.launchMu.Lock()
+		defer a.localClient.launchMu.Unlock()
+		done, err := a.work.begin("continuing a local conversation")
+		if err != nil {
+			writeCoded(w, 503, err.Error(), "agent_restarting")
+			return
+		}
+		defer done()
+		a.initLocalClient()
+		source, err := a.localClient.history.Continuation(r.Context(), r.PathValue("id"))
+		if err != nil {
+			localClientError(w, err)
+			return
+		}
+		var chat localchat.Session
+		switch source.Source {
+		case "codex":
+			chat, err = a.localClient.chats.StartFork(r.Context(), source.Cwd, source.SessionID)
+		case "claude", "cursor":
+			command := a.localClient.commands[source.Source]
+			if !command.CanChat {
+				if source.Source == "cursor" {
+					localClientError(w, errors.New("Cursor agent CLI is not installed with support for ACP chat on this computer"))
+				} else {
+					localClientError(w, errors.New("Claude Code is not installed with support for structured chat on this computer"))
+				}
+				return
+			}
+			options := localchat.LaunchOptions{Agent: source.Source, Program: command.Program, CWD: source.Cwd, Env: os.Environ(), Fork: source.SessionID}
+			chat, err = a.localClient.chats.StartWith(r.Context(), options)
+		default:
+			localClientError(w, errors.New("agent does not support conversation continuation"))
+			return
+		}
+		if err != nil {
+			localClientError(w, err)
+			return
+		}
+		chat, err = a.localClient.chats.Annotate(chat.ID, source.Title, r.PathValue("id"))
+		if err != nil {
+			localClientError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, chat)
 	})
 	handle("POST /v1/local/conversations/{id}/fork", func(w http.ResponseWriter, r *http.Request) {
 		a.localClient.launchMu.Lock()

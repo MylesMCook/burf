@@ -107,7 +107,7 @@ function Library({ berth }: ScreenProps) {
     <div>
       <ViewHeader
         title="Prompts"
-        description={<>Prompts you send agents again and again. Send one from <b className="font-medium text-foreground">⌘K</b> or a pane's menu, or to several agents at once.</>}
+        description={prompts.length ? `${prompts.length} saved on this laptop` : undefined}
         actions={
           <>
             <Button size="sm" variant="outline" onClick={() => berth.prompts.openBroadcast()}>
@@ -173,9 +173,9 @@ function Library({ berth }: ScreenProps) {
                         <Icon name="Ellipsis" className="size-3.5" />
                       </MenuTrigger>
                       <MenuPopup align="end" className="min-w-44">
-                        <MenuItem onClick={() => berth.prompts.openPicker({ promptId: p.id })}>
+                        <MenuItem onClick={() => berth.prompts.openStart({ promptId: p.id })}>
                           <Icon name="Send" />
-                          Send to an agent…
+                          Send…
                         </MenuItem>
                         <MenuItem onClick={() => berth.prompts.openBroadcast({ promptId: p.id })}>
                           <Icon name="Users" />
@@ -214,7 +214,7 @@ function Library({ berth }: ScreenProps) {
                   ))}
                   {!!p.uses && <span className="ml-1 text-[11px] text-muted-foreground tabular-nums">{p.uses === 1 ? "used once" : `used ${p.uses}×`}</span>}
                   <span className="ml-auto" onClick={(e: React.MouseEvent) => e.stopPropagation()} onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}>
-                    <Button size="xs" variant="ghost" className="h-6 text-[11px]" onClick={() => berth.prompts.openPicker({ promptId: p.id })}>
+                    <Button size="xs" variant="ghost" className="h-6 text-[11px]" onClick={() => berth.prompts.openStart({ promptId: p.id })}>
                       Send…
                     </Button>
                   </span>

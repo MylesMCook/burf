@@ -1,5 +1,6 @@
 import type { BerthPrompts } from "@berth/plugin";
 
+import { openComposer } from "@/lib/composer";
 import { BUILTINS, STARTERS, askedVariables, fill, newPromptId, openBroadcast, openPromptPicker, segments, sessionValues, usePrompts } from "@/lib/prompts";
 
 // makePromptsApi is the saved-prompts library as plugins see it (berth.prompts).
@@ -21,5 +22,9 @@ export function makePromptsApi(): BerthPrompts {
     newId: newPromptId,
     openPicker: (o) => openPromptPicker(o),
     openBroadcast: (o) => openBroadcast(o),
+    openStart: (o = {}) => {
+      const body = o.promptId ? usePrompts.getState().prompts.find((p) => p.id === o.promptId)?.body : undefined;
+      openComposer({ text: o.text ?? body, promptId: o.promptId });
+    },
   };
 }

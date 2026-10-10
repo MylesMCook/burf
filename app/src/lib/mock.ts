@@ -747,15 +747,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (method === "GET" && /^sessions\/[^/]+\/screen/.test(path)) {
     const name = decodeURIComponent(path.split("/")[1]);
     const s = sessions[box]?.find((x) => x.name === name);
-    const screen =
-      s?.agent_state === "waiting"
-        ? "● The fix needs a migration for the new idempotency_key column.\n\n  Do you want me to create it?\n  ❯ 1. Yes\n    2. No, and tell Claude what to do differently"
-        : s?.agent_state === "finished"
-          ? "● Search results render 38% faster on the slow-network profile.\n  All 214 tests pass.\n\n✻ Baked for 6m 41s · done"
-          : s?.agent_state === "idle"
-          ? " ▐▛███▜▌   Codex\n  ~/evals\n\n────────────────────────────────\n❯ Try \"refactor the judge\"\n────────────────────────────────\n  ? for shortcuts"
-          : "● Running pnpm test --filter checkout…\n  ⎿  PASS  createOrder.test.ts (41 tests)\n  ⎿  RUNS  payments/webhook.test.ts\n\n✻ Testing… (2m 13s · esc to interrupt)\n\n────────────────────────────────\n❯ \n────────────────────────────────\n  ⏵⏵ auto mode on (shift+tab to cycle)";
-    return delay({ screen });
+    return delay({ screen: sessionScreen(s) });
   }
   if (key === "POST tasks") {
     const t = body as { location: string; name: string; branch?: string; agent?: string; command?: string; open?: string; prompt?: string; title?: string };
@@ -863,6 +855,27 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   return Promise.reject(new Error(`mock: no fixture for ${key}`));
 }
 
+// sessionScreen is what a session's screen endpoint and its terminal agree
+// on. A waiting agent asks the question its hook recorded, not a finished
+// transcript.
+function sessionScreen(s: Session | undefined): string {
+  if (s?.agent_state === "waiting" && s.ask?.tool === "AskUserQuestion") {
+    return `● ${s.ask.message ?? "A few questions"}\n\n←  ☐ Window  ☐ Rollback  ✔ Submit  →`;
+  }
+  if (s?.agent_state === "waiting") {
+    const why = s.ask?.why ?? "Waiting for you";
+    const cmd = s.ask?.input ? `\n\n  ${s.ask.input}` : "";
+    return `● ${why}${cmd}\n\n  ❯ 1. Yes\n    2. No, and tell Claude what to do differently`;
+  }
+  if (s?.agent_state === "finished") return "● Search results render 38% faster on the slow-network profile.\n  All 214 tests pass.\n\n✻ Baked for 6m 41s · done";
+  if (s?.agent_state === "idle") return " ▐▛███▜▌   Codex\n  ~/evals\n\n────────────────────────────────\n❯ Try \"refactor the judge\"\n────────────────────────────────\n  ? for shortcuts";
+  return "● Running pnpm test --filter checkout…\n  ⎿  PASS  createOrder.test.ts (41 tests)\n  ⎿  RUNS  payments/webhook.test.ts\n\n✻ Testing… (2m 13s · esc to interrupt)\n\n────────────────────────────────\n❯ \n────────────────────────────────\n  ⏵⏵ auto mode on (shift+tab to cycle)";
+}
+
+function terminalLines(screen: string): string[] {
+  return screen.split("\n").map((line) => `${/^\s*❯/.test(line) ? `\x1b[36m${line}\x1b[0m` : line}\r\n`);
+}
+
 // A fake terminal: a short Claude-like transcript, then an echoing prompt.
 // The live demo's terminals follow their agent instead, and answer.
 // ?echoDelay=300 holds every echo of typing back that many ms, like a slow
@@ -890,16 +903,21 @@ function mockAttach(box: string, session: string, h: TerminalHandlers) {
   const s = sessions[box]?.find((x) => x.name === session);
   // A box's home terminal is a plain shell at ~.
   const home = s && !s.location && !s.command;
+  const waiting = s?.agent_state === "waiting";
+  const checkout = session === "checkout-fix-claude";
   const lines = home ? ["\x1b[2J\x1b[H", `Last login: Mon Oct  5 09:12:44 on ${box}\r\n`, `\x1b[32mme@${box}\x1b[0m:\x1b[34m~\x1b[0m$ `] : [
     "\x1b[2J\x1b[H",
     `\x1b[38;5;208m✻\x1b[0m Welcome to \x1b[1m${s?.agent ?? "shell"}\x1b[0m on \x1b[36m${box}\x1b[0m  \x1b[2m${s?.dir ?? ""}\x1b[0m\r\n\r\n`,
-    "\x1b[33m●\x1b[0m Read \x1b[1mapps/web/lib/checkout/createOrder.ts\x1b[0m\r\n",
-    "\x1b[2m  ⎿  Read 412 lines\x1b[0m\r\n\r\n",
-    "\x1b[37m●\x1b[0m The payment webhook retries without an idempotency key,\r\n  so a slow response can create two orders.\r\n  I will add the key and a test.\r\n\r\n",
-    "\x1b[32m●\x1b[0m Update(\x1b[1mapps/web/lib/payments/webhook.ts\x1b[0m)\r\n",
-    "\x1b[2m  ⎿  Updated with \x1b[0m\x1b[32m12 additions\x1b[0m\x1b[2m and \x1b[0m\x1b[31m3 removals\x1b[0m\r\n\r\n",
-    "\x1b[2m✻ Baked for 1m 12s · done\x1b[0m\r\n\r\n",
-    "\x1b[1m❯\x1b[0m ",
+    ...(checkout
+      ? [
+          "\x1b[33m●\x1b[0m Read \x1b[1mapps/web/lib/checkout/createOrder.ts\x1b[0m\r\n",
+          "\x1b[2m  ⎿  Read 412 lines\x1b[0m\r\n\r\n",
+          "\x1b[37m●\x1b[0m The payment webhook retries without an idempotency key,\r\n  so a slow response can create two orders.\r\n  I will add the key and a test.\r\n\r\n",
+          "\x1b[32m●\x1b[0m Update(\x1b[1mapps/web/lib/payments/webhook.ts\x1b[0m)\r\n",
+          "\x1b[2m  ⎿  Updated with \x1b[0m\x1b[32m12 additions\x1b[0m\x1b[2m and \x1b[0m\x1b[31m3 removals\x1b[0m\r\n\r\n",
+        ]
+      : []),
+    ...(waiting ? terminalLines(sessionScreen(s)) : checkout ? ["\x1b[2m✻ Baked for 1m 12s · done\x1b[0m\r\n\r\n", "\x1b[1m❯\x1b[0m "] : ["\x1b[1m❯\x1b[0m "]),
   ];
   let i = 0;
   timers.push(window.setTimeout(() => h.onOpen(), 150));

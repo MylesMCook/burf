@@ -2,7 +2,6 @@ import { create } from "zustand";
 
 import { type ChatBackground, DEFAULT_CHAT_BACKGROUND, normalizeChatBackground } from "@/lib/chat-background";
 import type { CustomFontInfo } from "@/lib/custom-font-file";
-import type { HomeLayout } from "@/lib/home-layout";
 import { clampWidth, SIDEBAR_DEFAULT } from "@/lib/sidebar-width";
 import { load, save } from "@/lib/storage";
 import { DEFAULT_TERMINAL_PREFS, type TerminalPrefs } from "@/lib/terminal";
@@ -60,9 +59,8 @@ export interface Prefs {
   filesPanel: boolean;
   // The themes "Match system" uses by day and when macOS is dark.
   systemThemes: { light: string; dark: string };
-  // Home's widgets, in order and size (lib/home-layout.ts). Null until the
-  // person customises Home: they get the default layout, which can change.
-  home: HomeLayout | null;
+  // A layout saved when Home was a widget board. Nothing reads it.
+  home: { version?: number; items?: { id: string; size: string }[] } | null;
   // The new-task composer's project and agent pickers, folded by default.
   taskComposerExpanded: boolean;
   // The agent CLIs the guided install last put on a box (Add a box ›

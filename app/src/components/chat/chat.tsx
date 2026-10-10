@@ -21,8 +21,18 @@ import { errorMessage } from "@/lib/format";
 import { PaneContext } from "@/lib/pane-context";
 import { refFor } from "@/lib/workspaces";
 import { useTitleAt } from "@/lib/worktree-names";
-import { BASE_PERMISSIONS, savedChatPermission, saveChatPermission, type ChatOptions, type ChatModel } from "@/lib/local-computer";
+import { BASE_PERMISSIONS, inheritedChatPermission, saveChatPermission, type ChatOptions, type ChatModel } from "@/lib/local-computer";
 import type { ChatSnapshot, ChatTransport } from "./chat-transport";
+
+function statusLabel(offline: boolean, state: string | undefined, running: boolean, approvals: number): string {
+  if (offline) return "Disconnected";
+  if (state === "waiting") return approvals ? `Waiting for approval (${approvals})` : "Waiting for your answer";
+  if (running) return "Working";
+  if (state === "exited") return "Stopped";
+  if (state === "starting") return "Starting";
+  if (state === "idle") return "Ready";
+  return "";
+}
 
 export function Chat({ transport, messageList, after, children }: { transport: ChatTransport; messageList?: ReactNode; after?: ReactNode; children?: ReactNode }) {
   const { session, onChange, initialDraft = "", initialOptions, onDraftChange, onOptionsChange } = transport;
@@ -70,7 +80,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
     if (!ready || !chat || prepared.current) return;
     prepared.current = true;
     if (transport.models) void transport.models().then((list) => { if (alive.current) setModels(Array.isArray(list) ? list : []); }).catch(() => { if (alive.current) setModelsError("Model choices are unavailable. Current settings are unchanged."); });
-    const saved = savedChatPermission();
+    const saved = inheritedChatPermission();
     if (chat.composer && saved && (chat.permissions ?? BASE_PERMISSIONS).includes(saved) && !chat.items.length && !options.permission && saved !== (chat.options?.permission ?? "strict")) setOptions((o) => ({ ...o, permission: saved }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
@@ -186,7 +196,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
     onNew: transport.queueOnServer ? async (message) => { await send(message); } : send,
     onCancel: transport.interrupt ? async () => { if (!transport.queueOnServer) pause(); await mutate(() => transport.interrupt!()); } : undefined,
     queue: transport.message ? (transport.queueOnServer ? { ...queueAdapter, enqueue: (message) => void send({ ...message, runConfig: { ...message.runConfig, custom: { choices: { ...optionRef.current } } } }), steer: (message) => void send({ ...message, runConfig: { ...message.runConfig, custom: { choices: { ...optionRef.current } } } }) } : queueAdapter) : undefined,
-    adapters: { attachments: transport.message && chat?.cwd === session.cwd ? transport.attachments : undefined, dictation: transport.message ? dictation : undefined },
+    adapters: { attachments: transport.message && chat?.cwd === session.cwd ? transport.attachments : undefined, dictation: transport.message ? dictation : undefined, threadList: transport.threadList },
   });
   runtimeRef.current = runtime;
   const extras = useMemo<ChatExtras>(() => ({ tool: toolExtra, report: reportCards }), [toolExtra, reportCards]);
@@ -220,7 +230,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
                 description={notes || undefined}
                 onDeny={() => void mutate(() => transport.approve!(approval.id, "decline"))}
                 onAllowOnce={() => void mutate(() => transport.approve!(approval.id, "accept"))}
-                onAlwaysAllow={approval.session_allowed ? () => void mutate(() => transport.approve!(approval.id, "acceptForSession")) : approval.execpolicy?.length ? () => void mutate(() => transport.approve!(approval.id, "acceptAlways")) : undefined}
+                onAlwaysAllow={approval.session_allowed ? () => void mutate(() => transport.approve!(approval.id, "acceptForSession")) : approval.execpolicy?.length || approval.always ? () => void mutate(() => transport.approve!(approval.id, "acceptAlways")) : undefined}
                 alwaysAllowLabel={approval.session_allowed ? "Allow for chat" : "Allow always"}
               />
               {approval.session_allowed && !!approval.execpolicy?.length && <Button size="sm" variant="outline" onClick={() => void mutate(() => transport.approve!(approval.id, "acceptAlways"))}>Allow always</Button>}
@@ -229,30 +239,35 @@ export function Chat({ transport, messageList, after, children }: { transport: C
           </section>;
         })}
       </div> : undefined;
-  return <div data-testid={transport.testId} className="flex min-h-0 min-w-0 flex-1 flex-col">
+  const status = statusLabel(offline, chat?.state, running, chat?.approvals.length ?? 0);
+  const column = <div data-testid={transport.testId} className="flex min-h-0 min-w-0 flex-1 flex-col">
     {!transport.readOnly && <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
-      <span className="min-w-0 truncate font-medium" title={session.cwd}>{named ?? session.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? session.cwd}</span>
-      <span role="status" className="shrink-0 text-xs text-muted-foreground">{offline ? "Disconnected" : chat?.state === "waiting" ? chat.approvals.length ? `Waiting for approval (${chat.approvals.length})` : "Waiting for your answer" : running ? "Working" : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span>
+      <Tip label={session.cwd} className="min-w-0 flex-1">
+        <span className="block truncate font-medium">{session.title?.trim() || named || session.cwd.split(/[\\/]/).filter(Boolean).at(-1) || "Untitled"}</span>
+      </Tip>
+      {status ? <span role="status" className="shrink-0 text-xs text-muted-foreground">{status}</span> : null}
       <div className="ml-auto flex shrink-0 items-center gap-1">
         <WorktreeArtChip wt={artifacts} className="inline-flex h-7 items-center gap-1.5 rounded px-1.5 text-xs text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring" />
         <Tip label="Refresh chat"><Button data-autofocus={!chat || undefined} size="icon-sm" variant="ghost" aria-label="Refresh chat" disabled={busy} onClick={() => void load()}><RotateCwIcon /></Button></Tip>
         {transport.stop && chat?.state !== "exited" && <Tip label="Stop chat"><Button size="icon-sm" variant="ghost" aria-label="Stop chat" disabled={busy || !chat} onClick={() => void mutate(() => transport.stop!())}><XIcon /></Button></Tip>}
       </div>
     </header>}
-    {(error || chat?.error || readError || modelsError || voiceError) && <ErrorState title="Chat error" detail={error || chat?.error || readError || modelsError || voiceError} retrying={false} onRetry={() => { if (!busy) void load(); }} />}
+    {(error || chat?.error || readError || modelsError || voiceError) && <ErrorState title="Chat error" detail={error || chat?.error || readError || modelsError || voiceError} retrying={false} onRetry={() => { if (transport.onMissingChat) { transport.onMissingChat(); return; } if (!busy) void load(); }} />}
     {chat?.truncated && <p className="shrink-0 px-4 pt-2 text-xs text-muted-foreground">Earlier output is no longer in this live view.</p>}
-    <AssistantRuntimeProvider runtime={runtime}>
-      {children}
-      {!transport.readOnly && <ChatRuntimeState initialDraft={initialDraft} onDraftChange={onDraftChange} onBlocked={setComposerBlocked} transport={transport} input={input} keyDown={keyDown} />}
-      <ChatMessages extras={extras}>
-        <Thread autoFocus={false} components={ChatMessages.components} after={approvals || after ? <>{approvals}{after}</> : undefined} messageList={messageList} speakers={speakers} readOnly={transport.readOnly} loadEarlier={!!transport.loadEarlier}
-          welcome={transport.readOnly ? <p className="text-sm text-muted-foreground">No saved messages.</p> : undefined}
-          composerInput={{ ref: input, onKeyDown: (event) => keyDown.current?.(event), "aria-label": transport.inputLabel ?? `Message ${transport.agentName}`, "data-autofocus": true, placeholder: transport.placeholder ?? "Send a message..." }}
-          composerControls={<ChatChoices agentName={transport.agentName} models={models} model={model} effort={effort} permission={permission} accepted={accepted} permissions={chat?.permissions ?? BASE_PERMISSIONS} reason={choicesReason} modelsError={modelsError} onModel={pickModel} onEffort={(value) => setOptions((o) => ({ ...o, effort: value || undefined }))} onPermission={pickPermission} />}
-          composerTriggers={<ChatTriggers searchFiles={chat?.cwd === session.cwd ? transport.searchFiles : undefined} commands={commands} catalog={transport.commands} />}
-          beforeComposer={transport.readOnly ? undefined : <ChatWaiting paused={queuePaused} agent={transport.agentName} />}
-        />
-      </ChatMessages>
-    </AssistantRuntimeProvider>
+    {transport.banner}
+    {children}
+    {!transport.readOnly && <ChatRuntimeState initialDraft={initialDraft} onDraftChange={onDraftChange} onBlocked={setComposerBlocked} transport={transport} input={input} keyDown={keyDown} />}
+    <ChatMessages extras={extras}>
+      <Thread autoFocus={false} components={ChatMessages.components} after={approvals || after ? <>{approvals}{after}</> : undefined} messageList={messageList} speakers={speakers} readOnly={transport.readOnly} loadEarlier={!!transport.loadEarlier}
+        welcome={transport.welcome ?? (transport.readOnly ? <p className="text-sm text-muted-foreground">No saved messages.</p> : undefined)}
+        composerInput={{ ref: input, onKeyDown: (event) => keyDown.current?.(event), "aria-label": transport.inputLabel ?? `Message ${transport.agentName}`, "data-autofocus": true, placeholder: transport.placeholder ?? "Send a message..." }}
+        composerControls={<ChatChoices agentName={transport.agentName} models={models} model={model} effort={effort} permission={permission} accepted={accepted} permissions={chat?.permissions ?? BASE_PERMISSIONS} reason={choicesReason} modelsError={modelsError} onModel={pickModel} onEffort={(value) => setOptions((o) => ({ ...o, effort: value || undefined }))} onPermission={pickPermission} />}
+        composerTriggers={<ChatTriggers searchFiles={chat?.cwd === session.cwd ? transport.searchFiles : undefined} commands={commands} catalog={transport.commands} />}
+        beforeComposer={transport.readOnly ? undefined : <ChatWaiting paused={queuePaused} agent={transport.agentName} />}
+      />
+    </ChatMessages>
   </div>;
+  return <AssistantRuntimeProvider runtime={runtime}>
+    {transport.beside ? <div className="flex min-h-0 min-w-0 flex-1 flex-row">{transport.beside}{column}</div> : column}
+  </AssistantRuntimeProvider>;
 }

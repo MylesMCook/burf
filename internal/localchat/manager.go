@@ -37,6 +37,8 @@ type LaunchOptions struct {
 	Browser *Browser
 	// Tools, when set, gives this chat Burf's own tools.
 	Tools *Tools
+	// Fork is a saved provider session to branch into this chat. Empty starts a new thread.
+	Fork string
 }
 type Launch func(LaunchOptions) (Process, error)
 
@@ -48,6 +50,16 @@ type rejection string
 
 func (e rejection) Error() string   { return string(e) }
 func (e rejection) Is(t error) bool { return t == ErrRejected }
+
+// codexInitialize is the one handshake app-server accepts per connection.
+// experimentalApi is required for excludeTurns on thread/fork. The docs:
+// https://learn.chatgpt.com/docs/app-server
+func codexInitialize() map[string]any {
+	return map[string]any{
+		"clientInfo":   map[string]string{"name": "burf", "title": "Burf", "version": "1"},
+		"capabilities": map[string]any{"experimentalApi": true},
+	}
+}
 
 type Item struct {
 	ID         string `json:"id"`
@@ -104,6 +116,10 @@ type Session struct {
 	StartedAt time.Time   `json:"started_at"`
 	ThreadID  string      `json:"thread_id"`
 	TurnID    string      `json:"turn_id,omitempty"`
+	// Title is the saved conversation's name. HistoryID is that conversation,
+	// so a reload can read its transcript again.
+	Title     string `json:"title,omitempty"`
+	HistoryID string `json:"history_id,omitempty"`
 	Items     []Item      `json:"items"`
 	Approvals []Approval  `json:"approvals"`
 	Error     string      `json:"error,omitempty"`
@@ -150,6 +166,8 @@ type running struct {
 	// own is only the last one the provider accepted, which a turn that is
 	// starting has not replaced yet.
 	permission string
+	// fork is the saved session this chat branched from, when it did.
+	fork string
 	// idle runs, off the lock, each time a turn ends.
 	idle func()
 }
@@ -174,9 +192,17 @@ func (m *Manager) Start(ctx context.Context, cwd string) (Session, error) {
 	return m.StartWith(ctx, LaunchOptions{Program: m.program, CWD: cwd, Env: os.Environ()})
 }
 
+// StartFork branches a saved Codex session into a new structured chat.
+func (m *Manager) StartFork(ctx context.Context, cwd, threadID string) (Session, error) {
+	return m.StartWith(ctx, LaunchOptions{Program: m.program, CWD: cwd, Env: os.Environ(), Fork: threadID})
+}
+
 // StartWith binds one chat to its resolved project executable and account
 // environment without changing the defaults used by other concurrent chats.
 func (m *Manager) StartWith(ctx context.Context, options LaunchOptions) (Session, error) {
+	if s, ok := m.existingFork(options); ok {
+		return s, nil
+	}
 	r, err := m.startProcess(ctx, options)
 	if err != nil {
 		return Session{}, err
@@ -194,7 +220,7 @@ func (codexProvider) start(ctx context.Context, r *running, options LaunchOption
 	var err error
 	initCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	_, err = r.call(initCtx, "initialize", map[string]any{"clientInfo": map[string]string{"name": "burf", "title": "Burf", "version": "1"}})
+	_, err = r.call(initCtx, "initialize", codexInitialize())
 	if err == nil {
 		err = r.queue(map[string]any{"method": "initialized"})
 	}
@@ -211,7 +237,19 @@ func (codexProvider) start(ctx context.Context, r *running, options LaunchOption
 		if len(servers) > 0 {
 			params["config"] = map[string]any{"mcp_servers": servers}
 		}
-		result, err = r.call(initCtx, "thread/start", params)
+		method := "thread/start"
+		if options.Fork != "" {
+			method = "thread/fork"
+			params["threadId"] = options.Fork
+			// The saved transcript is already on screen. Ask for the new
+			// thread id only, not a copy of every turn on one line.
+			params["excludeTurns"] = true
+		}
+		result, err = r.call(initCtx, method, params)
+		if err != nil && options.Fork != "" && strings.Contains(err.Error(), "excludeTurns") {
+			delete(params, "excludeTurns")
+			result, err = r.call(initCtx, method, params)
+		}
 	}
 	var reply struct {
 		Thread struct {
@@ -237,6 +275,33 @@ func (codexProvider) start(ctx context.Context, r *running, options LaunchOption
 	return nil
 }
 
+// existingFork returns a chat that already branched this saved session and is still open.
+func (m *Manager) existingFork(options LaunchOptions) (Session, bool) {
+	if options.Fork == "" {
+		return Session{}, false
+	}
+	agent := options.Agent
+	if agent == "" {
+		agent = "codex"
+	}
+	m.mu.Lock()
+	var found *running
+	for _, old := range m.sessions {
+		old.mu.Lock()
+		same := old.fork == options.Fork && old.session.Agent == agent && old.session.State != "exited"
+		old.mu.Unlock()
+		if same {
+			found = old
+			break
+		}
+	}
+	m.mu.Unlock()
+	if found == nil {
+		return Session{}, false
+	}
+	return found.snapshot(), true
+}
+
 // Publish a starting process before its handshake. Slow provider startup must
 // not hold the registry lock needed to inspect or stop another owned chat.
 func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*running, error) {
@@ -256,15 +321,21 @@ func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*run
 	case "codex":
 		backend = codexProvider{}
 	case "claude":
-		backend = newClaudeProvider()
+		backend = newClaudeACP()
+	case "cursor":
+		backend = newCursorACP()
 	default:
 		return nil, errors.New("unsupported chat agent")
 	}
 	if options.Program == "" {
-		if options.Agent == "claude" {
+		switch options.Agent {
+		case "claude":
 			return nil, errors.New("Claude Code is not installed with support for structured chat")
+		case "cursor":
+			return nil, errors.New("Cursor agent CLI is not installed with support for ACP chat")
+		default:
+			return nil, errors.New("installed Codex CLI does not support app-server chat")
 		}
-		return nil, errors.New("installed Codex CLI does not support app-server chat")
 	}
 	if !filepath.IsAbs(options.CWD) {
 		return nil, errors.New("project directory must be absolute")
@@ -306,7 +377,7 @@ func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*run
 	if err != nil {
 		return nil, err
 	}
-	r := &running{provider: backend, launchOptions: options, process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage), browser: make(map[string]chan BrowserResult), browserWake: make(chan struct{}), tools: options.Tools != nil, toolAsks: make(map[string]chan bool), idle: m.Idle}
+	r := &running{provider: backend, launchOptions: options, process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage), browser: make(map[string]chan BrowserResult), browserWake: make(chan struct{}), tools: options.Tools != nil, toolAsks: make(map[string]chan bool), idle: m.Idle, fork: options.Fork}
 	r.session = Session{ID: hex.EncodeToString(bytes[:]), Agent: options.Agent, Mode: "chat", CWD: cwd, State: "starting", StartedAt: time.Now().UTC(), Items: []Item{}, Approvals: []Approval{}, Options: TurnOptions{Permission: "strict"}, Composer: true, Permissions: Permissions}
 	if options.Browser != nil {
 		r.session.Browser = &BrowserState{Tools: append([]BrowserTool{}, options.Browser.Tools...), Calls: []BrowserCall{}}
@@ -352,6 +423,23 @@ func (r *running) snapshot() Session {
 		s.Browser = &BrowserState{Tools: append([]BrowserTool{}, s.Browser.Tools...), Calls: append([]BrowserCall{}, s.Browser.Calls...)}
 	}
 	return s
+}
+// Annotate names a chat after it has started. A continue uses it for the
+// saved conversation's title and id.
+func (m *Manager) Annotate(id, title, historyID string) (Session, error) {
+	r, err := m.get(id)
+	if err != nil {
+		return Session{}, err
+	}
+	r.mu.Lock()
+	if title != "" {
+		r.session.Title = title
+	}
+	if historyID != "" {
+		r.session.HistoryID = historyID
+	}
+	r.mu.Unlock()
+	return r.snapshot(), nil
 }
 func (m *Manager) Get(id string) (Session, error) {
 	r, e := m.get(id)
@@ -630,17 +718,11 @@ func (r *running) queue(v any) error {
 	}
 	select {
 	case <-r.done:
-		if r.session.Agent == "claude" {
-			return errors.New("Claude Code chat has stopped")
-		}
-		return errors.New("Codex chat has stopped")
+		return errors.New(stoppedMessage(r.session.Agent))
 	case r.writes <- append(b, '\n'):
 		return nil
 	default:
-		if r.session.Agent == "claude" {
-			return errors.New("Claude Code protocol input is busy")
-		}
-		return errors.New("Codex protocol input is busy")
+		return errors.New(busyMessage(r.session.Agent))
 	}
 }
 func (r *running) call(ctx context.Context, method string, params any) (json.RawMessage, error) {
@@ -669,7 +751,14 @@ func (r *running) call(ctx context.Context, method string, params any) (json.Raw
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-r.done:
-		return nil, errors.New("Codex app-server disconnected")
+		r.mu.Lock()
+		reason := r.session.Error
+		agent := r.session.Agent
+		r.mu.Unlock()
+		if reason == "" {
+			reason = disconnectedMessage(agent)
+		}
+		return nil, errors.New(reason)
 	}
 }
 func (r *running) write() {
@@ -679,9 +768,9 @@ func (r *running) write() {
 			return
 		case b := <-r.writes:
 			if _, e := r.process.Write(b); e != nil {
-				reason := "Codex app-server input disconnected"
-				if r.session.Agent == "claude" {
-					reason = "Claude Code input disconnected; messages are not replayed"
+				reason := AgentLabel(r.session.Agent) + " input disconnected; messages are not replayed"
+				if r.session.Agent == "codex" || r.session.Agent == "" {
+					reason = "Codex app-server input disconnected"
 				}
 				r.finish(reason)
 				return
@@ -691,7 +780,7 @@ func (r *running) write() {
 }
 func (r *running) read() {
 	scanner := bufio.NewScanner(r.process)
-	scanner.Buffer(make([]byte, 4096), 2<<20)
+	scanner.Buffer(make([]byte, 64<<10), 32<<20)
 	for scanner.Scan() {
 		if err := r.provider.receive(r, scanner.Bytes()); err != nil {
 			r.finish(err.Error())
@@ -699,15 +788,15 @@ func (r *running) read() {
 		}
 	}
 	s := r.snapshot()
-	reason := "Codex app-server disconnected; messages are not replayed"
-	if s.Agent == "claude" {
-		reason = "Claude Code process exited; messages are not replayed"
-		if s.Error != "" {
-			reason = s.Error + "\n" + reason
-		}
-		if scanner.Err() != nil {
-			reason += ": " + scanner.Err().Error()
-		}
+	reason := AgentLabel(s.Agent) + " process exited; messages are not replayed"
+	if s.Agent == "codex" || s.Agent == "" {
+		reason = "Codex app-server disconnected; messages are not replayed"
+	}
+	if s.Error != "" && isACPAgent(s.Agent) {
+		reason = s.Error + "\n" + reason
+	}
+	if scanner.Err() != nil {
+		reason += ": " + scanner.Err().Error()
 	}
 	r.finish(reason)
 }

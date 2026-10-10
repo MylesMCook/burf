@@ -20,7 +20,7 @@ interface ConversationState {
   // merge replaces items with the same id and appends the rest, as the
   // box resends a tool group that was still open.
   merge(key: string, items: TranscriptItem[]): void;
-  // resync takes a window the box read afresh (lib/transcript-feed): what
+  // resync takes a window the box read afresh: what the chat holds from
   // the chat holds from before start stays, the rest is the window's, so
   // nothing it showed goes. fresh: another conversation, nothing stays.
   resync(key: string, window: TranscriptItem[], start: number, fresh?: boolean): void;

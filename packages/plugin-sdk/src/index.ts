@@ -329,6 +329,8 @@ export interface BerthPrompts {
   openPicker(opts?: { box?: string; session?: string; promptId?: string }): void;
   // The app's broadcast: one prompt to several agents, with results.
   openBroadcast(opts?: { promptId?: string; text?: string; targets?: PromptTarget[] }): void;
+  // The same start-work composer as Home, prefilled from a saved prompt.
+  openStart(opts?: { promptId?: string; text?: string }): void;
 }
 
 export interface BerthPluginContext {

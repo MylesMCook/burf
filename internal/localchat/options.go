@@ -94,6 +94,11 @@ func (m *Manager) ListModels(ctx context.Context, options LaunchOptions) ([]Mode
 		}
 		return ClaudeModels(ctx, options.Program, options.Env)
 	}
+	if options.Agent == "cursor" {
+		return []Model{{Model: "default", DisplayName: "Default", SupportedReasoningEfforts: []struct {
+			Effort string `json:"reasoningEffort"`
+		}{}}}, nil
+	}
 	if options.Agent != "" && options.Agent != "codex" {
 		return nil, errors.New("unsupported chat agent")
 	}
@@ -125,7 +130,7 @@ func (m *Manager) ListModels(ctx context.Context, options LaunchOptions) ([]Mode
 	defer r.finish("")
 	go r.read()
 	go r.write()
-	if _, err = r.call(ctx, "initialize", map[string]any{"clientInfo": map[string]string{"name": "burf", "title": "Burf", "version": "1"}}); err != nil {
+	if _, err = r.call(ctx, "initialize", codexInitialize()); err != nil {
 		return nil, err
 	}
 	if err = r.queue(map[string]any{"method": "initialized"}); err != nil {

@@ -99,16 +99,29 @@ func TestLocalClaudeUsesSharedHandlersAndAccountEnvironment(t *testing.T) {
 		go func() {
 			defer peer.Close()
 			encoder := json.NewEncoder(peer)
-			_ = encoder.Encode(map[string]any{"type": "system", "subtype": "init", "session_id": "local-claude", "model": "synthetic"})
 			scanner := bufio.NewScanner(peer)
 			for scanner.Scan() {
-				var line struct {
-					Type string `json:"type"`
+				var msg struct {
+					ID     json.RawMessage `json:"id"`
+					Method string          `json:"method"`
 				}
-				_ = json.Unmarshal(scanner.Bytes(), &line)
-				if line.Type == "user" {
-					_ = encoder.Encode(map[string]any{"type": "assistant", "message": map[string]any{"content": []any{map[string]any{"type": "text", "text": "reply"}}}})
-					_ = encoder.Encode(map[string]any{"type": "result", "subtype": "success"})
+				if json.Unmarshal(scanner.Bytes(), &msg) != nil || msg.Method == "" {
+					continue
+				}
+				reply := func(result any) {
+					_ = encoder.Encode(map[string]any{"jsonrpc": "2.0", "id": json.RawMessage(msg.ID), "result": result})
+				}
+				switch msg.Method {
+				case "initialize":
+					reply(map[string]any{"protocolVersion": 1, "agentCapabilities": map[string]any{"loadSession": true}})
+				case "session/new", "session/load":
+					reply(map[string]any{"sessionId": "local-claude"})
+				case "session/prompt":
+					_ = encoder.Encode(map[string]any{"jsonrpc": "2.0", "method": "session/update", "params": map[string]any{
+						"sessionId": "local-claude",
+						"update":    map[string]any{"sessionUpdate": "agent_message_chunk", "messageId": "a1", "content": map[string]any{"type": "text", "text": "reply"}},
+					}})
+					reply(map[string]any{"stopReason": "end_turn"})
 				}
 			}
 		}()

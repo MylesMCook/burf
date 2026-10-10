@@ -52,10 +52,9 @@ export interface NavItem {
 
 // useNavItems is every place there is, in its default order.
 //
-// Home is where you start work and see your agents. With Labs that is the
-// harbour home (a composer and your agents), and the Agent Dashboard is a
-// place of its own under More. Without Labs there is no harbour, so the
-// first place is the Agent Dashboard itself, under its own name.
+// Home is the composer. With Labs the Agent Dashboard is its own place
+// under More. Without Labs the first place is that dashboard, under its
+// own name.
 export function useNavItems(): NavItem[] {
   const view = useStore((s) => s.view);
   // A box's home terminals show over Home.

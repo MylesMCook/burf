@@ -43,25 +43,3 @@ test("a browser tab shows a worktree's dev server in a frame", async ({ app }) =
   await expect(frame).toHaveAttribute("src", "http://checkout-fix.shop.devl.localhost:1377/?__berth_devtools=1");
   await expect(pane.frameLocator("iframe").getByRole("heading", { name: "Stub dev server" })).toBeVisible();
 });
-
-test("an older terminal chat layout opens its terminal and drops the chat preference", async ({ app }) => {
-  mockOnly("saved terminal chat layout");
-  await app.context.addInitScript(() => {
-    if (sessionStorage.getItem("e2e.terminal-layout")) return;
-    sessionStorage.setItem("e2e.terminal-layout", "1");
-    const key = "devl:/home/me/work/shop-checkout-fix";
-    localStorage.setItem("berth.workspaces", JSON.stringify({ current: key, shown: [key], spaces: {
-      [key]: { ref: { box: "devl", location: "shop", worktree: "checkout-fix", path: "/home/me/work/shop-checkout-fix" }, hidden: [], known: ["checkout-fix-claude"], active: "restored", tabs: [
-        { id: "restored", focus: "terminal", root: { kind: "leaf", id: "terminal", content: { kind: "terminal", box: "devl", session: "checkout-fix-claude", agent: "claude", view: "conversation" } } },
-      ] },
-    } }));
-  });
-  await app.open({ prefs: { agentView: "conversation", chatDrafts: true }, params: { view: "conversation" } });
-  await app.openWorktree("devl/checkout-fix");
-  await expect(app.page.locator("[data-terminal]:visible").first()).toBeVisible();
-  await expect(app.page.getByRole("group", { name: "Show the agent as", exact: true })).toHaveCount(0);
-  await expect(app.page.getByTestId("chat")).toHaveCount(0);
-  const prefs = await app.stored("berth.prefs") as Record<string, unknown>;
-  expect(prefs).not.toHaveProperty("agentView");
-  expect(prefs).not.toHaveProperty("chatDrafts");
-});

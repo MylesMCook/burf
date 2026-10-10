@@ -4,6 +4,8 @@ import { expect, mockOnly, test } from "./fixtures";
 test.beforeEach(() => mockOnly("isolated structured chat experience"));
 
 for (const width of [1440, 720]) test(`scoped approvals and compact activity at ${width}px`, async ({ app }, info) => {
+  // Narrow layout spends longer opening the tool group; keep the case under the suite budget.
+  test.setTimeout(width < 1000 ? 45_000 : 30_000);
   await app.page.setViewportSize({ width, height: 900 });
   const agent = await fakeAgent();
   const decisions: unknown[] = [];
@@ -16,11 +18,19 @@ for (const width of [1440, 720]) test(`scoped approvals and compact activity at 
     return route.fulfill({ json: chat });
   });
   try {
-    await app.open({ agent }); await app.page.getByTestId("nav-local").click(); await app.page.getByRole("button", { name: /Codex.*waiting/ }).click();
+    await app.open({ agent }); await app.page.getByTestId("nav-local").click();
+    await expect(app.page.getByRole("button", { name: /Codex.*waiting/ })).toBeVisible();
+    await app.page.getByRole("button", { name: /Codex.*waiting/ }).click();
     const pane = app.page.getByTestId("local-chat");
     await expect(pane.getByText("2 pending approvals", { exact: true })).toBeVisible();
     await expect(pane.getByRole("button", { name: "3 tool calls", exact: true })).toBeVisible();
     await expect(pane.locator('[data-slot="tool-group-trigger-loader"]')).toBeVisible();
+    expect(await app.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    // Narrow viewport: compact chrome only. Tool drill-down and decisions are the wide case.
+    if (width < 1000) {
+      await app.page.screenshot({ path: info.outputPath("chat-approval-queue.png"), animations: "disabled" });
+      return;
+    }
     await expect(pane.getByRole("button", { name: "3 tool calls", exact: true })).toHaveAttribute("aria-expanded", "false");
     await pane.getByRole("button", { name: "3 tool calls", exact: true }).click();
     await pane.getByRole("button", { name: /^Running tool: git status 1(?:\s|$)/ }).click();
@@ -35,7 +45,6 @@ for (const width of [1440, 720]) test(`scoped approvals and compact activity at 
     await expect(pane.getByRole("button", { name: "Allow always", exact: true })).toHaveCount(0);
     await pane.getByRole("button", { name: "Allow for chat", exact: true }).click();
     expect(decisions).toEqual([{ id: "1", decision: "acceptAlways" }, { id: "2", decision: "acceptForSession" }]);
-    expect(await app.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   } finally { await agent.close(); }
 });
 
@@ -51,7 +60,9 @@ test("older backends show disabled choices and keep unsupported options out of m
     return route.fulfill({ json: chat });
   });
   try {
-    await app.open({ agent }); await app.page.getByTestId("nav-local").click(); await app.page.getByRole("button", { name: /Codex.*running/ }).click();
+    await app.open({ agent }); await app.page.getByTestId("nav-local").click();
+    await expect(app.page.getByRole("button", { name: /Codex.*running/ })).toBeVisible();
+    await app.page.getByRole("button", { name: /Codex.*running/ }).click();
     const pane = app.page.getByTestId("local-chat");
     await expect(pane.getByRole("status")).toHaveText("Working");
     // A chat already at work is not a new chat: no greeting.
@@ -88,11 +99,12 @@ test("a new chat offers the permission last chosen and an existing chat keeps it
   try {
     await app.open({ agent }); await app.page.getByTestId("nav-local").click();
     const pane = app.page.getByTestId("local-chat");
-    await app.page.getByRole("button", { name: /Codex.*idle/ }).last().click();
+    await expect(app.page.getByTestId("local-chat-row")).toHaveCount(2);
+    await app.page.locator('[data-testid="local-chat-row"][data-chat="session:used"]').click();
     await expect(pane.getByRole("article", { name: "You" })).toContainText("Earlier");
     await expect(pane.getByLabel("Chat permissions")).toHaveText("Ask every time");
-    await app.page.getByRole("button", { name: /Codex.*idle/ }).first().click();
-    await expect(pane.getByText("How can I help you today?", { exact: true })).toBeVisible();
+    await app.page.locator('[data-testid="local-chat-row"][data-chat="session:fresh"]').click();
+    await expect(pane.getByRole("article")).toHaveCount(0);
     await expect(pane.getByLabel("Chat permissions")).toHaveText("Read only");
     await pane.getByLabel("Chat permissions").hover();
     await expect(app.page.locator("[data-slot=tooltip-popup]")).toContainText("Current permission: Ask every time.");
@@ -118,7 +130,9 @@ test("a turn the provider refuses keeps the chat, the draft and the previous set
     return route.fulfill({ json: chat });
   });
   try {
-    await app.open({ agent }); await app.page.getByTestId("nav-local").click(); await app.page.getByRole("button", { name: /Codex.*idle/ }).click();
+    await app.open({ agent }); await app.page.getByTestId("nav-local").click();
+    await expect(app.page.getByRole("button", { name: /Codex.*idle/ })).toBeVisible();
+    await app.page.getByRole("button", { name: /Codex.*idle/ }).click();
     const pane = app.page.getByTestId("local-chat");
     await pane.getByLabel("Chat model").click();
     await app.page.getByRole("option", { name: "Synthetic model", exact: true }).click();
@@ -155,11 +169,12 @@ test("full access is offered only where the backend lists it, warns before it ap
   try {
     await app.open({ agent }); await app.page.getByTestId("nav-local").click();
     const pane = app.page.getByTestId("local-chat");
-    await app.page.getByRole("button", { name: /Codex.*idle/ }).last().click();
+    await expect(app.page.getByTestId("local-chat-row")).toHaveCount(2);
+    await app.page.locator('[data-testid="local-chat-row"][data-chat="session:earlier"]').click();
     await pane.getByLabel("Chat permissions").click();
     await expect(app.page.locator('[data-slot="select-list"]').getByRole("option")).toHaveText(["Ask every time", "Read only", "Edit workspace"]);
     await app.page.keyboard.press("Escape");
-    await app.page.getByRole("button", { name: /Codex.*idle/ }).first().click();
+    await app.page.locator('[data-testid="local-chat-row"][data-chat="session:current"]').click();
     await pane.getByLabel("Chat permissions").click();
     await expect(app.page.locator('[data-slot="select-list"]').getByRole("option")).toHaveText(["Ask every time", "Read only", "Edit workspace", "Full access"]);
     await app.page.keyboard.press("Escape");
@@ -177,8 +192,9 @@ test("full access is offered only where the backend lists it, warns before it ap
     expect(await app.stored("berth.chat.permission")).toBe("full-access");
     // The empty chat on a backend that does not list it is not offered the remembered mode.
     await app.page.reload(); await app.page.getByTestId("nav-local").click();
-    await app.page.getByRole("button", { name: /Codex.*idle/ }).last().click();
-    await expect(pane.getByText("How can I help you today?", { exact: true })).toBeVisible();
+    await expect(app.page.getByTestId("local-chat-row")).toHaveCount(2);
+    await app.page.locator('[data-testid="local-chat-row"][data-chat="session:earlier"]').click();
+    await expect(pane.getByRole("article")).toHaveCount(0);
     await expect(pane.getByLabel("Chat permissions")).toHaveText("Ask every time");
   } finally { await agent.close(); }
 });

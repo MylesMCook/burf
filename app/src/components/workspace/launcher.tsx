@@ -41,11 +41,10 @@ interface Row {
   run(): void;
 }
 
-// Launcher fills a worktree's workspace while it has no tabs: the composer,
-// to start an agent on a task here, then a compact command panel, like an
-// empty state in Raycast or Linear: one list of what to start here, each
-// with its shortcut, then the agents closed as tabs that are still running,
-// to pick up again. Arrow keys move, Enter runs.
+// Launcher fills a worktree's workspace while it has no tabs: the same
+// composer as Home, for a task in this worktree, then the things that are
+// not a chat (a shell, a browser, the editor) and the agents still running
+// here. Arrow keys move, Enter runs.
 export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   useStore((s) => s.boxes[ref.box]?.info);
   const loc = useStore((s) => s.boxes[ref.box]?.locations?.find((l) => l.name === ref.location));
@@ -104,7 +103,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
 
   return (
     <div className="absolute inset-0 overflow-y-auto bg-background">
-      <div className="relative flex min-h-full items-start justify-center px-6 pt-[18vh] pb-10">
+      <div className="relative flex min-h-full items-start justify-center px-6 pt-[12vh] pb-10">
         <div ref={list} onKeyDown={onKeyDown} className="w-full max-w-[560px]">
           <header className="mb-4 px-2">
             <h1 className="truncate font-semibold text-lg tracking-tight" title={name}>

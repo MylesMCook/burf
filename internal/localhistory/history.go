@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/MylesMCook/burf/internal/localagent"
 	"github.com/MylesMCook/burf/internal/transcript"
@@ -135,9 +136,6 @@ func (s *Store) List(ctx context.Context) ([]Conversation, error) {
 					ID: hex.EncodeToString(digest[:]), Source: source.name, Title: title,
 					Cwd: cwd, UpdatedAt: candidate.UpdatedAt, ReadOnly: true,
 				}
-				if candidate.Title == "" {
-					candidate.Title = source.name + " conversation"
-				}
 				candidate.CanContinue = true
 				if err := localagent.ValidateProjectDirectory(cwd); err != nil {
 					candidate.CanContinue = false
@@ -199,6 +197,7 @@ type Continuation struct {
 	Source    string
 	SessionID string
 	Cwd       string
+	Title     string
 }
 
 // Continuation resolves only discovered, still-valid history. Callers cannot
@@ -209,7 +208,7 @@ func (s *Store) Continuation(ctx context.Context, id string) (Continuation, erro
 		return Continuation{}, err
 	}
 	f.Close()
-	return Continuation{Source: r.Source, SessionID: r.identity, Cwd: r.Cwd}, nil
+	return Continuation{Source: r.Source, SessionID: r.identity, Cwd: r.Cwd, Title: r.Title}, nil
 }
 
 func (s *Store) openRecord(ctx context.Context, id string) (record, *os.File, error) {
@@ -409,10 +408,20 @@ func titleText(raw json.RawMessage) string {
 		}
 	}
 	text = strings.TrimSpace(text)
-	if strings.HasPrefix(text, "<") || strings.HasPrefix(text, "# AGENTS.md instructions") || strings.HasPrefix(text, "Caveat:") {
+	if text == "" || strings.HasPrefix(text, "<") || strings.HasPrefix(text, "# AGENTS.md instructions") || strings.HasPrefix(text, "Caveat:") || strings.HasPrefix(text, "{") || strings.HasPrefix(text, "[") || strings.HasPrefix(text, "Return ") {
 		return ""
 	}
 	line, _, _ := strings.Cut(text, "\n")
-	chars := []rune(strings.TrimSpace(line))
+	line = strings.TrimSpace(line)
+	letters := 0
+	for _, r := range line {
+		if unicode.IsLetter(r) {
+			letters++
+		}
+	}
+	if letters < 3 {
+		return ""
+	}
+	chars := []rune(line)
 	return string(chars[:min(len(chars), 120)])
 }

@@ -35,7 +35,8 @@ export const useEventLog = create<{ events: BerthEvent[] }>()(() => ({ events: [
 // handleEvent is the one place events land: plugins hear them, the store
 // refetches what they changed, and agents that need someone notify.
 export function handleEvent(e: BerthEvent) {
-  // Transcript chatter has no terminal chat view to refresh.
+  // The session chat polls its transcript. The watch event is the box's
+  // nudge; the next read picks it up.
   if (e.type === "transcript.changed") return;
   useEventLog.setState((s) => ({ events: [e, ...s.events].slice(0, 200) }));
   dispatch(e);

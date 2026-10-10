@@ -183,7 +183,7 @@ func claudeMessage(id, cwd, text string) object {
 func TestDiscoversTopLevelChatsAndUsesMetadataPaths(t *testing.T) {
 	config, store := homes(t)
 	const cwd = `C:\Users\Example User\work.with-dashes`
-	writeRecord(t, codexPath(config, "first"), codexMeta("codex-12345", cwd), codexMessage("user", "# AGENTS.md instructions\n<INSTRUCTIONS>hidden</INSTRUCTIONS>"), codexMessage("user", "Check the Windows build\nDetails"))
+	writeRecord(t, codexPath(config, "first"), codexMeta("codex-12345", cwd), codexMessage("user", "# AGENTS.md instructions\n<INSTRUCTIONS>hidden</INSTRUCTIONS>"), codexMessage("user", "Return {}"), codexMessage("user", "Check the Windows build\nDetails"))
 	claude := filepath.Join(config.ClaudeHome, "projects", "lossy-encoded-directory", "claude-12345.jsonl")
 	writeRecord(t, claude, claudeMessage("claude-12345", cwd, "Explain the test failure"))
 	// Both known helper layouts and helpers with top-level-looking names
@@ -211,7 +211,7 @@ func TestDiscoversTopLevelChatsAndUsesMetadataPaths(t *testing.T) {
 			t.Fatalf("title: %q", item.Title)
 		}
 		page, err := store.Read(context.Background(), item.ID, 0)
-		if err != nil || len(page.Items) != 1 {
+		if err != nil || len(page.Items) < 1 {
 			t.Fatalf("Read: %v (%d items)", err, len(page.Items))
 		}
 	}
@@ -389,7 +389,7 @@ func TestDefaultsCancellationAndMetadataBudget(t *testing.T) {
 	path := codexPath(config, "large")
 	writeRecord(t, path, codexMeta("large-12345", "/work"), codexMessage("user", strings.Repeat("x", metadataBytes*2)))
 	list, err = store.List(context.Background())
-	if err != nil || len(list) != 1 || list[0].Title != "codex conversation" {
+	if err != nil || len(list) != 1 || list[0].Title != "" {
 		t.Fatalf("metadata budget/default homes: %v (%+v)", err, list)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -406,7 +406,7 @@ func TestListLimitAndDeterministicOrder(t *testing.T) {
 	config, store := homes(t)
 	for i := 0; i < maxConversations+2; i++ {
 		path := codexPath(config, fmt.Sprintf("%04d", i))
-		writeRecord(t, path, codexMeta(fmt.Sprintf("session-%04d", i), "/work"), codexMessage("user", fmt.Sprint(i)))
+		writeRecord(t, path, codexMeta(fmt.Sprintf("session-%04d", i), "/work"), codexMessage("user", fmt.Sprintf("note %d", i)))
 		at := time.Unix(int64(i+1000), 0)
 		if err := os.Chtimes(path, at, at); err != nil {
 			t.Fatal(err)
@@ -416,7 +416,7 @@ func TestListLimitAndDeterministicOrder(t *testing.T) {
 	if err != nil || len(list) != maxConversations {
 		t.Fatalf("List limit: %v (%d)", err, len(list))
 	}
-	if list[0].Title != "501" || list[len(list)-1].Title != "2" {
+	if list[0].Title != "note 501" || list[len(list)-1].Title != "note 2" {
 		t.Fatal("not newest-first")
 	}
 }

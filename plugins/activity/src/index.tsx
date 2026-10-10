@@ -71,9 +71,19 @@ interface Line {
   text: React.ReactNode;
 }
 
-function describe(e: BerthEvent, names: Names): Line {
+function needsPlace(type: string) {
+  return /^(agent\.|session\.|worktree\.|task\.created|service\.)/.test(type);
+}
+
+function placeLabel(e: BerthEvent, names: Names) {
+  const label = where(e, names);
+  return label ? <b className="font-medium text-foreground">{label}</b> : null;
+}
+
+function describe(e: BerthEvent, names: Names): Line | null {
   const d = e.data ?? {};
-  const w = <b className="font-medium text-foreground">{where(e, names) || "a worktree"}</b>;
+  const w = placeLabel(e, names);
+  if (needsPlace(e.type) && !w) return null;
   // Agent hooks name the agent in data; events relayed from them may only
   // carry it as their origin.
   const agent = agentName(str(d.agent) || (e.origin && AGENTS[e.origin] ? e.origin : ""));
@@ -168,7 +178,7 @@ function ActivityScreen({ berth }: ScreenProps) {
     <div>
       <ViewHeader
         title="Activity"
-        description={<>What agents, worktrees and flows did on every box{unseen > 0 ? <>, with <b className="font-medium text-foreground">{unseen} new</b> since you last looked</> : null}.</>}
+        description={unseen > 0 ? `${unseen} new since you last looked` : undefined}
         actions={<Input className="w-52" size="sm" placeholder="Search…" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />}
       />
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -199,6 +209,7 @@ function ActivityScreen({ berth }: ScreenProps) {
         <ol className="overflow-hidden rounded-xl border">
           {shown.map((e, i) => {
             const line = describe(e, names);
+            if (!line) return null;
             const divider = mark && i > 0 && shown[i - 1].time > mark && e.time <= mark;
             const session = str(e.data?.session ?? (e.type.startsWith("session.") ? e.data?.name : ""));
             return (

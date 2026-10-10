@@ -16,7 +16,7 @@ import { openBroadcast } from "@/lib/prompts";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { focusSession } from "@/lib/workspaces";
+import { focusSession, goHome } from "@/lib/workspaces";
 import { AgentCard } from "@/views/dashboard/agent-card";
 import { ColumnMenu, openStop, StopDialog } from "@/views/dashboard/stop";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
@@ -98,7 +98,7 @@ export function DashboardView() {
     <div className="relative flex h-full flex-col">
       <ViewHeader
         title="Agent Dashboard"
-        description={filtered ? `Showing ${shownBoxes.join(", ")} only` : "Every agent on every box, by what it needs."}
+        description={filtered ? `Showing ${shownBoxes.join(", ")} only` : undefined}
         actions={
           <div className="flex items-center gap-2">
             {agents.length > 0 && (
@@ -134,7 +134,13 @@ export function DashboardView() {
               <Scene name="setting-out" />
             </EmptyMedia>
             <EmptyTitle>No agents yet</EmptyTitle>
-            <EmptyDescription>{noBoxes ? "Agents run on your boxes, and there isn't one yet. Add a box, then start an agent in a new worktree on it." : "Start one in a new worktree, or from any worktree's + menu."}</EmptyDescription>
+            <EmptyDescription>
+              {noBoxes
+                ? "Agents run on your boxes, and there isn't one yet. Add a box, then start an agent from Home or a worktree."
+                : visible.length
+                  ? `${visible.length} session${visible.length === 1 ? "" : "s"} on ${shownBoxes.length} box${shownBoxes.length === 1 ? "" : "es"} aren't on this board. Burf only lists agents it can see there; others may be running outside the app.`
+                  : `No agents on ${boxNames.length} box${boxNames.length === 1 ? "" : "es"} yet. Start one from Home or a worktree's composer.`}
+            </EmptyDescription>
           </EmptyHeader>
           {noBoxes ? (
             <Button onClick={openAddBox}>
@@ -142,10 +148,15 @@ export function DashboardView() {
               Add a box
             </Button>
           ) : (
-            <Button onClick={() => useStore.getState().openNewWorktree()}>
-              <PlusIcon />
-              New worktree
-            </Button>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button variant="outline" onClick={() => { goHome(); useStore.getState().setView({ kind: "workspace" }); }}>
+                Go to Home
+              </Button>
+              <Button onClick={() => useStore.getState().openNewWorktree()}>
+                <PlusIcon />
+                New worktree
+              </Button>
+            </div>
           )}
         </Empty>
       ) : (

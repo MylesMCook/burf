@@ -17,13 +17,50 @@ import (
 func localAgentCommands() map[string]localagent.Command {
 	out := make(map[string]localagent.Command)
 	home, _ := os.UserHomeDir()
+	npm := filepath.Join(os.Getenv("APPDATA"), "npm", "node_modules")
+
+	// Claude structured chat: ACP adapter, not `claude -p` stream-json.
+	for _, p := range []string{
+		filepath.Join(home, ".local", "bin", "claude-agent-acp.exe"),
+		filepath.Join(npm, "@agentclientprotocol", "claude-agent-acp", "bin", "claude-agent-acp.exe"),
+		filepath.Join(npm, "@agentclientprotocol", "claude-agent-acp", "dist", "cli.exe"),
+	} {
+		if nativeCLI(p) {
+			out["claude"] = localagent.Command{Program: p, CanChat: true, CanFork: true}
+			break
+		}
+	}
+	if out["claude"].Program == "" {
+		if p, err := exec.LookPath("claude-agent-acp.exe"); err == nil && nativeCLI(p) {
+			out["claude"] = localagent.Command{Program: p, CanChat: true, CanFork: true}
+		}
+	}
+	// Cursor ACP: `agent acp`.
+	for _, p := range []string{
+		filepath.Join(home, ".local", "bin", "agent.exe"),
+		filepath.Join(home, "AppData", "Local", "cursor-agent", "agent.exe"),
+	} {
+		if nativeCLI(p) {
+			out["cursor"] = localagent.Command{Program: p, CanChat: true, CanFork: true}
+			break
+		}
+	}
+	if out["cursor"].Program == "" {
+		if p, err := exec.LookPath("agent.exe"); err == nil && nativeCLI(p) {
+			out["cursor"] = localagent.Command{Program: p, CanChat: true, CanFork: true}
+		}
+	}
+
 	for _, id := range []string{"claude", "codex"} {
+		if id == "claude" && out["claude"].Program != "" {
+			continue
+		}
 		candidates := []string{filepath.Join(home, ".local", "bin", id+".exe")}
 		if p, err := exec.LookPath(id + ".exe"); err == nil {
 			candidates = append(candidates, p)
 		}
 		if id == "claude" {
-			candidates = append(candidates, filepath.Join(os.Getenv("APPDATA"), "npm", "node_modules", "@anthropic-ai", "claude-code", "bin", "claude.exe"))
+			candidates = append(candidates, filepath.Join(npm, "@anthropic-ai", "claude-code", "bin", "claude.exe"))
 		}
 		for _, p := range candidates {
 			if nativeCLI(p) {
@@ -49,8 +86,9 @@ func localAgentCommands() map[string]localagent.Command {
 		}
 	}
 	for id, command := range out {
-		// Newer Codex CLIs default to their own background server. Keep the
-		// interactive process owned by this terminal when that mode exists.
+		if id == "cursor" {
+			continue
+		}
 		help := localCommandHelp(command.Program, "--help")
 		if id == "codex" {
 			if strings.Contains(help, "--no-daemon") {
@@ -58,9 +96,15 @@ func localAgentCommands() map[string]localagent.Command {
 			}
 			command.CanFork = strings.Contains(localCommandHelp(command.Program, "fork", "--help"), "[SESSION_ID]")
 			command.CanChat = strings.Contains(localCommandHelp(command.Program, "app-server", "--help"), "--listen")
-		} else {
-			command.CanFork = strings.Contains(help, "--fork-session") && strings.Contains(help, "--resume")
-			command.CanChat = localchat.ClaudeHelpSupportsChat(help)
+		} else if id == "claude" {
+			if localchat.ClaudeACPCommand(command.Program) {
+				command.CanChat = true
+				command.CanFork = true
+			} else {
+				// Terminal fork still uses Claude Code; structured chat needs the ACP adapter.
+				command.CanFork = strings.Contains(help, "--fork-session") && strings.Contains(help, "--resume")
+				command.CanChat = false
+			}
 		}
 		out[id] = command
 	}

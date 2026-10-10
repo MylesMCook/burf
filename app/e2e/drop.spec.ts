@@ -25,32 +25,32 @@ async function fire(page: Page, selector: string, type: "dragover" | "drop", fil
   );
 }
 
-const WIDGET = '[data-testid="home-grid"] [data-widget="needs-you"]';
+const PAGE = '[data-testid="home"]';
 
 test("a file dropped where nothing takes it doesn't replace the app, and a hint says where it goes", async ({ app }) => {
   await app.open();
   const page = app.page;
-  await expect(page.locator(WIDGET)).toBeVisible();
+  await expect(page.locator(PAGE)).toBeVisible();
   const url = page.url();
   const hint = page.getByTestId("file-drop-hint");
   await expect(hint).not.toHaveAttribute("data-shown");
 
-  // Held over a widget: refused, so the browser won't open it there.
+  // Held over the page: refused, so the browser won't open it there.
   // A real drag sends dragover every ~50ms and the hint goes 200ms after the
   // last: keep it coming until the hint is read.
   await expect(async () => {
-    expect(await fire(page, WIDGET, "dragover")).toBe(true);
+    expect(await fire(page, PAGE, "dragover")).toBe(true);
     await expect(hint).toHaveAttribute("data-shown", "true", { timeout: 150 });
     await expect(hint).toHaveText("Drop on a message box or a terminal to attach", { timeout: 150 });
   }).toPass();
   // Let go: the drop's default (opening the file) is prevented.
-  expect(await fire(page, WIDGET, "drop")).toBe(true);
+  expect(await fire(page, PAGE, "drop")).toBe(true);
   await expect(hint).not.toHaveAttribute("data-shown");
   expect(page.url()).toBe(url);
-  await expect(page.getByRole("heading", { name: "What should your agents work on?" })).toBeVisible();
+  await expect(page.getByTestId("home").getByRole("textbox", { name: "What should your agents work on?" })).toBeVisible();
 
   // The app's own drags (a project, a tab, a widget) are left alone.
-  expect(await fire(page, WIDGET, "dragover", false)).toBe(false);
+  expect(await fire(page, PAGE, "dragover", false)).toBe(false);
   await expect(hint).not.toHaveAttribute("data-shown");
 });
 

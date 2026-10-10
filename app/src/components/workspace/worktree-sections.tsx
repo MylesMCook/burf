@@ -10,7 +10,6 @@ import { boxApi, type WorktreeService } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { toastManager } from "@/components/ui/toast";
 import { openBrowserAt, openPreviewAt } from "@/lib/actions";
-import { hostSuffix, worktreeHost } from "@/lib/browser-url";
 import { copyText } from "@/lib/clipboard";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -99,7 +98,6 @@ function LiveServices({ worktree: ref }: { worktree: WorktreeRef }) {
   const rows = useMemo(() => liveServices(named, { ref, services: named, urlPort }, devPort), [named, ref, urlPort, devPort]);
   const [showOther, setShowOther] = useState(false);
   const name = useTitleAt(ref.box, ref.path) ?? (ref.main ? ref.location : ref.worktree);
-  const host = worktreeHost(ref);
   const main = rows.filter((r) => r.kind !== "other");
   const other = rows.filter((r) => r.kind === "other");
 

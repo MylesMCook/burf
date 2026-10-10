@@ -1,20 +1,18 @@
 import {
   EllipsisIcon,
-  MonitorIcon,
   FolderPlusIcon,
   GitBranchPlusIcon,
-  MessageSquareIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   SearchIcon,
   ServerIcon,
   SettingsIcon,
-  TerminalIcon,
 } from "lucide-react";
 import { useMemo } from "react";
 
 import { NotificationBell } from "@/components/notifications/notification-center";
 import { newSection } from "@/components/sidebar/actions";
+import { LocalComputerRailLink, LocalComputerTree } from "@/components/sidebar/local-computer";
 import { MoreItems, Nav as PlacesNav, useArrangedNav } from "@/components/sidebar/nav";
 import { Projects, useSidebarPrefs } from "@/components/sidebar/projects";
 import { RailAgents } from "@/components/sidebar/rail";
@@ -25,9 +23,6 @@ import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { SidebarContext, type SidebarContextProps } from "@/components/ui/sidebar";
 import { usePrefs } from "@/lib/prefs";
-import { localAgentName, useLocalComputer } from "@/lib/local-computer";
-import { pickLocal, useLocalDesk } from "@/lib/local-desk";
-import { folderName } from "@/lib/local-folders";
 import { useStore } from "@/lib/store";
 import { SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN } from "@/lib/sidebar-width";
 import { WhatsNewNudge } from "@/components/whats-new/whats-new-dialog";
@@ -91,10 +86,7 @@ export function AppSidebar() {
           <PlacesNav />
         </div>
 
-        {/* One context menu and one tooltip for every row in it. */}
-        <RowLayer className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-          <LocalComputerLink />
-        <div className={cn("flex items-center justify-between pt-4 pb-1 pl-1", noBoxes && "hidden")}>
+        <div className={cn("flex items-center justify-between pt-4 pr-2 pb-1 pl-3", noBoxes && "hidden")}>
           <span className="font-medium text-[11px] text-muted-foreground">Projects</span>
           <Menu>
             <MenuTrigger
@@ -138,6 +130,10 @@ export function AppSidebar() {
             </MenuPopup>
           </Menu>
         </div>
+
+        {/* One context menu and one tooltip for every row in it. */}
+        <RowLayer className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+          <LocalComputerTree prefs={prefs} update={update} />
           <Projects prefs={prefs} update={update} />
         </RowLayer>
 
@@ -172,69 +168,6 @@ export function AppSidebar() {
   );
 }
 
-function LocalComputerLink({ compact = false }: { compact?: boolean }) {
-  const local = useLocalComputer();
-  const active = useStore((s) => s.view.kind === "local");
-  if (!local?.supported) return null;
-  if (compact) {
-    return (
-      <Tip label={`This computer: ${local.name}`} side="right">
-        <button type="button" data-testid="nav-local" aria-label={`This computer: ${local.name}`} aria-current={active ? "page" : undefined}
-          onClick={() => useStore.getState().setView({ kind: "local" })}
-          className={cn("inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground", active && "bg-sidebar-accent text-foreground")}>
-          <MonitorIcon className="size-4" />
-        </button>
-      </Tip>
-    );
-  }
-  return (
-    <div className="pt-3">
-      <div className="pb-1 pl-1 font-medium text-[11px] text-muted-foreground">This computer</div>
-      <button type="button" data-testid="nav-local" aria-label={`This computer: ${local.name}`} aria-current={active ? "page" : undefined}
-        onClick={() => useStore.getState().setView({ kind: "local" })}
-        className={cn("flex h-side-row w-full items-center gap-1.5 rounded-md px-2 text-left text-[13px] text-foreground hover:bg-sidebar-accent", active && "bg-sidebar-accent")}>
-        <MonitorIcon className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate">{local.name}</span>
-      </button>
-      {active && <LocalRows />}
-    </div>
-  );
-}
-
-function LocalRows() {
-  const desk = useLocalDesk();
-  const pick = desk.pick;
-  const groups = new Map<string, { name: string; chats: typeof desk.conversations }>();
-  for (const c of desk.conversations) {
-    const key = c.cwd || "unknown";
-    const group = groups.get(key) ?? { name: folderName(c.cwd) || "Unknown project", chats: [] };
-    group.chats.push(c);
-    groups.set(key, group);
-  }
-  const row = "flex h-6 w-full min-w-0 items-center gap-1.5 rounded-md pr-2 pl-7 text-left text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground";
-  return (
-    <div className="mt-0.5 flex flex-col">
-      {desk.computer?.sessions.map((s) => (
-        <button key={s.id} type="button" onClick={() => pickLocal({ kind: "session", id: s.id })} className={cn(row, pick?.kind === "session" && pick.id === s.id && "bg-sidebar-accent text-foreground")}>
-          {s.mode === "chat" ? <MessageSquareIcon className="size-3.5 shrink-0" /> : <TerminalIcon className="size-3.5 shrink-0" />}
-          <span className="min-w-0 flex-1 truncate">{localAgentName(s.agent)} {folderName(s.cwd)} {s.state}</span>
-        </button>
-      ))}
-      {[...groups.entries()].map(([key, group]) => (
-        <div key={key}>
-          <div className="truncate px-7 pt-2 text-[11px] text-muted-foreground">{group.name}</div>
-          {group.chats.map((c) => (
-            <button key={c.id} type="button" onClick={() => pickLocal({ kind: "history", id: c.id })} className={cn(row, pick?.kind === "history" && pick.id === c.id && "bg-sidebar-accent text-foreground")}>
-              <MessageSquareIcon className="size-3.5 shrink-0" />
-              <span className="min-w-0 flex-1 truncate">{c.title || "Untitled conversation"}</span>
-            </button>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // Rail is the sidebar folded away (⌘\): the window's controls, the places
 // in the sidebar's own order, the agents by state (sidebar/rail.tsx), and a
 // way back. It keeps clear of the traffic lights like the full one, which is
@@ -264,7 +197,7 @@ function Rail() {
       <div className="flex flex-col items-center gap-1">
         {item("Search (⌘K)", <SearchIcon />, false, () => useStore.getState().setPaletteOpen(true))}
         <NotificationBell size="rail" />
-        <LocalComputerLink compact />
+        <LocalComputerRailLink />
         {pinned.map((n) => (
           <span key={n.id}>{item(n.label, n.icon, n.active, n.go, n.badge)}</span>
         ))}

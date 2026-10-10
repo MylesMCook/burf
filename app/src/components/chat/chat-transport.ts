@@ -1,4 +1,5 @@
-import type { AttachmentAdapter, ThreadMessageLike } from "@assistant-ui/react";
+import type { AttachmentAdapter, ExternalStoreThreadListAdapter, ThreadMessageLike } from "@assistant-ui/react";
+import type { ReactNode } from "react";
 import type { ChatDecision, ChatModel, ChatOptions, LocalChat, LocalSession } from "@/lib/local-computer";
 
 // A transport supplies session data and capabilities, never a composer or a view.
@@ -37,4 +38,10 @@ export interface ChatTransport {
   approve?(id: string, decision: ChatDecision): Promise<unknown>;
   attachments?: AttachmentAdapter;
   searchFiles?(query: string, signal?: AbortSignal): Promise<string[]>;
+  threadList?: ExternalStoreThreadListAdapter;
+  beside?: ReactNode;
+  welcome?: ReactNode;
+  banner?: ReactNode;
+  // A remote chat id the box no longer has: retry closes the pane instead of polling.
+  onMissingChat?(): void;
 }

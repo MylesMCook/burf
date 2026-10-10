@@ -26,16 +26,21 @@ func (a *Agent) localChatRoutes(handle func(string, http.HandlerFunc)) {
 		}
 		defer done()
 		var s localchat.Session
-		if req.Agent == "" || req.Agent == "codex" {
+		switch req.Agent {
+		case "", "codex":
 			s, err = a.localClient.chats.Start(r.Context(), req.CWD)
-		} else if req.Agent == "claude" {
-			command := a.localClient.commands["claude"]
+		case "claude", "cursor":
+			command := a.localClient.commands[req.Agent]
 			if !command.CanChat {
-				localClientError(w, errors.New("Claude Code is not installed with support for structured chat on this computer"))
+				if req.Agent == "cursor" {
+					localClientError(w, errors.New("Cursor agent CLI is not installed with support for ACP chat on this computer"))
+				} else {
+					localClientError(w, errors.New("Claude Code is not installed with support for structured chat on this computer"))
+				}
 				return
 			}
-			s, err = a.localClient.chats.StartWith(r.Context(), localchat.LaunchOptions{Agent: "claude", Program: command.Program, CWD: req.CWD, Env: os.Environ()})
-		} else {
+			s, err = a.localClient.chats.StartWith(r.Context(), localchat.LaunchOptions{Agent: req.Agent, Program: command.Program, CWD: req.CWD, Env: os.Environ()})
+		default:
 			localClientError(w, errors.New("unsupported chat agent"))
 			return
 		}
@@ -111,10 +116,7 @@ func (a *Agent) prepareLocalRestart() error {
 	if a.localClient.chats != nil {
 		for _, s := range a.localClient.chats.List() {
 			if s.State != "exited" {
-				if s.Agent == "codex" {
-					return errors.New("stop local Codex chats before restarting Burf")
-				}
-				return errors.New("stop local Claude Code chats before restarting Burf")
+				return errors.New("stop local " + localChatName(s.Agent) + " chats before restarting Burf")
 			}
 		}
 	}
@@ -128,8 +130,5 @@ func (a *Agent) prepareLocalRestart() error {
 }
 
 func localChatName(agent string) string {
-	if agent == "claude" {
-		return "Claude Code"
-	}
-	return "Codex"
+	return localchat.AgentLabel(agent)
 }

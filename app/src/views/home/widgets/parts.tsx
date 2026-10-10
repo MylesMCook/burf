@@ -5,11 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { useHomeWidget } from "./env";
-
-// The pieces Home's widgets are drawn with, shared with plugins through
-// @berth/plugin/ui (WidgetRow, WidgetEmpty, WidgetSkeleton), so a plugin's
-// widget reads like Burf's own.
+// The pieces a plugin widget is drawn with, shared through
+// @berth/plugin/ui (WidgetRow, WidgetEmpty, WidgetSkeleton).
 
 // WidgetRow is one line of a widget: 36px, full width, a button when it
 // does something.
@@ -30,9 +27,7 @@ export function WidgetRow({ children, onClick, className, label }: { children: R
 // WidgetEmpty is a widget with nothing to show: a small scene, what that
 // means, and the one thing to do about it. Compact in a one-row widget.
 export function WidgetEmpty({ scene = "calm", title, hint, action, onAction, compact }: { scene?: SceneName; title: string; hint?: ReactNode; action?: string; onAction?: () => void; compact?: boolean }) {
-  // In a one-row card the scene makes room for the action.
-  const { height } = useHomeWidget();
-  const art = !compact && (!action || height > 200);
+  const art = !compact;
   return (
     <div className="flex h-full min-h-0 flex-col items-center justify-center gap-1 px-4 pb-1 text-center">
       {art && <Scene name={scene} width={104} className="mb-0.5 text-muted-foreground @max-[220px]:hidden" />}

@@ -127,7 +127,7 @@ export function ReviewView() {
     <div className="flex h-full min-h-0 flex-col">
       <ViewHeader
         title="Review"
-        description="Agents' finished work on every box, to approve, send back or discard."
+        description={loaded && entries.length ? `${entries.length} item${entries.length === 1 ? "" : "s"} waiting` : undefined}
         actions={
           <Button size="sm" variant="ghost" onClick={() => void refreshReview()} disabled={loading} aria-label="Refresh">
             <RefreshCwIcon className={cn(loading && "animate-spin")} />

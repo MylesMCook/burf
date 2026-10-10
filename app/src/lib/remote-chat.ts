@@ -5,7 +5,7 @@ import { localAgentName } from "@/lib/local-computer";
 import { useStore } from "@/lib/store";
 import { supportsStructuredChat } from "@/lib/structured-chat";
 import { leaves } from "@/lib/layout";
-import { openTab, showWorktree, useWorkspaces, wsKey, type WorktreeRef } from "@/lib/workspaces";
+import { openTab, pruneStaleRemoteChatTabs, showWorktree, useWorkspaces, wsKey, type WorktreeRef } from "@/lib/workspaces";
 
 export interface RemoteChat extends LocalChat { location: string }
 export type RemoteChatSummary = Omit<RemoteChat, "items" | "approvals">;
@@ -69,25 +69,49 @@ export function openRemoteChat(box: string, chat: RemoteChatSummary, ref: Worktr
   } else openTab({ kind: "remote-chat", box, chat: chat.id, cwd: chat.cwd, agent: chat.agent, draft, options }, key);
 }
 
-export function useRemoteChats(box: string, location: string) {
+export function useBoxRemoteChats(box: string) {
   const client = useStore((s) => s.client);
   const supported = useStore((s) => s.boxes[box]?.info?.capabilities?.some((c) => c === "chat.codex" || c === "chat.claude"));
   const [chats, setChats] = useState<RemoteChatSummary[]>([]);
   const [error, setError] = useState("");
   useEffect(() => {
-    setChats([]); setError("");
+    setChats([]);
+    setError("");
     if (!client || !supported) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     const read = async () => {
       try {
         const result = await remoteChatApi.list(client, box, controller.signal);
-        if (!controller.signal.aborted) { setChats(result.chats.filter((chat) => chat.location === location)); setError(""); }
-      } catch { if (!controller.signal.aborted) setError("Could not refresh chats on this box. Existing chats have not been restarted."); }
+        if (!controller.signal.aborted) {
+          pruneStaleRemoteChatTabs(box, new Set(result.chats.map((chat) => chat.id)));
+          setChats(result.chats ?? []);
+          setError("");
+        }
+      } catch {
+        if (!controller.signal.aborted) setError("Could not refresh chats on this box. Existing chats have not been restarted.");
+      }
       if (!controller.signal.aborted) timer = setTimeout(() => void read(), 3000);
     };
     void read();
-    return () => { controller.abort(); clearTimeout(timer); };
-  }, [client, box, location, supported]);
-  return { chats, error };
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [client, box, supported]);
+  return { chats, error, supported: !!supported };
+}
+
+export function useRemoteChats(box: string, location: string) {
+  const { chats, error } = useBoxRemoteChats(box);
+  return { chats: chats.filter((chat) => chat.location === location), error };
+}
+
+// Match a structured chat to a worktree by location name or cwd under its path.
+export function chatBelongsToWorktree(chat: RemoteChatSummary, loc: { name: string }, wt: { name: string; path: string; main?: boolean }): boolean {
+  const location = wt.main ? loc.name : `${loc.name}/${wt.name}`;
+  if (chat.location === location) return true;
+  const cwd = chat.cwd.replace(/\\/g, "/");
+  const path = wt.path.replace(/\\/g, "/");
+  return cwd === path || cwd.startsWith(path.endsWith("/") ? path : `${path}/`);
 }

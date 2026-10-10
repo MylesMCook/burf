@@ -501,6 +501,34 @@ export function removePane(key: string, tabId: string, paneId: string, hide?: st
   if (hide) update(key, (ws) => ({ ...ws, hidden: cap([...ws.hidden.filter((h) => h !== hide), hide]) }));
 }
 
+// Drop saved remote-chat panes whose ids the box no longer lists.
+export function pruneStaleRemoteChatTabs(box: string, liveChatIds: Set<string>) {
+  useWorkspaces.setState((s) => {
+    let any = false;
+    const spaces: Record<string, Workspace> = { ...s.spaces };
+    for (const [key, ws] of Object.entries(spaces)) {
+      if (splitKey(key).box !== box) continue;
+      const tabs: WsTab[] = [];
+      for (const tab of ws.tabs) {
+        let root: PaneNode | undefined = tab.root;
+        for (const l of leaves(tab.root)) {
+          const c = l.content;
+          if (c.kind === "remote-chat" && c.box === box && !liveChatIds.has(c.chat)) {
+            root = root && remove(root, l.id);
+            any = true;
+          }
+        }
+        if (!root) continue;
+        const ls = leaves(root);
+        tabs.push({ ...tab, root, focus: ls.some((l) => l.id === tab.focus) ? tab.focus : ls[0]!.id });
+      }
+      if (tabs.length !== ws.tabs.length) any = true;
+      spaces[key] = { ...ws, tabs, active: tabs.some((t) => t.id === ws.active) ? ws.active : tabs[0]?.id };
+    }
+    return any ? { spaces } : s;
+  });
+}
+
 export function resizeSplit(key: string, tabId: string, splitId: string, ratio: number) {
   updateTab(key, tabId, (t) => ({ ...t, root: setRatio(t.root, splitId, ratio) }));
 }
