@@ -152,7 +152,7 @@ export function ZenSwitcher({ className }: { className?: string }) {
             <span className="min-w-0 flex-1 truncate">More</span>
             {more.find((n) => n.active) && <span className="text-muted-foreground text-xs">{more.find((n) => n.active)!.label}</span>}
           </MenuSubTrigger>
-          <MenuSubPopup className="min-w-52">
+          <MenuSubPopup className="min-w-72">
             <MoreItems more={more} />
           </MenuSubPopup>
         </MenuSub>
@@ -246,7 +246,7 @@ function AllWorktrees() {
                     <FolderIcon />
                     {loc.name}
                   </MenuSubTrigger>
-                  <MenuSubPopup className="min-w-52">
+                  <MenuSubPopup className="min-w-72">
                     {loc.worktrees!.map((wt) => {
                       const leaving = removalOf(removals, box, wt.path);
                       return (

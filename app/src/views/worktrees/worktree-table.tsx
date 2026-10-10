@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, ArrowDownIcon, ArrowUpIcon, CheckIcon, HouseIcon, PauseIcon, XIcon } from "lucide-react";
+import { AlertTriangleIcon, ArrowDownIcon, ArrowUpIcon, CheckIcon, EllipsisIcon, HouseIcon, PauseIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { Tip } from "@/components/tip";
@@ -28,11 +28,12 @@ export interface Group {
 // 1024px of table the port moves into the worktree's tooltip and agents
 // narrow, so the last commit keeps room to be read.
 export const COLS =
-  "grid-cols-[2rem_minmax(180px,1.2fr)_6rem_6rem_minmax(240px,2fr)_5.5rem_4rem_1.5rem] @max-5xl:grid-cols-[2rem_minmax(160px,1.2fr)_5.5rem_5.5rem_minmax(200px,2fr)_4.5rem_1.5rem]";
+  "grid-cols-[2rem_minmax(180px,1.2fr)_6rem_6rem_minmax(240px,2fr)_5.5rem_4rem_2.75rem] @max-5xl:grid-cols-[2rem_minmax(160px,1.2fr)_5.5rem_5.5rem_minmax(200px,2fr)_4.5rem_2.75rem]";
 
 
 // WorktreeTable lists worktrees by project, one line each. Checkboxes
-// select, shift-click selects a range, and a row click opens its history.
+// select, shift-click selects a range, and a row click opens its latest
+// chat. History, rebase and open stay on the sheet, from the row's ⋯.
 //
 // From the keyboard the rows are one stop: Tab lands on the last row
 // focused (the first, to begin with), ↑ and ↓ move between rows across
@@ -46,6 +47,7 @@ export function WorktreeTable({
   onToggleGroup,
   onToggleAll,
   onOpen,
+  onHistory,
   openKey,
 }: {
   groups: Group[];
@@ -55,6 +57,7 @@ export function WorktreeTable({
   onToggleGroup(g: Group, on: boolean): void;
   onToggleAll(on: boolean): void;
   onOpen(r: Row): void;
+  onHistory(r: Row): void;
   openKey?: string;
 }) {
   const total = groups.reduce((n, g) => n + g.rows.length, 0);
@@ -130,6 +133,7 @@ export function WorktreeTable({
                   onMove={(key) => move(r.key, key)}
                   onToggle={(shift) => onToggle(r, shift)}
                   onOpen={() => onOpen(r)}
+                  onHistory={() => onHistory(r)}
                 />
               ))}
             </div>
@@ -150,6 +154,7 @@ function WorktreeRow({
   onMove,
   onToggle,
   onOpen,
+  onHistory,
 }: {
   row: Row;
   selected: boolean;
@@ -160,6 +165,7 @@ function WorktreeRow({
   onMove(key: string): void;
   onToggle(shift: boolean): void;
   onOpen(): void;
+  onHistory(): void;
 }) {
   const sessions = useStore((s) => s.boxes[r.box]?.sessions) ?? NONE;
   const stats = useStore((s) => s.boxes[r.box]?.stats);
@@ -325,7 +331,24 @@ function WorktreeRow({
 
       <span className="text-right font-mono text-muted-foreground text-xs tabular-nums @max-5xl:hidden">{r.port ?? ""}</span>
 
-      <ProgressMark p={progress} />
+      <span className="flex items-center justify-end gap-0.5">
+        <ProgressMark p={progress} />
+        {!leaving && (
+          <Tip label="History">
+            <button
+              type="button"
+              aria-label={`History for ${name}`}
+              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                onHistory();
+              }}
+            >
+              <EllipsisIcon className="size-3.5" />
+            </button>
+          </Tip>
+        )}
+      </span>
     </div>
   );
 }

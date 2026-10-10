@@ -2,9 +2,7 @@ import { CheckIcon, GitPullRequestIcon, RefreshCwIcon, XIcon } from "lucide-reac
 import { useEffect, useMemo, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
-import { Scene } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
@@ -152,17 +150,7 @@ export function ReviewView() {
         <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
           <Spinner className="size-4" /> Reading each box's worktrees…
         </div>
-      ) : entries.length === 0 ? (
-        <Empty className="flex-1">
-          <EmptyHeader>
-            <EmptyMedia>
-              <Scene name="calm" />
-            </EmptyMedia>
-            <EmptyTitle>Nothing to review</EmptyTitle>
-            <EmptyDescription>When an agent finishes its turn and leaves changes, its work shows up here to approve, send back or discard.</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : (
+      ) : entries.length === 0 ? null : (
         <div className="flex min-h-0 flex-1">
           <aside aria-label="Work to review" className="flex w-80 shrink-0 flex-col border-r max-xl:w-64">
             <ul className="min-h-0 flex-1 overflow-y-auto p-2" aria-label="Work to review">

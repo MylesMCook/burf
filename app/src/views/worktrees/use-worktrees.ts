@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEventLog } from "@/lib/events";
 import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
-import { refOf, selectWorktree } from "@/lib/workspaces";
+import { selectFolder } from "@/lib/open-folder-chat";
+import { refOf } from "@/lib/workspaces";
 import { type WorktreeStatus, worktreesApi } from "@/lib/worktrees";
 
 export interface Row extends WorktreeStatus {
@@ -17,7 +18,7 @@ export function openWorktree(row: Row) {
   const loc = useStore.getState().boxes[row.box]?.locations?.find((l) => l.name === row.location);
   const wt = loc?.worktrees?.find((w) => w.path === row.path);
   if (!loc || !wt) return;
-  selectWorktree(refOf(row.box, loc, wt));
+  selectFolder(refOf(row.box, loc, wt));
   useStore.getState().setView({ kind: "workspace" });
 }
 

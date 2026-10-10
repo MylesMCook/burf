@@ -54,7 +54,7 @@ export function FlowsSection({ box, location }: { box: string; location: string 
                 {[...new Set(f.flow.steps.map((s) => s.kind))].slice(0, 3).map((k) => {
                   const m = STEP_KINDS[k];
                   return (
-                    <span key={k} className={cn("inline-flex size-6 items-center justify-center rounded-md border-2 border-card bg-muted", m.tone)}>
+                    <span key={k} className="inline-flex size-6 items-center justify-center rounded-md border-2 border-card bg-muted text-muted-foreground">
                       <m.Icon className="size-3.5" />
                     </span>
                   );

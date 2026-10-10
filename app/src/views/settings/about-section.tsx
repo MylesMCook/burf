@@ -1,11 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { BugIcon, ClipboardListIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { AlphaBadge } from "@/components/alpha-badge";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
-import { isTauri } from "@/lib/api";
+import { agentEndpointLine, updateUnavailableCopy } from "@/lib/about-status";
+import { endpoint, isTauri } from "@/lib/api";
 import { copyDiagnostics } from "@/lib/diagnostics";
 import { ago, bytes, errorMessage } from "@/lib/format";
 import { openDocs, openUrl } from "@/lib/open-url";
@@ -35,9 +35,22 @@ export function AboutSection() {
   const boxes = useStore((s) => s.status?.boxes ?? NONE);
   const data = useStore((s) => s.boxes);
   const proxy = useStore((s) => s.status?.proxy);
+  const [agentUrl, setAgentUrl] = useState<string>();
+  useEffect(() => {
+    let live = true;
+    endpoint().then(
+      (ep) => {
+        if (live) setAgentUrl(ep.url);
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
 
   return (
-    <SettingsPage badge={LINUX_ALPHA && <AlphaBadge />} title="About Burf" description="Agents on your own boxes, watched from here. Closing this window never stops one.">
+    <SettingsPage title="About Burf" description="Agents on your own boxes, watched from here. Closing this window never stops one.">
       <img src={`${import.meta.env.BASE_URL}branding/burf-app-icon.svg`} alt="Burf" width="64" height="64" className="size-16" />
       <SettingsGroup title="Versions">
         <SettingsRow label="App">
@@ -57,7 +70,7 @@ export function AboutSection() {
           )}
         </SettingsRow>
         <SettingsRow label="Laptop agent" description="Holds the connection to every box, the private URLs and forwards.">
-          <span className="font-mono text-muted-foreground text-xs">127.0.0.1:1378 · proxy :{proxy?.port ?? "-"}</span>
+          <span className="font-mono text-muted-foreground text-xs">{agentUrl ? agentEndpointLine(agentUrl, proxy?.port) : "…"}</span>
         </SettingsRow>
         {boxes.map((b) => {
           const info = data[b.name]?.info;
@@ -133,9 +146,10 @@ const RELEASES = "https://github.com/MylesMCook/burf/releases";
 function UpdatesGroup() {
   const u = useUpdater();
   if (!updatesSupported()) {
+    const copy = updateUnavailableCopy(isTauri());
     return (
       <SettingsGroup title="Updates">
-        <SettingsRow label="Updates come with the Burf app" description="This page is running in a browser, which has nothing to update." />
+        <SettingsRow label={copy.label} description={copy.description} />
       </SettingsGroup>
     );
   }

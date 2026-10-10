@@ -113,6 +113,7 @@ export function PhoneSection() {
       </SettingsGroup>
 
       <Notifications boxes={paired.map((p) => p.name)} phone={phone} onChange={change} />
+      <div aria-hidden className="h-24" />
 
       <ConfirmDialog
         open={!!rotate}

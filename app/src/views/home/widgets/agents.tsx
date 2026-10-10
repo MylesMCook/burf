@@ -103,13 +103,7 @@ export function NeedsYouWidget() {
   const loading = useAgentsLoading();
   const offline = useOfflineBoxes();
   if (loading && !rows.length) return <WidgetSkeleton rows={Math.min(lines, 3)} />;
-  if (!rows.length)
-    return (
-      <div className="flex h-full flex-col">
-        <WidgetEmpty scene="calm" title="Nothing needs you" hint="An agent that asks for a permission or an answer shows here first." />
-        <OfflineNote boxes={offline} />
-      </div>
-    );
+  if (!rows.length) return offline.length ? <OfflineNote boxes={offline} /> : null;
   const shown = rows.slice(0, fitRows(height, 54));
   return (
     <div className="flex flex-col gap-0.5">
@@ -187,13 +181,7 @@ export function WorkingWidget() {
   const loading = useAgentsLoading();
   const offline = useOfflineBoxes();
   if (loading && !rows.length) return <WidgetSkeleton rows={Math.min(lines, 3)} />;
-  if (!rows.length)
-    return (
-      <div className="flex h-full flex-col">
-        <WidgetEmpty scene="moored" title="No agent is working" hint="Describe a task above and an agent starts on it." />
-        <OfflineNote boxes={offline} />
-      </div>
-    );
+  if (!rows.length) return offline.length ? <OfflineNote boxes={offline} /> : null;
   const shown = rows.slice(0, fitRows(height, 48));
   return (
     <div className="flex flex-col gap-0.5">
@@ -278,7 +266,7 @@ export function FinishedWidget() {
   const loading = useAgentsLoading();
   const entries = useReview((s) => s.entries);
   if (loading && !rows.length) return <WidgetSkeleton rows={Math.min(lines, 3)} />;
-  if (!rows.length) return <WidgetEmpty scene="bottle" title="Nothing finished yet" hint="Turns that end wait here for a look." />;
+  if (!rows.length) return null;
   const shown = rows.slice(0, rows.length > lines ? fitRows(height, 36) : lines);
   return (
     <div className="flex flex-col">

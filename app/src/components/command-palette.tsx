@@ -75,6 +75,7 @@ import { useRegistry } from "@/plugins/registry";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { openAttempts, openComposer } from "@/lib/composer";
 import { defaultScope } from "@/views/automations/flows/project-label";
+import { isSettingsPageQuery } from "@/lib/palette-query";
 import { placeLabel, worktreeLabel } from "@/lib/worktree-names";
 
 // Settings' sections ⌘K goes to, with words they answer to besides their name.
@@ -340,9 +341,10 @@ export function CommandPalette() {
 
     // Searching: everything, and ways to make what is not there.
     const url = resolveUrl(q);
+    const settingsNames = [...SETTINGS_SECTIONS.map(([, label]) => label), "Developer", "Notifications"];
     const make: Item[] = [
       ...(url ? [{ value: `open:${url}`, label: `Open ${q} in a browser tab`, detail: url, icon: slot(<ArrowUpRightIcon />), run: go(() => openBrowserAt(url)) }] : []),
-      { value: `new-worktree:${q}`, label: `New task from "${q}"`, icon: slot(<GitBranchPlusIcon />), run: go(() => st.openNewWorktree({ name: q })) },
+      ...(isSettingsPageQuery(q, settingsNames) ? [] : [{ value: `new-worktree:${q}`, label: `New task from "${q}"`, icon: slot(<GitBranchPlusIcon />), run: go(() => st.openNewWorktree({ name: q })) }]),
     ];
     return [
       { value: "Sessions", items: sessions.map(sessionItem) },
