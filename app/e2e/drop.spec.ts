@@ -47,7 +47,7 @@ test("a file dropped where nothing takes it doesn't replace the app, and a hint 
   expect(await fire(page, WIDGET, "drop")).toBe(true);
   await expect(hint).not.toHaveAttribute("data-shown");
   expect(page.url()).toBe(url);
-  await expect(page.getByRole("heading", { name: "What should your agents work on?" })).toBeVisible();
+  await expect(page.getByTestId("task-composer").getByRole("textbox", { name: "What should your agents work on?" })).toBeVisible();
 
   // The app's own drags (a project, a tab, a widget) are left alone.
   expect(await fire(page, WIDGET, "dragover", false)).toBe(false);

@@ -11,7 +11,7 @@ test("a fresh install starts with Labs on and the harbour home", async ({ app })
   const prefs = (await app.stored("berth.prefs")) as Saved;
   expect(prefs).toMatchObject({ labs: true, labsChosen: false, closeAgents: "stop", version: 3 });
   await expect(app.page.getByTestId("nav-home")).toHaveText(/Home/);
-  await expect(app.page.getByRole("heading", { name: "What should your agents work on?" })).toBeVisible();
+  await expect(app.page.getByTestId("task-composer").getByRole("textbox", { name: "What should your agents work on?" })).toBeVisible();
 });
 
 test("prefs an older Burf saved move to this version's defaults", async ({ app }) => {

@@ -30,6 +30,20 @@ fi
 has() { printf '%s\n' "$changed" | grep -q "$1"; }
 fail=0
 
+# Go and browser fixtures use isolated data, so their checks can run together.
+go_pid=""
+if has '\.go$'; then
+	pkgs="$(printf '%s\n' "$changed" | grep '\.go$' | xargs -n1 dirname | sort -u | while read -r d; do if [ -d "$d" ]; then printf './%s ' "$d"; fi; done)"
+	if [ -n "$pkgs" ]; then
+		# shellcheck disable=SC2086 # the package paths are separate words
+		(
+			go vet $pkgs && go test $pkgs
+		) &
+		go_pid=$!
+	fi
+fi
+
+
 if has '^app/'; then
 	specs="$(printf '%s\n' "$changed" | node scripts/e2e-pick.mjs | tr '\n' ' ')"
 	(
@@ -59,14 +73,6 @@ if has '^app/'; then
 	echo "app: type-check, unit tests, specs: ${specs:-none}"
 fi
 
-if has '\.go$'; then
-	pkgs="$(printf '%s\n' "$changed" | grep '\.go$' | xargs -n1 dirname | sort -u | while read -r d; do if [ -d "$d" ]; then printf './%s ' "$d"; fi; done)"
-	if [ -n "$pkgs" ]; then
-		# shellcheck disable=SC2086 # the package paths are separate words
-		{ go vet $pkgs && go test $pkgs; } || fail=1
-		echo "go: vet and tests of $pkgs"
-	fi
-fi
 
 if has '^scripts/.*\.mjs$'; then
 	node --test scripts/*.test.mjs > /dev/null 2>&1 || { echo "SCRIPT TESTS FAILED"; node --test scripts/*.test.mjs 2>&1 | grep -E "^not ok|✖" | head; fail=1; }
@@ -74,6 +80,11 @@ if has '^scripts/.*\.mjs$'; then
 fi
 if has '\.sh$' && command -v shellcheck > /dev/null; then
 	shellcheck scripts/check-local.sh || fail=1
+fi
+
+if [ -n "$go_pid" ]; then
+	wait "$go_pid" || fail=1
+	echo "go: vet and tests of $pkgs"
 fi
 
 echo "check-local: $(($(date +%s) - T0)) s$([ "$fail" = 0 ] && echo ", passed" || echo ", FAILED")"

@@ -292,7 +292,7 @@ function MainView() {
       {view.kind === "local" && <Suspense fallback={<p role="status" {...stylex.props(styles.loading)}>Loading this computer...</p>}><LocalComputerView /></Suspense>}
       {view.kind === "automations" && <AutomationsView />}
       {view.kind === "review" && <ReviewView />}
-      {view.kind === "worktrees" && <WorktreesView />}
+      {view.kind === "worktrees" && <WorktreesView key={view.box ?? "all"} box={view.box} />}
       {view.kind === "project" && <ProjectView key={`${view.box}/${view.location}`} box={view.box} location={view.location} />}
       {view.kind === "settings" && <SettingsView />}
       {view.kind === "plugin" && <PluginScreenView screen={view.screen} />}

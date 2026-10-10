@@ -24,7 +24,8 @@ for (const width of [1440, 720]) test(`scoped approvals and compact activity at 
     await expect(pane.getByRole("button", { name: "3 tool calls", exact: true })).toHaveAttribute("aria-expanded", "false");
     await pane.getByRole("button", { name: "3 tool calls", exact: true }).click();
     await pane.getByRole("button", { name: /^Running tool: git status 1(?:\s|$)/ }).click();
-    await expect(pane.locator('[data-slot="tool-fallback-trigger-icon"]').first()).toHaveClass(/animate-spin/);
+    await expect(pane.locator('[data-slot="tool-fallback-trigger-icon"]').first()).not.toHaveCSS("animation-name", "none");
+    await expect(pane.locator('[data-slot="tool-fallback-trigger-icon"]').first()).toHaveCSS("animation-play-state", "running");
     await expect(pane.locator('[data-slot="tool-fallback-content"]').first()).toContainText("git status 1");
     await pane.getByRole("button", { name: "3 tool calls", exact: true }).click();
     await expect(pane.getByText(/including other chats and projects/)).toBeVisible();
@@ -53,7 +54,7 @@ test("older backends show disabled choices and keep unsupported options out of m
   try {
     await app.open({ agent }); await app.page.getByTestId("nav-local").click(); await app.page.getByRole("button", { name: /Codex.*running/ }).click();
     const pane = app.page.getByTestId("local-chat");
-    await expect(pane.getByRole("status")).toHaveText("Working");
+    await expect(pane.getByRole("status", { name: "Chat status", exact: true })).toHaveText("Working");
     // A chat already at work is not a new chat: no greeting.
     await expect(pane.getByText("How can I help you today?", { exact: true })).toHaveCount(0);
     await expect(pane.getByLabel("Chat permissions")).toBeDisabled();
@@ -126,7 +127,7 @@ test("a turn the provider refuses keeps the chat, the draft and the previous set
     await draft.fill("Try this");
     await pane.getByRole("button", { name: "Send message" }).click();
     await expect(pane.getByText(/Codex did not start this turn: unsupported model/).first()).toBeVisible();
-    await expect(pane.getByRole("status")).toHaveText("Ready");
+    await expect(pane.getByRole("status", { name: "Chat status", exact: true })).toHaveText("Ready");
     await expect(draft).toHaveValue("Try this");
     await expect(pane.getByRole("article")).toHaveCount(0);
     await expect(pane.getByLabel("Chat model")).toHaveText("Synthetic modelmedium");

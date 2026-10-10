@@ -140,15 +140,19 @@ const SORTS: { value: Sort; label: string }[] = [
 // WorktreesView is every worktree on every box in one table, to see where
 // each stands against its base and act on many at once: sync, pause, stop,
 // delete. A row opens its latest chat. History stays on the sheet.
-export function WorktreesView() {
-  const { rows, boxes, errors, loaded, patch } = useWorktrees();
+export function WorktreesView({ box }: { box?: string } = {}) {
+  const all = useWorktrees();
+  const { loaded, patch } = all;
+  const rows = box ? all.rows.filter((r) => r.box === box) : all.rows;
+  const boxes = box ? all.boxes.filter((b) => b === box) : all.boxes;
+  const errors = box ? Object.fromEntries(Object.entries(all.errors).filter(([name]) => name === box)) : all.errors;
   const onRowDone = useCallback((r: Row, p: Partial<Row>) => patch(r.box, r.location, r.name, p), [patch]);
   const { progress, summary, run, cancel, clear } = useBulk(onRowDone);
 
   const [query, setQuery] = useState("");
   // Boxes turned off; every box is on until one is turned off, as on the
   // Agent Dashboard.
-  const [hiddenBoxes, setHiddenBoxes] = useState<string[]>(() => load("berth.worktrees.hiddenBoxes", []));
+  const [hiddenBoxes, setHiddenBoxes] = useState<string[]>(() => box ? [] : load("berth.worktrees.hiddenBoxes", []));
   const [project, setProject] = useState("");
   const [flags, setFlags] = useState<Flag[]>([]);
   const [sort, setSort] = useState<Sort>(() => load("berth.worktrees.sort", "recent"));
@@ -164,7 +168,7 @@ export function WorktreesView() {
   const shownBoxes = shownOf(boxes, hiddenBoxes);
   const hideBoxes = (next: string[]) => {
     setHiddenBoxes(next);
-    save("berth.worktrees.hiddenBoxes", next);
+    if (!box) save("berth.worktrees.hiddenBoxes", next);
   };
 
   const projects = useMemo(() => [...new Set(rows.map((r) => r.location))].sort(), [rows]);
@@ -275,7 +279,7 @@ export function WorktreesView() {
   return (
     <div className={sx(paint.s0)}>
       <ViewHeader
-        title="Worktrees"
+        title={box ? `Worktrees on ${box}` : "Worktrees"}
         description={loaded ? [`${rows.length} on ${boxes.length} box${boxes.length === 1 ? "" : "es"}`, behind && `${behind} behind their base`, paused && `${paused} paused`].filter(Boolean).join(" · ") : undefined}
       />
 
@@ -285,7 +289,7 @@ export function WorktreesView() {
           <SearchIcon className={[sx(paint.s3), sx(paint.s13)].filter(Boolean).join(" ")} />
           <Input size="sm" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" inset="wide" aria-label="Search worktrees" />
         </div>
-        <BoxFilter boxes={boxes} hidden={hiddenBoxes} onChange={hideBoxes} />
+        {!box && <BoxFilter boxes={boxes} hidden={hiddenBoxes} onChange={hideBoxes} />}
         <div className={sx(paint.s4)}>
           <SimpleSelect aria-label="Project" size="sm" measure="grow" value={project} onChange={setProject} options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p, label: p }))]} />
         </div>

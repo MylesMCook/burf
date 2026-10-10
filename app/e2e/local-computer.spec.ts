@@ -5,7 +5,7 @@ const cwd = "C:\\Projects\\shop";
 const conversation = { id: "history-1", source: "codex" as const, title: "Checkout history", cwd, updated_at: "2026-01-01T12:00:00Z", read_only: true as const, can_continue: true };
 const session: { id: string; agent: "claude" | "codex"; cwd: string; state: "starting" | "running" | "idle" | "waiting" | "exited"; started_at: string; mode?: "chat" } = { id: "owned-1", agent: "claude", cwd, state: "running", started_at: "2026-01-01T12:00:00Z" };
 
-async function localFixture(app: App, options: { supported?: boolean; available?: boolean; canFork?: boolean; continueReason?: string; failStart?: boolean; noBoxes?: boolean; mobile?: boolean; failHistory?: boolean; outputFailOnce?: boolean; inputFailOnce?: boolean; source?: "claude" | "codex"; forkGate?: Promise<void>; forkResponseFailOnce?: boolean; forkError?: { status: number; message: string }; agents?: { id: "claude" | "codex"; available: boolean; can_chat?: boolean; can_fork?: boolean }[]; conversations?: (typeof conversation)[]; sessions?: (typeof session)[]; startGate?: Promise<void>; failMessage?: boolean } = {}) {
+async function localFixture(app: App, options: { structuredContinue?: boolean; supported?: boolean; available?: boolean; canFork?: boolean; continueReason?: string; failStart?: boolean; noBoxes?: boolean; mobile?: boolean; failHistory?: boolean; outputFailOnce?: boolean; inputFailOnce?: boolean; source?: "claude" | "codex"; forkGate?: Promise<void>; forkResponseFailOnce?: boolean; forkError?: { status: number; message: string }; agents?: { id: "claude" | "codex"; available: boolean; can_chat?: boolean; can_fork?: boolean }[]; conversations?: (typeof conversation)[]; sessions?: (typeof session)[]; startGate?: Promise<void>; failMessage?: boolean } = {}) {
   const agent = await fakeAgent();
   const calls: { method: string; path: string; body: unknown }[] = [];
   let running = true;
@@ -15,7 +15,7 @@ async function localFixture(app: App, options: { supported?: boolean; available?
   let forkResponseFailed = false;
   let launches = 0;
   let ownedSession: typeof session = { ...session, agent: "claude", state: "running" };
-  let chat: (typeof session & { thread_id: string; items: { id: string; kind: string; text: string }[]; approvals: never[] }) | undefined;
+  let chat: (typeof session & { thread_id: string; history_id?: string; history_before?: number; items: { id: string; kind: string; text: string }[]; approvals: never[] }) | undefined;
   const history = { ...conversation, source: options.source ?? conversation.source, can_continue: !options.continueReason, continue_reason: options.continueReason };
   if (options.noBoxes) await app.context.route(`${agent.url}/v1/status`, (route) => route.fulfill({ json: { boxes: [], forwards: [], routes: [], proxy: { port: 1377, url_port: 1377 } } }));
   await app.context.route(`${agent.url}/v1/local**`, async (route) => {
@@ -24,13 +24,13 @@ async function localFixture(app: App, options: { supported?: boolean; available?
     calls.push({ method: req.method(), path: url.pathname + url.search, body: req.postDataJSON() });
     let body: unknown;
     let status = 200;
-    if (url.pathname === "/v1/local") body = { supported: options.supported ?? true, name: "work-hp", home: cwd, agents: options.agents ?? [{ id: "claude", available: options.available ?? true, can_fork: options.canFork ?? false }, { id: "codex", available: options.canFork ?? false, can_fork: options.canFork ?? false }], sessions: [...(options.sessions ?? []), ...(started ? [{ ...ownedSession, state: running ? ownedSession.state : "exited" }] : [])] };
+    if (url.pathname === "/v1/local") body = { supported: options.supported ?? true, name: "work-hp", home: cwd, agents: options.agents ?? [{ id: "claude", available: options.available ?? true, can_fork: options.canFork ?? false, can_continue_chat: options.structuredContinue }, { id: "codex", available: options.canFork ?? false, can_fork: options.canFork ?? false, can_continue_chat: options.structuredContinue }], sessions: [...(options.sessions ?? []), ...(started ? [{ ...ownedSession, state: running ? ownedSession.state : "exited" }] : [])] };
     else if (url.pathname === "/v1/local/conversations") { status = options.failHistory ? 500 : 200; body = options.failHistory ? { error: "History scan failed" } : options.conversations ?? [history]; }
-    else if (url.pathname === "/v1/local/conversations/history-1") body = url.searchParams.has("before")
+    else if (url.pathname === "/v1/local/conversations/history-1") body = url.searchParams.has("before") && url.searchParams.get("before") !== "500"
       ? { items: [{ kind: "user", id: "older", off: 0, text: "Earlier request" }], more: false, start: 0 }
       : { items: [{ kind: "user", id: "u1", off: 100, text: "My saved request" }, { kind: "text", id: "a1", off: 200, text: "Saved response" }, { kind: "ask", id: "ask1", off: 300, tool: "Run", detail: "Historical permission", choices: [{ key: "yes", label: "Allow" }] }], more: true, start: 100 };
-    else if ((url.pathname === "/v1/local/sessions" || url.pathname === "/v1/local/chats" || url.pathname === "/v1/local/conversations/history-1/fork") && req.method() === "POST") {
-      if (url.pathname.endsWith("/fork")) {
+    else if ((url.pathname === "/v1/local/sessions" || url.pathname === "/v1/local/chats" || url.pathname === "/v1/local/conversations/history-1/fork" || url.pathname === "/v1/local/conversations/history-1/continue") && req.method() === "POST") {
+      if ((url.pathname.endsWith("/fork") || url.pathname.endsWith("/continue"))) {
         ownedSession = { ...session, agent: history.source };
         if (options.forkGate) await options.forkGate;
       }
@@ -39,15 +39,19 @@ async function localFixture(app: App, options: { supported?: boolean; available?
         chat = { ...ownedSession, id: "chat-1", agent: "codex", mode: "chat", cwd: req.postDataJSON().cwd, state: "idle", thread_id: "thread-1", items: [], approvals: [] };
         ownedSession = chat;
       }
+      if (url.pathname.endsWith("/continue")) {
+        chat = { ...ownedSession, id: "chat-1", agent: history.source, mode: "chat", state: "idle", history_id: history.id, history_before: 500, thread_id: "independent-fork", items: [], approvals: [] };
+        ownedSession = chat;
+      }
       if (options.startGate) await options.startGate;
-      const failure = url.pathname.endsWith("/fork") ? options.forkError : undefined;
+      const failure = (url.pathname.endsWith("/fork") || url.pathname.endsWith("/continue")) ? options.forkError : undefined;
       if (!options.failStart && !failure) {
         if (!started) launches++;
         started = true;
       }
       status = failure?.status ?? (options.failStart ? 400 : 200);
       body = failure ? { error: failure.message } : options.failStart ? { error: "Project folder does not exist" } : ownedSession;
-      if (url.pathname.endsWith("/fork") && options.forkResponseFailOnce && !forkResponseFailed) {
+      if ((url.pathname.endsWith("/fork") || url.pathname.endsWith("/continue")) && options.forkResponseFailOnce && !forkResponseFailed) {
         forkResponseFailed = true;
         await route.abort("connectionreset");
         return;
@@ -98,6 +102,62 @@ async function chooseLocalAtHome(app: App) {
 }
 
 test.beforeEach(() => mockOnly("isolated local-computer API"));
+
+for (const source of ["codex", "claude"] as const) test(`${source} history continues in an independent structured chat`, async ({ app }) => {
+  const { agent, calls, launches } = await localFixture(app, { source, canFork: true, structuredContinue: true });
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: "Checkout history", exact: true }).click();
+    await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
+    const chat = app.page.getByTestId("local-chat");
+    await expect(chat).toBeVisible();
+    await expect(chat.getByText("Saved response", { exact: true })).toBeVisible();
+    await chat.getByRole("textbox").fill("New question");
+    await chat.getByRole("button", { name: "Send message", exact: true }).click();
+    await expect(chat.getByText("Structured reply", { exact: true })).toBeVisible();
+    expect(calls.filter((c) => c.path.endsWith("/continue"))).toHaveLength(1);
+    expect(calls.filter((c) => c.path.endsWith("/fork"))).toHaveLength(0);
+    expect(calls.filter((c) => c.path.endsWith("/messages"))).toHaveLength(1);
+    expect(calls.some((c) => c.path === "/v1/local/conversations/history-1?before=500")).toBe(true);
+    await app.page.getByRole("button", { name: "Checkout history", exact: true }).click();
+    await expect(app.page.getByTestId("local-history").getByText("Saved response", { exact: true })).toBeVisible();
+    expect(launches()).toBe(1);
+  } finally { await agent.close(); }
+});
+
+test("local sidebar can be searched and folded with the keyboard", async ({ app }) => {
+  const { agent } = await localFixture(app);
+  try {
+    const row = app.page.getByTestId("nav-local");
+    const history = app.page.getByRole("button", { name: "Checkout history", exact: true });
+    await expect(history).toBeVisible();
+    await row.focus();
+    await row.press("ArrowLeft");
+    await expect(history).toBeHidden();
+    await row.press("ArrowRight");
+    await expect(history).toBeVisible();
+    await app.page.getByRole("textbox", { name: "Search local conversations" }).fill("no match");
+    await expect(history).toBeHidden();
+    await app.page.getByRole("textbox", { name: "Search local conversations" }).fill("shop");
+    await history.click();
+    await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
+    await row.click();
+    await expect(app.page.getByTestId("local-history")).toBeHidden();
+  } finally { await agent.close(); }
+});
+
+test("an unpaired Mac opens its supported setup path", async ({ app }) => {
+  const agent = await fakeAgent();
+  try {
+    await app.context.route(`${agent.url}/v1/local`, (route) => route.fulfill({ json: { supported: false, name: "", home: "", agents: [], sessions: [] } }));
+    await app.context.route(`${agent.url}/v1/boxes/local`, (route) => route.fulfill({ json: { supported: true, available: true, installed: false, owned: false, running: false, name: "myles-macbook-pro" } }));
+    await app.open({ agent });
+    await app.page.getByTestId("nav-local").click();
+    await expect(app.page.getByRole("dialog")).toBeVisible();
+    await expect(app.page.getByText("Local agents are unavailable on this computer.", { exact: true })).toHaveCount(0);
+    expect(agent.calls.filter((c) => c.startsWith("POST /v1/boxes/local"))).toHaveLength(0);
+  } finally { await agent.close(); }
+});
 
 for (const reason of [
   "Its folder, shop, is a relative path. Use a full folder path to continue here.",

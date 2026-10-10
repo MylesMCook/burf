@@ -33,7 +33,7 @@ export type View =
   | { kind: "project"; box: string; location: string }
   // run, when set, opens Review's Compare of an attempts run.
   | { kind: "review"; run?: { box: string; id: string } }
-  | { kind: "worktrees" }
+  | { kind: "worktrees"; box?: string }
   | { kind: "settings"; section?: string }
   | { kind: "plugin"; screen: string };
 

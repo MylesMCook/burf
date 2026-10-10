@@ -14,6 +14,8 @@ export interface LocalSession {
   cwd: string;
   state: "running" | "exited" | "idle" | "waiting" | "starting";
   mode?: "chat";
+  history_id?: string;
+  history_before?: number;
   started_at: string;
   exit_error?: string;
 }
@@ -21,7 +23,7 @@ export interface LocalComputer {
   supported: boolean;
   name: string;
   home: string;
-  agents: { id: LocalAgent; available: boolean; can_fork?: boolean; can_chat?: boolean }[];
+  agents: { id: LocalAgent; available: boolean; can_fork?: boolean; can_chat?: boolean; can_continue_chat?: boolean }[];
   sessions: LocalSession[];
 }
 export interface LocalConversation {
@@ -115,6 +117,7 @@ export const localApi = {
   history: (c: Client, id: string, before?: number, signal?: AbortSignal) => c.laptop<LocalHistoryPage>("GET", `/v1/local/conversations/${encodeURIComponent(id)}${before === undefined ? "" : `?before=${before}`}`, undefined, signal),
   start: (c: Client, agent: LocalAgent, cwd: string, signal?: AbortSignal) => launch(c.laptop<LocalSession>("POST", "/v1/local/sessions", { agent, cwd }, signal), signal),
   fork: (c: Client, id: string, signal?: AbortSignal) => launch(c.laptop<LocalSession>("POST", `/v1/local/conversations/${encodeURIComponent(id)}/fork`, undefined, signal), signal),
+  continueChat: (c: Client, id: string, signal?: AbortSignal) => launch(c.laptop<LocalSession>("POST", `/v1/local/conversations/${encodeURIComponent(id)}/continue`, undefined, signal), signal),
   stop: (c: Client, id: string) => c.laptop("DELETE", `/v1/local/sessions/${encodeURIComponent(id)}`),
   output: (c: Client, id: string, after: number, signal?: AbortSignal) => c.laptop<LocalOutput>("GET", `/v1/local/sessions/${encodeURIComponent(id)}/output?after=${after}`, undefined, signal),
   input: async (c: Client, id: string, data: string, signal?: AbortSignal) => {

@@ -20,6 +20,7 @@ export interface ChatTransport {
   // Terminal-backed transports already own their queue and its idempotency keys.
   queueOnServer?: boolean;
   snapshot?: ChatSnapshot;
+  prefixMessages?: readonly ThreadMessageLike[];
   readOnly?: boolean;
   loading?: boolean;
   hasEarlier?: boolean;

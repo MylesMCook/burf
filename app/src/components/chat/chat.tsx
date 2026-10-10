@@ -251,11 +251,13 @@ export function Chat({ transport, messageList, after, children }: { transport: C
   const dispatch = useRef<(message: AppendMessage) => Promise<void>>(async () => {});
   const queue = useMemo(() => createMessageQueue({ run: (message) => dispatch.current(message) }), []);
   const queueRunning = useRef(false);
+  const queueSnapshot = useRef<ChatSnapshot>();
   const pause = () => { queue.hold(); setQueuePaused(true); };
   const send = async (message: AppendMessage) => {
     if (transport.readOnly || !chat || !transport.message || pending.current || offline || chat.state === "exited") return;
     // Retire before the request: a response can be lost after the provider accepted it.
     queue.notifyBusy(); queueRunning.current = true;
+    queueSnapshot.current = chat;
     const text = withAttachments(message.content.flatMap((p) => p.type === "text" ? [p.text] : []).join("\n"), attachmentPaths(message.attachments ?? []));
     const choices = (message.runConfig?.custom?.choices ?? {}) as ChatOptions;
     submittedItems.current = new Set(chat.items.map((item) => item.id)); setSubmitted(text);
@@ -285,9 +287,9 @@ export function Chat({ transport, messageList, after, children }: { transport: C
   const [, refreshQueue] = useReducer((n: number) => n + 1, 0);
   useEffect(() => queue.subscribe(refreshQueue), [queue]);
   useEffect(() => {
-    if (offline || busy || !chat || chat.error || chat.state === "exited") { queue.hold(); return; }
+    if (pending.current || offline || busy || !chat || chat.error || chat.state === "exited" || chat.state !== state.current) { queue.hold(); return; }
     if (running && !queueRunning.current) { queue.notifyBusy(); queueRunning.current = true; }
-    if (!running && chat.state === "idle" && queueRunning.current) { queueRunning.current = false; queue.notifyIdle(); }
+    if (!running && chat.state === "idle" && queueRunning.current && chat !== queueSnapshot.current) { queueSnapshot.current = chat; queueRunning.current = false; queue.notifyIdle(); }
     if (!queuePaused) queue.release();
   }, [queue, chat, offline, busy, running, queuePaused]);
   const dictation = useMemo<DictationAdapter | undefined>(() => {
@@ -307,7 +309,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
       } catch (error) { setVoiceError("Voice input failed. Check microphone access, or type your message."); throw error; }
     } };
   }, []);
-  const messages = useMemo(() => chat?.messages ?? turns.map(chatMessage), [chat?.messages, turns]);
+  const messages = useMemo(() => [...(transport.prefixMessages ?? []), ...(chat?.messages ?? turns.map(chatMessage))], [transport.prefixMessages, chat?.messages, turns]);
   const runtime = useExternalStoreRuntime({
     messages, convertMessage: (message) => message,
     isRunning: running, isLoading: transport.loading ?? (!chat && !offline),
@@ -363,7 +365,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
   return <div data-testid={transport.testId} className={sx(paint.s5)}>
     {!transport.readOnly && <header className={sx(paint.s6)}>
       <Tip label={session.cwd} width="lg"><span className={sx(paint.s7)}>{named ?? session.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? session.cwd}</span></Tip>
-      <span role="status" className={sx(paint.s8)}>{offline ? "Disconnected" : chat?.state === "waiting" ? chat.approvals.length ? `Waiting for approval (${chat.approvals.length})` : "Waiting for your answer" : running ? "Working" : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span>
+      <span role="status" aria-label="Chat status" className={sx(paint.s8)}>{offline ? "Disconnected" : chat?.state === "waiting" ? chat.approvals.length ? `Waiting for approval (${chat.approvals.length})` : "Waiting for your answer" : running ? "Working" : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span>
       <div className={sx(paint.s9)}>
         <WorktreeArtChip wt={artifacts} className={sx(paint.s10)} />
         <Tip label="Refresh chat"><Button data-autofocus={!chat || undefined} size="icon-sm" variant="ghost" aria-label="Refresh chat" disabled={busy} onClick={() => void load()}><RotateCwIcon /></Button></Tip>

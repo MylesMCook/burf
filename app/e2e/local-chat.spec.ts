@@ -39,10 +39,10 @@ for (const provider of ["codex", "claude"] as const) test(`a new local ${provide
     await app.page.getByRole("button", { name: "Refresh local conversations", exact: true }).click();
     disconnected = true;
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
-    await expect(app.page.getByTestId("local-chat").getByRole("status")).toHaveText("Disconnected");
+    await expect(app.page.getByTestId("local-chat").getByRole("status", { name: "Chat status", exact: true })).toHaveText("Disconnected");
     disconnected = false;
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
-    await expect(app.page.getByTestId("local-chat").getByRole("status")).toHaveText("Ready");
+    await expect(app.page.getByTestId("local-chat").getByRole("status", { name: "Chat status", exact: true })).toHaveText("Ready");
     expect(starts).toEqual([{ cwd: chat.cwd, ...(provider === "claude" ? { agent: provider } : {}) }]);
     expect(calls.filter((c) => c.endsWith("/messages"))).toHaveLength(1);
     expect(calls.some((c) => c.endsWith("/input") || c === "POST /v1/local/sessions")).toBe(false);

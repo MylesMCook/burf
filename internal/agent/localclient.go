@@ -51,7 +51,7 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 		agents := make([]map[string]any, 0, 2)
 		for _, id := range []string{"claude", "codex"} {
 			command := a.localClient.commands[id]
-			agents = append(agents, map[string]any{"id": id, "available": command.Program != "", "can_fork": command.CanFork, "can_chat": command.CanChat})
+			agents = append(agents, map[string]any{"id": id, "available": command.Program != "", "can_fork": command.CanFork, "can_chat": command.CanChat, "can_continue_chat": command.Program != "" && command.CanChat && command.CanFork})
 		}
 		sessions := make([]any, 0)
 		for _, s := range a.localClient.manager.List() {

@@ -412,6 +412,9 @@ export function LocalComputerView() {
     if (!openedHistory) return;
     select({ kind: "history", conversation: openedHistory });
   }, [openedHistory]);
+  useEffect(() => {
+    if (view.kind === "local" && !view.session && !view.history) select(undefined);
+  }, [view]);
 
   return <div className={[sx(paint.s0), sx(paint.s43)].filter(Boolean).join(" ")}>
     <ViewHeader title={local?.name || "This computer"} description="This computer" actions={<>
@@ -438,10 +441,11 @@ export function LocalComputerView() {
         {!loading && !projects.length && <p className={sx(paint.s29)}>{search ? "No matching conversations." : "No local conversations found."}</p>}
       </aside>}
       <section className={[sx(paint.s30), !selection && [sx(paint.s31), sx(paint.s46)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
-        {selection && <div className={[sx(paint.s32), sx(paint.s47)].filter(Boolean).join(" ")}><Button size="sm" variant="ghost" onClick={() => select(undefined)}><ArrowLeftIcon />Conversations</Button></div>}
-        {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={conversations.find((c) => c.id === selection.conversation.id) ?? selection.conversation} canFork={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_fork} onStart={(session, conversationID) => {
+        {selection && <div className={[sx(paint.s32), sx(paint.s47)].filter(Boolean).join(" ")}><Button size="sm" variant="ghost" onClick={() => useStore.getState().setView({ kind: "local" })}><ArrowLeftIcon />Conversations</Button></div>}
+        {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={conversations.find((c) => c.id === selection.conversation.id) ?? selection.conversation} canFork={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_fork} canContinueChat={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_continue_chat} onStart={(session, conversationID) => {
           changeSession(session);
-          select((current) => current?.kind === "history" && current.conversation.id === conversationID ? { kind: "session", session } : current);
+          const current = useStore.getState().view;
+          if (current.kind === "local" && current.history?.id === conversationID) useStore.getState().setView({ kind: "local", session });
         }} />}
         {selection?.kind === "session" && (selection.session.mode === "chat" ? <LocalChat key={selection.session.id} client={client} session={selection.session} onChange={changeSession} /> : <LocalTerminal key={selection.session.id} client={client} session={selection.session} onChange={changeSession} />)}
         {!selection && <div className={sx(paint.s33)}>Select a conversation or start an agent.</div>}
@@ -450,7 +454,7 @@ export function LocalComputerView() {
   </div>;
 }
 
-function LocalHistory({ client, conversation, canFork, onStart }: { client: Client; conversation: LocalConversation; canFork: boolean; onStart(session: LocalSession, conversationID: string): void }) {
+function LocalHistory({ client, conversation, canFork, canContinueChat, onStart }: { client: Client; conversation: LocalConversation; canFork: boolean; canContinueChat: boolean; onStart(session: LocalSession, conversationID: string): void }) {
   const [page, setPage] = useState<LocalHistoryPage>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -496,7 +500,7 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
   return <>
     <div className={sx(paint.s34)}><Tip label={conversation.title || undefined} width="lg"><h2 className={sx(paint.s35)}>{conversation.title}</h2></Tip><span className={sx(paint.s36)}>Read-only</span></div>
     <div className={sx(paint.s37)}>
-      <Tip label={canFork ? "Continue as a new chat; the original stays unchanged" : "Installed CLI does not support continuing a copy"}>
+      <Tip label={canFork ? `Continue as a new ${canContinueChat ? "chat" : "terminal"}; the original stays unchanged` : "Installed CLI does not support continuing a copy"}>
         <Button size="sm" variant="outline" disabled={!canContinue || starting} aria-describedby={continueReason ? "local-continue-reason" : undefined} onClick={async () => {
           if (!canContinue || startingRef.current) return;
           startingRef.current = true;
@@ -504,7 +508,7 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
           launch.current = controller;
           setStarting(true); setStartError("");
           try {
-            const session = await localApi.fork(client, conversation.id, controller.signal);
+            const session = await (canContinueChat ? localApi.continueChat : localApi.fork)(client, conversation.id, controller.signal);
             if (!controller.signal.aborted) onStart(session, conversation.id);
           }
           catch (e) { if (!controller.signal.aborted) setStartError(errorMessage(e)); }

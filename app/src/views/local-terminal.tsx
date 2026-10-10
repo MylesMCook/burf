@@ -9,6 +9,7 @@ import { useActiveTheme } from "@/hooks/use-theme";
 import { type Client } from "@/lib/api";
 import { useCustomTerminalPrefs } from "@/lib/custom-fonts";
 import { errorMessage } from "@/lib/format";
+import { disposeXterm } from "@/lib/dispose-xterm";
 import { localAgentName, localApi, type LocalSession } from "@/lib/local-computer";
 import "@xterm/xterm/css/xterm.css";
 
@@ -169,7 +170,7 @@ export function LocalTerminal({ client, session, onChange }: { client: Client; s
       clearTimeout(resizeTimer);
       observer.disconnect();
       input.dispose();
-      terminal.dispose();
+      disposeXterm(terminal);
       terminalRef.current = null;
     };
   }, [client, session.id, attempt, onChange, prefs]);

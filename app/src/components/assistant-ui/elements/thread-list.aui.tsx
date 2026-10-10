@@ -184,7 +184,7 @@ const paint = stylex.create({
   },
   s16: {
     "backgroundColor": {
-      "[data-state=open]": "var(--accent)",
+      ":has([data-state=open])": "var(--accent)",
     },
     "position": "absolute",
     "insetInlineEnd": "6px",
@@ -195,7 +195,7 @@ const paint = stylex.create({
     "padding": "0px",
     "opacity": {
       "default": 0,
-      "[data-state=open]": 1,
+      ":has([data-state=open])": 1,
     },
     ":is(:hover > &)": {
       "opacity": 1,
@@ -725,15 +725,19 @@ const ThreadListItemRename: FC<{
 const ThreadListItemMore: FC<{ onRename: () => void }> = ({ onRename }) => {
   return (
     <ThreadListItemMorePrimitive.Root sharedFocusGroup>
-      <ThreadListItemMorePrimitive.Trigger asChild>
-        <span className={sx(paint.s16)}><Button
-          variant="ghost"
-          size="icon"
-          data-slot="aui_thread-list-item-more">
-          <MoreHorizontalIcon className={sx(paint.s17)} />
-          <span className={sx(paint.s18)}>More options</span>
-        </Button></span>
-      </ThreadListItemMorePrimitive.Trigger>
+      <span className={sx(paint.s16)}>
+        <ThreadListItemMorePrimitive.Trigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            fill
+            data-slot="aui_thread-list-item-more"
+          >
+            <MoreHorizontalIcon className={sx(paint.s17)} />
+            <span className={sx(paint.s18)}>More options</span>
+          </Button>
+        </ThreadListItemMorePrimitive.Trigger>
+      </span>
       <ThreadListItemMorePrimitive.Content
         side="right"
         align="start"

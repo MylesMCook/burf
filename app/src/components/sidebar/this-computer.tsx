@@ -3,12 +3,14 @@ import { ChevronRightIcon, MessageSquareIcon, MonitorIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Tip } from "@/components/tip";
+import { Input } from "@/components/ui/input";
 import { SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar";
 import { localAgentName, localApi, publishLocalThreads, useLocalComputer, useLocalThreadList, type LocalConversation, type LocalSession } from "@/lib/local-computer";
 import { useLocalBox } from "@/lib/local-box";
 import { useStore } from "@/lib/store";
 import { thisComputerName } from "@/lib/this-computer";
 import { color, radius } from "@/styles/tokens.stylex";
+import { openAddBox } from "@/views/onboarding/add-box-dialog";
 
 const styles = stylex.create({
   local: {
@@ -28,27 +30,35 @@ const styles = stylex.create({
   folded: { transform: "rotate(90deg)" },
   text: { minWidth: 0 },
   name: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, color: color.foreground },
-  sub: { display: "block", fontSize: 10, color: color.mutedForeground },
+  sub: { display: "block", fontSize: 12, color: color.mutedForeground },
+  search: { paddingLeft: 8, paddingRight: 8, paddingBottom: 4 },
   chat: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
 });
 
 function useComputerName() {
   const local = useLocalComputer();
   const box = useLocalBox();
-  return { local, name: thisComputerName(local, box.status?.name) };
+  return { local, box: box.status?.box, name: thisComputerName(local, box.status?.name) };
+}
+
+function openComputer(supported: boolean | undefined, box: string | undefined) {
+  if (supported) useStore.getState().setView({ kind: "local" });
+  else if (box) useStore.getState().setView({ kind: "worktrees", box });
+  else openAddBox();
 }
 
 // This computer, in the one sidebar. Chats that belong to this machine sit
 // under the row. A Mac still gets the row from its hostname when native
 // sessions are not available; it does not invent chats.
 export function ThisComputerRow() {
-  const { local, name } = useComputerName();
+  const { local, box, name } = useComputerName();
   const client = useStore((s) => s.client);
   const view = useStore((s) => s.view);
   const sessions = useLocalThreadList((s) => s.sessions);
   const conversations = useLocalThreadList((s) => s.conversations);
   const [collapsed, setCollapsed] = useState(false);
-  const active = view.kind === "local" && !view.session && !view.history;
+  const [search, setSearch] = useState("");
+  const active = view.kind === "local" && !view.session && !view.history || view.kind === "worktrees" && !!box && view.box === box;
 
   useEffect(() => {
     if (!client || !local?.supported) return;
@@ -69,6 +79,7 @@ export function ThisComputerRow() {
   if (!name) return null;
   const chats = local?.supported ? { sessions: [...sessions].sort((a, b) => b.started_at.localeCompare(a.started_at)), conversations: [...conversations].sort((a, b) => b.updated_at.localeCompare(a.updated_at)) } : { sessions: [], conversations: [] };
   const count = chats.sessions.length + chats.conversations.length;
+  const matches = (text: string) => text.toLowerCase().includes(search.trim().toLowerCase());
   return (
     <div>
       <Tip label={`This computer: ${name}`} side="right">
@@ -78,7 +89,13 @@ export function ThisComputerRow() {
           aria-label={`This computer: ${name}`}
           aria-current={active ? "page" : undefined}
           aria-expanded={count > 0 ? !collapsed : undefined}
-          onClick={() => useStore.getState().setView({ kind: "local" })}
+          onClick={() => openComputer(local?.supported, box)}
+          onKeyDown={(e) => {
+            if (count && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+              e.preventDefault();
+              setCollapsed(e.key === "ArrowLeft");
+            }
+          }}
           {...stylex.props(styles.local, styles.wide, active && styles.on)}
         >
           {count > 0 && (
@@ -99,10 +116,13 @@ export function ThisComputerRow() {
         </button>
       </Tip>
       {count > 0 && !collapsed && (
+        <>
+        <div {...stylex.props(styles.search)}><Input size="sm" aria-label="Search local conversations" placeholder="Search conversations" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         <SidebarMenuSub indent="repo">
-          {chats.sessions.map((s) => <SessionChat key={s.id} session={s} />)}
-          {chats.conversations.map((c) => <HistoryChat key={c.id} conversation={c} />)}
+          {chats.sessions.filter((s) => matches(`${localAgentName(s.agent)} ${s.cwd} ${s.state}`)).map((s) => <SessionChat key={s.id} session={s} />)}
+          {chats.conversations.filter((c) => matches(`${c.title} ${c.cwd} ${localAgentName(c.source)}`)).map((c) => <HistoryChat key={c.id} conversation={c} />)}
         </SidebarMenuSub>
+        </>
       )}
     </div>
   );
@@ -115,7 +135,7 @@ function SessionChat({ session }: { session: LocalSession }) {
     <SidebarMenuSubItem>
       <SidebarMenuSubButton render={<button type="button" aria-label={label} />} size="sm" density="row" isActive={active} onClick={() => useStore.getState().setView({ kind: "local", session })}>
         <MessageSquareIcon {...stylex.props(styles.icon)} />
-        <span {...stylex.props(styles.chat)}>{localAgentName(session.agent)}</span>
+        <span {...stylex.props(styles.chat)}>{localAgentName(session.agent)} · {session.cwd.split(/[\\/]/).filter(Boolean).at(-1)}<span {...stylex.props(styles.sub)}>{session.state}</span></span>
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>
   );
@@ -135,8 +155,8 @@ function HistoryChat({ conversation }: { conversation: LocalConversation }) {
 }
 
 export function ThisComputerRail() {
-  const { name } = useComputerName();
-  const active = useStore((s) => s.view.kind === "local");
+  const { local, box, name } = useComputerName();
+  const active = useStore((s) => s.view.kind === "local" || s.view.kind === "worktrees" && !!box && s.view.box === box);
   if (!name) return null;
   return (
     <Tip label={`This computer: ${name}`} side="right">
@@ -145,7 +165,7 @@ export function ThisComputerRail() {
         data-testid="nav-local"
         aria-label={`This computer: ${name}`}
         aria-current={active ? "page" : undefined}
-        onClick={() => useStore.getState().setView({ kind: "local" })}
+        onClick={() => openComputer(local?.supported, box)}
         {...stylex.props(styles.local, styles.compact, active && styles.on)}
       >
         <MonitorIcon {...stylex.props(styles.icon)} />
