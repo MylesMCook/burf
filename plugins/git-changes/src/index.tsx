@@ -210,7 +210,7 @@ function DiffView({ file, run }: { file: FileChange; run: Run }) {
         <Badge variant="outline" size="sm">{describeCode(file.code).label}</Badge>
         <PickOne
           label="Diff layout"
-          className="ml-auto"
+          align="end"
           value={mode}
           onChange={(v: string) => setMode(v as "unified" | "split")}
           options={[

@@ -348,8 +348,8 @@ function Effects({ bg }: { bg: ChatBackground }) {
 function Advanced({ bg }: { bg: ChatBackground }) {
   const [open, setOpen] = useState(bg.original || bg.fit !== "cover" || bg.position !== "center");
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="mt-3">
-      <CollapsibleTrigger className="flex items-center gap-1 rounded-md px-1 py-0.5 font-medium text-[13px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+    <Collapsible open={open} onOpenChange={setOpen} space>
+      <CollapsibleTrigger look="quiet">
         <ChevronRightIcon className={cn("size-3.5 transition-transform", open && "rotate-90")} />
         Advanced
       </CollapsibleTrigger>
@@ -391,7 +391,7 @@ function Amount({ value, onChange, min = 0, max, step = 0.05, format = (v) => `$
   const row = useSettingsRow();
   return (
     <div className="flex w-56 items-center gap-3">
-      <Slider value={value} min={min} max={max} step={step} onValueChange={(v) => onChange(Array.isArray(v) ? v[0] : v)} aria-labelledby={row?.labelledBy} className="flex-1" />
+      <Slider aria-labelledby={row?.labelledBy} grow max={max} min={min} onValueChange={(v) => onChange(Array.isArray(v) ? v[0] : v)} step={step} value={value} />
       <span className="w-11 text-right text-muted-foreground text-xs tabular-nums">{format(value)}</span>
     </div>
   );

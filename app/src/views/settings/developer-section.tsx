@@ -184,8 +184,8 @@ export function DeveloperSection() {
             </Button>
           </SettingsRow>
         )}
-        <Collapsible className="px-4 py-3">
-          <CollapsibleTrigger className="group flex w-full items-center gap-1.5 text-left text-sm">
+        <Collapsible section>
+          <CollapsibleTrigger look="row" marker="group">
             <ChevronRightIcon className="size-3.5 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
             Agent status
             <span className="ml-auto text-muted-foreground text-xs">JSON</span>

@@ -125,12 +125,12 @@ export function NotificationsSection() {
               {/* Days are a multi-pick in PickOne's track: a day that's on is
                   raised, a day that's off sits flat and muted. */}
               <ToggleGroup
-                multiple
                 aria-label="Days"
-                size="sm"
-                value={dnd.days.map(String)}
+                multiple
                 onValueChange={(v) => setQuietHours({ days: (v as string[]).map(Number).sort() })}
-                className="gap-0.5 rounded-lg bg-muted p-0.5"
+                size="sm"
+                track
+                value={dnd.days.map(String)}
               >
                 {WEEK.map((i) => (
                   <Tip key={i} label={`${DAY_NAMES[i]}: ${dnd.days.includes(i) ? "quiet" : "not quiet"}`}>

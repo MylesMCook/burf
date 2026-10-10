@@ -491,9 +491,10 @@ export function NotificationCenter() {
           </div>
         ) : (
           <ScrollArea
-            className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:max-h-(--list-max)"
-            style={{ "--list-max": `calc(100dvh - ${chrome}px)` } as React.CSSProperties}
+            cap
+            grow
             scrollFade
+            style={{ "--list-max": `calc(100dvh - ${chrome}px)` } as React.CSSProperties}
           >
             <div ref={list} className="px-1.5 pt-1.5 pb-2">
               {needs.length + live.length > 0 ? (

@@ -108,7 +108,7 @@ export function RunsTab({ runs: legacy, boxes, names }: { runs: BoxFlowRun[]; bo
             Clear filters
           </Button>
         )}
-        <BoxFilter className="ml-auto" boxes={boxes} hidden={hidden} onChange={hide} />
+        <BoxFilter align="end" boxes={boxes} hidden={hidden} onChange={hide} />
       </div>
       {shown.length === 0 ? (
         <Empty className="rounded-xl border py-12">

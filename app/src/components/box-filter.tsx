@@ -1,5 +1,4 @@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { cn } from "@/lib/utils";
 
 // BoxFilter chooses which boxes a page covers. Pressed means shown: every
 // box starts pressed, turning one off hides what is on it, and the last
@@ -16,22 +15,23 @@ export function BoxFilter({
   hidden,
   onChange,
   label = "Boxes to show",
-  className,
+  align,
 }: {
   boxes: string[];
   hidden: string[];
   onChange(hidden: string[]): void;
   label?: string;
-  className?: string;
+  align?: "end";
 }) {
   if (boxes.length < 2) return null;
   const shown = boxes.filter((b) => !hidden.includes(b));
   return (
     <ToggleGroup
+      align={align}
       multiple
+      shrink
       size="sm"
       variant="outline"
-      className={cn("shrink-0", className)}
       // A stored filter can hide every box there is now; show them all then.
       value={shown.length ? shown : boxes}
       onValueChange={(v) => {

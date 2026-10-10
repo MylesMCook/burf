@@ -9,7 +9,6 @@ import {
   type PropsWithChildren,
 } from "react";
 import { ChevronDownIcon, LoaderIcon } from "lucide-react";
-import { cva, type VariantProps } from "class-variance-authority";
 import { useScrollLock } from "@assistant-ui/react";
 import {
   Collapsible,
@@ -20,30 +19,19 @@ import { cn } from "@/lib/utils";
 
 const ANIMATION_DURATION = 200;
 
-const toolGroupVariants = cva("aui-tool-group-root group/tool-group w-full", {
-  variants: {
-    variant: {
-      outline: "rounded-lg border py-3",
-      ghost: "",
-      muted: "border-muted-foreground/30 bg-muted/30 rounded-lg border py-3",
-    },
-  },
-  defaultVariants: { variant: "outline" },
-});
-
 export type ToolGroupRootProps = Omit<
   React.ComponentProps<typeof Collapsible>,
   "open" | "onOpenChange"
-> &
-  VariantProps<typeof toolGroupVariants> & {
+> & {
+  variant?: "outline" | "ghost" | "muted";
+} & {
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
     defaultOpen?: boolean;
   };
 
 function ToolGroupRoot({
-  className,
-  variant,
+  variant = "outline",
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   defaultOpen = false,
@@ -75,11 +63,10 @@ function ToolGroupRoot({
       data-variant={variant ?? "outline"}
       open={isOpen}
       onOpenChange={handleOpenChange}
-      className={cn(
-        toolGroupVariants({ variant }),
-        "group/tool-group-root",
-        className,
-      )}
+      chrome={variant === "muted" ? "tint" : variant === "ghost" ? "none" : "outline"}
+      marker="aui-tool-group-root group/tool-group"
+      pad={variant === "ghost" ? "none" : "block"}
+      width="full"
       style={
         {
           "--animation-duration": `${ANIMATION_DURATION}ms`,
@@ -95,7 +82,6 @@ function ToolGroupRoot({
 function ToolGroupTrigger({
   count,
   active = false,
-  className,
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   count: number;
@@ -106,13 +92,8 @@ function ToolGroupTrigger({
   return (
     <CollapsibleTrigger
       data-slot="tool-group-trigger"
-      className={cn(
-        "aui-tool-group-trigger group/trigger flex origin-left items-center gap-2 text-sm transition-[color,scale] active:scale-[0.98]",
-        "group-data-[variant=ghost]/tool-group-root:text-muted-foreground group-data-[variant=ghost]/tool-group-root:hover:text-foreground group-data-[variant=ghost]/tool-group-root:py-1.5",
-        "group-data-[variant=outline]/tool-group-root:w-full group-data-[variant=outline]/tool-group-root:px-4",
-        "group-data-[variant=muted]/tool-group-root:w-full group-data-[variant=muted]/tool-group-root:px-4",
-        className,
-      )}
+      look="bundle"
+      marker="aui-tool-group-trigger group/trigger"
       {...props}
     >
       {active && (
@@ -148,23 +129,14 @@ function ToolGroupTrigger({
 }
 
 function ToolGroupContent({
-  className,
   children,
   ...props
 }: React.ComponentProps<typeof CollapsibleContent>) {
   return (
     <CollapsibleContent
       data-slot="tool-group-content"
-      className={cn(
-        "aui-tool-group-content relative overflow-hidden text-sm outline-none",
-        "group/collapsible-content ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none",
-        "data-closed:animate-collapsible-up",
-        "data-open:animate-collapsible-down",
-        "data-closed:fill-mode-forwards",
-        "data-closed:pointer-events-none",
-        "[--tw-duration:var(--animation-duration)]",
-        className,
-      )}
+      marker="aui-tool-group-content group/collapsible-content"
+      text="sm"
       {...props}
     >
       <div
@@ -226,5 +198,4 @@ export {
   ToolGroupRoot,
   ToolGroupTrigger,
   ToolGroupContent,
-  toolGroupVariants,
 };

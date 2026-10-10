@@ -128,7 +128,7 @@ function DiffPanel({ berth, box, location, worktree, path, main }: WorktreePanel
             <span className="@max-2xl:hidden shrink-0 text-muted-foreground text-xs">vs {ok.base}</span>
           </Tip>
         )}
-        <PickOne label="What to compare" className="ml-1" value={scope} onChange={(v: string) => setScope(v as Scope)} options={SCOPES.map((s) => ({ value: s.value, label: <Tip label={SCOPE_HELP[s.value]}><span>{s.label}</span></Tip> }))} />
+        <PickOne label="What to compare" nudge value={scope} onChange={(v: string) => setScope(v as Scope)} options={SCOPES.map((s) => ({ value: s.value, label: <Tip label={SCOPE_HELP[s.value]}><span>{s.label}</span></Tip> }))} />
         <span className="ml-auto flex shrink-0 items-center gap-2 text-xs tabular-nums">
           {ok && ok.files.length > 0 && (
             <span className="@max-3xl:hidden flex items-center gap-2">

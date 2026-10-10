@@ -7,13 +7,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import {
-  collapsePanel,
-  field,
-  mono,
-  ShimmerLabel,
-  SwapLabel,
-} from "./surfaces";
+import { field, mono, ShimmerLabel, SwapLabel } from "./surfaces";
 
 export interface ToolCallProps {
   label: string;
@@ -24,7 +18,6 @@ export interface ToolCallProps {
   running: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  className?: string;
 }
 
 export function ToolCall({
@@ -36,16 +29,10 @@ export function ToolCall({
   running,
   open,
   onOpenChange,
-  className,
 }: ToolCallProps) {
   return (
-    <Collapsible
-      data-slot="tool-call"
-      open={open}
-      onOpenChange={onOpenChange}
-      className={cn("w-full max-w-sm", className)}
-    >
-      <CollapsibleTrigger className="group/trigger text-foreground/55 hover:text-foreground/90 flex items-center gap-2 rounded-md py-1 text-[13.5px] transition-colors outline-none">
+    <Collapsible data-slot="tool-call" onOpenChange={onOpenChange} open={open} width="tool">
+      <CollapsibleTrigger look="tool" marker="group/trigger">
         <ChevronRightIcon className="size-3.5 shrink-0 opacity-60 transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] group-data-open/trigger:rotate-90 group-data-panel-open/trigger:rotate-90 motion-reduce:transition-none" />
         <SwapLabel active={running ? 0 : 1} className="text-start">
           <ShimmerLabel
@@ -70,7 +57,7 @@ export function ToolCall({
           )}
         </span>
       </CollapsibleTrigger>
-      <CollapsibleContent className={cn(collapsePanel, "outline-none")}>
+      <CollapsibleContent>
         <div className={cn(field, "mt-2 overflow-hidden rounded-2xl text-xs")}>
           <div className="px-3.5 pt-2.5 pb-2">
             <p className={cn(mono, "text-foreground/35 mb-1")}>Request</p>

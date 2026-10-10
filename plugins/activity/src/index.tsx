@@ -184,7 +184,7 @@ function ActivityScreen({ berth }: ScreenProps) {
             { value: "boxes", label: "Boxes" },
           ]}
         />
-        <BoxFilter className="ml-auto" boxes={boxes} hidden={hiddenBoxes} onChange={setHiddenBoxes} />
+        <BoxFilter align="end" boxes={boxes} hidden={hiddenBoxes} onChange={setHiddenBoxes} />
       </div>
 
       {shown.length === 0 ? (

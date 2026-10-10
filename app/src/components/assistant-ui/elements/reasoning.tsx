@@ -9,7 +9,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import {
   Collapsible,
@@ -22,24 +21,12 @@ export const ANIMATION_DURATION = 200;
 
 const ReasoningPreviewContext = createContext(false);
 
-const reasoningVariants = cva("aui-reasoning-root mb-4 w-full", {
-  variants: {
-    variant: {
-      outline: "rounded-lg border px-3 py-2",
-      ghost: "",
-      muted: "bg-muted/50 rounded-lg px-3 py-2",
-    },
-  },
-  defaultVariants: {
-    variant: "outline",
-  },
-});
-
 export type ReasoningRootProps = Omit<
   React.ComponentProps<typeof Collapsible>,
   "open" | "onOpenChange"
-> &
-  VariantProps<typeof reasoningVariants> & {
+> & {
+  variant?: "outline" | "ghost" | "muted";
+} & {
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
     defaultOpen?: boolean;
@@ -58,8 +45,7 @@ export type ReasoningRootProps = Omit<
   };
 
 function ReasoningRoot({
-  className,
-  variant,
+  variant = "outline",
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   defaultOpen = false,
@@ -105,10 +91,11 @@ function ReasoningRoot({
       data-variant={variant}
       open={isOpen}
       onOpenChange={handleOpenChange}
-      className={cn(
-        "group/reasoning-root",
-        reasoningVariants({ variant, className }),
-      )}
+      below
+      chrome={variant === "muted" ? "muted" : variant === "ghost" ? "none" : "outline"}
+      marker="aui-reasoning-root group/reasoning-root"
+      pad={variant === "ghost" ? "none" : "text"}
+      width="full"
       style={
         {
           "--animation-duration": `${ANIMATION_DURATION}ms`,
@@ -164,7 +151,6 @@ function ReasoningFade({
 function ReasoningTrigger({
   active,
   duration,
-  className,
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   active?: boolean;
@@ -175,10 +161,8 @@ function ReasoningTrigger({
   return (
     <CollapsibleTrigger
       data-slot="reasoning-trigger"
-      className={cn(
-        "aui-reasoning-trigger group/trigger text-muted-foreground hover:text-foreground flex max-w-[75%] origin-left items-center gap-2 py-1.5 text-sm transition-[color,scale] active:scale-[0.98]",
-        className,
-      )}
+      look="reason"
+      marker="aui-reasoning-trigger group/trigger"
       {...props}
     >
       <BrainIcon
@@ -209,7 +193,6 @@ function ReasoningTrigger({
 }
 
 function ReasoningContent({
-  className,
   children,
   ...props
 }: React.ComponentProps<typeof CollapsibleContent>) {
@@ -218,16 +201,9 @@ function ReasoningContent({
   return (
     <CollapsibleContent
       data-slot="reasoning-content"
-      className={cn(
-        "aui-reasoning-content text-muted-foreground relative overflow-hidden text-sm outline-none",
-        "group/collapsible-content ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none",
-        "data-closed:animate-collapsible-up",
-        "data-open:animate-collapsible-down",
-        "data-closed:fill-mode-forwards",
-        "data-closed:pointer-events-none",
-        "[--tw-duration:var(--animation-duration)]",
-        className,
-      )}
+      marker="aui-reasoning-content group/collapsible-content"
+      text="sm"
+      tone="muted"
       {...props}
     >
       <ReasoningFade side="top" />
@@ -325,5 +301,4 @@ export {
   ReasoningContent,
   ReasoningText,
   ReasoningFade,
-  reasoningVariants,
 };

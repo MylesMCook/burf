@@ -187,7 +187,7 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete,
               {showScope && (
                 <PickOne<Scope>
                   label="Commits to show"
-                  className="ml-auto shrink-0"
+                  align="end"
                   value={scope}
                   onChange={setScope}
                   options={[

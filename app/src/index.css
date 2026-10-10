@@ -228,6 +228,10 @@
     --dialog-edge: 0 1px color-mix(in oklab, black 4%, transparent);
     --toast-stack: color-mix(in srgb, var(--popover), black calc(1% * max(0, var(--toast-index, 0))));
     --tab-indicator: var(--background);
+    --separator-hot: var(--separator-shade);
+    --separator-press: var(--separator-shade);
+    --slider-thumb-border: var(--input);
+    --slider-ring: color-mix(in oklab, var(--ring) 24%, transparent);
 }
 
 .dark {
@@ -246,6 +250,10 @@
     --dialog-edge: 0 -1px color-mix(in oklab, white 6%, transparent);
     --toast-stack: color-mix(in srgb, var(--popover), black calc(6% * max(0, var(--toast-index, 0))));
     --tab-indicator: var(--input);
+    --separator-hot: color-mix(in oklab, var(--input) 64%, transparent);
+    --separator-press: var(--input);
+    --slider-thumb-border: var(--background);
+    --slider-ring: color-mix(in oklab, var(--ring) 48%, transparent);
     --destructive-foreground: var(--color-red-400);
     --info: var(--color-blue-500);
     --info-foreground: var(--color-blue-400);

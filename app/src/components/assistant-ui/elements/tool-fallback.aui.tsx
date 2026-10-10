@@ -45,7 +45,6 @@ export type ToolFallbackRootProps = Omit<
 };
 
 function ToolFallbackRoot({
-  className,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   defaultOpen = false,
@@ -74,12 +73,10 @@ function ToolFallbackRoot({
     <Collapsible
       ref={collapsibleRef}
       data-slot="tool-fallback-root"
+      marker="aui-tool-fallback-root group/tool-fallback-root"
       open={isOpen}
       onOpenChange={handleOpenChange}
-      className={cn(
-        "aui-tool-fallback-root group/tool-fallback-root w-full",
-        className,
-      )}
+      width="full"
       style={
         {
           "--animation-duration": `${ANIMATION_DURATION}ms`,
@@ -133,7 +130,6 @@ function ToolFallbackDuration({
 function ToolFallbackTrigger({
   toolName,
   status,
-  className,
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   toolName: string;
@@ -157,10 +153,8 @@ function ToolFallbackTrigger({
   return (
     <CollapsibleTrigger
       data-slot="tool-fallback-trigger"
-      className={cn(
-        "aui-tool-fallback-trigger group/trigger text-muted-foreground hover:text-foreground flex w-fit origin-left items-center gap-2 py-1.5 text-sm transition-[color,scale] active:scale-[0.98]",
-        className,
-      )}
+      look="status"
+      marker="aui-tool-fallback-trigger group/trigger"
       {...props}
     >
       <Icon
@@ -197,23 +191,14 @@ function ToolFallbackTrigger({
 }
 
 function ToolFallbackContent({
-  className,
   children,
   ...props
 }: React.ComponentProps<typeof CollapsibleContent>) {
   return (
     <CollapsibleContent
       data-slot="tool-fallback-content"
-      className={cn(
-        "aui-tool-fallback-content relative overflow-hidden text-sm outline-none",
-        "group/collapsible-content ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none",
-        "data-closed:animate-collapsible-up",
-        "data-open:animate-collapsible-down",
-        "data-closed:fill-mode-forwards",
-        "data-closed:pointer-events-none",
-        "[--tw-duration:var(--animation-duration)]",
-        className,
-      )}
+      marker="aui-tool-fallback-content group/collapsible-content"
+      text="sm"
       {...props}
     >
       <div

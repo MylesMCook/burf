@@ -11,13 +11,11 @@ export function AgentPicker({
   value,
   onChange,
   allowNone = false,
-  className,
 }: {
   presets: Pick<AgentPreset, "id" | "name">[];
   value: string;
   onChange(id: string): void;
   allowNone?: boolean;
-  className?: string;
 }) {
   const options = allowNone ? [{ id: "", name: "No agent" }, ...presets] : presets;
   return (
@@ -25,7 +23,6 @@ export function AgentPicker({
       label="Agent"
       value={value}
       onChange={onChange}
-      className={className}
       options={options.map((p) => ({
         value: p.id,
         label: p.name,

@@ -214,7 +214,7 @@ export function AddBoxFlow({
 
 function Trigger({ children }: { children: ReactNode }) {
   return (
-    <CollapsibleTrigger className="group flex w-full items-center gap-1.5 rounded text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <CollapsibleTrigger look="row" marker="group">
       <ChevronRightIcon className="size-3.5 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
       {children}
     </CollapsibleTrigger>

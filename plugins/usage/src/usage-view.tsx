@@ -94,7 +94,7 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
             {showBox && (
               <PickOne
                 label="Stack by"
-                className="ml-auto"
+                align="end"
                 value={stackBy}
                 onChange={(v: string) => setStackBy(v as "agent" | "box")}
                 options={[

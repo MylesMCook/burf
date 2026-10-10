@@ -181,10 +181,10 @@ function UsageScreen({ berth }: ScreenProps) {
         />
         {tab === "usage" ? (
           <>
-            <BoxFilter className="ml-auto" boxes={allBoxes} hidden={hiddenBoxes} onChange={setHiddenBoxes} />
+            <BoxFilter align="end" boxes={allBoxes} hidden={hiddenBoxes} onChange={setHiddenBoxes} />
             <PickOne
               label="Period"
-              className={allBoxes.length < 2 ? "ml-auto" : undefined}
+              align={allBoxes.length < 2 ? "end" : undefined}
               value={String(period)}
               onChange={(v: string) => setPeriod(Number(v) as Period)}
               options={[
@@ -196,7 +196,7 @@ function UsageScreen({ berth }: ScreenProps) {
           </>
         ) : (
           // Accounts are one box's at a time.
-          online.length > 1 && <PickOne label="Box" className="ml-auto" value={accountsBox} onChange={setPickedAccounts} options={online.map((b) => ({ value: b, label: b }))} />
+          online.length > 1 && <PickOne align="end" label="Box" value={accountsBox} onChange={setPickedAccounts} options={online.map((b) => ({ value: b, label: b }))} />
         )}
       </div>
 

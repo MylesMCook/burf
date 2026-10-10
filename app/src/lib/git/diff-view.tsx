@@ -89,7 +89,7 @@ export function DiffView({ file, run, base, comments }: { file: FileChange; run:
         </Badge>
         <PickOne<"unified" | "split">
           label="Diff layout"
-          className="ml-auto"
+          align="end"
           value={mode}
           onChange={(m) => {
             setMode(m);
