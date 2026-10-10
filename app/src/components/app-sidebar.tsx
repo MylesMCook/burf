@@ -87,6 +87,8 @@ export function AppSidebar() {
           <PlacesNav />
         </div>
 
+        <LocalComputerLink />
+
         <div className={cn("flex items-center justify-between pt-4 pr-2 pb-1 pl-3", noBoxes && "hidden")}>
           <span className="font-medium text-[11px] text-muted-foreground">Projects</span>
           <Menu>
@@ -134,7 +136,6 @@ export function AppSidebar() {
 
         {/* One context menu and one tooltip for every row in it. */}
         <RowLayer className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-          <LocalComputerLink />
           <Projects prefs={prefs} update={update} />
         </RowLayer>
 
@@ -173,15 +174,29 @@ function LocalComputerLink({ compact = false }: { compact?: boolean }) {
   const local = useLocalComputer();
   const active = useStore((s) => s.view.kind === "local");
   if (!local?.supported) return null;
+  if (compact) {
+    return (
+      <Tip label={`This computer: ${local.name}`} side="right">
+        <button type="button" data-testid="nav-local" aria-label={`This computer: ${local.name}`} aria-current={active ? "page" : undefined}
+          onClick={() => useStore.getState().setView({ kind: "local" })}
+          className={cn("inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground", active && "bg-sidebar-accent text-foreground")}>
+          <MonitorIcon className="size-4" />
+        </button>
+      </Tip>
+    );
+  }
   return (
-    <Tip label={`This computer: ${local.name}`} side="right">
-      <button type="button" data-testid="nav-local" aria-label={`This computer: ${local.name}`} aria-current={active ? "page" : undefined}
-        onClick={() => useStore.getState().setView({ kind: "local" })}
-        className={cn("flex items-center gap-2 rounded-md text-left text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground", compact ? "size-8 justify-center" : "mb-2 w-full px-2 py-2", active && "bg-sidebar-accent text-foreground")}>
-        <MonitorIcon className="size-3.5 shrink-0" />
-        {!compact && <span className="min-w-0"><span className="block truncate">{local.name}</span><span className="block text-[10px] text-muted-foreground">This computer</span></span>}
-      </button>
-    </Tip>
+    <div className="px-2 pt-3">
+      <div className="pb-1 pl-1 font-medium text-[11px] text-muted-foreground">This computer</div>
+      <Tip label={local.name} side="right">
+        <button type="button" data-testid="nav-local" aria-label={`This computer: ${local.name}`} aria-current={active ? "page" : undefined}
+          onClick={() => useStore.getState().setView({ kind: "local" })}
+          className={cn("flex h-side-row w-full items-center gap-1.5 rounded-md px-2 text-left text-[13px] text-foreground hover:bg-sidebar-accent", active && "bg-sidebar-accent")}>
+          <MonitorIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate">{local.name}</span>
+        </button>
+      </Tip>
+    </div>
   );
 }
 

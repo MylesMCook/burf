@@ -9,6 +9,7 @@ import { type Client } from "@/lib/api";
 import { openComposer } from "@/lib/composer";
 import { errorMessage } from "@/lib/format";
 import { localAgentName, localApi, type LocalComputer, type LocalConversation, type LocalHistoryPage, type LocalSession } from "@/lib/local-computer";
+import { folderName } from "@/lib/local-folders";
 import { useStore } from "@/lib/store";
 import { savedChatMessages } from "@/lib/saved-chat";
 import { cn } from "@/lib/utils";
@@ -83,12 +84,12 @@ export function LocalComputerView() {
         {!!local?.sessions?.length && <section className="pb-3">
           <h2 className="px-3 py-1 text-xs font-medium text-muted-foreground">Started in Burf</h2>
           {local.sessions.map((s) => <button key={s.id} type="button" onClick={() => select({ kind: "session", session: s })} className={cn("flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-accent", selection?.kind === "session" && selection.session.id === s.id && "bg-accent")}>
-            {s.mode === "chat" ? <MessageSquareIcon className="size-4 shrink-0" /> : <TerminalIcon className="size-4 shrink-0" />}<span className="min-w-0 flex-1"><span className="block truncate">{localAgentName(s.agent)}</span><span className="block truncate text-muted-foreground" title={s.cwd}>{s.cwd}</span></span><span className="text-muted-foreground">{s.state}</span>
+            {s.mode === "chat" ? <MessageSquareIcon className="size-4 shrink-0" /> : <TerminalIcon className="size-4 shrink-0" />}<span className="min-w-0 flex-1"><span className="block truncate">{localAgentName(s.agent)}</span><Tip label={s.cwd}><span className="block truncate text-muted-foreground">{folderName(s.cwd)}</span></Tip></span><span className="text-muted-foreground">{s.state}</span>
           </button>)}
         </section>}
         <h2 className="px-3 py-1 text-xs font-medium text-muted-foreground">Existing conversations</h2>
         {projects.map(([cwd, chats]) => <section key={cwd} className="pb-3">
-          <h3 className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground"><FolderIcon className="size-3.5 shrink-0" /><span className="truncate" title={cwd}>{cwd || "Unknown project"}</span></h3>
+          <h3 className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground"><FolderIcon className="size-3.5 shrink-0" /><Tip label={cwd || undefined}><span className="truncate">{folderName(cwd) || "Unknown project"}</span></Tip></h3>
           {chats.map((c) => <button type="button" key={c.id} onClick={() => select({ kind: "history", conversation: c })} className={cn("flex w-full items-start gap-2 px-3 py-2 text-left text-xs hover:bg-accent", selection?.kind === "history" && selection.conversation.id === c.id && "bg-accent")}>
             <MessageSquareIcon className="mt-0.5 size-3.5 shrink-0" /><span className="min-w-0"><span className="block truncate">{c.title || "Untitled conversation"}</span><span className="block text-muted-foreground">{localAgentName(c.source)} <time dateTime={c.updated_at}>{new Date(c.updated_at).toLocaleDateString()}</time></span></span>
           </button>)}
