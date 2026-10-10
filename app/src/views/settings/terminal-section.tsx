@@ -49,7 +49,7 @@ export function TerminalSection() {
       <TerminalPreview prefs={t} />
       <SettingsGroup title="Text">
         <SettingsRow label="Font" description="Uses Code font from Appearance unless you choose another font here.">
-          <SimpleSelect className="w-56" options={fonts} value={chosen ?? saved.fontFamily} onChange={pickFont} />
+          <SimpleSelect measure="56" options={fonts} value={chosen ?? saved.fontFamily} onChange={pickFont} />
         </SettingsRow>
         <SettingsRow label="Size" description="Or ⌘+ and ⌘− with a terminal focused; ⌘0 resets it.">
           <Stepper value={t.fontSize} min={9} max={24} onChange={(fontSize) => set({ fontSize })} />

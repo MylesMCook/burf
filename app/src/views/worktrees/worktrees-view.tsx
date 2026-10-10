@@ -179,7 +179,7 @@ export function WorktreesView() {
         </div>
         <BoxFilter boxes={boxes} hidden={hiddenBoxes} onChange={hideBoxes} />
         <div className="w-40 min-w-28 shrink">
-          <SimpleSelect aria-label="Project" size="sm" className="min-w-0" value={project} onChange={setProject} options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p, label: p }))]} />
+          <SimpleSelect aria-label="Project" size="sm" measure="grow" value={project} onChange={setProject} options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p, label: p }))]} />
         </div>
         <div className="flex shrink-0 items-center gap-1" role="group" aria-label="Show only">
           <FilterChip pressed={flags.includes("behind")} onPressedChange={() => flip("behind")}>
@@ -204,7 +204,7 @@ export function WorktreesView() {
         <div className="ml-auto w-44 min-w-32 shrink">
           <SimpleSelect
             size="sm"
-            className="min-w-0"
+            measure="grow"
             value={sort}
             onChange={(v) => {
               setSort(v as Sort);

@@ -47,10 +47,10 @@ export function CustomFontSettings() {
         }}
       />
       <SettingsRow label="Interface font">
-        <SimpleSelect className="w-56" options={options} value={interfaceFont ?? "default"} onChange={(id) => setPrefs({ interfaceFont: id === "default" ? null : id })} />
+        <SimpleSelect measure="56" options={options} value={interfaceFont ?? "default"} onChange={(id) => setPrefs({ interfaceFont: id === "default" ? null : id })} />
       </SettingsRow>
       <SettingsRow label="Code font" description="Code blocks and terminals using the default font.">
-        <SimpleSelect className="w-56" options={options} value={codeFont ?? "default"} onChange={(id) => setPrefs({ codeFont: id === "default" ? null : id })} />
+        <SimpleSelect measure="56" options={options} value={codeFont ?? "default"} onChange={(id) => setPrefs({ codeFont: id === "default" ? null : id })} />
       </SettingsRow>
       {fonts.length > 0 && (
         <ul aria-label="Added fonts">

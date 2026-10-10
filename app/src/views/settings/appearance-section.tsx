@@ -134,8 +134,8 @@ function SystemCard({ selected, themes }: { selected: boolean; themes: Theme[] }
         </span>
       </button>
       <div className="flex shrink-0 items-center gap-2 px-3 max-[800px]:hidden">
-        <SimpleSelect size="sm" className="w-40" aria-label="Theme by day" value={light.id} options={options("light")} onChange={(id) => id && pick("light", id)} />
-        <SimpleSelect size="sm" className="w-40" aria-label={IS_MAC ? "Theme when macOS is dark" : "Theme when your desktop is dark"} value={dark.id} options={options("dark")} onChange={(id) => id && pick("dark", id)} />
+        <SimpleSelect size="sm" measure="40" aria-label="Theme by day" value={light.id} options={options("light")} onChange={(id) => id && pick("light", id)} />
+        <SimpleSelect size="sm" measure="40" aria-label={IS_MAC ? "Theme when macOS is dark" : "Theme when your desktop is dark"} value={dark.id} options={options("dark")} onChange={(id) => id && pick("dark", id)} />
       </div>
     </div>
   );

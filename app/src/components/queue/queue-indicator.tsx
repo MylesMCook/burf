@@ -178,8 +178,8 @@ function MoveTo({ it }: { it: QueueItem }) {
   if (!options.length) return null;
   return (
     <SimpleSelect
-      size="sm"
-      className="h-6 w-32 min-w-0 text-[11px]"
+      size="xs"
+      measure="32"
       options={options}
       value=""
       placeholder="Move to…"

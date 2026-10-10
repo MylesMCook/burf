@@ -91,7 +91,7 @@ export function RunsTab({ runs: legacy, boxes, names }: { runs: BoxFlowRun[]; bo
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="w-56">
-          <SimpleSelect size="sm" className="min-w-0" value={kind} onChange={(v) => setKind(v as Kind)} options={KINDS} />
+          <SimpleSelect size="sm" measure="grow" value={kind} onChange={(v) => setKind(v as Kind)} options={KINDS} />
         </div>
         <Tip label="Runs waiting for you at a gate">
           <FilterChip pressed={needsYou} onPressedChange={setNeedsYou}>
