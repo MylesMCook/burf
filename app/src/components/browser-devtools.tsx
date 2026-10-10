@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { invoke } from "@tauri-apps/api/core";
 import { BanIcon, BugIcon, ChevronRightIcon, CircleXIcon, InfoIcon, SendIcon, SquareDashedMousePointerIcon, SquareTerminalIcon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
@@ -10,7 +11,737 @@ import { clearLog, type PaneLog, setDrawerTab, toggleDrawer, useDrawerOpen, useD
 import { badgeText, type ConsoleEntry, consoleMessage, failed, formatMs, formatSize, isError, type NetEntry, requestMessage, shortAt, statusText } from "@/lib/devtools-model";
 import { useAgentTarget } from "@/lib/agent-target";
 import { keysFor } from "@/lib/shortcuts";
-import { cn } from "@/lib/utils";
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "display": "inline-flex",
+    "width": "26px",
+    "height": "26px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+      ":disabled:hover": "transparent",
+    },
+    "opacity": {
+      ":disabled": 0.35,
+    },
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+  s1: {
+    "position": "relative",
+    "display": "inline-flex",
+    "height": "26px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+      ":disabled:hover": "transparent",
+    },
+    "opacity": {
+      ":disabled": 0.35,
+    },
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+  s2: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s3: {
+    "display": "inline-flex",
+    "height": "14px",
+    "minWidth": "14px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--destructive)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontWeight": 500,
+    "fontSize": "9.5px",
+    "color": "#fff",
+    "fontVariantNumeric": "tabular-nums",
+    "lineHeight": "1",
+  },
+  s4: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+  },
+  s5: {
+    "position": "relative",
+    "display": "flex",
+    "maxHeight": "75%",
+    "minHeight": "120px",
+    "flexShrink": 0,
+    "flexDirection": "column",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "position": "absolute",
+    "left": 0,
+    "right": 0,
+    "zIndex": 10,
+    "height": "8px",
+    "cursor": "row-resize",
+    "outline": "none",
+    "backgroundColor": {
+      ":focus-visible": "var(--ring)",
+    },
+  },
+  s7: {
+    "display": "flex",
+    "height": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "2px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+  },
+  s8: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  s9: {
+    "marginLeft": "8px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s10: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  s11: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+  s12: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+  s13: {
+    "display": "inline-flex",
+    "height": "24px",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontWeight": 500,
+    "fontSize": "11.5px",
+  },
+  s14: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s15: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+  },
+  s16: {
+    "display": "inline-flex",
+    "height": "22px",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontSize": "11px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s17: {
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 10%, transparent)",
+    "color": "var(--foreground)",
+  },
+  s18: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s19: {
+    "display": "flex",
+    "height": "30px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 30%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+  },
+  s20: {
+    "height": "22px",
+    "width": "144px",
+    "minWidth": "0px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--border)",
+      ":focus": "var(--ring)",
+    },
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontSize": "11px",
+    "outline": "none",
+    "color": {
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 70%, transparent)",
+    },
+  },
+  s21: {
+    "marginLeft": "2px",
+    "marginRight": "2px",
+    "height": "14px",
+    "width": "1px",
+    "backgroundColor": "var(--border)",
+  },
+  s22: {
+    "width": "12px",
+    "height": "12px",
+    "color": "var(--destructive)",
+  },
+  s23: {
+    "width": "12px",
+    "height": "12px",
+    "color": "var(--warning)",
+  },
+  s24: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11.5px",
+    "lineHeight": "1.45",
+  },
+  s25: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": "var(--muted-foreground)",
+  },
+  s26: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "fontFamily": "var(--font-sans)",
+    "color": "var(--muted-foreground)",
+  },
+  s27: {
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 7%, transparent)",
+    "color": "var(--destructive-foreground)",
+    "borderColor": "color-mix(in oklab, var(--destructive) 15%, transparent)",
+  },
+  s28: {
+    "backgroundColor": "color-mix(in oklab, var(--warning) 8%, transparent)",
+    "color": "var(--warning-foreground)",
+    "borderColor": "color-mix(in oklab, var(--warning) 20%, transparent)",
+  },
+  s29: {
+    "color": "var(--muted-foreground)",
+  },
+  s30: {
+    "marginTop": "1px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--destructive)",
+  },
+  s31: {
+    "marginTop": "1px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--warning)",
+  },
+  s32: {
+    "marginTop": "1px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--info)",
+  },
+  s33: {
+    "marginTop": "1px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "opacity": 0.6,
+  },
+  s34: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s35: {
+    "position": "relative",
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "6px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "borderColor": "color-mix(in oklab, var(--border) 60%, transparent)",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "paddingRight": "8px",
+    "paddingLeft": "8px",
+  },
+  s36: {
+    "boxShadow": "inset 2px 0 0 var(--color-ring)",
+  },
+  s37: {
+    "marginTop": "1px",
+    "display": "inline-flex",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "opacity": {
+      "default": 0.7,
+      ":hover": 1,
+    },
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--foreground) 10%, transparent)",
+    },
+  },
+  s38: {
+    "width": "12px",
+    "height": "12px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s39: {
+    "transform": "rotate(90deg)",
+  },
+  s40: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s41: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s42: {
+    "whiteSpace": "pre-wrap",
+    "overflowWrap": "break-word",
+  },
+  s43: {
+    "cursor": "pointer",
+  },
+  s44: {
+    "marginTop": "2px",
+    "whiteSpace": "pre-wrap",
+    "wordBreak": "break-all",
+    "paddingLeft": "8px",
+    "fontSize": "11px",
+    "opacity": 0.75,
+  },
+  s45: {
+    "marginTop": "1px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 10%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontSize": "10px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s46: {
+    "wordBreak": "break-all",
+    "fontFamily": "var(--font-mono)",
+  },
+  s47: {
+    "marginTop": "1px",
+    "maxWidth": "192px",
+    "flexShrink": 0,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "textDecoration": "underline",
+  },
+  s48: {
+    "marginTop": "calc(2px * -1)",
+    "marginBottom": "calc(2px * -1)",
+    "display": "inline-flex",
+    "height": "20px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": {
+      "default": "var(--background)",
+      ":hover": "var(--accent)",
+    },
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontFamily": "var(--font-sans)",
+    "fontSize": "10.5px",
+    "color": "var(--foreground)",
+    "opacity": {
+      "default": 0,
+      ":focus-visible": 1,
+    },
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+    ":is(.group:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s49: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s50: {
+    "width": "12px",
+    "height": "12px",
+    "color": "var(--destructive)",
+  },
+  s51: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+    "fontSize": "11.5px",
+  },
+  s52: {
+    "position": "sticky",
+    "top": "0px",
+    "zIndex": NaN,
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontWeight": 500,
+    "fontSize": "10.5px",
+    "color": "var(--muted-foreground)",
+  },
+  s53: {
+    "textAlign": "right",
+  },
+  s54: {
+    "textAlign": "right",
+  },
+  s55: {
+    "width": "5.75rem",
+  },
+  s56: {
+    "cursor": "default",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "borderColor": "color-mix(in oklab, var(--border) 60%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontFamily": "var(--font-mono)",
+  },
+  s57: {
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 7%, transparent)",
+    "color": "var(--destructive-foreground)",
+  },
+  s58: {
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    },
+  },
+  s59: {
+    "backgroundColor": "color-mix(in oklab, var(--accent) 60%, transparent)",
+  },
+  s60: {
+    "boxShadow": "inset 2px 0 0 var(--color-ring)",
+  },
+  s61: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s62: {
+    "color": "var(--muted-foreground)",
+  },
+  s63: {
+    "color": "var(--muted-foreground)",
+  },
+  s64: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s65: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s66: {
+    "color": "var(--muted-foreground)",
+  },
+  s67: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  s68: {
+    "textAlign": "right",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s69: {
+    "textAlign": "right",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s70: {
+    "display": "flex",
+    "width": "5.75rem",
+    "justifyContent": "flex-end",
+  },
+  s71: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "color": "var(--muted-foreground)",
+  },
+  s72: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "4px",
+    },
+  },
+  s73: {
+    "wordBreak": "break-all",
+  },
+  s74: {
+    "color": "var(--muted-foreground)",
+  },
+  s75: {
+    "color": "var(--destructive-foreground)",
+  },
+  s76: {
+    "maxHeight": "128px",
+    "overflow": "auto",
+    "whiteSpace": "pre-wrap",
+    "wordBreak": "break-all",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "padding": "6px",
+  },
+  s77: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+  },
+  s78: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s79: {
+    "maxHeight": "256px",
+    "overflow": "hidden",
+    "whiteSpace": "pre-wrap",
+    "wordBreak": "break-all",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s80: {
+    "maxWidth": "40%",
+    "flexShrink": 0,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s81: {
+    "height": "24px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--border)",
+      ":focus": "var(--ring)",
+    },
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "outline": "none",
+  },
+  s82: {
+    "borderRadius": "var(--radius-md)",
+    "padding": "4px",
+    "color": "var(--muted-foreground)",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s83: {
+    "width": "14px",
+    "height": "14px",
+  },
+
+  s84: {
+    top: -4,
+  },
+  s85: {
+    textDecorationStyle: "dotted",
+    textUnderlineOffset: 2,
+  },
+  s86: {
+    opacity: { ":is(.group[data-selected=\"true\"] *)": 1 },
+  },
+  s87: {
+    maxWidth: "32rem",
+  },
+  s88: {
+    backgroundColor: "color-mix(in oklab, var(--destructive) 7%, transparent)",
+    color: color.destructiveForeground,
+    borderColor: "color-mix(in oklab, var(--destructive) 15%, transparent)",
+  },
+  s89: {
+    backgroundColor: "color-mix(in oklab, var(--warning) 8%, transparent)",
+    color: "var(--warning-foreground)",
+    borderColor: "color-mix(in oklab, var(--warning) 20%, transparent)",
+  },
+  s90: {
+    color: color.mutedForeground,
+  },
+  s91: {
+    display: "grid",
+    gridTemplateColumns: "4rem 3.25rem minmax(0,1fr) 4.5rem 4rem 4.25rem auto",
+    alignItems: "center",
+    columnGap: 8,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The Browser tab's developer tools: WebKit's own Web Inspector for the
 // native page (Inspect), and Burf's Console and Network drawer under the
@@ -31,7 +762,7 @@ export function InspectButton({ id, native, disabled }: { id: string; native: bo
         aria-label="Inspect"
         disabled={disabled || !native}
         onClick={() => void invoke("browser_inspect", { id }).catch((err) => toastManager.add({ type: "error", title: "Couldn't open the Web Inspector", description: String(err) }))}
-        className="inline-flex size-6.5 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-35 disabled:hover:bg-transparent [&_svg]:size-3.5"
+        className={sx(paint.s0)}
       >
         <SquareDashedMousePointerIcon />
       </button>
@@ -54,10 +785,7 @@ export function DevtoolsToggle({ logKey, disabled }: { logKey: string; disabled?
         data-testid="devtools-toggle"
         disabled={disabled}
         onClick={() => toggleDrawer(logKey)}
-        className={cn(
-          "relative inline-flex h-6.5 shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-35 disabled:hover:bg-transparent [&_svg]:size-3.5",
-          open && "bg-accent text-foreground",
-        )}
+        className={[sx(paint.s1), open && sx(paint.s2)].filter(Boolean).join(" ")}
       >
         <SquareTerminalIcon />
         {errors > 0 && <ErrorBadge n={errors} testId="devtools-badge" />}
@@ -68,7 +796,7 @@ export function DevtoolsToggle({ logKey, disabled }: { logKey: string; disabled?
 
 function ErrorBadge({ n, testId, className }: { n: number; testId?: string; className?: string }) {
   return (
-    <span data-testid={testId} className={cn("inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-destructive px-1 font-medium text-[9.5px] text-white tabular-nums leading-none", className)}>
+    <span data-testid={testId} className={[sx(paint.s3), className].filter(Boolean).join(" ")}>
       {badgeText(n)}
     </span>
   );
@@ -81,7 +809,7 @@ export function TabErrorBadge({ paneIds }: { paneIds: string[] }) {
   if (!n) return null;
   // The tab is a tooltip's trigger already: the count says it all.
   return (
-    <span role="img" aria-label={`${n} page error${n === 1 ? "" : "s"}`} className="inline-flex shrink-0">
+    <span role="img" aria-label={`${n} page error${n === 1 ? "" : "s"}`} className={sx(paint.s4)}>
       <ErrorBadge n={n} testId="tab-devtools-badge" />
     </span>
   );
@@ -160,7 +888,7 @@ export function DevtoolsDrawer({ logKey, pageUrl, ctx, proxied, agent }: DrawerP
   };
 
   return (
-    <section ref={root} data-testid="devtools-drawer" aria-label="Console and network" style={{ height }} className="relative flex max-h-[75%] min-h-30 shrink-0 flex-col border-t bg-background text-xs">
+    <section ref={root} data-testid="devtools-drawer" aria-label="Console and network" style={{ height }} className={sx(paint.s5)}>
       <div
         role="separator"
         tabIndex={0}
@@ -170,13 +898,13 @@ export function DevtoolsDrawer({ logKey, pageUrl, ctx, proxied, agent }: DrawerP
         aria-valuemin={120}
         onPointerDown={drag}
         onKeyDown={nudge}
-        className="absolute inset-x-0 -top-1 z-10 h-2 cursor-row-resize outline-none focus-visible:bg-ring"
+        className={[sx(paint.s6), sx(paint.s84)].filter(Boolean).join(" ")}
       />
-      <div className="flex h-8 shrink-0 items-center gap-0.5 border-b px-1.5">
+      <div className={sx(paint.s7)}>
         <div
           role="tablist"
           aria-label="Console and network"
-          className="flex items-center gap-0.5"
+          className={sx(paint.s8)}
           onKeyDown={(e) => {
             if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
             e.preventDefault();
@@ -192,17 +920,17 @@ export function DevtoolsDrawer({ logKey, pageUrl, ctx, proxied, agent }: DrawerP
             Network
           </DrawerTab>
         </div>
-        {agent && <span className="ml-2 truncate text-[11px] text-muted-foreground">The agent's browser, on its box</span>}
-        <div className="ml-auto flex items-center gap-0.5">
+        {agent && <span className={sx(paint.s9)}>The agent's browser, on its box</span>}
+        <div className={sx(paint.s10)}>
           {!agent && (
             <Tip label={tab === "console" ? "Clear the console" : "Clear the requests"} side={DOWN}>
-              <button type="button" aria-label="Clear" onClick={() => clearLog(logKey, tab)} className="inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground [&_svg]:size-3.5">
+              <button type="button" aria-label="Clear" onClick={() => clearLog(logKey, tab)} className={sx(paint.s11)}>
                 <BanIcon />
               </button>
             </Tip>
           )}
           <Tip label={`Close${keysFor("devtools") ? ` (${keysFor("devtools")})` : ""}`} side={DOWN}>
-            <button type="button" aria-label="Close the drawer" onClick={() => toggleDrawer(logKey, false)} className="inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground [&_svg]:size-3.5">
+            <button type="button" aria-label="Close the drawer" onClick={() => toggleDrawer(logKey, false)} className={sx(paint.s12)}>
               <XIcon />
             </button>
           </Tip>
@@ -227,7 +955,7 @@ function DrawerTab({ id, active, onClick, count, children }: { id: string; activ
       aria-selected={active}
       tabIndex={active ? 0 : -1}
       onClick={onClick}
-      className={cn("inline-flex h-6 items-center gap-1.5 rounded-md px-2 font-medium text-[11.5px]", active ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}
+      className={[sx(paint.s13), active ? sx(paint.s14) : sx(paint.s15)].filter(Boolean).join(" ")}
     >
       {children}
       {count > 0 && <ErrorBadge n={count} />}
@@ -243,7 +971,7 @@ function Chip({ on, onClick, children, label }: { on: boolean; onClick(): void; 
       aria-pressed={on}
       aria-label={label}
       onClick={onClick}
-      className={cn("inline-flex h-5.5 items-center gap-1 rounded px-1.5 text-[11px] tabular-nums", on ? "bg-foreground/10 text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}
+      className={[sx(paint.s16), on ? sx(paint.s17) : sx(paint.s18)].filter(Boolean).join(" ")}
     >
       {children}
     </button>
@@ -252,16 +980,16 @@ function Chip({ on, onClick, children, label }: { on: boolean; onClick(): void; 
 
 function FilterBar({ children, filter, onFilter }: { children: React.ReactNode; filter: string; onFilter(v: string): void }) {
   return (
-    <div className="flex h-7.5 shrink-0 items-center gap-1 border-b bg-muted/30 px-1.5">
+    <div className={sx(paint.s19)}>
       <input
         aria-label="Filter"
         value={filter}
         onChange={(e) => onFilter(e.target.value)}
         placeholder="Filter"
         spellCheck={false}
-        className="h-5.5 w-36 min-w-0 rounded border bg-background px-1.5 text-[11px] outline-none placeholder:text-muted-foreground/70 focus:border-ring"
+        className={sx(paint.s20)}
       />
-      <span className="mx-0.5 h-3.5 w-px bg-border" />
+      <span className={sx(paint.s21)} />
       {children}
     </div>
   );
@@ -291,11 +1019,11 @@ function ConsoleList({ log, agent, sending, onSend }: { log?: PaneLog; agent?: b
           All
         </Chip>
         <Chip on={level === "error"} onClick={() => setLevel("error")} label="Errors">
-          <CircleXIcon className="size-3 text-destructive" />
+          <CircleXIcon className={sx(paint.s22)} />
           Errors {count("error")}
         </Chip>
         <Chip on={level === "warn"} onClick={() => setLevel("warn")} label="Warnings">
-          <TriangleAlertIcon className="size-3 text-warning" />
+          <TriangleAlertIcon className={sx(paint.s23)} />
           Warnings {count("warn")}
         </Chip>
         <Chip on={level === "info"} onClick={() => setLevel("info")} label="Logs">
@@ -311,14 +1039,14 @@ function ConsoleList({ log, agent, sending, onSend }: { log?: PaneLog; agent?: b
           const el = e.currentTarget;
           pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
         }}
-        className="min-h-0 flex-1 overflow-y-auto font-mono text-[11.5px] leading-[1.45]"
+        className={sx(paint.s24)}
       >
-        {log?.dropped ? <p className="border-b px-3 py-1 text-muted-foreground">{log.dropped} earlier messages were dropped: the page logged faster than they could be kept.</p> : null}
+        {log?.dropped ? <p className={sx(paint.s25)}>{log.dropped} earlier messages were dropped: the page logged faster than they could be kept.</p> : null}
         {shown.map((e) => (
           <ConsoleRow key={rowKey(e)} e={e} sending={e === sending} onSend={onSend} />
         ))}
         {!shown.length && (
-          <p className="px-3 py-3 font-sans text-muted-foreground">
+          <p className={sx(paint.s26)}>
             {list.length
               ? "Nothing matches the filter."
               : agent
@@ -335,19 +1063,19 @@ function ConsoleList({ log, agent, sending, onSend }: { log?: PaneLog; agent?: b
 }
 
 const LEVEL_STYLE: Record<ConsoleEntry["level"], string> = {
-  error: "bg-destructive/[0.07] text-destructive-foreground border-destructive/15",
-  warn: "bg-warning/[0.08] text-warning-foreground border-warning/20",
+  error: (sx(paint.s88) ?? ""),
+  warn: (sx(paint.s89) ?? ""),
   info: "",
   log: "",
-  debug: "text-muted-foreground",
+  debug: (sx(paint.s90) ?? ""),
 };
 
 function LevelIcon({ level }: { level: ConsoleEntry["level"] }) {
-  if (level === "error") return <CircleXIcon aria-label="Error" className="mt-px size-3.5 shrink-0 text-destructive" />;
-  if (level === "warn") return <TriangleAlertIcon aria-label="Warning" className="mt-px size-3.5 shrink-0 text-warning" />;
-  if (level === "info") return <InfoIcon aria-label="Info" className="mt-px size-3.5 shrink-0 text-info" />;
-  if (level === "debug") return <BugIcon aria-label="Debug" className="mt-px size-3.5 shrink-0 opacity-60" />;
-  return <span className="size-3.5 shrink-0" />;
+  if (level === "error") return <CircleXIcon aria-label="Error" className={sx(paint.s30)} />;
+  if (level === "warn") return <TriangleAlertIcon aria-label="Warning" className={sx(paint.s31)} />;
+  if (level === "info") return <InfoIcon aria-label="Info" className={sx(paint.s32)} />;
+  if (level === "debug") return <BugIcon aria-label="Debug" className={sx(paint.s33)} />;
+  return <span className={sx(paint.s34)} />;
 }
 
 // Each entry's row keeps its key while newer lines push older ones out of
@@ -370,25 +1098,25 @@ function ConsoleRowView({ e, sending, onSend }: { e: ConsoleEntry; sending: bool
   const stack = !!e.stack;
   const sendable = e.level === "error" || e.level === "warn";
   return (
-    <div data-testid="console-row" data-level={e.level} data-selected={sending} className={cn("group relative flex items-start gap-1.5 border-b border-border/60 py-1 pr-2 pl-2", LEVEL_STYLE[e.level], sending && "shadow-[inset_2px_0_0_var(--color-ring)]")}>
+    <div data-testid="console-row" data-level={e.level} data-selected={sending} className={[[sx(paint.s35), "group"].filter(Boolean).join(" "), LEVEL_STYLE[e.level], sending && sx(paint.s36)].filter(Boolean).join(" ")}>
       <LevelIcon level={e.level} />
       {stack ? (
-        <button type="button" aria-label={open ? "Hide the stack" : "Show the stack"} aria-expanded={open} onClick={() => setOpen((o) => !o)} className="mt-px inline-flex size-3.5 shrink-0 items-center justify-center rounded opacity-70 hover:bg-foreground/10 hover:opacity-100">
-          <ChevronRightIcon className={cn("size-3 transition-transform", open && "rotate-90")} />
+        <button type="button" aria-label={open ? "Hide the stack" : "Show the stack"} aria-expanded={open} onClick={() => setOpen((o) => !o)} className={sx(paint.s37)}>
+          <ChevronRightIcon className={[sx(paint.s38), open && sx(paint.s39)].filter(Boolean).join(" ")} />
         </button>
       ) : (
-        <span className="size-3.5 shrink-0" />
+        <span className={sx(paint.s40)} />
       )}
-      <div className="min-w-0 flex-1">
-        <div className={cn("whitespace-pre-wrap break-words", stack && "cursor-pointer")} onClick={stack ? () => setOpen((o) => !o) : undefined}>
+      <div className={sx(paint.s41)}>
+        <div className={[sx(paint.s42), stack && sx(paint.s43)].filter(Boolean).join(" ")} onClick={stack ? () => setOpen((o) => !o) : undefined}>
           {e.text}
         </div>
-        {open && e.stack && <pre className="mt-0.5 whitespace-pre-wrap break-all pl-2 text-[11px] opacity-75">{e.stack}</pre>}
+        {open && e.stack && <pre className={sx(paint.s44)}>{e.stack}</pre>}
       </div>
-      {e.count > 1 && <span className="mt-px shrink-0 rounded-full bg-foreground/10 px-1.5 text-[10px] tabular-nums">{e.count}</span>}
+      {e.count > 1 && <span className={sx(paint.s45)}>{e.count}</span>}
       {e.at && (
-        <Tip label={<span className="break-all font-mono">{e.at}</span>} side={DOWN} className="max-w-md">
-          <span className="mt-px max-w-48 shrink-0 truncate text-[11px] text-muted-foreground underline decoration-dotted underline-offset-2">{shortAt(e.at)}</span>
+        <Tip label={<span className={sx(paint.s46)}>{e.at}</span>} side={DOWN} width="md">
+          <span className={[sx(paint.s47), sx(paint.s85)].filter(Boolean).join(" ")}>{shortAt(e.at)}</span>
         </Tip>
       )}
       {sendable && <SendButton onClick={() => onSend(e)} />}
@@ -406,16 +1134,16 @@ function SendButton({ onClick }: { onClick(): void }) {
           ev.stopPropagation();
           onClick();
         }}
-        className="-my-0.5 inline-flex h-5 shrink-0 items-center gap-1 rounded border bg-background px-1.5 font-sans text-[10.5px] text-foreground opacity-0 shadow-xs hover:bg-accent focus-visible:opacity-100 group-hover:opacity-100 group-data-[selected=true]:opacity-100"
+        className={[sx(paint.s48), sx(paint.s86)].filter(Boolean).join(" ")}
       >
-        <SendIcon className="size-3" />
+        <SendIcon className={sx(paint.s49)} />
         Send to agent
       </button>
     </Tip>
   );
 }
 
-const COLS = "grid grid-cols-[4rem_3.25rem_minmax(0,1fr)_4.5rem_4rem_4.25rem_auto] items-center gap-x-2";
+const COLS = (sx(paint.s91) ?? "");
 
 function NetworkList({ log, pageUrl, proxied, agent, sending, onSend }: { log?: PaneLog; pageUrl: string; proxied: boolean; agent?: boolean; sending?: NetEntry; onSend(n: NetEntry): void }) {
   const [onlyFailed, setOnlyFailed] = useState(false);
@@ -438,24 +1166,24 @@ function NetworkList({ log, pageUrl, proxied, agent, sending, onSend }: { log?: 
           All {list.length}
         </Chip>
         <Chip on={onlyFailed} onClick={() => setOnlyFailed(true)} label="Failed">
-          <CircleXIcon className="size-3 text-destructive" />
+          <CircleXIcon className={sx(paint.s50)} />
           Failed {failures}
         </Chip>
       </FilterBar>
-      <div role="table" aria-label="Requests" data-testid="devtools-network" className="min-h-0 flex-1 overflow-y-auto text-[11.5px]">
+      <div role="table" aria-label="Requests" data-testid="devtools-network" className={sx(paint.s51)}>
         {proxied && list.length > 0 && (
-          <div role="row" className={cn(COLS, "sticky top-0 z-[1] border-b bg-background px-2 py-1 font-medium text-[10.5px] text-muted-foreground")}>
+          <div role="row" className={[COLS, sx(paint.s52)].filter(Boolean).join(" ")}>
             <span role="columnheader">Status</span>
             <span role="columnheader">Method</span>
             <span role="columnheader">Path</span>
             <span role="columnheader">Type</span>
-            <span role="columnheader" className="text-right">
+            <span role="columnheader" className={sx(paint.s53)}>
               Time
             </span>
-            <span role="columnheader" className="text-right">
+            <span role="columnheader" className={sx(paint.s54)}>
               Size
             </span>
-            <span className="w-[5.75rem]" />
+            <span className={sx(paint.s55)} />
           </div>
         )}
         {shown.map((n) => {
@@ -470,28 +1198,28 @@ function NetworkList({ log, pageUrl, proxied, agent, sending, onSend }: { log?: 
                 data-selected={open}
                 aria-selected={open}
                 onClick={() => setSelected(open ? undefined : n.seq)}
-                className={cn(COLS, "group cursor-default border-b border-border/60 px-2 py-1 font-mono", bad ? "bg-destructive/[0.07] text-destructive-foreground" : "hover:bg-accent/50", open && !bad && "bg-accent/60", (open || n === sending) && "shadow-[inset_2px_0_0_var(--color-ring)]")}
+                className={[COLS, [sx(paint.s56), "group"].filter(Boolean).join(" "), bad ? sx(paint.s57) : sx(paint.s58), open && !bad && sx(paint.s59), (open || n === sending) && sx(paint.s60)].filter(Boolean).join(" ")}
               >
-                <span role="cell" className={cn("tabular-nums", !bad && n.status >= 300 && "text-muted-foreground", n.error === "canceled" && "text-muted-foreground")}>
+                <span role="cell" className={[sx(paint.s61), !bad && n.status >= 300 && sx(paint.s62), n.error === "canceled" && sx(paint.s63)].filter(Boolean).join(" ")}>
                   {statusText(n)}
                 </span>
-                <span role="cell" className="truncate">
+                <span role="cell" className={sx(paint.s64)}>
                   {n.method}
                 </span>
-                <span role="cell" className="min-w-0 truncate">
-                  {n.host && n.host !== pageHost && <span className="text-muted-foreground">{n.host}</span>}
+                <span role="cell" className={sx(paint.s65)}>
+                  {n.host && n.host !== pageHost && <span className={sx(paint.s66)}>{n.host}</span>}
                   {n.path}
                 </span>
-                <span role="cell" className="truncate text-muted-foreground">
+                <span role="cell" className={sx(paint.s67)}>
                   {n.type}
                 </span>
-                <span role="cell" className="text-right text-muted-foreground tabular-nums">
+                <span role="cell" className={sx(paint.s68)}>
                   {n.start || n.ms ? formatMs(n.ms) : ""}
                 </span>
-                <span role="cell" className="text-right text-muted-foreground tabular-nums">
+                <span role="cell" className={sx(paint.s69)}>
                   {n.start || n.size ? formatSize(n.size) : ""}
                 </span>
-                <span role="cell" className="flex w-[5.75rem] justify-end">
+                <span role="cell" className={sx(paint.s70)}>
                   {bad && <SendButton onClick={() => onSend(n)} />}
                 </span>
               </div>
@@ -500,7 +1228,7 @@ function NetworkList({ log, pageUrl, proxied, agent, sending, onSend }: { log?: 
           );
         })}
         {!shown.length && (
-          <p className="px-3 py-3 text-muted-foreground">
+          <p className={sx(paint.s71)}>
             {list.length
               ? "Nothing matches the filter."
               : agent
@@ -531,15 +1259,15 @@ function RequestDetail({ n, pageUrl }: { n: NetEntry; pageUrl: string }) {
     // The path alone.
   }
   return (
-    <div ref={box} className="space-y-1 border-b bg-muted/40 px-3 py-2 font-mono text-[11px]">
-      <p className="break-all">{url}</p>
-      <p className="text-muted-foreground">
+    <div ref={box} className={sx(paint.s72)}>
+      <p className={sx(paint.s73)}>{url}</p>
+      <p className={sx(paint.s74)}>
         {statusText(n)}
         {n.mime ? ` · ${n.mime}` : ""}
         {n.start ? ` · ${new Date(n.start).toLocaleTimeString()}` : ""}
       </p>
-      {n.error && n.error !== "canceled" && <p className="text-destructive-foreground">{n.error}</p>}
-      {n.body && <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded border bg-background p-1.5">{n.body}</pre>}
+      {n.error && n.error !== "canceled" && <p className={sx(paint.s75)}>{n.error}</p>}
+      {n.body && <pre className={sx(paint.s76)}>{n.body}</pre>}
     </div>
   );
 }
@@ -570,15 +1298,15 @@ function Sender({ sending, pageUrl, ctx, agent, onDone }: { sending: Sending; pa
   return (
     <form
       data-testid="devtools-sender"
-      className="flex shrink-0 items-center gap-2 border-b bg-accent/50 px-2 py-1.5"
+      className={sx(paint.s77)}
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
       }}
     >
-      <SendIcon className="size-3.5 shrink-0 text-muted-foreground" />
-      <Tip label={<pre className="max-h-64 max-w-lg overflow-hidden whitespace-pre-wrap break-all font-mono text-[11px]">{message}</pre>} side={DOWN} className="max-w-lg">
-        <span className="max-w-[40%] shrink-0 truncate font-mono text-[11px]">{summary}</span>
+      <SendIcon className={sx(paint.s78)} />
+      <Tip label={<pre className={[sx(paint.s79), sx(paint.s87)].filter(Boolean).join(" ")}>{message}</pre>} side={DOWN} width="lg">
+        <span className={sx(paint.s80)}>{summary}</span>
       </Tip>
       <input
         autoFocus
@@ -587,14 +1315,14 @@ function Sender({ sending, pageUrl, ctx, agent, onDone }: { sending: Sending; pa
         onChange={(e) => setNote(e.target.value)}
         placeholder={target ? (target.blocked ?? "Add a note (optional)") : "No agent runs in this worktree"}
         disabled={!target || !!target.blocked}
-        className="h-6 min-w-0 flex-1 rounded border bg-background px-2 text-xs outline-none focus:border-ring"
+        className={sx(paint.s81)}
       />
       <Button type="submit" size="xs" disabled={!target || !!target.blocked || busy}>
         <SendIcon />
         Send to agent
       </Button>
-      <button type="button" aria-label="Cancel" className="rounded p-1 text-muted-foreground hover:bg-accent" onClick={onDone}>
-        <XIcon className="size-3.5" />
+      <button type="button" aria-label="Cancel" className={sx(paint.s82)} onClick={onDone}>
+        <XIcon className={sx(paint.s83)} />
       </button>
     </form>
   );

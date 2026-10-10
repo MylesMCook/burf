@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { localPoint } from "@visx/event";
 import { ParentSize } from "@visx/responsive";
 import { sankey, sankeyCenter, sankeyLinkHorizontal } from "@visx/sankey";
@@ -13,7 +14,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { cn } from "@/lib/utils";
 import {
   type Margin,
   type SankeyLinkDatum,
@@ -21,6 +21,21 @@ import {
   SankeyProvider,
   type SankeyTooltipData,
 } from "./sankey-context";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "height": "100%",
+    "width": "100%",
+  },
+  s1: {
+    "position": "relative",
+    "width": "100%",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface SankeyData {
   nodes: SankeyNodeDatum[];
@@ -208,7 +223,7 @@ const SankeyChartCore = memo(function SankeyChartCore({
 
   return (
     <SankeyProvider value={contextValue}>
-      <div className="relative h-full w-full" ref={containerRef}>
+      <div className={sx(paint.s0)} ref={containerRef}>
         <svg
           aria-hidden="true"
           height={height}
@@ -242,7 +257,7 @@ export function SankeyChart({
   const margin = { ...DEFAULT_MARGIN, ...marginProp };
 
   return (
-    <div className={cn("relative w-full", className)} style={{ aspectRatio }}>
+    <div className={[sx(paint.s1), className].filter(Boolean).join(" ")} style={{ aspectRatio }}>
       <ParentSize>
         {({ width, height }) => (
           <SankeyChartInner

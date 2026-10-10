@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import "@/views/onboarding/onboarding.css";
 
 import { useEffect, useRef, useState } from "react";
@@ -6,7 +7,6 @@ import { Scene, type SceneName } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
 import { useKeepFocusIn } from "@/lib/focus-home";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { AddBoxFlow, type AddBoxStage } from "@/views/onboarding/add-box-flow";
 import { AgentStep } from "@/views/onboarding/agent-step";
 import { JoinStep } from "@/views/onboarding/join-step";
@@ -16,6 +16,93 @@ import { prefetchTailnets } from "@/views/onboarding/tailnet";
 import { WelcomeStep } from "@/views/onboarding/welcome-step";
 import { ThisMacStep } from "@/views/onboarding/this-mac-step";
 import { offerLocalBox, useLocalBox } from "@/lib/local-box";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "display": "flex",
+    "height": "100%",
+    "flexDirection": "column",
+    "overflowY": "auto",
+    "backgroundColor": "var(--background)",
+  },
+  s1: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "display": "flex",
+    "width": "100%",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "18vh",
+    "paddingBottom": "64px",
+  },
+  s2: {
+    "position": "relative",
+    "marginBottom": "40px",
+    "display": "flex",
+    "height": "24px",
+    "alignItems": "center",
+  },
+  s3: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "bottom": "100%",
+    "left": "0px",
+    "marginBottom": "24px",
+    "marginLeft": "calc(4px * -1)",
+  },
+  s4: {
+    "marginRight": "calc(8px * -1)",
+    "marginLeft": "auto",
+  },
+  s5: {
+    "display": "contents",
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s7: {
+    "height": "4px",
+    "borderRadius": "999px",
+    "transitionProperty": "all",
+    "transitionDuration": "300ms",
+  },
+  s8: {
+    "width": "24px",
+    "backgroundColor": "var(--foreground)",
+  },
+  n0: {
+    "height": "4px",
+    "borderRadius": "999px",
+    "transitionProperty": "all",
+    "transitionDuration": "300ms",
+  },
+  n1: {
+    "width": "24px",
+    "backgroundColor": "var(--foreground)",
+  },
+  n2: {
+    "width": "12px",
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 50%, transparent)",
+  },
+  n3: {
+    "width": "12px",
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 15%, transparent)",
+  },
+
+  s9: {
+    maxWidth: "32rem",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // join is a second computer joining the boxes of the first, in place of box;
 // mac is this Mac becoming the box, the quick way in.
@@ -64,26 +151,26 @@ export function OnboardingView() {
   };
 
   return (
-    <div className="relative flex h-full flex-col overflow-y-auto bg-background">
+    <div className={sx(paint.s0)}>
       {/* Anchored at the top, as the launcher is: steps differ in height, and
           centring them would move each title as the step changes. */}
-      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-6 pt-[18vh] pb-16">
+      <div className={[sx(paint.s1), sx(paint.s9)].filter(Boolean).join(" ")}>
         {/* One height whether or not Skip setup is there, so it never moves
             the step below it. */}
-        <div className="relative mb-10 flex h-6 items-center">
+        <div className={sx(paint.s2)}>
           {/* Out of the flow, so the scene never moves the step. */}
-          <div aria-hidden className="pointer-events-none absolute bottom-full left-0 mb-6 -ml-1">
+          <div aria-hidden className={sx(paint.s3)}>
             <Scene key={scene} name={scene} width={152} className="onboarding-scene" />
           </div>
           <Progress at={step.kind === "join" || step.kind === "mac" ? "box" : step.kind} />
           {/* Skipping makes sense once there is a box to work on. */}
           {hasBoxes && (
-            <Button size="xs" variant="ghost" className="-mr-2 ml-auto text-muted-foreground" onClick={finish}>
+            <span className={sx(paint.s4)}><Button size="xs" variant="ghost"  onClick={finish} muted>
               Skip setup
-            </Button>
+            </Button></span>
           )}
         </div>
-        <div ref={area} className="contents">
+        <div ref={area} className={sx(paint.s5)}>
           <div key={step.kind} className="onboarding-step">
             {step.kind === "welcome" && <WelcomeStep local={thisMac} onThisMac={() => setStep({ kind: "mac" })} onRemote={() => setStep({ kind: "box" })} onJoin={() => setStep({ kind: "join" })} />}
             {step.kind === "mac" && local.status && (
@@ -112,9 +199,9 @@ export function OnboardingView() {
 function Progress({ at }: { at: Step["kind"] }) {
   const i = ORDER.indexOf(at);
   return (
-    <div className="flex items-center gap-1.5" role="img" aria-label={`Step ${i + 1} of ${ORDER.length}`}>
+    <div className={sx(paint.s6)} role="img" aria-label={`Step ${i + 1} of ${ORDER.length}`}>
       {ORDER.map((k, n) => (
-        <span key={k} className={cn("h-1 rounded-full transition-all duration-300", n === i ? "w-6 bg-foreground" : n < i ? "w-3 bg-foreground/50" : "w-3 bg-foreground/15")} />
+        <span key={k} className={[sx(paint.n0), n === i ? sx(paint.n1) : n < i ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")} />
       ))}
     </div>
   );

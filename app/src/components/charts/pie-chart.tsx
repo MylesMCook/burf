@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { Group } from "@visx/group";
 import { ParentSize } from "@visx/responsive";
 import { arc as arcGenerator } from "@visx/shape";
@@ -17,7 +18,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { cn } from "@/lib/utils";
 import {
   defaultPieColors,
   type PieArcData,
@@ -25,6 +25,32 @@ import {
   type PieData,
   PieProvider,
 } from "./pie-context";
+
+const paint = stylex.create({
+  s0: {
+    "display": "grid",
+  },
+  s1: {
+    "pointerEvents": "none",
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s2: {
+    "position": "relative",
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s3: {
+    "position": "relative",
+    "aspectRatio": "1 / 1",
+    "width": "100%",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 /** Default hover offset in pixels */
 export const DEFAULT_HOVER_OFFSET = 10;
@@ -369,7 +395,7 @@ const PieChartCore = memo(function PieChartCore({
   return (
     <PieProvider value={contextValue}>
       <div
-        className="grid"
+        className={sx(paint.s0)}
         style={{
           gridTemplateColumns: "1fr",
           gridTemplateRows: "1fr",
@@ -407,7 +433,7 @@ const PieChartCore = memo(function PieChartCore({
         {/* HTML layer with center content - stacked on top via grid */}
         {centerChildren.length > 0 && (
           <div
-            className="pointer-events-none flex items-center justify-center"
+            className={sx(paint.s1)}
             style={{ gridArea: "1 / 1" }}
           >
             {centerChildren}
@@ -464,7 +490,7 @@ export function PieChart({
   if (fixedSize) {
     return (
       <div
-        className={cn("relative flex items-center justify-center", className)}
+        className={[sx(paint.s2), className].filter(Boolean).join(" ")}
         ref={containerRef}
         style={{ width: fixedSize, height: fixedSize }}
       >
@@ -494,7 +520,7 @@ export function PieChart({
   // Otherwise use ParentSize for responsive sizing
   return (
     <div
-      className={cn("relative aspect-square w-full", className)}
+      className={[sx(paint.s3), className].filter(Boolean).join(" ")}
       ref={containerRef}
     >
       <ParentSize debounceTime={10}>

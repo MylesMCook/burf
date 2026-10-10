@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { Toolbar as ToolbarPrimitive } from "@base-ui/react/toolbar";
 import {
   AppWindowIcon,
@@ -26,7 +27,7 @@ import { Suggestions, useBrowserContext } from "@/components/browser-pane";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
-import { Menu, MenuCheckboxItem, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuCheckboxItem, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { openBrowserAt } from "@/lib/actions";
@@ -63,9 +64,593 @@ import {
 } from "@/lib/preview-frames";
 import { setPreviewSettings, usePreviewSettings } from "@/lib/preview-store";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { demoDevServer } from "@/demo/dev-server";
 import { rememberUrl } from "@/lib/workspaces";
+import { color, radius } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "backgroundColor": "var(--background)",
+  },
+  s1: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "backgroundColor": "var(--background)",
+  },
+  s2: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "backgroundColor": "var(--background)",
+  },
+  s3: {
+    "flexShrink": 0,
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 8%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": "var(--warning-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "position": "relative",
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "flex-start",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+  },
+  s5: {
+    "flexWrap": "nowrap",
+    "overflowX": "auto",
+    "overflowY": "hidden",
+  },
+  s6: {
+    "flexWrap": "wrap",
+    "alignContent": "flex-start",
+    "overflow": "auto",
+  },
+  s7: {
+    "flexWrap": "wrap",
+    "alignContent": "center",
+    "justifyContent": "center",
+    "overflow": "hidden",
+  },
+  s8: {
+    "display": "flex",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+  },
+  s9: {
+    "width": "26px",
+    "justifyContent": "center",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+  },
+  s10: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s11: {
+    "height": "22px",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+  },
+  s12: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  s13: {
+    "height": "22px",
+    "width": "24px",
+    "justifyContent": "center",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+  },
+  s14: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  s15: {
+    "width": "26px",
+    "justifyContent": "center",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+  },
+  s16: {
+    "display": "flex",
+    "height": "26px",
+    "minWidth": "96px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--border)",
+      ":focus-within": "var(--ring)",
+    },
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+  },
+  s17: {
+    "height": "100%",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "transparent",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "outline": "none",
+  },
+  s18: {
+    "display": "flex",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+  },
+  s19: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s20: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "baseline",
+    "gap": "8px",
+  },
+  s21: {
+    "width": "28px",
+    "fontWeight": 500,
+    "fontFamily": "var(--font-mono)",
+  },
+  s22: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s23: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "baseline",
+    "gap": "8px",
+  },
+  s24: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s25: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s26: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+  },
+  s27: {
+    "height": "28px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--border)",
+      ":focus": "var(--ring)",
+    },
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+    "outline": "none",
+  },
+  s28: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s29: {
+    "width": "26px",
+    "justifyContent": "center",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+  },
+  s30: {
+    "display": "flex",
+    "flexShrink": 0,
+    "flexDirection": "column",
+  },
+  s31: {
+    "position": "relative",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "overflow": "hidden",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s32: {
+    "width": "6px",
+    "height": "6px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+  },
+  s33: {
+    "flexShrink": 0,
+    "fontWeight": 500,
+  },
+  s34: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s35: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s36: {
+    "color": "var(--muted-foreground)",
+  },
+  s37: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+  },
+  s38: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "color": "var(--muted-foreground)",
+    ":is(.group\\/label:focus-within &)": {
+      "visibility": "hidden",
+    },
+    ":is(.group\\/label:hover &)": {
+      "visibility": "hidden",
+    },
+    ":not(#\\#) svg": {
+      "width": "12px",
+      "height": "12px",
+    },
+  },
+  s39: {
+    "position": "absolute",
+    "top": 0,
+    "bottom": 0,
+    "right": "0px",
+    "display": "flex",
+    "alignItems": "center",
+    "paddingLeft": "16px",
+    "opacity": {
+      "default": 0,
+      ":focus-within": 1,
+    },
+    "transitionProperty": "opacity",
+    "transitionDuration": "150ms",
+    ":is(.group\\/label:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s40: {
+    "color": "var(--foreground)",
+  },
+  s41: {
+    "position": "relative",
+    "overflow": "hidden",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "#fff",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s42: {
+    "borderRadius": "var(--radius-xl)",
+  },
+  s43: {
+    "borderRadius": "var(--radius-md)",
+  },
+  s44: {
+    "position": "absolute",
+    "top": "0px",
+    "left": "0px",
+    "borderWidth": 0,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "#fff",
+  },
+  s45: {
+    "display": "flex",
+    "width": "100%",
+    "height": "100%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 60%, transparent)",
+    "color": "var(--muted-foreground)",
+  },
+  s46: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "backgroundColor": "color-mix(in oklab, var(--background) 30%, transparent)",
+  },
+  s47: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "padding": "24px",
+  },
+  s48: {
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "gap": "8px",
+    "textAlign": "center",
+  },
+  s49: {
+    "width": "24px",
+    "height": "24px",
+    "color": "var(--muted-foreground)",
+  },
+  s50: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s51: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s52: {
+    "marginTop": "8px",
+    "display": "flex",
+    "gap": "8px",
+  },
+  s53: {
+    "maxHeight": "55vh",
+    "width": "100%",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--muted)",
+    "objectFit": "contain",
+  },
+  s54: {
+    "marginTop": "12px",
+    "height": "32px",
+    "width": "100%",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--border)",
+      ":focus": "var(--ring)",
+    },
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+  },
+  n0: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  n1: {
+    "height": "22px",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+  },
+  n2: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  n3: {
+    "height": "22px",
+    "width": "24px",
+    "justifyContent": "center",
+    "paddingLeft": "0px",
+    "paddingRight": "0px",
+  },
+  n4: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  n5: {
+    "width": "6px",
+    "height": "6px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+  },
+  n6: {
+    "backgroundColor": "var(--success)",
+  },
+  n7: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 60%, transparent)",
+  },
+  n8: {
+    "backgroundColor": "var(--warning)",
+  },
+  n9: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 30%, transparent)",
+  },
+
+  s55: {
+    display: "grid",
+  },
+  s56: {
+    containerType: "inline-size",
+    containerName: "bar",
+  },
+  s57: {
+    backgroundColor: color.accent,
+    color: color.foreground,
+  },
+  s58: {
+    "@container bar (max-width: 44rem)": {
+      display: "none",
+    },
+  },
+  s59: {
+    height: 22,
+    paddingLeft: 6,
+    paddingRight: 6,
+  },
+  s60: {
+    color: { default: color.mutedForeground, ":hover": color.foreground },
+  },
+  s61: {
+    "@container bar (max-width: 56rem)": {
+      display: "none",
+    },
+  },
+  s62: {
+    height: 22,
+    width: 24,
+    justifyContent: "center",
+    paddingLeft: 0,
+    paddingRight: 0,
+  },
+  s63: {
+    "@container bar (max-width: 36rem)": {
+      display: "none",
+    },
+  },
+  s64: {
+    transformOrigin: "top left",
+  },
+  s65: {
+    maxWidth: "24rem",
+  },
+  s66: {
+    display: "inline-flex",
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    color: { default: color.mutedForeground, ":hover": color.foreground },
+    backgroundColor: { ":hover": color.accent },
+    ":not(#\\#) svg": {
+      width: 14,
+      height: 14,
+    },
+  },
+  s67: {
+    display: "flex",
+    alignItems: "center",
+    gap: 2,
+    borderRadius: radius.lg,
+    backgroundColor: "color-mix(in oklab, var(--muted) 70%, transparent)",
+    padding: 2,
+  },
+  s68: {
+    display: "inline-flex",
+    height: 26,
+    flexShrink: 0,
+    alignItems: "center",
+    gap: 6,
+    borderRadius: radius.md,
+    paddingLeft: 6,
+    paddingRight: 6,
+    fontSize: 12,
+    lineHeight: "16px",
+    outline: "none",
+    transitionProperty: "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke",
+    opacity: { ":disabled": 0.4 },
+    boxShadow: { ":focus-visible": "0 0 0 2px var(--ring)" },
+    ":not(#\\#) svg": {
+      width: 14,
+      height: 14,
+    },
+  },
+  s69: {
+    backgroundColor: color.background,
+    color: color.foreground,
+    boxShadow: "0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent)",
+  },
+  s70: {
+    color: { default: color.mutedForeground, ":hover": color.foreground },
+    backgroundColor: { ":hover": color.accent, "[data-popup-open]": color.accent },
+  },
+  s71: {
+    backgroundImage: "linear-gradient(to left, color-mix(in oklab, var(--muted) 40%, var(--background)) 70%, transparent)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 interface Props {
   url: string;
@@ -150,7 +735,7 @@ export function PreviewPane({ url, visible, worktree, onNavigate }: Props) {
 
   if (!url) {
     return (
-      <div data-testid="preview-pane" className="flex min-h-0 flex-1 flex-col bg-background">
+      <div data-testid="preview-pane" className={sx(paint.s0)}>
         <AddressBar url="" onGo={(raw) => {
           const next = resolveBrowserInput(raw, ctx);
           if (next) go(next);
@@ -161,7 +746,7 @@ export function PreviewPane({ url, visible, worktree, onNavigate }: Props) {
   }
   if (!proxied(url) && !__BERTH_DEMO__) {
     return (
-      <div data-testid="preview-pane" className="flex min-h-0 flex-1 flex-col bg-background">
+      <div data-testid="preview-pane" className={sx(paint.s1)}>
         <AddressBar url={url} onGo={(raw) => {
           const next = resolveBrowserInput(raw, ctx);
           if (next) go(next);
@@ -385,7 +970,7 @@ function Frames({ worktree, base, address, frames, paused, onGo, onReload, onNav
   })();
 
   return (
-    <div data-testid="preview-pane" data-layout={s.layout} data-sync={s.sync ? "synced" : "isolated"} className="flex min-h-0 flex-1 flex-col bg-background">
+    <div data-testid="preview-pane" data-layout={s.layout} data-sync={s.sync ? "synced" : "isolated"} className={sx(paint.s2)}>
       <PreviewBar
         worktree={worktree}
         address={address}
@@ -399,19 +984,14 @@ function Frames({ worktree, base, address, frames, paused, onGo, onReload, onNav
         set={set}
       />
       {plain && !__BERTH_DEMO__ && (
-        <p role="status" className="shrink-0 border-b bg-warning/8 px-3 py-1 text-warning-foreground text-xs">
+        <p role="status" className={sx(paint.s3)}>
           Some frames aren't connected, so they don't sync or switch themes. Pages from Burf's proxy (*.localhost:1377) connect once the Burf agent is up to date: restart it from the status bar.
         </p>
       )}
       <div
         ref={area}
         data-testid="preview-frames"
-        className={cn(
-          "relative flex min-h-0 flex-1 items-start bg-muted/40",
-          s.layout === "row" && "flex-nowrap overflow-x-auto overflow-y-hidden",
-          s.layout === "grid" && "flex-wrap content-start overflow-auto",
-          s.layout === "fit" && "flex-wrap content-center justify-center overflow-hidden",
-        )}
+        className={[sx(paint.s4), s.layout === "row" && sx(paint.s5), s.layout === sx(paint.s55) && sx(paint.s6), s.layout === "fit" && sx(paint.s7)].filter(Boolean).join(" ")}
         style={{ gap: GAP, padding: PAD }}
       >
         {avail.w > 0 &&
@@ -452,10 +1032,10 @@ function Frames({ worktree, base, address, frames, paused, onGo, onReload, onNav
 
 // ---- The bar -----------------------------------------------------------------
 
-const btn = "inline-flex h-6.5 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 [&_svg]:size-3.5";
-const quiet = "text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent";
-const seg = "flex items-center gap-0.5 rounded-lg bg-muted/70 p-0.5";
-const segOn = "bg-background text-foreground shadow-xs/5";
+const btn = (sx(paint.s68) ?? "");
+const quiet = (sx(paint.s70) ?? "");
+const seg = (sx(paint.s67) ?? "");
+const segOn = (sx(paint.s69) ?? "");
 
 const LAYOUTS: { id: Layout; label: string; help: string; Icon: typeof ScanIcon }[] = [
   { id: "fit", label: "Fit all", help: "Every frame at one scale, all in view", Icon: ScanIcon },
@@ -493,9 +1073,9 @@ function PreviewBar({
   const allTheme: Theme = frames.length && frames.every((f) => f.theme === frames[0].theme) ? frames[0].theme : s.theme;
   const mixed = frames.some((f) => f.theme !== s.theme);
   return (
-    <ToolbarPrimitive.Root aria-label="Preview" className="@container/bar flex h-9 shrink-0 items-center gap-1.5 border-b px-2">
+    <ToolbarPrimitive.Root aria-label="Preview" className={[sx(paint.s8), sx(paint.s56)].filter(Boolean).join(" ")}>
       <Tip label="Reload all frames" side="bottom">
-        <ToolbarPrimitive.Button aria-label="Reload all frames" onClick={onReload} className={cn(btn, quiet, "w-6.5 justify-center px-0")}>
+        <ToolbarPrimitive.Button aria-label="Reload all frames" onClick={onReload} className={[btn, quiet, sx(paint.s9)].filter(Boolean).join(" ")}>
           <RotateCwIcon />
         </ToolbarPrimitive.Button>
       </Tip>
@@ -505,10 +1085,10 @@ function PreviewBar({
           aria-pressed={s.sync}
           aria-label="Sync frames"
           onClick={() => set({ sync: !s.sync })}
-          className={cn(btn, s.sync ? "bg-accent text-foreground" : quiet)}
+          className={[btn, s.sync ? sx(paint.s57) : quiet].filter(Boolean).join(" ")}
         >
           {s.sync ? <Link2Icon /> : <Link2OffIcon />}
-          <span className="@max-[44rem]/bar:hidden">{s.sync ? "Synced" : "Isolated"}</span>
+          <span className={sx(paint.s58)}>{s.sync ? "Synced" : "Isolated"}</span>
         </ToolbarPrimitive.Button>
       </Tip>
       <ToolbarPrimitive.Group aria-label="Theme for all frames" className={seg}>
@@ -517,9 +1097,9 @@ function PreviewBar({
           const on = allTheme === t && !mixed;
           return (
             <Tip key={t} label={t === "auto" ? "Each page as it is (your system's appearance)" : `Force ${t} in every frame`} side="bottom">
-              <ToolbarPrimitive.Button aria-pressed={on} aria-label={`${THEME_LABEL[t]} theme for all frames`} onClick={() => set({ theme: t, themes: {} })} className={cn(btn, "h-5.5 px-1.5", on ? segOn : "text-muted-foreground hover:text-foreground")}>
+              <ToolbarPrimitive.Button aria-pressed={on} aria-label={`${THEME_LABEL[t]} theme for all frames`} onClick={() => set({ theme: t, themes: {} })} className={[btn, sx(paint.s59), on ? segOn : sx(paint.s60)].filter(Boolean).join(" ")}>
                 <Icon />
-                <span className="@max-[56rem]/bar:hidden">{THEME_LABEL[t]}</span>
+                <span className={sx(paint.s61)}>{THEME_LABEL[t]}</span>
               </ToolbarPrimitive.Button>
             </Tip>
           );
@@ -528,7 +1108,7 @@ function PreviewBar({
       <ToolbarPrimitive.Group aria-label="Layout" className={seg}>
         {LAYOUTS.map(({ id, label, help, Icon }) => (
           <Tip key={id} label={help} side="bottom">
-            <ToolbarPrimitive.Button aria-pressed={s.layout === id} aria-label={label} onClick={() => set({ layout: id })} className={cn(btn, "h-5.5 w-6 justify-center px-0", s.layout === id ? segOn : "text-muted-foreground hover:text-foreground")}>
+            <ToolbarPrimitive.Button aria-pressed={s.layout === id} aria-label={label} onClick={() => set({ layout: id })} className={[btn, sx(paint.s62), s.layout === id ? segOn : sx(paint.s60)].filter(Boolean).join(" ")}>
               <Icon />
             </ToolbarPrimitive.Button>
           </Tip>
@@ -537,8 +1117,8 @@ function PreviewBar({
       <SizesMenu worktree={worktree} />
       <OptionsMenu worktree={worktree} detected={detected} />
       <Tip label={canShoot ? "Screenshot of all frames" : "No frame is connected to take a picture of"} side="bottom">
-        <ToolbarPrimitive.Button aria-label="Screenshot of all frames" disabled={!canShoot || shooting} onClick={onShot} className={cn(btn, quiet, "w-6.5 justify-center px-0")}>
-          {shooting ? <Spinner className="size-3.5" /> : <CameraIcon />}
+        <ToolbarPrimitive.Button aria-label="Screenshot of all frames" disabled={!canShoot || shooting} onClick={onShot} className={[btn, quiet, sx(paint.s15)].filter(Boolean).join(" ")}>
+          {shooting ? <Spinner  size="md"/> : <CameraIcon />}
         </ToolbarPrimitive.Button>
       </Tip>
     </ToolbarPrimitive.Root>
@@ -550,7 +1130,7 @@ function Address({ url, onGo }: { url: string; onGo(raw: string): void }) {
   useEffect(() => setInput(url), [url]);
   return (
     <form
-      className="flex h-6.5 min-w-24 flex-1 items-center rounded-md border bg-muted/50 focus-within:border-ring"
+      className={sx(paint.s16)}
       onSubmit={(e) => {
         e.preventDefault();
         onGo(input);
@@ -565,7 +1145,7 @@ function Address({ url, onGo }: { url: string; onGo(raw: string): void }) {
         autoCorrect="off"
         onChange={(e) => setInput(e.target.value)}
         onFocus={(e) => e.target.select()}
-        className="h-full min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none"
+        className={sx(paint.s17)}
       />
     </form>
   );
@@ -573,7 +1153,7 @@ function Address({ url, onGo }: { url: string; onGo(raw: string): void }) {
 
 function AddressBar({ url, onGo }: { url: string; onGo(raw: string): void }) {
   return (
-    <div className="flex h-9 shrink-0 items-center gap-1 border-b px-2">
+    <div className={sx(paint.s18)}>
       <Address url={url} onGo={onGo} />
     </div>
   );
@@ -605,19 +1185,19 @@ function SizesMenu({ worktree }: { worktree: string }) {
   return (
     <Menu>
       <Tip label="Sizes to show" side="bottom">
-        <MenuTrigger render={<ToolbarPrimitive.Button aria-label="Sizes" className={cn(btn, quiet)} />}>
+        <MenuTrigger render={<ToolbarPrimitive.Button aria-label="Sizes" className={[btn, quiet].filter(Boolean).join(" ")} />}>
           <RulerIcon />
-          <span className="tabular-nums @max-[36rem]/bar:hidden">{s.sizes.length}</span>
+          <span className={[sx(paint.s19), sx(paint.s63)].filter(Boolean).join(" ")}>{s.sizes.length}</span>
         </MenuTrigger>
       </Tip>
-      <MenuPopup align="end" className="min-w-64">
+      <MenuPopup align="end" width={menuWidths.w64}>
         <MenuGroup>
           <MenuGroupLabel>Tailwind breakpoints</MenuGroupLabel>
           {breakpoints.map((p) => (
             <MenuCheckboxItem key={p.id} checked={s.sizes.includes(p.id)} onCheckedChange={(on) => toggle(p.id, on)} closeOnClick={false}>
-              <span className="flex w-full items-baseline gap-2">
-                <span className="w-7 font-medium font-mono">{p.label}</span>
-                <span className="text-muted-foreground text-xs tabular-nums">{p.w}px</span>
+              <span className={sx(paint.s20)}>
+                <span className={sx(paint.s21)}>{p.label}</span>
+                <span className={sx(paint.s22)}>{p.w}px</span>
               </span>
             </MenuCheckboxItem>
           ))}
@@ -627,9 +1207,9 @@ function SizesMenu({ worktree }: { worktree: string }) {
           <MenuGroupLabel>Devices</MenuGroupLabel>
           {devices.map((p) => (
             <MenuCheckboxItem key={p.id} checked={s.sizes.includes(p.id)} onCheckedChange={(on) => toggle(p.id, on)} closeOnClick={false}>
-              <span className="flex w-full items-baseline gap-2">
+              <span className={sx(paint.s23)}>
                 <span>{p.label}</span>
-                <span className="text-muted-foreground text-xs tabular-nums">
+                <span className={sx(paint.s24)}>
                   {p.w} × {p.h}
                 </span>
               </span>
@@ -643,7 +1223,7 @@ function SizesMenu({ worktree }: { worktree: string }) {
               <MenuGroupLabel>Custom</MenuGroupLabel>
               {s.custom.map((w) => (
                 <MenuCheckboxItem key={w} checked={s.sizes.includes(customId(w))} onCheckedChange={(on) => toggle(customId(w), on)} closeOnClick={false}>
-                  <span className="text-xs tabular-nums">{w}px</span>
+                  <span className={sx(paint.s25)}>{w}px</span>
                 </MenuCheckboxItem>
               ))}
             </MenuGroup>
@@ -651,7 +1231,7 @@ function SizesMenu({ worktree }: { worktree: string }) {
         )}
         <MenuSeparator />
         <form
-          className="flex items-center gap-1.5 px-2 py-1.5"
+          className={sx(paint.s26)}
           onSubmit={(e) => {
             e.preventDefault();
             addWidth();
@@ -665,7 +1245,7 @@ function SizesMenu({ worktree }: { worktree: string }) {
             // The menu's typeahead would take the keys.
             onKeyDown={(e) => e.key !== "Escape" && e.stopPropagation()}
             placeholder="Width, e.g. 1440"
-            className="h-7 min-w-0 flex-1 rounded-md border bg-background px-2 text-xs tabular-nums outline-none focus:border-ring"
+            className={sx(paint.s27)}
           />
           <Button type="submit" size="xs" variant="outline" disabled={!width}>
             Add
@@ -677,7 +1257,7 @@ function SizesMenu({ worktree }: { worktree: string }) {
           <MenuRadioGroup value={String(s.height)} onValueChange={(v) => setPreviewSettings(worktree, { height: Number(v) })}>
             {HEIGHTS.map((h) => (
               <MenuRadioItem key={h} value={String(h)} closeOnClick={false}>
-                <span className="text-xs tabular-nums">{h}px</span>
+                <span className={sx(paint.s28)}>{h}px</span>
               </MenuRadioItem>
             ))}
           </MenuRadioGroup>
@@ -698,11 +1278,11 @@ function OptionsMenu({ worktree, detected }: { worktree: string; detected?: stri
   return (
     <Menu>
       <Tip label="Sync and theme options" side="bottom">
-        <MenuTrigger render={<ToolbarPrimitive.Button aria-label="Preview options" className={cn(btn, quiet, "w-6.5 justify-center px-0")} />}>
+        <MenuTrigger render={<ToolbarPrimitive.Button aria-label="Preview options" className={[btn, quiet, sx(paint.s29)].filter(Boolean).join(" ")} />}>
           <SlidersHorizontalIcon />
         </MenuTrigger>
       </Tip>
-      <MenuPopup align="end" className="min-w-64">
+      <MenuPopup align="end" width={menuWidths.w64}>
         <MenuGroup>
           <MenuGroupLabel>Synced scrolling</MenuGroupLabel>
           <MenuRadioGroup value={s.scroll} onValueChange={(v) => setPreviewSettings(worktree, { scroll: v as "proportional" | "anchor" })}>
@@ -802,30 +1382,30 @@ function FrameTile({ frame: f, scale, src, host, strategy, root, allowed, status
   const next: Theme = f.theme === "dark" ? "light" : "dark";
   const shownUrl = url && url !== src ? url.replace(/^https?:\/\/[^/]+/, "") : "";
   return (
-    <div ref={tile} data-testid="preview-frame" data-frame={f.id} data-status={status} data-theme={f.theme} className="flex shrink-0 flex-col" style={{ width: w }}>
-      <div className="group/label relative flex items-center gap-1.5 overflow-hidden text-xs" style={{ height: LABEL - 6, marginBottom: 6 }}>
+    <div ref={tile} data-testid="preview-frame" data-frame={f.id} data-status={status} data-theme={f.theme} className={sx(paint.s30)} style={{ width: w }}>
+      <div className={[sx(paint.s31), "group/label"].filter(Boolean).join(" ")} style={{ height: LABEL - 6, marginBottom: 6 }}>
         <Tip label={statusHelp(status, synced)} side="bottom" align="start">
-          <span role="img" aria-label={statusHelp(status, synced)} className={cn("size-1.5 shrink-0 rounded-full", status === "live" ? (synced ? "bg-success" : "bg-muted-foreground/60") : status === "plain" ? "bg-warning" : "bg-muted-foreground/30")} />
+          <span role="img" aria-label={statusHelp(status, synced)} className={[sx(paint.n5), status === "live" ? synced ? sx(paint.n6) : sx(paint.n7) : status === "plain" ? sx(paint.n8) : sx(paint.n9)].filter(Boolean).join(" ")} />
         </Tip>
         <Tip label={`${f.detail} · shown at ${percent(scale)}`} side="bottom" align="start">
-          <span className={cn("shrink-0 font-medium", f.kind === "breakpoint" && "font-mono")}>{f.label}</span>
+          <span className={[sx(paint.s33), f.kind === "breakpoint" && sx(paint.s34)].filter(Boolean).join(" ")}>{f.label}</span>
         </Tip>
-        <span className="min-w-0 truncate text-muted-foreground tabular-nums">
+        <span className={sx(paint.s35)}>
           {f.w} × {f.h}
           {/* A narrow frame keeps its size; its scale is in the tooltip. */}
-          {w >= 200 && <span className="text-muted-foreground"> · {percent(scale)}</span>}
-          {shownUrl && <span className="font-mono text-muted-foreground"> · {shownUrl}</span>}
+          {w >= 200 && <span className={sx(paint.s36)}> · {percent(scale)}</span>}
+          {shownUrl && <span className={sx(paint.s37)}> · {shownUrl}</span>}
         </span>
         {f.theme !== "auto" && (
-          <span aria-hidden className="ml-auto flex shrink-0 items-center text-muted-foreground group-focus-within/label:invisible group-hover/label:invisible [&_svg]:size-3">
+          <span aria-hidden className={sx(paint.s38)}>
             <ThemeIcon />
           </span>
         )}
         {/* Its actions over the end of the label, on hover or focus, so a
             narrow frame keeps its name and size. */}
-        <span className="absolute inset-y-0 right-0 flex items-center bg-gradient-to-l from-[color-mix(in_oklab,var(--muted)_40%,var(--background))] from-70% to-transparent pl-4 opacity-0 transition-opacity focus-within:opacity-100 group-hover/label:opacity-100">
+        <span className={[sx(paint.s39), sx(paint.s71)].filter(Boolean).join(" ")}>
           <Tip label={f.theme === "auto" ? `Force ${next} here` : `${THEME_LABEL[f.theme]} here; switch to ${next}`} side="bottom">
-            <button type="button" aria-label={`Theme of ${f.label}: ${THEME_LABEL[f.theme]}`} onClick={() => onTheme(next)} className={cn(tileBtn, f.theme !== "auto" && "text-foreground")}>
+            <button type="button" aria-label={`Theme of ${f.label}: ${THEME_LABEL[f.theme]}`} onClick={() => onTheme(next)} className={[tileBtn, f.theme !== "auto" && sx(paint.s40)].filter(Boolean).join(" ")}>
               <ThemeIcon />
             </button>
           </Tip>
@@ -848,7 +1428,7 @@ function FrameTile({ frame: f, scale, src, host, strategy, root, allowed, status
           </Tip>
         </span>
       </div>
-      <div className={cn("relative overflow-hidden border bg-white shadow-xs/5", device ? "rounded-xl" : "rounded-md")} style={{ width: w, height: h }}>
+      <div className={[sx(paint.s41), device ? sx(paint.s42) : sx(paint.s43)].filter(Boolean).join(" ")} style={{ width: w, height: h }}>
         {allowed ? (
           <iframe
             ref={ref}
@@ -857,18 +1437,18 @@ function FrameTile({ frame: f, scale, src, host, strategy, root, allowed, status
             src={__BERTH_DEMO__ ? undefined : first.src}
             srcDoc={__BERTH_DEMO__ ? demoDevServer(src) : undefined}
             onLoad={() => setLoadedAt(Date.now())}
-            className="absolute top-0 left-0 origin-top-left border-0 bg-white"
+            className={[sx(paint.s44), sx(paint.s64)].filter(Boolean).join(" ")}
             style={{ width: f.w, height: f.h, transform: `scale(${scale})` }}
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
           />
         ) : (
-          <div className="flex size-full items-center justify-center bg-muted/60 text-muted-foreground">
-            <Spinner className="size-4 opacity-60" />
+          <div className={sx(paint.s45)}>
+            <Spinner  size="lg" soft/>
           </div>
         )}
         {allowed && status === "loading" && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/30">
-            <Spinner className="size-4 opacity-60" />
+          <div className={sx(paint.s46)}>
+            <Spinner  size="lg" soft/>
           </div>
         )}
       </div>
@@ -876,7 +1456,7 @@ function FrameTile({ frame: f, scale, src, host, strategy, root, allowed, status
   );
 }
 
-const tileBtn = "inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground [&_svg]:size-3.5";
+const tileBtn = (sx(paint.s66) ?? "");
 
 function statusHelp(status: Status, synced: boolean): string {
   switch (status) {
@@ -902,12 +1482,12 @@ function CantFrame({ url, worktree }: { url: string; worktree: string }) {
     }
   })();
   return (
-    <div className="flex min-h-0 flex-1 items-center justify-center p-6">
-      <div className="flex max-w-sm flex-col items-center gap-2 text-center">
-        <GlobeIcon className="size-6 text-muted-foreground" />
-        <p className="font-medium text-sm">{host} can't be framed</p>
-        <p className="text-muted-foreground text-xs">Preview shows pages through Burf's proxy, a worktree's dev server or a box port. Most other sites refuse to be shown inside another page.</p>
-        <div className="mt-2 flex gap-2">
+    <div className={sx(paint.s47)}>
+      <div className={[sx(paint.s48), sx(paint.s65)].filter(Boolean).join(" ")}>
+        <GlobeIcon className={sx(paint.s49)} />
+        <p className={sx(paint.s50)}>{host} can't be framed</p>
+        <p className={sx(paint.s51)}>Preview shows pages through Burf's proxy, a worktree's dev server or a box port. Most other sites refuse to be shown inside another page.</p>
+        <div className={sx(paint.s52)}>
           <Button size="sm" onClick={() => openBrowserAt(url, { kind: "tab" }, worktree)}>
             <AppWindowIcon />
             Open in Browser tab
@@ -1049,20 +1629,20 @@ function ShotDialog({ shot, worktree, onClose }: { shot?: { blob: Blob; url: str
   };
   return (
     <Dialog open={!!shot} onOpenChange={(o) => !o && onClose()}>
-      <DialogPopup className="max-w-4xl">
+      <DialogPopup width="4xl">
         <DialogHeader>
           <DialogTitle>Screenshot of all frames</DialogTitle>
           <DialogDescription>Each frame as it is now, side by side.</DialogDescription>
         </DialogHeader>
         <DialogPanel>
-          {shot && <img alt="All frames" src={shot.url} className="max-h-[55vh] w-full rounded-md border bg-muted object-contain" />}
+          {shot && <img alt="All frames" src={shot.url} className={sx(paint.s53)} />}
           {session && (
             <input
               aria-label="Note for the agent"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="A note for the agent (optional)"
-              className="mt-3 h-8 w-full rounded-md border bg-background px-2 text-sm outline-none focus:border-ring"
+              className={sx(paint.s54)}
             />
           )}
         </DialogPanel>

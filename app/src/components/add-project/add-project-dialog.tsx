@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowRightIcon, CheckIcon, ChevronRightIcon, CloudDownloadIcon, FolderGit2Icon, FolderIcon, FolderOpenIcon, FolderPlusIcon, GitBranchIcon, ServerIcon, TriangleAlertIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -18,10 +19,534 @@ import type { Location } from "@/lib/api";
 import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 import { Tip } from "@/components/tip";
-import { cn } from "@/lib/utils";
 import { selectWorktree } from "@/lib/workspaces";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { ErrorText } from "@/components/error-note";
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "display": "contents",
+  },
+  s1: {
+    "display": "flex",
+    "height": "40px",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--input)",
+      ":focus-within": "var(--ring)",
+    },
+    "backgroundColor": {
+      "default": "light-dark(var(--background), color-mix(in oklab, var(--input) 32%, transparent))",
+    },
+    "paddingInlineStart": "12px",
+    "paddingInlineEnd": "4px",
+    "boxShadow": {
+      "default": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+      ":focus-within": "0 0 0 2px color-mix(in oklab, var(--ring) 24%, transparent)",
+    },
+  },
+  s2: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "height": "100%",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "transparent",
+    "fontFamily": {
+      "default": "var(--font-mono)",
+      "::placeholder": "var(--font-sans)",
+    },
+    "fontSize": {
+      "default": "13px",
+      "::placeholder": "14px",
+    },
+    "outline": "none",
+    "color": {
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+    },
+    "lineHeight": {
+      "::placeholder": "20px",
+    },
+    "opacity": {
+      ":disabled": 0.64,
+    },
+  },
+  s4: {
+    "flexShrink": 0,
+  },
+  s5: {
+    "height": "224px",
+    "overflowY": "auto",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": {
+      "default": "light-dark(color-mix(in oklab, var(--muted) 24%, transparent), color-mix(in oklab, var(--input) 16%, transparent))",
+    },
+    "padding": "4px",
+  },
+  s6: {
+    "marginTop": "calc(4px * -1)",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s7: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "gap": "6px",
+    "overflowX": "auto",
+    "scrollbarWidth": "none",
+  },
+  s8: {
+    "flexShrink": 0,
+    "paddingInlineEnd": "2px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s9: {
+    "color": "var(--muted-foreground)",
+  },
+  s10: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s11: {
+    "marginInlineStart": "6px",
+  },
+  s12: {
+    "marginInlineStart": "6px",
+  },
+  s13: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s14: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s15: {
+    "color": "var(--muted-foreground)",
+  },
+  s16: {
+    "fontWeight": 500,
+  },
+  s17: {
+    "fontWeight": 500,
+  },
+  s18: {
+    "color": "var(--warning-foreground)",
+  },
+  s19: {
+    "fontWeight": 500,
+  },
+  s20: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s21: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s22: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 56%, transparent)",
+  },
+  s23: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s24: {
+    "fontWeight": 500,
+  },
+  s25: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s26: {
+    "color": "var(--foreground)",
+  },
+  s27: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s28: {
+    "display": "flex",
+    "height": "60px",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "transitionProperty": "opacity",
+    "transitionDuration": "150ms",
+  },
+  s29: {
+    "opacity": 0.56,
+  },
+  s30: {
+    "display": "inline-flex",
+    "width": "32px",
+    "height": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 48%, transparent)",
+    "color": "var(--muted-foreground)",
+    ":not(#\\#) svg": {
+      "width": "16px",
+      "height": "16px",
+    },
+  },
+  s31: {
+    "color": "var(--foreground)",
+  },
+  s32: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s33: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "baseline",
+    "gap": "6px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s34: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s35: {
+    "display": "flex",
+    "width": "24px",
+    "flexShrink": 0,
+    "justifyContent": "flex-end",
+  },
+  s36: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12.5px",
+  },
+  s37: {
+    "height": "20px",
+    "minWidth": "0px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": {
+      "default": "dashed",
+      ":focus": "solid",
+    },
+    "borderColor": {
+      "default": "transparent",
+      ":hover": "var(--border)",
+      ":focus": "var(--ring)",
+    },
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "transparent",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "color": "color-mix(in oklab, var(--foreground) 88%, transparent)",
+    "outline": "none",
+  },
+  s38: {
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "6px",
+    "paddingBottom": "4px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s39: {
+    "marginTop": "4px",
+  },
+  s40: {
+    "display": "flex",
+    "height": "32px",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "10px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "textAlign": "left",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s41: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--accent-foreground)",
+  },
+  s42: {
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    },
+  },
+  s43: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s44: {
+    "color": "var(--muted-foreground)",
+  },
+  s45: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s46: {
+    "marginInlineStart": "auto",
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s47: {
+    "borderColor": "color-mix(in oklab, var(--foreground) 24%, transparent)",
+    "color": "var(--foreground)",
+  },
+  s48: {
+    "color": "var(--foreground)",
+  },
+  s49: {
+    "color": "var(--success)",
+  },
+  s50: {
+    "color": "var(--muted-foreground)",
+  },
+  s51: {
+    "color": "var(--muted-foreground)",
+  },
+  s52: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+  },
+  s53: {
+    "display": "flex",
+    "height": "100%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "paddingLeft": "32px",
+    "paddingRight": "32px",
+    "textWrap": "balance",
+    "textAlign": "center",
+    "fontSize": "13px",
+    "color": "var(--muted-foreground)",
+  },
+  s54: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "padding": "8px",
+  },
+  s55: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "color": "var(--muted-foreground)",
+  },
+  s56: {
+    "paddingBottom": "2px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s57: {
+    "whiteSpace": "pre-wrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "color": "var(--muted-foreground)",
+    "lineHeight": "1.625",
+  },
+  s58: {
+    "display": "flex",
+    "height": "22.5rem",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "dashed",
+    "borderColor": "var(--border)",
+    "textAlign": "center",
+  },
+  s59: {
+    "marginBottom": "12px",
+  },
+  s60: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s61: {
+    "textWrap": "balance",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s62: {
+    "marginTop": "12px",
+  },
+  s63: {
+    "display": "flex",
+    "height": "22.5rem",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "dashed",
+    "borderColor": "var(--border)",
+    "paddingLeft": "32px",
+    "paddingRight": "32px",
+    "textAlign": "center",
+  },
+  s64: {
+    "marginBottom": "12px",
+  },
+  s65: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s66: {
+    "textWrap": "balance",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s67: {
+    "display": "inline-flex",
+    "height": "24px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+    "cursor": {
+      ":disabled": "default",
+    },
+  },
+  s68: {
+    "borderColor": "color-mix(in oklab, var(--foreground) 20%, transparent)",
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s69: {
+    "borderColor": "var(--border)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    },
+  },
+  s70: {
+    "opacity": 0.56,
+  },
+  s71: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  s72: {
+    "backgroundColor": "var(--foreground)",
+  },
+  s73: {
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--muted-foreground) 56%, transparent)",
+  },
+
+  s74: {
+    maxWidth: "20rem",
+  },
+  s75: {
+    color: color.mutedForeground,
+  },
+  s76: {
+    color: "var(--warning-foreground)",
+  },
+  s77: {
+    width: 16,
+    height: 16,
+    flexShrink: 0,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // AddProjectDialog adds a repository on a box as a project. The boxes come
 // first, because that is where a project lives; then one field takes
@@ -35,7 +560,7 @@ export function AddProjectDialog() {
     <Dialog open={!!draft} onOpenChange={(open) => !open && useStore.getState().closeAddLocation()}>
       {/* Anchored at the top, as New worktree is: Browse and the box's
           states differ in height, and a centred dialog would move its title. */}
-      <DialogPopup anchored className="sm:max-w-[38rem]" showCloseButton={false}>
+      <DialogPopup anchored width="38" showCloseButton={false}>
         {draft && <Body key={draft.box ?? ""} startBox={draft.box} />}
       </DialogPopup>
     </Dialog>
@@ -216,22 +741,22 @@ function Body({ startBox }: { startBox?: string }) {
 
   return (
     <form
-      className="contents"
+      className={sx(paint.s0)}
       onSubmit={(e) => {
         e.preventDefault();
         submit();
       }}
     >
       <StepHeader title="Add a project" description={boxes.length > 1 ? "Projects live on your boxes. Pick one, then type what to add: the box works out the rest." : `Projects live on your boxes. Type what to add on ${box || "it"}: the box works out the rest.`} />
-      <DialogPanel className="flex flex-col gap-3 px-5 pt-1 pb-4">
+      <DialogPanel inset="section" stack={3}>
         {boxes.length > 0 && <BoxStrip boxes={boxes} value={box} onChange={(b) => !busy && setBox(b)} />}
 
         {!online ? (
           <Moored box={box} others={boxes.some((b) => b.name !== box && b.state === "online")} />
         ) : (
           <>
-            <div className="flex h-10 items-center gap-2 rounded-lg border border-input bg-background ps-3 pe-1 shadow-xs/5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/24 dark:bg-input/32">
-              <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+            <div className={sx(paint.s1)}>
+              <ChevronRightIcon aria-hidden className={sx(paint.s2)} />
               <input
                 ref={field}
                 autoFocus
@@ -260,17 +785,17 @@ function Body({ startBox }: { startBox?: string }) {
                     pick(rows[Math.max(active, 0)], true);
                   }
                 }}
-                className="h-full min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:font-sans placeholder:text-muted-foreground/72 placeholder:text-sm disabled:opacity-64"
+                className={sx(paint.s3)}
               />
-              <Button type="button" size="xs" variant="ghost" className="shrink-0 text-muted-foreground" disabled={busy} onClick={() => setBrowsing(true)}>
+              <span className={sx(paint.s4)}><Button type="button" size="xs" variant="ghost"  disabled={busy} onClick={() => setBrowsing(true)} muted>
                 <FolderOpenIcon />
                 Browse
-              </Button>
+              </Button></span>
             </div>
 
             <PlanLine plan={shown} pending={pending && !!input.trim() && shown === plan} box={box} home={home} target={active < 0 || shown !== plan || rows[active]?.kind === "new"} dest={dest} setDest={setDest} busy={busy} onEnter={() => (pending ? (queued.current = true) : plan && void run(plan))} />
 
-            <div ref={listRef} className="h-56 overflow-y-auto rounded-lg border bg-muted/24 p-1 dark:bg-input/16">
+            <div ref={listRef} className={sx(paint.s5)}>
               {phase !== "idle" ? (
                 <Progress logs={logs} busy={busy} />
               ) : rows.length === 0 ? (
@@ -279,16 +804,16 @@ function Body({ startBox }: { startBox?: string }) {
                 <Rows rows={rows} active={active} onHover={setActive} onPick={pick} />
               )}
             </div>
-            {error && <ErrorText className="-mt-1 text-destructive-foreground text-sm" text={error} />}
+            {error && <ErrorText className={sx(paint.s6)} text={error} />}
           </>
         )}
       </DialogPanel>
 
-      <DialogFooter className="h-14 items-center gap-3 px-5 py-0 sm:justify-between">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
+      <DialogFooter pad="tall">
+        <div className={sx(paint.s7)}>
           {online && canSpread && others.length > 0 ? (
             <>
-              <span className="shrink-0 pe-0.5 text-muted-foreground text-xs">Also on</span>
+              <span className={sx(paint.s8)}>Also on</span>
               {others.map((o) => (
                 <Chip
                   key={o.name}
@@ -298,17 +823,17 @@ function Body({ startBox }: { startBox?: string }) {
                   onClick={() => setAlso((a) => (a.includes(o.name) ? a.filter((x) => x !== o.name) : [...a, o.name]))}
                 >
                   {o.name}
-                  {o.has && <span className="text-muted-foreground">has it</span>}
+                  {o.has && <span className={sx(paint.s9)}>has it</span>}
                 </Chip>
               ))}
             </>
           ) : online ? (
-            <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
-              <Kbd>↑↓</Kbd> pick <Kbd className="ms-1.5">⇥</Kbd> complete <Kbd className="ms-1.5">↵</Kbd> {activeRow && !rowPlan && activeRow.kind !== "new" ? "choose" : verb(shown)}
+            <span className={sx(paint.s10)}>
+              <Kbd>↑↓</Kbd> pick <span className={sx(paint.s11)}><Kbd>⇥</Kbd></span> complete <span className={sx(paint.s12)}><Kbd>↵</Kbd></span> {activeRow && !rowPlan && activeRow.kind !== "new" ? "choose" : verb(shown)}
             </span>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className={sx(paint.s13)}>
           {busy ? (
             <Button type="button" variant="ghost" onClick={() => abort.current?.abort()}>
               Stop
@@ -353,7 +878,7 @@ const rowVerb = (r: Row) => ({ project: "Open project", repo: "Add project", els
 // same height, so nothing below moves as the answer changes.
 function PlanLine({ plan, pending, box, home, target, dest, setDest, busy, onEnter }: { plan?: Plan; pending: boolean; box: string; home?: string; target: boolean; dest: Destination; setDest(d: Destination): void; busy: boolean; onEnter(): void }) {
   const short = (p: string) => shortPath(p, home);
-  const on = <span className="shrink-0 text-muted-foreground">on {box}</span>;
+  const on = <span className={sx(paint.s14)}>on {box}</span>;
   let icon: React.ReactNode = <ArrowRightIcon />;
   let line: React.ReactNode;
   let detail: React.ReactNode;
@@ -361,15 +886,15 @@ function PlanLine({ plan, pending, box, home, target, dest, setDest, busy, onEnt
   switch (plan?.do) {
     case undefined:
       icon = <ArrowRightIcon />;
-      line = <span className="text-muted-foreground">Add a folder, clone a repository, or start a new one.</span>;
+      line = <span className={sx(paint.s15)}>Add a folder, clone a repository, or start a new one.</span>;
       detail = <>The box checks what you type and says what Enter will do.</>;
-      tone = "text-muted-foreground";
+      tone = (sx(paint.s75) ?? "");
       break;
     case "open":
       icon = <ArrowRightIcon />;
       line = (
         <>
-          <b className="font-medium">Open</b> <Mono>{plan.loc.name}</Mono> {on}
+          <b className={sx(paint.s16)}>Open</b> <Mono>{plan.loc.name}</Mono> {on}
         </>
       );
       detail = (
@@ -383,7 +908,7 @@ function PlanLine({ plan, pending, box, home, target, dest, setDest, busy, onEnt
       icon = plan.git ? <FolderGit2Icon /> : <FolderIcon />;
       line = (
         <>
-          <b className="font-medium">Add</b> <Mono>{short(plan.path)}</Mono> {on}
+          <b className={sx(paint.s17)}>Add</b> <Mono>{short(plan.path)}</Mono> {on}
         </>
       );
       detail = plan.git ? (
@@ -391,23 +916,23 @@ function PlanLine({ plan, pending, box, home, target, dest, setDest, busy, onEnt
           {plan.note ? `${plan.note} ` : ""}git{plan.slug ? ` · ${plan.slug}` : " · no remote"} · as <Mono>{plan.name}</Mono>
         </>
       ) : (
-        <span className="text-warning-foreground">Not a git repository: it can be a project, but worktrees need git.</span>
+        <span className={sx(paint.s18)}>Not a git repository: it can be a project, but worktrees need git.</span>
       );
       break;
     case "clone":
       icon = <CloudDownloadIcon />;
       line = (
         <>
-          <b className="font-medium">Clone</b> <Mono className="min-w-0 truncate">{plan.display}</Mono> {on}
+          <b className={sx(paint.s19)}>Clone</b> <Mono className={sx(paint.s20)}>{plan.display}</Mono> {on}
         </>
       );
       detail = (
-        <span className="flex min-w-0 items-center gap-1">
+        <span className={sx(paint.s21)}>
           into
           <Inline value={dest.parent ?? plan.parent} label="Parent folder" disabled={busy} onChange={(v) => setDest({ ...dest, parent: v })} onEnter={onEnter} />
-          <span className="text-muted-foreground/56">/</span>
+          <span className={sx(paint.s22)}>/</span>
           <Inline value={dest.folder ?? plan.folder} label="Folder" disabled={busy} onChange={(v) => setDest({ ...dest, folder: v })} onEnter={onEnter} />
-          {plan.link && <span className="truncate">, then {plan.link.kind === "pr" ? `PR #${plan.link.n}` : `issue #${plan.link.n}`} as a worktree</span>}
+          {plan.link && <span className={sx(paint.s23)}>, then {plan.link.kind === "pr" ? `PR #${plan.link.n}` : `issue #${plan.link.n}`} as a worktree</span>}
         </span>
       );
       break;
@@ -415,43 +940,43 @@ function PlanLine({ plan, pending, box, home, target, dest, setDest, busy, onEnt
       icon = <FolderPlusIcon />;
       line = (
         <>
-          <b className="font-medium">Create</b> <Mono>{`${plan.parent}/${plan.folder}`}</Mono> <span className="shrink-0 text-muted-foreground">and git init {`on ${box}`}</span>
+          <b className={sx(paint.s24)}>Create</b> <Mono>{`${plan.parent}/${plan.folder}`}</Mono> <span className={sx(paint.s25)}>and git init {`on ${box}`}</span>
         </>
       );
       detail = <>A new repository with an empty first commit, ready for worktrees.</>;
       break;
     case "look":
       icon = <FolderOpenIcon />;
-      tone = "text-muted-foreground";
+      tone = (sx(paint.s75) ?? "");
       line = (
         <>
-          <span>Inside</span> <Mono className="text-foreground">{short(plan.path)}</Mono> {on}
+          <span>Inside</span> <Mono className={sx(paint.s26)}>{short(plan.path)}</Mono> {on}
         </>
       );
       detail = <>A folder to look in: ↓ or Enter picks from what is in it, or keep typing.</>;
       break;
     case "blocked":
       icon = <TriangleAlertIcon />;
-      tone = "text-warning-foreground";
-      line = <span className="truncate">{plan.message}</span>;
+      tone = (sx(paint.s76) ?? "");
+      line = <span className={sx(paint.s27)}>{plan.message}</span>;
       detail = <>Change what you typed, or browse the box.</>;
       break;
   }
   const ready = !!plan && plan.do !== "blocked" && plan.do !== "look";
   return (
-    <div aria-live="polite" className={cn("flex h-15 items-center gap-3 rounded-lg px-1 transition-opacity", pending && plan && "opacity-56")}>
-      <span className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted/48 text-muted-foreground [&_svg]:size-4", ready && "text-foreground", tone)}>{icon}</span>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className={cn("flex min-w-0 items-baseline gap-1.5 truncate text-sm", tone)}>{line}</p>
-        <div className="min-w-0 truncate text-muted-foreground text-xs">{detail}</div>
+    <div aria-live="polite" className={[sx(paint.s28), pending && plan && sx(paint.s29)].filter(Boolean).join(" ")}>
+      <span className={[sx(paint.s30), ready && sx(paint.s31), tone].filter(Boolean).join(" ")}>{icon}</span>
+      <div className={sx(paint.s32)}>
+        <p className={[sx(paint.s33), tone].filter(Boolean).join(" ")}>{line}</p>
+        <div className={sx(paint.s34)}>{detail}</div>
       </div>
-      <span className="flex w-6 shrink-0 justify-end">{pending ? <Spinner className="size-3.5 text-muted-foreground" /> : ready && target ? <Kbd>↵</Kbd> : null}</span>
+      <span className={sx(paint.s35)}>{pending ? <Spinner  size="md" muted/> : ready && target ? <Kbd>↵</Kbd> : null}</span>
     </div>
   );
 }
 
 function Mono({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <span className={cn("min-w-0 truncate font-mono text-[12.5px]", className)}>{children}</span>;
+  return <span className={[sx(paint.s36), className].filter(Boolean).join(" ")}>{children}</span>;
 }
 
 // Inline is an editable piece of the plan's sentence: where a clone goes.
@@ -470,7 +995,7 @@ function Inline({ value, label, disabled, onChange, onEnter }: { value: string; 
           onEnter();
         }
       }}
-      className="h-5 min-w-0 rounded border border-transparent border-b-border border-dashed bg-transparent px-1 font-mono text-[12px] text-foreground/88 outline-none hover:border-border focus:border-ring focus:border-solid"
+      className={sx(paint.s37)}
     />
   );
 }
@@ -484,7 +1009,7 @@ function Rows({ rows, active, onHover, onPick }: { rows: Row[]; active: number; 
         group = r.group;
         return (
           <div key={r.key}>
-            {head && <p className={cn("px-2.5 pt-1.5 pb-1 text-[11px] text-muted-foreground", i > 0 && "mt-1")}>{r.group}</p>}
+            {head && <p className={[sx(paint.s38), i > 0 && sx(paint.s39)].filter(Boolean).join(" ")}>{r.group}</p>}
             <button
               type="button"
               role="option"
@@ -493,12 +1018,12 @@ function Rows({ rows, active, onHover, onPick }: { rows: Row[]; active: number; 
               tabIndex={-1}
               onMouseMove={() => i !== active && onHover(i)}
               onClick={() => onPick(r)}
-              className={cn("flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm", i === active ? "bg-accent text-accent-foreground" : "hover:bg-accent/50")}
+              className={[sx(paint.s40), i === active ? sx(paint.s41) : sx(paint.s42)].filter(Boolean).join(" ")}
             >
               <RowIcon kind={r.kind} />
-              <span className={cn("min-w-0 truncate", r.kind === "folder" && "text-muted-foreground")}>{r.title}</span>
-              {r.detail && <span className="min-w-0 truncate font-mono text-muted-foreground text-xs">{r.detail}</span>}
-              {r.badge && <span className={cn("ms-auto shrink-0 rounded border px-1.5 text-[11px] text-muted-foreground", r.kind === "new" && "border-foreground/24 text-foreground")}>{r.badge}</span>}
+              <span className={[sx(paint.s43), r.kind === "folder" && sx(paint.s44)].filter(Boolean).join(" ")}>{r.title}</span>
+              {r.detail && <span className={sx(paint.s45)}>{r.detail}</span>}
+              {r.badge && <span className={[sx(paint.s46), r.kind === "new" && sx(paint.s47)].filter(Boolean).join(" ")}>{r.badge}</span>}
             </button>
           </div>
         );
@@ -508,12 +1033,12 @@ function Rows({ rows, active, onHover, onPick }: { rows: Row[]; active: number; 
 }
 
 function RowIcon({ kind }: { kind: Row["kind"] }) {
-  const c = "size-4 shrink-0";
-  if (kind === "new") return <FolderPlusIcon className={cn(c, "text-foreground")} />;
-  if (kind === "repo") return <GitBranchIcon className={cn(c, "text-success")} />;
-  if (kind === "project") return <CheckIcon className={cn(c, "text-muted-foreground")} />;
-  if (kind === "elsewhere") return <ServerIcon className={cn(c, "text-muted-foreground")} />;
-  return <FolderIcon className={cn(c, "text-muted-foreground/72")} />;
+  const c = (sx(paint.s77) ?? "");
+  if (kind === "new") return <FolderPlusIcon className={[c, sx(paint.s48)].filter(Boolean).join(" ")} />;
+  if (kind === "repo") return <GitBranchIcon className={[c, sx(paint.s49)].filter(Boolean).join(" ")} />;
+  if (kind === "project") return <CheckIcon className={[c, sx(paint.s50)].filter(Boolean).join(" ")} />;
+  if (kind === "elsewhere") return <ServerIcon className={[c, sx(paint.s51)].filter(Boolean).join(" ")} />;
+  return <FolderIcon className={[c, sx(paint.s52)].filter(Boolean).join(" ")} />;
 }
 
 // Quiet fills the list when there is nothing to pick: what the box will do
@@ -525,7 +1050,7 @@ function Quiet({ intent, plan, box, pending }: { intent: string; plan?: Plan; bo
   if (!pending && plan?.do === "blocked") text = `Browse ${box} to find the folder you mean.`;
   if (!pending && plan?.do === "look") text = `Nothing in ${plan.path} yet. Type a name after the slash to start a project there.`;
   if (!pending && intent === "empty") text = `No folders in ${box}'s home or ~/work yet. Type a name to start a project.`;
-  return <p className="flex h-full items-center justify-center px-8 text-balance text-center text-[13px] text-muted-foreground">{text}</p>;
+  return <p className={sx(paint.s53)}>{text}</p>;
 }
 
 function Progress({ logs, busy }: { logs: Log[]; busy: boolean }) {
@@ -535,12 +1060,12 @@ function Progress({ logs, busy }: { logs: Log[]; busy: boolean }) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [logs]);
   return (
-    <div ref={ref} aria-live="polite" className="flex flex-col gap-2 p-2">
-      {logs.length === 0 && busy && <p className="font-mono text-[12px] text-muted-foreground">Starting…</p>}
+    <div ref={ref} aria-live="polite" className={sx(paint.s54)}>
+      {logs.length === 0 && busy && <p className={sx(paint.s55)}>Starting…</p>}
       {logs.map((l) => (
         <div key={l.box}>
-          {logs.length > 1 && <p className="pb-0.5 font-medium text-[11px] text-muted-foreground">{l.box}</p>}
-          <pre className="whitespace-pre-wrap font-mono text-[12px] text-muted-foreground leading-relaxed">{l.lines.join("\n")}</pre>
+          {logs.length > 1 && <p className={sx(paint.s56)}>{l.box}</p>}
+          <pre className={sx(paint.s57)}>{l.lines.join("\n")}</pre>
         </div>
       ))}
     </div>
@@ -551,25 +1076,24 @@ function Progress({ logs, busy }: { logs: Log[]; busy: boolean }) {
 // height as the field, plan and list it stands in for.
 function Moored({ box, others }: { box: string; others: boolean }) {
   return (
-    <div className="flex h-[22.5rem] flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-center">
-      <Scene name="offline" width={136} className="mb-3" />
-      <p className="font-medium text-sm">{box ? `${box} is offline` : "No box is online"}</p>
-      <p className="max-w-xs text-balance text-muted-foreground text-xs">
+    <div className={sx(paint.s58)}>
+      <Scene name="offline" width={136} className={sx(paint.s59)} />
+      <p className={sx(paint.s60)}>{box ? `${box} is offline` : "No box is online"}</p>
+      <p className={[sx(paint.s61), sx(paint.s74)].filter(Boolean).join(" ")}>
         {others ? "Projects are added on a box that is online. Pick another above, or check on this one in Boxes." : "Projects are added on a box that is online. Check on your boxes in Settings."}
       </p>
-      <Button
+      <span className={sx(paint.s62)}><Button
         size="sm"
         variant="outline"
-        className="mt-3"
+        
         onClick={() => {
           // Boxes is a page: the dialog goes, or it would sit over it.
           useStore.getState().closeAddLocation();
           useStore.getState().setView({ kind: "settings", section: "boxes" });
-        }}
-      >
+        }}>
         <ServerIcon />
         Open Boxes
-      </Button>
+      </Button></span>
     </div>
   );
 }
@@ -580,15 +1104,15 @@ function NoBoxes({ onCancel }: { onCancel(): void }) {
   return (
     <>
       <StepHeader title="Add a project" description="Projects live on your boxes, and there isn't one yet." />
-      <DialogPanel className="px-5 pt-1 pb-4">
-        <div className="flex h-[22.5rem] flex-col items-center justify-center gap-1 rounded-lg border border-dashed px-8 text-center">
+      <DialogPanel inset="section">
+        <div className={sx(paint.s63)}>
           {/* A quay with an empty hook: nothing loaded yet. */}
-          <Scene name="dock" width={136} className="mb-3" />
-          <p className="font-medium text-sm">Add a box first</p>
-          <p className="max-w-xs text-balance text-muted-foreground text-xs">A box is any VPS or dev machine: projects and their agents run there. Add one, then add a project on it.</p>
+          <Scene name="dock" width={136} className={sx(paint.s64)} />
+          <p className={sx(paint.s65)}>Add a box first</p>
+          <p className={[sx(paint.s66), sx(paint.s74)].filter(Boolean).join(" ")}>A box is any VPS or dev machine: projects and their agents run there. Add one, then add a project on it.</p>
         </div>
       </DialogPanel>
-      <DialogFooter className="h-14 items-center gap-2 px-5 py-0">
+      <DialogFooter pad="bar">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
@@ -615,13 +1139,9 @@ function Chip({ on, disabled, title, onClick, children }: { on: boolean; disable
       aria-pressed={on}
       disabled={disabled}
       onClick={onClick}
-      className={cn(
-        "inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors disabled:cursor-default",
-        on ? "border-foreground/20 bg-accent text-foreground" : "border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-        disabled && !on && "opacity-56",
-      )}
+      className={[sx(paint.s67), on ? sx(paint.s68) : sx(paint.s69), disabled && !on && sx(paint.s70)].filter(Boolean).join(" ")}
     >
-      <span className={cn("size-1.5 rounded-full", on ? "bg-foreground" : "border border-muted-foreground/56")} />
+      <span className={[sx(paint.s71), on ? sx(paint.s72) : sx(paint.s73)].filter(Boolean).join(" ")} />
       {children}
     </button>
   );

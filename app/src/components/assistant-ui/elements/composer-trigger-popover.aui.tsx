@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { memo, useRef, useEffect, type ComponentPropsWithoutRef, type FC } from "react";
 import {
   ComposerPrimitive,
@@ -9,7 +10,164 @@ import {
   type TriggerItem,
 } from "@assistant-ui/react";
 import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "flexDirection": "column",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s1: {
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+      ":focus": "var(--accent)",
+      "[data-highlighted]": "var(--accent)",
+    },
+    "display": "flex",
+    "cursor": "pointer",
+    "alignItems": "center",
+    "justifyContent": "space-between",
+    "gap": "8px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+    "outline": "none",
+  },
+  s2: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s3: {
+    "color": "var(--muted-foreground)",
+    "width": "16px",
+    "height": "16px",
+  },
+  s4: {
+    "color": "var(--muted-foreground)",
+    "width": "16px",
+    "height": "16px",
+  },
+  s5: {
+    "color": "var(--muted-foreground)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s6: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s7: {
+    "color": "var(--muted-foreground)",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "display": "flex",
+    "cursor": "pointer",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "letterSpacing": "0.025em",
+    "textTransform": "uppercase",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+  },
+  s8: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s9: {
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s10: {
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+      ":focus": "var(--accent)",
+      "[data-highlighted]": "var(--accent)",
+    },
+    "display": "flex",
+    "width": "100%",
+    "cursor": "pointer",
+    "flexDirection": "column",
+    "alignItems": "flex-start",
+    "gap": "2px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+    "outline": "none",
+  },
+  s11: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "fontWeight": 500,
+  },
+  s12: {
+    "color": "var(--primary)",
+    "width": "14px",
+    "height": "14px",
+  },
+  s13: {
+    "color": "var(--muted-foreground)",
+    "marginInlineStart": "22px",
+    "fontSize": "12px",
+    "lineHeight": "1.25",
+  },
+  s14: {
+    "color": "var(--muted-foreground)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s15: {
+    "backgroundColor": "var(--popover)",
+    "color": "var(--popover-foreground)",
+    "position": "absolute",
+    "insetInlineStart": "0px",
+    "bottom": "100%",
+    "zIndex": 50,
+    "marginBottom": "8px",
+    "width": "256px",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  q16: {
+    "textAlign": "start",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type IconComponent = FC<{ className?: string }>;
 
@@ -89,7 +247,7 @@ const Categories: FC<CategoriesProps> = ({
     {(categories) => (
       <div
         data-slot="composer-trigger-popover-categories"
-        className="flex flex-col py-1"
+        className={sx(paint.s0)}
       >
         {categories.map((cat) => {
           const Icon = resolveIcon(cat.id, iconMap, fallbackIcon);
@@ -97,18 +255,18 @@ const Categories: FC<CategoriesProps> = ({
             <ComposerPrimitive.TriggerPopoverCategoryItem
               key={cat.id}
               categoryId={cat.id}
-              className="hover:bg-accent focus:bg-accent data-[highlighted]:bg-accent flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm transition-colors outline-none"
+              className={sx(paint.s1)}
             >
-              <span className="flex items-center gap-2">
-                <Icon className="text-muted-foreground size-4" />
+              <span className={sx(paint.s2)}>
+                <Icon className={sx(paint.s3)} />
                 {cat.label}
               </span>
-              <ChevronRightIcon className="text-muted-foreground size-4" />
+              <ChevronRightIcon className={sx(paint.s4)} />
             </ComposerPrimitive.TriggerPopoverCategoryItem>
           );
         })}
         {categories.length === 0 && (
-          <div className="text-muted-foreground px-3 py-2 text-sm">
+          <div className={sx(paint.s5)}>
             {emptyLabel}
           </div>
         )}
@@ -139,14 +297,14 @@ const Items: FC<ItemsProps> = ({
       {(items) => (
         <div
           data-slot="composer-trigger-popover-items"
-          className="flex flex-col"
+          className={sx(paint.s6)}
         >
-          <ComposerPrimitive.TriggerPopoverBack className="text-muted-foreground hover:bg-accent flex cursor-pointer items-center gap-1.5 border-b px-3 py-2 text-xs tracking-wide uppercase transition-colors">
-            <ChevronLeftIcon className="size-3.5" />
+          <ComposerPrimitive.TriggerPopoverBack className={sx(paint.s7)}>
+            <ChevronLeftIcon className={sx(paint.s8)} />
             {backLabel}
           </ComposerPrimitive.TriggerPopoverBack>
 
-          <div className="py-1">
+          <div className={sx(paint.s9)}>
             {items.map((item, index) => {
               const iconKey =
                 typeof item.metadata?.icon === "string"
@@ -158,14 +316,14 @@ const Items: FC<ItemsProps> = ({
                   key={item.id}
                   item={item}
                   index={index}
-                  className="hover:bg-accent focus:bg-accent data-[highlighted]:bg-accent flex w-full cursor-pointer flex-col items-start gap-0.5 px-3 py-2 text-start transition-colors outline-none"
+                  className={[sx(paint.s10), sx(paint.q16)].filter(Boolean).join(" ")}
                 >
-                  <span className="flex items-center gap-2 text-sm font-medium">
-                    <Icon className="text-primary size-3.5" />
+                  <span className={sx(paint.s11)}>
+                    <Icon className={sx(paint.s12)} />
                     {item.label}
                   </span>
                   {item.description && (
-                    <span className="text-muted-foreground ms-5.5 text-xs leading-tight">
+                    <span className={sx(paint.s13)}>
                       {item.description}
                     </span>
                   )}
@@ -173,7 +331,7 @@ const Items: FC<ItemsProps> = ({
               );
             })}
             {items.length === 0 && (
-              <div className="text-muted-foreground px-3 py-2 text-sm">
+              <div className={sx(paint.s14)}>
                 {isLoading ? loadingLabel : emptyLabel}
               </div>
             )}
@@ -223,10 +381,7 @@ const ComposerTriggerPopoverImpl: FC<ComposerTriggerPopoverProps> = ({
   return (
     <ComposerPrimitive.TriggerPopover
       data-slot="composer-trigger-popover"
-      className={cn(
-        "aui-composer-trigger-popover bg-popover text-popover-foreground absolute start-0 bottom-full z-50 mb-2 w-64 overflow-hidden rounded-xl border",
-        className,
-      )}
+      className={[[sx(paint.s15), "aui-composer-trigger-popover"].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
       isLoading={isLoading}
       {...props}
     >

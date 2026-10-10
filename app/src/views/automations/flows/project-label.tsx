@@ -1,13 +1,59 @@
+import * as stylex from "@stylexjs/stylex";
 import { FolderGitIcon, LayersIcon } from "lucide-react";
 
 import { type Scope, scopeLocation } from "@/lib/flows";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { hereRef } from "@/lib/workspaces";
+
+const paint = stylex.create({
+  s0: {
+    "display": "inline-flex",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--muted)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+    "lineHeight": "1",
+  },
+  s1: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s2: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s5: {
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // BoxChip names a box the way the sidebar does.
 export function BoxChip({ box, className }: { box: string; className?: string }) {
-  return <span className={cn("inline-flex h-4 shrink-0 items-center rounded bg-muted px-1 font-mono text-[10px] text-muted-foreground leading-none", className)}>{box}</span>;
+  return <span className={[sx(paint.s0), className].filter(Boolean).join(" ")}>{box}</span>;
 }
 
 // ProjectLabel names where a flow runs: a project as "shop · acme/shop" on
@@ -20,11 +66,11 @@ function OneBoxLabel({ box, scope, className, chip }: { box: string; scope: Scop
   const loc = scopeLocation(scope);
   const slug = useStore((s) => (loc ? s.boxes[box]?.locations?.find((l) => l.name === loc)?.slug : undefined));
   return (
-    <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
-      {loc ? <FolderGitIcon className="size-3.5 shrink-0 text-muted-foreground" /> : <LayersIcon className="size-3.5 shrink-0 text-muted-foreground" />}
-      <span className="truncate">
+    <span className={[sx(paint.s1), className].filter(Boolean).join(" ")}>
+      {loc ? <FolderGitIcon className={sx(paint.s2)} /> : <LayersIcon className={sx(paint.s3)} />}
+      <span className={sx(paint.s4)}>
         {loc ?? "All projects"}
-        {slug && <span className="text-muted-foreground"> · {slug}</span>}
+        {slug && <span className={sx(paint.s5)}> · {slug}</span>}
       </span>
       {chip && <BoxChip box={box} />}
     </span>

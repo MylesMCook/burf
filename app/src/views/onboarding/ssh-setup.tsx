@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { KeyRoundIcon, MonitorIcon, ServerIcon, ShieldAlertIcon, TerminalIcon } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
@@ -7,10 +8,265 @@ import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { laptopApi, type SshFailure, type SshPlan } from "@/lib/api";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { useAgentChoice, useInstallTarget } from "@/views/onboarding/guided-install";
 import { InlineAgents, QuickInstall } from "@/views/onboarding/quick-install";
 import { InstallCommand } from "@/views/onboarding/install-command";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "40px",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--input)",
+      ":focus-within": "var(--ring)",
+    },
+    "backgroundColor": {
+      "default": "light-dark(var(--background), color-mix(in oklab, var(--input) 32%, transparent))",
+    },
+    "paddingInlineStart": "12px",
+    "paddingInlineEnd": "4px",
+    "boxShadow": {
+      "default": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+      ":focus-within": "0 0 0 2px color-mix(in oklab, var(--ring) 24%, transparent)",
+    },
+  },
+  s1: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s2: {
+    "height": "100%",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "transparent",
+    "fontFamily": {
+      "default": "var(--font-mono)",
+      "::placeholder": "var(--font-sans)",
+    },
+    "fontSize": {
+      "default": "13px",
+      "::placeholder": "14px",
+    },
+    "outline": "none",
+    "color": {
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+    },
+    "lineHeight": {
+      "::placeholder": "20px",
+    },
+    "opacity": {
+      ":disabled": 0.64,
+    },
+  },
+  s3: {
+    "flexShrink": 0,
+  },
+  s4: {
+    "marginTop": "8px",
+    "display": "flex",
+    "minHeight": "20px",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "20px",
+  },
+  s5: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s6: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s7: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s8: {
+    "marginInlineStart": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s9: {
+    "height": "20px",
+    "width": "128px",
+    "borderColor": {
+      "default": "var(--input)",
+      ":focus": "var(--ring)",
+    },
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "transparent",
+    "paddingLeft": "2px",
+    "paddingRight": "2px",
+    "color": {
+      "default": "var(--foreground)",
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+    },
+    "outline": "none",
+  },
+  s10: {
+    "marginTop": "4px",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--popover)",
+    "padding": "4px",
+  },
+  s11: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "10px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "textAlign": "left",
+  },
+  s12: {
+    "backgroundColor": "var(--accent)",
+  },
+  s13: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s14: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s15: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12.5px",
+  },
+  s16: {
+    "marginInlineStart": "auto",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s17: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "2px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s18: {
+    "marginInlineStart": "4px",
+  },
+  s19: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s20: {
+    "color": "var(--foreground)",
+    "textDecoration": {
+      "default": "underline",
+      ":hover": "none",
+    },
+  },
+  s21: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s23: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s24: {
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 60%, transparent)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "overflowWrap": "anywhere",
+  },
+  s25: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s26: {
+    "display": "flex",
+    "gap": "8px",
+  },
+  s27: {
+    "alignSelf": "flex-start",
+  },
+  s28: {
+    "marginTop": "8px",
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "10px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "padding": "12px",
+  },
+  s29: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s30: {
+    "marginTop": "2px",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--destructive-foreground)",
+  },
+  s31: {
+    "color": "var(--destructive-foreground)",
+  },
+
+  s32: {
+    textUnderlineOffset: 2,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type Suggestion = { value: string; label: string; detail: string; os?: string; network?: string };
 export type Failure = SshFailure | { kind: "plain"; message: string };
@@ -85,14 +341,14 @@ export function SshSetup({
   return (
     <div>
       <form
-        className="flex h-10 items-center gap-2 rounded-lg border border-input bg-background ps-3 pe-1 shadow-xs/5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/24 dark:bg-input/32"
+        className={sx(paint.s0)}
         onSubmit={(e) => {
           e.preventDefault();
           if (active >= 0 && matches[active]) pick(matches[active], true);
           else run();
         }}
       >
-        <TerminalIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+        <TerminalIcon aria-hidden className={sx(paint.s1)} />
         <input
           ref={field}
           value={host}
@@ -122,29 +378,29 @@ export function SshSetup({
               pick(matches[Math.max(active, 0)], false);
             }
           }}
-          className="h-full min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:font-sans placeholder:text-muted-foreground/72 placeholder:text-sm disabled:opacity-64"
+          className={sx(paint.s2)}
         />
-        <Button type="submit" size="xs" variant="outline" className="shrink-0" disabled={running || (!host.trim() && active < 0)} data-testid="ssh-set-up">
+        <span className={sx(paint.s3)}><Button type="submit" size="xs" variant="outline"  disabled={running || (!host.trim() && active < 0)} data-testid="ssh-set-up">
           Set up
-        </Button>
+        </Button></span>
       </form>
 
       {/* What Burf will use, before it connects: a wrong agent is obvious here. */}
-      <div aria-live="polite" className="mt-2 flex min-h-5 min-w-0 items-center gap-1.5 text-muted-foreground text-xs leading-5">
+      <div aria-live="polite" className={sx(paint.s4)}>
         {host.trim() ? (
           plan === "loading" ? (
             <>
-              <Spinner className="size-3" /> Reading your SSH setup…
+              <Spinner  size="sm"/> Reading your SSH setup…
             </>
           ) : plan ? (
             <>
-              <KeyRoundIcon className="size-3.5 shrink-0" />
-              <span className="min-w-0 truncate">
+              <KeyRoundIcon className={sx(paint.s5)} />
+              <span className={sx(paint.s6)}>
                 {plan.summary}
                 {plan.hostname ? (
                   <>
                     {" · "}
-                    <span className="font-mono">
+                    <span className={sx(paint.s7)}>
                       {plan.user ? `${plan.user}@` : ""}
                       {plan.hostname}
                       {plan.port && plan.port !== "22" ? `:${plan.port}` : ""}
@@ -153,7 +409,7 @@ export function SshSetup({
                 ) : null}
                 {network ? ` · through the ${network} tailnet` : ""}
               </span>
-              <span className="ms-auto flex shrink-0 items-center gap-1">
+              <span className={sx(paint.s8)}>
                 named
                 <input
                   value={name}
@@ -162,7 +418,7 @@ export function SshSetup({
                   aria-label="Name in Burf"
                   spellCheck={false}
                   disabled={running}
-                  className="h-5 w-32 border-input border-b bg-transparent px-0.5 text-foreground outline-none placeholder:text-muted-foreground/72 focus:border-ring"
+                  className={sx(paint.s9)}
                 />
               </span>
             </>
@@ -175,7 +431,7 @@ export function SshSetup({
       <InlineAgents value={agents} onChange={setAgents} disabled={running} />
 
       {showSuggestions && (
-        <ul role="listbox" aria-label="Hosts" className="mt-1 overflow-hidden rounded-lg border bg-popover p-1">
+        <ul role="listbox" aria-label="Hosts" className={sx(paint.s10)}>
           {matches.map((s, i) => (
             <li key={`${s.network ?? ""}${s.value}`} role="option" aria-selected={i === active}>
               <button
@@ -184,16 +440,16 @@ export function SshSetup({
                 onMouseDown={(e) => e.preventDefault()}
                 onMouseEnter={() => setActive(i)}
                 onClick={() => pick(s, true)}
-                className={cn("flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left", i === active && "bg-accent")}
+                className={[sx(paint.s11), i === active && sx(paint.s12)].filter(Boolean).join(" ")}
               >
-                {s.os && s.os !== "linux" ? <MonitorIcon className="size-3.5 text-muted-foreground" /> : <ServerIcon className="size-3.5 text-muted-foreground" />}
-                <span className="font-mono text-[12.5px]">{s.label}</span>
-                <span className="ms-auto truncate text-muted-foreground text-xs">{s.detail}</span>
+                {s.os && s.os !== "linux" ? <MonitorIcon className={sx(paint.s13)} /> : <ServerIcon className={sx(paint.s14)} />}
+                <span className={sx(paint.s15)}>{s.label}</span>
+                <span className={sx(paint.s16)}>{s.detail}</span>
               </button>
             </li>
           ))}
-          <li className="flex items-center gap-1.5 px-2 pt-1 pb-0.5 text-[11px] text-muted-foreground">
-            <Kbd>⇥</Kbd> complete <Kbd className="ms-1">↵</Kbd> set up
+          <li className={sx(paint.s17)}>
+            <Kbd>⇥</Kbd> complete <span className={sx(paint.s18)}><Kbd>↵</Kbd></span> set up
           </li>
         </ul>
       )}
@@ -236,9 +492,9 @@ export function FailurePanel({
         <>
           <InstallCommand />
           {onSignIn && (
-            <p className="text-muted-foreground text-xs">
+            <p className={sx(paint.s19)}>
               Or, if the box is on a tailnet this computer isn't signed in to,{" "}
-              <button type="button" className="text-foreground underline underline-offset-2 hover:no-underline" onClick={onSignIn}>
+              <button type="button" className={[sx(paint.s20), sx(paint.s32)].filter(Boolean).join(" ")} onClick={onSignIn}>
                 sign in to that tailnet
               </button>{" "}
               and Burf tries again.
@@ -252,18 +508,18 @@ export function FailurePanel({
       action = (
         <>
           {failure.kind === "auth" && failure.tried && failure.tried.length > 0 && (
-            <p className="text-muted-foreground text-xs">
-              Tried: <span className="font-mono">{failure.tried.join(", ")}</span>
+            <p className={sx(paint.s21)}>
+              Tried: <span className={sx(paint.s22)}>{failure.tried.join(", ")}</span>
             </p>
           )}
           <form
-            className="flex items-center gap-2"
+            className={sx(paint.s23)}
             onSubmit={(e) => {
               e.preventDefault();
               onRetry();
             }}
           >
-            <Input size="sm" className="max-w-72 font-mono" value={identity} onChange={(e) => setIdentity(e.target.value)} placeholder="~/.ssh/id_ed25519" aria-label="Identity file" spellCheck={false} />
+            <Input size="sm" mono measure="cap72" value={identity} onChange={(e) => setIdentity(e.target.value)} placeholder="~/.ssh/id_ed25519" aria-label="Identity file" spellCheck={false} />
             <Button size="sm" type="submit" variant="outline">
               {identity.trim() ? "Try with this key" : "Try again"}
             </Button>
@@ -275,10 +531,10 @@ export function FailurePanel({
       action = (
         <>
           {failure.fingerprint && (
-            <p className="rounded-md bg-muted/60 px-2.5 py-1.5 font-mono text-[12px] [overflow-wrap:anywhere]">{failure.fingerprint}</p>
+            <p className={sx(paint.s24)}>{failure.fingerprint}</p>
           )}
-          <p className="text-muted-foreground text-xs">Trust it only if it matches the box's own key: on the box, run ssh-keygen -lf on its host key in /etc/ssh.</p>
-          <div className="flex gap-2">
+          <p className={sx(paint.s25)}>Trust it only if it matches the box's own key: on the box, run ssh-keygen -lf on its host key in /etc/ssh.</p>
+          <div className={sx(paint.s26)}>
             <Button size="sm" variant="outline" disabled={!failure.fingerprint} onClick={() => onRetry(failure.fingerprint)}>
               Trust and connect
             </Button>
@@ -290,18 +546,18 @@ export function FailurePanel({
       break;
     default:
       action = (
-        <Button size="sm" variant="outline" className="self-start" onClick={() => onRetry()}>
+        <span className={sx(paint.s27)}><Button size="sm" variant="outline"  onClick={() => onRetry()}>
           Try again
-        </Button>
+        </Button></span>
       );
   }
   return (
-    <div role="alert" className="mt-2 flex flex-col gap-2.5 rounded-lg border p-3">
-      <p className="flex items-start gap-2 text-sm">
+    <div role="alert" className={sx(paint.s28)}>
+      <p className={sx(paint.s29)}>
         {failure.kind === "host-key-changed" || failure.kind === "host-key-unknown" ? (
-          <ShieldAlertIcon className="mt-0.5 size-4 shrink-0 text-destructive-foreground" />
+          <ShieldAlertIcon className={sx(paint.s30)} />
         ) : null}
-        <span className={cn(failure.kind === "host-key-changed" && "text-destructive-foreground")}>{failure.message}</span>
+        <span className={failure.kind === "host-key-changed" ? sx(paint.s31) : undefined}>{failure.message}</span>
       </p>
       {action}
     </div>

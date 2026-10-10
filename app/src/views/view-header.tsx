@@ -1,7 +1,83 @@
+import * as stylex from "@stylexjs/stylex";
 import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "minHeight": "48px",
+    "flexShrink": 0,
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "16px",
+    "rowGap": "4px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--sidebar) 40%, transparent)",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s1: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "baseline",
+    "gap": "12px",
+  },
+  s2: {
+    "flexShrink": 0,
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s3: {
+    "display": {
+      "default": "none",
+      "@media (min-width: 768px)": {
+        "default": "block",
+      },
+    },
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s5: {
+    "display": "contents",
+  },
+  s6: {
+    "width": "100%",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "20px",
+    "paddingBottom": "64px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "20px",
+    },
+  },
+
+  s7: {
+    maxWidth: "64rem",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 interface ViewHeaderProps {
   title: ReactNode;
@@ -28,13 +104,13 @@ export function ViewHeader(props: ViewHeaderProps) {
 
 function Strip({ title, description, actions, children }: ViewHeaderProps) {
   return (
-    <header data-tauri-drag-region className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b bg-sidebar/40 px-6 py-2">
-      <div data-tauri-drag-region className="flex min-w-0 flex-1 items-baseline gap-3">
-        <h1 className="shrink-0 font-medium text-sm">{title}</h1>
-        {description && <p className="hidden min-w-0 truncate text-muted-foreground text-xs md:block">{description}</p>}
+    <header data-tauri-drag-region className={sx(paint.s0)}>
+      <div data-tauri-drag-region className={sx(paint.s1)}>
+        <h1 className={sx(paint.s2)}>{title}</h1>
+        {description && <p className={sx(paint.s3)}>{description}</p>}
       </div>
       {children}
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && <div className={sx(paint.s4)}>{actions}</div>}
     </header>
   );
 }
@@ -53,7 +129,7 @@ export function ViewHeaderHost({ fallback, children }: { fallback: ViewHeaderPro
   const value = useMemo(() => ({ el, claim }), [el, claim]);
   return (
     <HostContext.Provider value={value}>
-      <div ref={setEl} className="contents" />
+      <div ref={setEl} className={sx(paint.s5)} />
       {claims === 0 && <Strip {...fallback} />}
       {children}
     </HostContext.Provider>
@@ -63,5 +139,5 @@ export function ViewHeaderHost({ fallback, children }: { fallback: ViewHeaderPro
 // PluginPage is the body of a plugin screen: one width for every plugin,
 // left aligned under the strip like the app's own pages.
 export function PluginPage({ className, children }: { className?: string; children?: ReactNode }) {
-  return <div className={cn("w-full max-w-5xl space-y-5 px-6 pt-5 pb-16", className)}>{children}</div>;
+  return <div className={[[sx(paint.s6), sx(paint.s7)].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}>{children}</div>;
 }

@@ -1,9 +1,9 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { ParentSize } from "@visx/responsive";
 import { motion, type Transition, useReducedMotion } from "motion/react";
 import { type ReactNode, useId, useMemo } from "react";
-import { cn } from "@/lib/utils";
 import {
   type ChartStatFlowFormat,
   defaultChartStatFlowFormat,
@@ -27,6 +27,69 @@ import {
   resolveGaugeBgFill,
 } from "./notch-gauge-shared";
 import { PieCenterShell } from "./pie-center-shell";
+
+const paint = stylex.create({
+  s0: {
+    "display": "block",
+    "width": "100%",
+    "overflow": "visible",
+  },
+  s1: {
+    "position": "relative",
+    "width": "100%",
+  },
+  s2: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s3: {
+    "position": "relative",
+    "width": "100%",
+  },
+  s4: {
+    "position": "relative",
+    "width": "100%",
+    "maxWidth": "100%",
+  },
+  s5: {
+    "position": "relative",
+    "width": "100%",
+    "minWidth": "0px",
+    "maxWidth": "100%",
+  },
+  s6: {
+    "width": "100%",
+    "minWidth": "0px",
+  },
+  s7: {
+    "position": "relative",
+    "display": "inline-flex",
+    "maxWidth": "100%",
+  },
+  s8: {
+    "position": "relative",
+    "width": "100%",
+    "maxWidth": "100%",
+  },
+  s9: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "aspectRatio": "21/16",
+    "width": "100%",
+    "maxWidth": "560px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const DEFAULT_NOTCH_ENTER_TRANSITION: Transition = {
   type: "spring",
@@ -124,7 +187,7 @@ function GaugeNotchSvg({
   return (
     <svg
       aria-hidden="true"
-      className="block w-full overflow-visible"
+      className={sx(paint.s0)}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       width={width}
@@ -412,7 +475,7 @@ function GaugeArcInner(props: GaugeInnerProps) {
   const showCenter = centerValue != null;
 
   return (
-    <div className="relative w-full" style={{ height, width }}>
+    <div className={sx(paint.s1)} style={{ height, width }}>
       <GaugeNotchSvg
         cornerDepth={notchLength}
         defsChildren={fillState.defsChildren}
@@ -432,7 +495,7 @@ function GaugeArcInner(props: GaugeInnerProps) {
       />
       {showCenter ? (
         <div
-          className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"
+          className={sx(paint.s2)}
           style={{ paddingTop: size * 0.08 }}
         >
           <PieCenterShell
@@ -610,7 +673,7 @@ function GaugeLinearInner(props: GaugeInnerProps) {
     );
 
   const track = (
-    <div className="relative w-full" style={{ height, width }}>
+    <div className={sx(paint.s3)} style={{ height, width }}>
       <GaugeNotchSvg
         cornerDepth={cornerVerticalDepth}
         defsChildren={fillState.defsChildren}
@@ -666,7 +729,7 @@ export function Gauge({
     if (widthProp != null) {
       return (
         <div
-          className={cn("relative w-full max-w-full", className)}
+          className={[sx(paint.s4), className].filter(Boolean).join(" ")}
           style={{ width: widthProp }}
         >
           <GaugeInner
@@ -680,8 +743,8 @@ export function Gauge({
     }
 
     return (
-      <div className={cn("relative w-full min-w-0 max-w-full", className)}>
-        <div className="w-full min-w-0" style={{ minWidth: resolvedMinWidth }}>
+      <div className={[sx(paint.s5), className].filter(Boolean).join(" ")}>
+        <div className={sx(paint.s6)} style={{ minWidth: resolvedMinWidth }}>
           <ParentSize debounceTime={10}>
             {({ width }) =>
               width > 0 ? (
@@ -701,7 +764,7 @@ export function Gauge({
 
   if (widthProp != null && heightProp != null) {
     return (
-      <div className={cn("relative inline-flex max-w-full", className)}>
+      <div className={[sx(paint.s7), className].filter(Boolean).join(" ")}>
         <GaugeInner
           height={heightProp}
           orientation="arc"
@@ -714,10 +777,10 @@ export function Gauge({
 
   return (
     <div
-      className={cn("relative w-full max-w-full", className)}
+      className={[sx(paint.s8), className].filter(Boolean).join(" ")}
       style={{ minWidth: resolvedMinWidth }}
     >
-      <div className="mx-auto aspect-[21/16] w-full max-w-[560px]">
+      <div className={sx(paint.s9)}>
         <ParentSize debounceTime={10}>
           {({ width, height }) =>
             width > 0 && height > 0 ? (

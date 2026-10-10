@@ -1,9 +1,179 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { useId, type ComponentProps, type ReactNode } from "react";
 import { CheckIcon, Loader2Icon, TerminalIcon, XIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { field, ghostButton, inkButton, mono, paper } from "./surfaces";
+import { fadeIn, field, ghostButton, inkButton, mono, paper, spin } from "./surfaces";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "width": "100%",
+    "flexDirection": "column",
+    "gap": "14px",
+    "borderRadius": "20px",
+    "padding": "16px",
+    "maxWidth": "384px",
+  },
+  s1: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+  },
+  s2: {
+    "display": "flex",
+    "width": "36px",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-xl)",
+  },
+  s3: {
+    "backgroundColor": "light-dark(color-mix(in oklab, var(--color-red-600) 10%, transparent), color-mix(in oklab, var(--color-red-400) 10%, transparent))",
+    "color": "light-dark(var(--color-red-600), var(--color-red-400))",
+  },
+  s4: {
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 5%, transparent)",
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+  },
+  s5: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s6: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s7: {
+    "fontSize": "13.5px",
+    "fontWeight": 500,
+  },
+  s8: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s9: {
+    "color": "color-mix(in oklab, var(--foreground) 60%, transparent)",
+    "fontSize": "13px",
+  },
+  s10: {
+    "color": "color-mix(in oklab, var(--foreground) 70%, transparent)",
+    "borderRadius": "var(--radius-xl)",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s11: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "borderRadius": "var(--radius-xl)",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s12: {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(0,1fr) minmax(0,2fr)",
+    "gap": "16px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s13: {
+    "color": "color-mix(in oklab, var(--foreground) 40%, transparent)",
+  },
+  s14: {
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+    "overflowWrap": "break-word",
+  },
+  s15: {
+    "display": "flex",
+    "minHeight": "32px",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "justifyContent": "flex-end",
+    "gap": "8px",
+  },
+  s16: {
+    "height": "32px",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+    "whiteSpace": "nowrap",
+  },
+  s17: {
+    "height": "32px",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+    "whiteSpace": "nowrap",
+  },
+  s18: {
+    "color": "light-dark(var(--background), var(--color-red-950))",
+    "backgroundColor": {
+      "default": "light-dark(var(--color-red-600), var(--color-red-400))",
+      ":hover": "light-dark(color-mix(in oklab, var(--color-red-600) 90%, transparent), color-mix(in oklab, var(--color-red-400) 90%, transparent))",
+    },
+  },
+  s23: {
+    "display": "flex",
+    "height": "32px",
+    "alignItems": "center",
+    "borderRadius": "999px",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+    "whiteSpace": "nowrap",
+    "transform": {
+      ":active": "scale(0.96)",
+    },
+    "transitionProperty": "background-color, scale",
+    "transitionDuration": {
+      "default": "150ms",
+      "@media (prefers-reduced-motion: reduce)": "0s",
+    },
+  },
+  s19: {
+    "color": "color-mix(in oklab, var(--foreground) 55%, transparent)",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "transitionDuration": "300ms",
+  },
+  s20: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "width": "14px",
+    "height": "14px",
+  },
+  s21: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "width": "14px",
+    "height": "14px",
+  },
+  s22: {
+    "width": "14px",
+    "height": "14px",
+    "color": "#10b981",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export type ApprovalState = "request" | "running" | "done" | "denied";
 
@@ -77,44 +247,32 @@ export function ApprovalCard({
       data-slot="approval-card"
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
-      className={cn(
-        paper,
-        "flex w-full max-w-sm flex-col gap-3.5 rounded-[20px] p-4",
-        className,
-      )}
+      className={[sx(paper, paint.s0), className].filter(Boolean).join(" ")}
     >
-      <div className="flex items-center gap-3">
+      <div className={sx(paint.s1)}>
         <span
           aria-hidden
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-xl",
-            variant === "destructive"
-              ? "bg-red-600/10 text-red-600 dark:bg-red-400/10 dark:text-red-400"
-              : "bg-foreground/[0.05] text-foreground/45",
-          )}
+          className={sx(paint.s2, variant === "destructive" ? paint.s3 : paint.s4)}
         >
-          {icon ?? <TerminalIcon className="size-4" />}
+          {icon ?? <TerminalIcon className={sx(paint.s5)} />}
         </span>
-        <div className="flex flex-col">
-          <p id={titleId} className="text-[13.5px] font-medium">
+        <div className={sx(paint.s6)}>
+          <p id={titleId} className={sx(paint.s7)}>
             {title}
           </p>
-          <p className="text-foreground/45 text-xs">{subtitle}</p>
+          <p className={sx(paint.s8)}>{subtitle}</p>
         </div>
       </div>
 
       {description ? (
-        <p id={descriptionId} className="text-foreground/60 text-[13px]">
+        <p id={descriptionId} className={sx(paint.s9)}>
           {description}
         </p>
       ) : null}
 
       {command ? (
         <div
-          className={cn(
-            field,
-            "text-foreground/70 rounded-xl px-3.5 py-2.5 font-mono text-xs",
-          )}
+          className={sx(field, paint.s10)}
         >
           {command}
         </div>
@@ -122,31 +280,28 @@ export function ApprovalCard({
 
       {details?.length ? (
         <dl
-          className={cn(field, "flex flex-col gap-2 rounded-xl px-3.5 py-2.5")}
+          className={sx(field, paint.s11)}
         >
           {details.map((detail, index) => (
             <div
               key={`${detail.label}-${index}`}
-              className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-4 text-xs"
+              className={sx(paint.s12)}
             >
-              <dt className={cn(mono, "text-foreground/40")}>{detail.label}</dt>
-              <dd className="text-foreground/80 break-words">{detail.value}</dd>
+              <dt className={sx(mono, paint.s13)}>{detail.label}</dt>
+              <dd className={sx(paint.s14)}>{detail.value}</dd>
             </div>
           ))}
         </dl>
       ) : null}
 
-      <div className="flex min-h-8 flex-wrap items-center justify-end gap-2">
+      <div className={sx(paint.s15)}>
         {state === "request" ? (
           <>
             {onDeny && (
               <button
                 type="button"
                 onClick={onDeny}
-                className={cn(
-                  ghostButton,
-                  "h-8 px-3.5 text-xs font-medium whitespace-nowrap",
-                )}
+                className={sx(ghostButton, paint.s16)}
               >
                 {denyLabel}
               </button>
@@ -155,10 +310,7 @@ export function ApprovalCard({
               <button
                 type="button"
                 onClick={onAlwaysAllow}
-                className={cn(
-                  ghostButton,
-                  "h-8 px-3.5 text-xs font-medium whitespace-nowrap",
-                )}
+                className={sx(ghostButton, paint.s17)}
               >
                 {alwaysAllowLabel}
               </button>
@@ -167,12 +319,7 @@ export function ApprovalCard({
               <button
                 type="button"
                 onClick={onAllowOnce}
-                className={cn(
-                  variant === "destructive"
-                    ? "text-background bg-red-600 transition-[background-color,scale] duration-150 hover:bg-red-600/90 active:scale-[0.96] motion-reduce:transition-none dark:bg-red-400 dark:text-red-950 dark:hover:bg-red-400/90"
-                    : inkButton,
-                  "flex h-8 items-center rounded-full px-3.5 text-xs font-medium whitespace-nowrap",
-                )}
+                className={sx(variant === "destructive" ? paint.s18 : inkButton, paint.s23)}
               >
                 {allowOnceLabel}
               </button>
@@ -182,21 +329,21 @@ export function ApprovalCard({
           <div
             key={state}
             role="status"
-            className="fade-in animate-in text-foreground/55 flex items-center gap-2 text-xs duration-300 motion-reduce:animate-none"
+            className={sx(paint.s19, fadeIn)}
           >
             {state === "running" ? (
               <>
-                <Loader2Icon className="text-foreground/45 size-3.5 animate-spin motion-reduce:animate-none" />
+                <Loader2Icon className={sx(paint.s20, spin)} />
                 {statusLabel ?? receiptText.running}
               </>
             ) : state === "denied" ? (
               <>
-                <XIcon className="text-foreground/45 size-3.5" />
+                <XIcon className={sx(paint.s21)} />
                 {statusLabel ?? receiptText.denied}
               </>
             ) : (
               <>
-                <CheckIcon className="size-3.5 text-emerald-500" />
+                <CheckIcon className={sx(paint.s22)} />
                 {statusLabel ?? receiptText.done}
               </>
             )}

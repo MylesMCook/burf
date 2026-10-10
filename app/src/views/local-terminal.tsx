@@ -1,7 +1,9 @@
+import * as stylex from "@stylexjs/stylex";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import { RotateCwIcon, SquareIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { useActiveTheme } from "@/hooks/use-theme";
 import { type Client } from "@/lib/api";
@@ -9,6 +11,81 @@ import { useCustomTerminalPrefs } from "@/lib/custom-fonts";
 import { errorMessage } from "@/lib/format";
 import { localAgentName, localApi, type LocalSession } from "@/lib/local-computer";
 import "@xterm/xterm/css/xterm.css";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s1: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "fontWeight": 500,
+  },
+  s2: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "color": "var(--destructive)",
+  },
+  s5: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowWrap": "break-word",
+  },
+  s6: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "backgroundColor": "var(--background)",
+    "padding": "8px",
+    "color": "var(--foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export function LocalTerminal({ client, session, onChange }: { client: Client; session: LocalSession; onChange(session: LocalSession): void }) {
   const container = useRef<HTMLDivElement>(null);
@@ -98,8 +175,8 @@ export function LocalTerminal({ client, session, onChange }: { client: Client; s
   }, [client, session.id, attempt, onChange, prefs]);
 
   return <>
-    <div className="flex min-w-0 flex-wrap items-center gap-3 border-b px-4 py-2">
-      <h2 className="text-sm font-medium">{localAgentName(session.agent)}</h2><span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={session.cwd}>{session.cwd}</span><span className="text-xs text-muted-foreground">{session.state}</span>
+    <div className={sx(paint.s0)}>
+      <h2 className={sx(paint.s1)}>{localAgentName(session.agent)}</h2><Tip label={session.cwd} width="lg"><span className={sx(paint.s2)}>{session.cwd}</span></Tip><span className={sx(paint.s3)}>{session.state}</span>
       {session.state === "running" && <Button size="sm" variant="outline" disabled={stopping} onClick={async () => {
         setStopping(true); setError("");
         try { await localApi.stop(client, session.id); onChange({ ...session, state: "exited" }); }
@@ -107,7 +184,7 @@ export function LocalTerminal({ client, session, onChange }: { client: Client; s
         finally { setStopping(false); }
       }}><SquareIcon />Stop agent</Button>}
     </div>
-    {(error || session.exit_error) && <div role="alert" className="flex flex-wrap items-center gap-3 border-b px-4 py-2 text-sm text-destructive"><span className="min-w-0 flex-1 break-words">{error || session.exit_error}</span>{error && <Button size="sm" variant="outline" onClick={() => setAttempt((n) => n + 1)}><RotateCwIcon />Reconnect terminal</Button>}</div>}
-    <div ref={container} data-testid="local-terminal" className="min-h-0 flex-1 overflow-hidden bg-background p-2 text-foreground" />
+    {(error || session.exit_error) && <div role="alert" className={sx(paint.s4)}><span className={sx(paint.s5)}>{error || session.exit_error}</span>{error && <Button size="sm" variant="outline" onClick={() => setAttempt((n) => n + 1)}><RotateCwIcon />Reconnect terminal</Button>}</div>}
+    <div ref={container} data-testid="local-terminal" className={sx(paint.s6)} />
   </>;
 }

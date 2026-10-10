@@ -1,9 +1,42 @@
 import { useEffect, useRef, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { Tip } from "@/components/tip";
 import { usePrefs } from "@/lib/prefs";
 import { clampWidth, dragged, RAIL_WIDTH, SIDEBAR_DEFAULT, SIDEBAR_MIN, sidebarMax, stepped } from "@/lib/sidebar-width";
-import { cn } from "@/lib/utils";
+import { color, radius } from "@/styles/tokens.stylex";
+
+const styles = stylex.create({
+  handle: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    right: -4,
+    zIndex: 30,
+    width: 8,
+    cursor: "col-resize",
+    touchAction: "none",
+    outline: "none",
+    "::after": {
+      content: '""',
+      position: "absolute",
+      top: 0,
+      bottom: 0,
+      left: 3,
+      width: 2,
+      borderRadius: radius.full,
+      backgroundColor: "transparent",
+      transitionProperty: "background-color",
+      transitionDuration: "150ms",
+      transitionDelay: "75ms",
+    },
+    ":hover::after": { backgroundColor: color.ring },
+    ":focus-visible::after": { backgroundColor: color.ring },
+  },
+  dragging: {
+    "::after": { backgroundColor: color.ring, transitionDelay: "0s" },
+  },
+});
 
 // The sidebar's right edge is a handle: drag it to size the sidebar,
 // double-click it for the default width, or focus it and use ← and →. Past
@@ -149,7 +182,6 @@ export function SidebarResizeHandle({ folded = false }: { folded?: boolean }) {
         tabIndex={0}
         data-sidebar-handle=""
         data-testid="sidebar-handle"
-        data-dragging={active || undefined}
         onPointerDown={(e) => {
           beginDrag(e);
           if (drag) {
@@ -184,11 +216,7 @@ export function SidebarResizeHandle({ folded = false }: { folded?: boolean }) {
             reset();
           }
         }}
-        className={cn(
-          "group/handle absolute inset-y-0 -right-[4px] z-30 w-[8px] cursor-col-resize touch-none outline-none",
-          // A line at the edge on hover, focus and while dragging.
-          "after:absolute after:inset-y-0 after:left-[3px] after:w-[2px] after:rounded-full after:bg-transparent after:transition-colors after:delay-75 hover:after:bg-ring focus-visible:after:bg-ring data-dragging:after:bg-ring data-dragging:after:delay-0",
-        )}
+        {...stylex.props(styles.handle, active && styles.dragging)}
       />
     </Tip>
   );

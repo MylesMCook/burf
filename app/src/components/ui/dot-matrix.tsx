@@ -1,5 +1,52 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps, CSSProperties } from "react";
-import { cn } from "@/lib/utils";
+
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "display": "inline-block",
+  },
+  s1: {
+    "transitionTimingFunction": "cubic-bezier(0.4, 0, 0.2, 1)",
+  },
+  s2: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
+
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const styles = stylex.create({
+  root: { display: "inline-block", width: 16, height: 16, flexShrink: 0 },
+  svg: { width: "100%", height: "100%" },
+  dot: {
+    animationIterationCount: "infinite",
+    animationTimingFunction: "ease-in-out",
+    animationName: { default: "aui-dot-matrix-blink", [still]: "none" },
+    transitionProperty: "--aui-dot-matrix-hi, --aui-dot-matrix-lo, opacity",
+    transitionDuration: "300ms",
+  },
+  muted: { color: color.mutedForeground },
+  hot: { color: color.destructive },
+  good: { color: color.success },
+  warn: { color: color.warning },
+  note: { color: color.info },
+});
+
+type Tone = "muted" | "hot" | "good" | "warn" | "note";
+const tones = { muted: styles.muted, hot: styles.hot, good: styles.good, warn: styles.warn, note: styles.note };
 
 const GRID = 5;
 const CENTER = (GRID - 1) / 2;
@@ -80,8 +127,8 @@ const ELLIPSIS = glyph([
 type Blink = { duration: number; delay: number; lo: number };
 
 type StateConfig = {
-  /** Text color class; dots inherit the surrounding color when omitted. */
-  color?: string;
+  /** Dots inherit the surrounding color when omitted. */
+  color?: Tone;
   /** Dots that render at full opacity; all others rest at `dim`. Omit for the full grid. */
   glyph?: Set<number>;
   /** Resting opacity of on dots. */
@@ -93,7 +140,7 @@ type StateConfig = {
 };
 
 const STATES = {
-  idle: { color: "text-muted-foreground", base: 0.3 },
+  idle: { color: "muted", base: 0.3 },
   loading: {
     blink: (i) => ({
       duration: 0.9 + hash(i, 2, 700),
@@ -165,33 +212,33 @@ const STATES = {
     }),
   },
   recording: {
-    color: "text-red-500",
+    color: "hot",
     glyph: RECORD,
     dim: 0.12,
     blink: () => ({ duration: 1.4, delay: 0, lo: 0.3 }),
   },
-  success: { color: "text-emerald-500", glyph: CHECK },
+  success: { color: "good", glyph: CHECK },
   error: {
-    color: "text-red-500",
+    color: "hot",
     glyph: CROSS,
     blink: () => ({ duration: 1.1, delay: 0, lo: 0.4 }),
   },
   warning: {
-    color: "text-amber-500",
+    color: "warn",
     glyph: BANG,
     blink: () => ({ duration: 1.6, delay: 0, lo: 0.45 }),
   },
-  info: { color: "text-blue-500", glyph: INFO },
-  paused: { color: "text-muted-foreground", glyph: PAUSE },
-  stopped: { color: "text-muted-foreground", glyph: STOP },
-  offline: { color: "text-muted-foreground", base: 0.15 },
+  info: { color: "note", glyph: INFO },
+  paused: { color: "muted", glyph: PAUSE },
+  stopped: { color: "muted", glyph: STOP },
+  offline: { color: "muted", base: 0.15 },
 } satisfies Record<string, StateConfig>;
 
 export type DotMatrixState = keyof typeof STATES;
 
 const dotMatrixStates = Object.keys(STATES) as readonly DotMatrixState[];
 
-export type DotMatrixProps = Omit<ComponentProps<"span">, "children"> & {
+export type DotMatrixProps = Omit<ComponentProps<"span">, "children" | "className" | "style"> & {
   state?: DotMatrixState;
   label?: string;
 };
@@ -213,29 +260,25 @@ const HOISTED_STYLE: Record<string, string> = {
  * ```
  */
 function DotMatrix({
-  className,
   state = "loading",
   label,
   ...props
 }: DotMatrixProps) {
   const config: StateConfig = STATES[state];
+  const painted = stylex.props(styles.root, config.color && tones[config.color]);
   return (
     <span
       data-slot="dot-matrix"
       data-state={state}
       role="status"
-      className={cn("inline-block size-4 shrink-0", config.color, className)}
+      className={painted.className}
+      style={painted.style}
       {...props}
     >
-      <span className="sr-only">{label ?? state}</span>
+      <span className={sx(paint.s2)}>{label ?? state}</span>
       {/* React 19 hoists and deduplicates this across instances; React 18 renders it inline, and its types don't declare href or precedence, so they're spread. It must live in HTML scope: inside the SVG it would be an SVG-namespace element React does not hoist. */}
       <style {...HOISTED_STYLE}>{DOT_MATRIX_CSS}</style>
-      <svg
-        aria-hidden
-        viewBox="0 0 20 20"
-        fill="currentColor"
-        className="size-full"
-      >
+      <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className={stylex.props(styles.svg).className}>
         {DOT_INDEXES.map((i) => {
           const row = Math.floor(i / GRID);
           const col = i % GRID;
@@ -249,7 +292,7 @@ function DotMatrix({
               cx={2 + col * 4}
               cy={2 + row * 4}
               r={1.3}
-              className="[transition-property:--aui-dot-matrix-hi,--aui-dot-matrix-lo,opacity] duration-300 [animation-iteration-count:infinite] [animation-name:aui-dot-matrix-blink] [animation-timing-function:ease-in-out] motion-reduce:[animation-name:none]"
+              className={stylex.props(styles.dot).className}
               style={
                 {
                   opacity: hi,

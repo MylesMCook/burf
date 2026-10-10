@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ChevronRightIcon, EllipsisIcon, MinusIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -9,9 +10,363 @@ import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/compone
 import { Switch } from "@/components/ui/switch";
 import type { AgentPreset } from "@/lib/api";
 import type { Step, StepRun, StepWhen } from "@/lib/flows";
-import { cn } from "@/lib/utils";
 import { type Variable, kindMeta } from "@/views/automations/flows/model";
 import { TemplateField } from "@/views/automations/flows/template-field";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--card)",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s1: {
+    "borderColor": "color-mix(in oklab, var(--warning) 30%, transparent)",
+  },
+  s2: {
+    "borderColor": "color-mix(in oklab, var(--destructive) 40%, transparent)",
+  },
+  s3: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "10px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s4: {
+    "display": "inline-flex",
+    "width": "28px",
+    "height": "28px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-lg)",
+    "backgroundColor": "var(--muted)",
+  },
+  s5: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s6: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s7: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s8: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s9: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s10: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s11: {
+    "display": "inline-flex",
+    "width": "28px",
+    "height": "28px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s12: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s13: {
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "12px",
+    },
+  },
+  s14: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "12px",
+    "rowGap": "8px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 30%, transparent)",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s15: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s16: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s17: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s18: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s19: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s20: {
+    "display": "block",
+    "width": "128px",
+  },
+  s21: {
+    "marginBottom": "4px",
+    "display": "block",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s23: {
+    "display": "block",
+  },
+  s24: {
+    "marginBottom": "4px",
+    "display": "block",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s25: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "flex-end",
+    "gap": "12px",
+  },
+  s26: {
+    "marginBottom": "4px",
+    "display": "block",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s27: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s28: {
+    "display": "inline-flex",
+    "height": "28px",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s29: {
+    "borderColor": "color-mix(in oklab, var(--ring) 40%, transparent)",
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s30: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  s31: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s32: {
+    "width": "12px",
+    "height": "12px",
+    "opacity": 0.4,
+  },
+  s33: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "flex-end",
+    "gap": "16px",
+  },
+  s34: {
+    "width": "192px",
+  },
+  s35: {
+    "marginBottom": "4px",
+    "display": "block",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s36: {
+    "display": "flex",
+    "height": "32px",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s37: {
+    "display": "block",
+    "width": "176px",
+  },
+  s38: {
+    "marginBottom": "4px",
+    "display": "block",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s39: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s40: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s41: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontSize": "11px",
+  },
+  s42: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s43: {
+    "opacity": 0.7,
+  },
+  s44: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+  },
+  s45: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "textAlign": "left",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s46: {
+    "width": "12px",
+    "height": "12px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s47: {
+    "transform": "rotate(90deg)",
+  },
+  s48: {
+    "marginLeft": "14px",
+    "marginRight": "14px",
+    "marginBottom": "12px",
+    "maxHeight": "224px",
+    "overflow": "auto",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 60%, transparent)",
+    "padding": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "lineHeight": "1.375",
+  },
+  s49: {
+    backgroundColor: "color-mix(in oklab, var(--success) 12%, transparent)",
+    color: "var(--success)",
+  },
+  s50: {
+    backgroundColor: "color-mix(in oklab, var(--destructive) 12%, transparent)",
+    color: "var(--destructive-foreground)",
+  },
+  s51: {
+    backgroundColor: "var(--muted)",
+    color: "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const WHENS: { value: StepWhen; label: string }[] = [
   { value: "success", label: "On success" },
@@ -55,23 +410,23 @@ export function StepCard({
   const when = step.when ?? "success";
 
   return (
-    <article className={cn("relative rounded-xl border bg-card shadow-xs/5", when === "failure" && "border-warning/30", result?.status === "failed" && "border-destructive/40")}>
-      <header className="flex items-center gap-2.5 border-b px-3.5 py-2.5">
-        <span className={cn("inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted", meta.tone)}>
-          <meta.Icon className="size-4" />
+    <article className={[sx(paint.s0), when === "failure" && sx(paint.s1), result?.status === "failed" && sx(paint.s2)].filter(Boolean).join(" ")}>
+      <header className={sx(paint.s3)}>
+        <span className={[sx(paint.s4), meta.tone].filter(Boolean).join(" ")}>
+          <meta.Icon className={sx(paint.s5)} />
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs tabular-nums">{index + 1}.</span>
-            <h3 className="truncate font-medium text-sm">{meta.label}</h3>
+        <div className={sx(paint.s6)}>
+          <div className={sx(paint.s7)}>
+            <span className={sx(paint.s8)}>{index + 1}.</span>
+            <h3 className={sx(paint.s9)}>{meta.label}</h3>
             {result && <ResultBadge result={result} />}
           </div>
-          <p className="truncate text-muted-foreground text-xs">{meta.hint}</p>
+          <p className={sx(paint.s10)}>{meta.hint}</p>
         </div>
         {!readOnly && (
           <Menu>
-            <MenuTrigger render={<button type="button" aria-label="Step options" className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" />}>
-              <EllipsisIcon className="size-4" />
+            <MenuTrigger render={<button type="button" aria-label="Step options" className={sx(paint.s11)} />}>
+              <EllipsisIcon className={sx(paint.s12)} />
             </MenuTrigger>
             <MenuPopup align="end">
               <MenuItem disabled={index === 0} onClick={() => onMove(-1)}>
@@ -92,34 +447,34 @@ export function StepCard({
         )}
       </header>
 
-      <div className="space-y-3 px-3.5 py-3">
+      <div className={sx(paint.s13)}>
         <Fields step={step} set={set} variables={variables} agents={agents} readOnly={readOnly} />
       </div>
 
-      <footer className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-muted/30 px-3.5 py-2">
-        <span className="text-muted-foreground text-xs">Runs</span>
+      <footer className={sx(paint.s14)}>
+        <span className={sx(paint.s15)}>Runs</span>
         {index === 0 ? (
-          <span className="text-muted-foreground text-xs">first, when the trigger fires</span>
+          <span className={sx(paint.s16)}>first, when the trigger fires</span>
         ) : readOnly ? (
-          <span className="text-xs">{WHENS.find((w) => w.value === when)?.label}</span>
+          <span className={sx(paint.s17)}>{WHENS.find((w) => w.value === when)?.label}</span>
         ) : (
           <PickOne<StepWhen>
             label="Runs when"
             value={when}
             onChange={(w) => set({ when: w === "success" ? undefined : w })}
             // Running only after a failure is the unusual case; it says so.
-            options={WHENS.map((w) => ({ ...w, className: w.value === "failure" ? "data-pressed:bg-warning/15 data-pressed:text-warning dark:data-pressed:bg-warning/15" : undefined }))}
+            options={WHENS.map((w) => ({ ...w, tone: w.value === "failure" ? "warning" as const : undefined }))}
           />
         )}
-        <span className="ml-auto flex items-center gap-1.5">
-          <span className="text-muted-foreground text-xs">Name</span>
+        <span className={sx(paint.s18)}>
+          <span className={sx(paint.s19)}>Name</span>
           <Input
             value={step.id ?? ""}
             readOnly={readOnly}
             onChange={(e) => set({ id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") || undefined })}
             placeholder="optional"
             size="sm"
-            className="w-28 font-mono text-xs"
+            measure="time" mono text="xs"
             aria-label="Step name, for {{steps.NAME.output}}"
           />
         </span>
@@ -132,9 +487,9 @@ export function StepCard({
 
 function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p: Partial<Step>): void; variables: Variable[]; agents: AgentPreset[]; readOnly?: boolean }) {
   const timeout = (placeholder: string) => (
-    <label className="block w-32">
-      <span className="mb-1 block font-medium text-muted-foreground text-xs">Timeout</span>
-      <Input value={step.timeout ?? ""} readOnly={readOnly} onChange={(e) => set({ timeout: e.target.value || undefined })} placeholder={placeholder} className="font-mono text-xs" />
+    <label className={sx(paint.s20)}>
+      <span className={sx(paint.s21)}>Timeout</span>
+      <Input value={step.timeout ?? ""} readOnly={readOnly} onChange={(e) => set({ timeout: e.target.value || undefined })} placeholder={placeholder} mono text="xs" />
     </label>
   );
   switch (step.kind) {
@@ -142,7 +497,7 @@ function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p:
       return (
         <>
           <TemplateField label="Command" mono value={step.command ?? ""} onChange={(command) => set({ command })} variables={variables} placeholder="pnpm test" readOnly={readOnly} />
-          <p className="text-muted-foreground text-xs">Variables reach the command as quoted environment variables ($BERTH_FLOW_…), so a PR comment or branch name is always text, never run.</p>
+          <p className={sx(paint.s22)}>Variables reach the command as quoted environment variables ($BERTH_FLOW_…), so a PR comment or branch name is always text, never run.</p>
           {timeout("10m")}
         </>
       );
@@ -150,18 +505,18 @@ function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p:
       return (
         <>
           <TemplateField label="Prompt" multiline value={step.text ?? ""} onChange={(text) => set({ text })} variables={variables} placeholder="The tests failed: {{prev.output}} — fix them." readOnly={readOnly} />
-          <label className="block">
-            <span className="mb-1 block font-medium text-muted-foreground text-xs">Session</span>
-            <Input value={step.session ?? ""} readOnly={readOnly} onChange={(e) => set({ session: e.target.value || undefined })} placeholder="The agent that triggered this flow" className="font-mono text-xs" />
+          <label className={sx(paint.s23)}>
+            <span className={sx(paint.s24)}>Session</span>
+            <Input value={step.session ?? ""} readOnly={readOnly} onChange={(e) => set({ session: e.target.value || undefined })} placeholder="The agent that triggered this flow" mono text="xs" />
           </label>
         </>
       );
     case "wait":
       return (
-        <div className="flex flex-wrap items-end gap-3">
+        <div className={sx(paint.s25)}>
           <div>
-            <span className="mb-1 block font-medium text-muted-foreground text-xs">Until the agent is</span>
-            <div className="flex items-center gap-1">
+            <span className={sx(paint.s26)}>Until the agent is</span>
+            <div className={sx(paint.s27)}>
               {WAIT_STATES.map((s) => {
                 const on = (step.for ?? ["finished", "waiting"]).includes(s.value);
                 return (
@@ -175,9 +530,9 @@ function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p:
                       const next = on ? cur.filter((x) => x !== s.value) : [...cur, s.value];
                       set({ for: next.length ? next : undefined });
                     }}
-                    className={cn("inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs", on ? "border-ring/40 bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}
+                    className={[sx(paint.s28), on ? sx(paint.s29) : sx(paint.s30)].filter(Boolean).join(" ")}
                   >
-                    {on ? <CheckIcon className="size-3" /> : <MinusIcon className="size-3 opacity-40" />}
+                    {on ? <CheckIcon className={sx(paint.s31)} /> : <MinusIcon className={sx(paint.s32)} />}
                     {s.label}
                   </button>
                 );
@@ -190,9 +545,9 @@ function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p:
     case "start_agent":
       return (
         <>
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="w-48">
-              <span className="mb-1 block font-medium text-muted-foreground text-xs">Agent</span>
+          <div className={sx(paint.s33)}>
+            <div className={sx(paint.s34)}>
+              <span className={sx(paint.s35)}>Agent</span>
               <SimpleSelect
                 value={step.agent ?? ""}
                 disabled={readOnly}
@@ -200,19 +555,19 @@ function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p:
                 options={(agents.length ? agents : [{ id: "claude", name: "Claude Code", command: "claude" }, { id: "codex", name: "Codex", command: "codex" }]).map((a) => ({ value: a.id, label: a.name }))}
               />
             </div>
-            <label className="flex h-8 items-center gap-2 text-sm">
+            <label className={sx(paint.s36)}>
               <Switch checked={!!step.new_worktree} disabled={readOnly} onCheckedChange={(v) => set({ new_worktree: v || undefined })} />
               In a new worktree
             </label>
             {step.new_worktree && (
-              <label className="block w-44">
-                <span className="mb-1 block font-medium text-muted-foreground text-xs">Worktree name</span>
-                <Input value={step.name ?? ""} readOnly={readOnly} onChange={(e) => set({ name: e.target.value || undefined })} placeholder="{{worktree.name}}-review" className="font-mono text-xs" />
+              <label className={sx(paint.s37)}>
+                <span className={sx(paint.s38)}>Worktree name</span>
+                <Input value={step.name ?? ""} readOnly={readOnly} onChange={(e) => set({ name: e.target.value || undefined })} placeholder="{{worktree.name}}-review" mono text="xs" />
               </label>
             )}
           </div>
           <TemplateField label="Its first prompt" multiline value={step.text ?? ""} onChange={(text) => set({ text })} variables={variables} placeholder="Review the changes in {{worktree.path}}." readOnly={readOnly} />
-          <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+          <div className={sx(paint.s39)}>
             <AgentIcon agent={step.agent} />
             Starts beside the agent that triggered this, in {step.new_worktree ? "a fresh worktree" : "the same worktree"}.
           </div>
@@ -230,20 +585,20 @@ function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p:
         <>
           <TemplateField label="URL" mono value={step.url ?? ""} onChange={(url) => set({ url })} variables={variables} placeholder="https://hooks.slack.com/services/…" readOnly={readOnly} />
           <TemplateField label="JSON body" mono multiline value={step.text ?? ""} onChange={(text) => set({ text: text || undefined })} variables={variables} placeholder="Empty sends the run's context" readOnly={readOnly} />
-          <p className="text-muted-foreground text-xs">Public addresses only; private ones must be allowed in ~/.berth/network.json on the box.</p>
+          <p className={sx(paint.s40)}>Public addresses only; private ones must be allowed in ~/.berth/network.json on the box.</p>
         </>
       );
   }
 }
 
 function ResultBadge({ result }: { result: StepRun }) {
-  const tone = result.status === "succeeded" ? "bg-success/12 text-success" : result.status === "failed" ? "bg-destructive/12 text-destructive-foreground" : "bg-muted text-muted-foreground";
+  const tone = result.status === "succeeded" ? sx(paint.s49) : result.status === "failed" ? sx(paint.s50) : sx(paint.s51);
   const Icon = result.status === "succeeded" ? CheckIcon : result.status === "failed" ? XIcon : MinusIcon;
   return (
-    <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-px text-[11px]", tone)}>
-      <Icon className="size-3" />
+    <span className={[sx(paint.s41), tone].filter(Boolean).join(" ")}>
+      <Icon className={sx(paint.s42)} />
       {result.status === "skipped" ? "skipped" : result.duration || result.status}
-      {result.kind === "run" && result.status !== "skipped" && <span className="opacity-70">· exit {result.exit_code}</span>}
+      {result.kind === "run" && result.status !== "skipped" && <span className={sx(paint.s43)}>· exit {result.exit_code}</span>}
     </span>
   );
 }
@@ -251,13 +606,13 @@ function ResultBadge({ result }: { result: StepRun }) {
 function ResultOutput({ result }: { result: StepRun }) {
   const [open, setOpen] = useState(result.status === "failed");
   return (
-    <div className="border-t">
-      <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center gap-1.5 px-3.5 py-1.5 text-left text-muted-foreground text-xs hover:text-foreground">
-        <ChevronRightIcon className={cn("size-3 transition-transform", open && "rotate-90")} />
+    <div className={sx(paint.s44)}>
+      <button type="button" onClick={() => setOpen(!open)} className={sx(paint.s45)}>
+        <ChevronRightIcon className={[sx(paint.s46), open && sx(paint.s47)].filter(Boolean).join(" ")} />
         {result.error ? "Error" : "Output"}
       </button>
       {open && (
-        <pre className="mx-3.5 mb-3 max-h-56 overflow-auto rounded-md bg-muted/60 p-2 font-mono text-[11px] text-muted-foreground leading-snug">
+        <pre className={sx(paint.s48)}>
           {[result.error, result.output].filter(Boolean).join("\n")}
         </pre>
       )}

@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { localPoint } from "@visx/event";
 import { ParentSize } from "@visx/responsive";
 import { scaleBand, scaleLinear } from "@visx/scale";
@@ -14,7 +15,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { cn } from "@/lib/utils";
 import { DEFAULT_ANIMATION_EASING } from "./animation";
 import type { BarProps } from "./bar";
 import { topSquareCenterY } from "./bar-squares-layout";
@@ -50,6 +50,20 @@ import {
   normalizeYAxisId,
   wrapSingleYScale,
 } from "./y-axis-scales";
+
+const paint = stylex.create({
+  s0: {
+    "overflow": "visible",
+  },
+  s1: {
+    "position": "relative",
+    "width": "100%",
+    "overflow": "visible",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 /** Skeleton bars to show when `status="loading"` and `data` is empty. */
 const FALLBACK_LOADING_BARS = 12;
@@ -624,7 +638,7 @@ const ChartCore = memo(function ChartCore({
     <ChartProvider value={contextValue}>
       <svg
         aria-hidden="true"
-        className="overflow-visible"
+        className={sx(paint.s0)}
         height={height}
         width={width}
       >
@@ -694,7 +708,7 @@ export function BarChart({
 
   return (
     <div
-      className={cn("relative w-full overflow-visible", className)}
+      className={[sx(paint.s1), className].filter(Boolean).join(" ")}
       ref={containerRef}
       style={{ aspectRatio }}
     >

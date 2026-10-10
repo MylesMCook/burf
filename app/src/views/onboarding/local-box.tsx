@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, LaptopIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -5,9 +6,100 @@ import { Button } from "@/components/ui/button";
 import { plainError } from "@/lib/errors";
 import { localBoxApi, type LocalBoxStatus, useLocalBoxName } from "@/lib/local-box";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { CommandLog } from "@/views/settings/command-log";
 import { thisComputer } from "@/lib/platform";
+
+const paint = stylex.create({
+  s0: {
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s1: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "12px",
+  },
+  s2: {
+    "marginTop": "2px",
+    "display": "flex",
+    "width": "32px",
+    "height": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s4: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s5: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s6: {
+    "marginTop": "2px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s7: {
+    "display": "flex",
+    "height": "28px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "color": "var(--success-foreground)",
+  },
+  s8: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s9: {
+    "flexShrink": 0,
+  },
+  s10: {
+    "marginTop": "8px",
+    "paddingInlineStart": "44px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s11: {
+    "marginTop": "12px",
+  },
+  s12: {
+    "marginTop": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s13: {
+    "color": "var(--foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type State = "ready" | "running" | "done" | "failed";
 
@@ -74,16 +166,16 @@ export function UseThisMac({
 
   const reuse = status.installed && !status.owned;
   return (
-    <section aria-labelledby="this-mac-heading" className={cn("rounded-lg border px-3.5 py-3", className)}>
-      <div className="flex items-start gap-3">
-        <span aria-hidden className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground">
-          <LaptopIcon className="size-4" />
+    <section aria-labelledby="this-mac-heading" className={[sx(paint.s0), className].filter(Boolean).join(" ")}>
+      <div className={sx(paint.s1)}>
+        <span aria-hidden className={sx(paint.s2)}>
+          <LaptopIcon className={sx(paint.s3)} />
         </span>
-        <div className="min-w-0 flex-1">
-          <h2 id="this-mac-heading" className="text-sm">
+        <div className={sx(paint.s4)}>
+          <h2 id="this-mac-heading" className={sx(paint.s5)}>
             {thisComputer("Use this Mac")}
           </h2>
-          <p className="mt-0.5 text-muted-foreground text-xs leading-relaxed" aria-live="polite">
+          <p className={sx(paint.s6)} aria-live="polite">
             {autoStart
               ? state === "running"
                 ? "Installing berthd and pairing with it. This takes a few seconds."
@@ -96,25 +188,25 @@ export function UseThisMac({
           </p>
         </div>
         {state === "done" ? (
-          <span className="flex h-7 shrink-0 items-center gap-1 text-sm text-success-foreground">
-            <CheckIcon className="size-4" /> Paired
+          <span className={sx(paint.s7)}>
+            <CheckIcon className={sx(paint.s8)} /> Paired
           </span>
         ) : (
-          <Button size="sm" variant="outline" className="shrink-0" autoFocus={autoFocus} loading={state === "running"} onClick={() => void run()}>
+          <span className={sx(paint.s9)}><Button size="sm" variant="outline"  autoFocus={autoFocus} loading={state === "running"} onClick={() => void run()}>
             {state === "failed" ? "Try again" : thisComputer("Set up this Mac")}
-          </Button>
+          </Button></span>
         )}
       </div>
       {state === "ready" && !compact && (
-        <p className="mt-2 ps-11 text-muted-foreground text-xs leading-relaxed">
+        <p className={sx(paint.s10)}>
           {reuse ? "Uses the berthd already installed here. " : "Burf installs berthd for your user, no password needed. "}
           {thisComputer("It listens on this Mac only, so nothing opens to your network.")}
         </p>
       )}
-      {state !== "ready" && <CommandLog className="mt-3" lines={lines} done={state === "done"} error={error} />}
+      {state !== "ready" && <div className={sx(paint.s11)}><CommandLog lines={lines} done={state === "done"} error={error} /></div>}
       {state === "done" && paired && (
-        <p className="mt-2 text-muted-foreground text-xs">
-          This Mac is <span className="text-foreground">{paired}</span> in Burf.
+        <p className={sx(paint.s12)}>
+          This Mac is <span className={sx(paint.s13)}>{paired}</span> in Burf.
         </p>
       )}
     </section>

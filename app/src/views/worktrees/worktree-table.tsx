@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { AlertTriangleIcon, ArrowDownIcon, ArrowUpIcon, CheckIcon, EllipsisIcon, HouseIcon, PauseIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
@@ -11,11 +12,448 @@ import { ago } from "@/lib/format";
 import { previewUrl } from "@/lib/preview";
 import { NONE, useStore } from "@/lib/store";
 import { removalLabel, useRemoval } from "@/lib/removing";
-import { cn } from "@/lib/utils";
 import { ProjectLabel } from "@/views/automations/flows/project-label";
 import type { RowProgress } from "@/views/worktrees/use-bulk";
 import type { Row } from "@/views/worktrees/use-worktrees";
 import { sessionWord } from "@/lib/state-model";
+
+const paint = stylex.create({
+  s0: {
+    "position": "sticky",
+    "top": "0px",
+    "zIndex": 20,
+    "display": "grid",
+    "height": "32px",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s1: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s2: {
+    "display": "flex",
+    "alignItems": "center",
+  },
+  s3: {
+    "width": "fit-content",
+  },
+  s4: {
+    "width": "fit-content",
+  },
+  s5: {
+    "width": "fit-content",
+  },
+  s6: {
+    "width": "fit-content",
+  },
+  s7: {
+    "position": "sticky",
+    "top": "32px",
+    "zIndex": 10,
+    "display": "grid",
+    "height": "32px",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in srgb,var(--color-muted) 60%,var(--color-background))",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+  },
+  s8: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontWeight": 500,
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s9: {
+    "fontWeight": 400,
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s10: {
+    "display": "grid",
+    "height": "var(--row-h)",
+    "cursor": "pointer",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "borderColor": "color-mix(in oklab, var(--border) 60%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 40%, transparent)",
+      ":focus-visible": "color-mix(in oklab, var(--accent) 40%, transparent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px color-mix(in oklab, var(--ring) 48%, transparent)",
+    },
+  },
+  s11: {
+    "backgroundColor": {
+      "default": "color-mix(in oklab, var(--primary) 6%, transparent)",
+      ":hover": "color-mix(in oklab, var(--primary) 9%, transparent)",
+    },
+  },
+  s12: {
+    "backgroundColor": "color-mix(in oklab, var(--accent) 60%, transparent)",
+  },
+  s13: {
+    "color": "var(--muted-foreground)",
+  },
+  s14: {
+    "cursor": "default",
+    "color": "var(--muted-foreground)",
+    "backgroundColor": {
+      ":hover": "transparent",
+    },
+    ":not(#\\#) > *:not(:nth-child(-n+2))": {
+      "opacity": 0.5,
+    },
+  },
+  s15: {
+    "display": "flex",
+    "height": "100%",
+    "alignItems": "center",
+  },
+  s16: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s17: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s18: {
+    "maxWidth": "100%",
+    "flexShrink": 0,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+  },
+  s19: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s20: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "2px",
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 12%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontSize": "10px",
+    "color": "var(--warning-foreground)",
+  },
+  s21: {
+    "width": "10px",
+    "height": "10px",
+  },
+  s22: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--muted)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s23: {
+    "display": "flex",
+    "width": "fit-content",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s24: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  s25: {
+    "color": "var(--foreground)",
+  },
+  s26: {
+    "color": "var(--muted-foreground)",
+  },
+  s27: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s28: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  s29: {
+    "color": "var(--warning-foreground)",
+  },
+  s30: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s31: {
+    "display": "flex",
+    "width": "fit-content",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s32: {
+    "color": "var(--muted-foreground)",
+  },
+  s33: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s34: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--warning)",
+  },
+  s35: {
+    "color": "var(--success-foreground)",
+  },
+  s36: {
+    "minWidth": "0px",
+  },
+  s37: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s38: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "baseline",
+    "gap": "8px",
+  },
+  s39: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s40: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s41: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s42: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s43: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s44: {
+    "display": "flex",
+    "width": "fit-content",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s45: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  s46: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s47: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s48: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s49: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  s50: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 40%, transparent)",
+  },
+  s51: {
+    "backgroundColor": "var(--success)",
+  },
+  s52: {
+    "textAlign": "right",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s53: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "flex-end",
+    "gap": "2px",
+  },
+  s54: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s55: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s56: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s57: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s58: {
+    "color": "var(--muted-foreground)",
+  },
+  s59: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 40%, transparent)",
+  },
+  s60: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--success-foreground)",
+  },
+  s61: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--warning)",
+  },
+  s62: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--destructive-foreground)",
+  },
+  s63: {
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s64: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  n0: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  n1: {
+    "color": "var(--warning-foreground)",
+  },
+  n2: {
+    "color": "var(--foreground)",
+  },
+  n3: {
+    "color": "var(--muted-foreground)",
+  },
+
+  s65: {
+    containerType: "inline-size",
+  },
+  s66: {
+    justifySelf: "end",
+    "@container (max-width: 64rem)": {
+      display: "none",
+    },
+  },
+  s67: {
+    gridColumn: "2/-1",
+  },
+  s68: {
+    scrollMarginTop: 64,
+  },
+  s69: {
+    "@container (max-width: 64rem)": {
+      display: "none",
+    },
+  },
+  s70: {
+    gridTemplateColumns: "2rem minmax(180px,1.2fr) 6rem 6rem minmax(240px,2fr) 5.5rem 4rem 2.75rem",
+    "@container (max-width: 64rem)": {
+      gridTemplateColumns: "2rem minmax(160px,1.2fr) 5.5rem 5.5rem minmax(200px,2fr) 4.5rem 2.75rem",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface Group {
   key: string;
@@ -28,7 +466,7 @@ export interface Group {
 // 1024px of table the port moves into the worktree's tooltip and agents
 // narrow, so the last commit keeps room to be read.
 export const COLS =
-  "grid-cols-[2rem_minmax(180px,1.2fr)_6rem_6rem_minmax(240px,2fr)_5.5rem_4rem_2.75rem] @max-5xl:grid-cols-[2rem_minmax(160px,1.2fr)_5.5rem_5.5rem_minmax(200px,2fr)_4.5rem_2.75rem]";
+  (sx(paint.s70) ?? "");
 
 
 // WorktreeTable lists worktrees by project, one line each. Checkboxes
@@ -75,32 +513,32 @@ export function WorktreeTable({
     listRef.current?.querySelector<HTMLElement>(`[data-row="${CSS.escape(next)}"]`)?.focus();
   };
   return (
-    <div ref={listRef} className="@container">
-      <div className={cn("sticky top-0 z-20 grid h-8 items-center gap-3 border-b bg-background px-4 text-[11px] text-muted-foreground", COLS)}>
+    <div ref={listRef} className={sx(paint.s65)}>
+      <div className={[sx(paint.s0), COLS].filter(Boolean).join(" ")}>
         <Tip
           label={
-            <span className="flex items-center gap-1.5">
+            <span className={sx(paint.s1)}>
               Select all <Kbd>⌘A</Kbd> · <Kbd>⇧</Kbd>-click selects a range
             </span>
           }
         >
-          <span className="flex items-center">
+          <span className={sx(paint.s2)}>
             <Checkbox checked={selected.size > 0 && selected.size === total} indeterminate={selected.size > 0 && selected.size < total} onCheckedChange={(on) => onToggleAll(!!on)} aria-label="Select every worktree shown" />
           </span>
         </Tip>
         <span>Worktree</span>
-        <Tip className="max-w-sm" label="Commits ahead of its base, and behind it">
-          <span className="w-fit">vs base</span>
+        <Tip width="sm" label="Commits ahead of its base, and behind it">
+          <span className={sx(paint.s3)}>vs base</span>
         </Tip>
-        <Tip className="max-w-sm" label="Uncommitted: modified and untracked files">
-          <span className="w-fit">Changes</span>
+        <Tip width="sm" label="Uncommitted: modified and untracked files">
+          <span className={sx(paint.s4)}>Changes</span>
         </Tip>
         <span>Last commit</span>
-        <Tip className="max-w-sm" label="Sessions in it, and dev servers it runs">
-          <span className="w-fit">Agents</span>
+        <Tip width="sm" label="Sessions in it, and dev servers it runs">
+          <span className={sx(paint.s5)}>Agents</span>
         </Tip>
-        <Tip className="max-w-sm" label="Its first port, on its own box">
-          <span className="w-fit justify-self-end @max-5xl:hidden">Port</span>
+        <Tip width="sm" label="Its first port, on its own box">
+          <span className={[sx(paint.s6), sx(paint.s66)].filter(Boolean).join(" ")}>Port</span>
         </Tip>
         <span />
       </div>
@@ -108,16 +546,16 @@ export function WorktreeTable({
         const n = g.rows.filter((r) => selected.has(r.key)).length;
         return (
           <section key={g.key} aria-label={`${g.location} on ${g.box}`}>
-            <header className={cn("sticky top-8 z-10 grid h-8 items-center gap-3 border-b bg-[color-mix(in_srgb,var(--color-muted)_60%,var(--color-background))] px-4", COLS)}>
+            <header className={[sx(paint.s7), COLS].filter(Boolean).join(" ")}>
               <Checkbox
                 checked={n > 0 && n === g.rows.length}
                 indeterminate={n > 0 && n < g.rows.length}
                 onCheckedChange={(on) => onToggleGroup(g, !!on)}
                 aria-label={`Select every worktree in ${g.location} on ${g.box}`}
               />
-              <span className="col-[2/-1] flex items-center gap-2 font-medium text-xs">
+              <span className={[sx(paint.s8), sx(paint.s67)].filter(Boolean).join(" ")}>
                 <ProjectLabel box={g.box} scope={`repo:${g.location}`} />
-                <span className="font-normal text-muted-foreground tabular-nums">{g.rows.length}</span>
+                <span className={sx(paint.s9)}>{g.rows.length}</span>
               </span>
             </header>
             <div role="listbox" aria-multiselectable aria-label={`Worktrees in ${g.location} on ${g.box}`}>
@@ -202,15 +640,7 @@ function WorktreeRow({
           onMove(e.key);
         }
       }}
-      className={cn(
-        // scroll-mt: clear of the two sticky headers when ↑ scrolls a row in.
-        "group grid h-row scroll-mt-16 cursor-pointer items-center gap-3 border-b border-border/60 px-4 text-sm outline-none hover:bg-accent/40 focus-visible:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring/48 focus-visible:ring-inset",
-        COLS,
-        selected && "bg-primary/[0.06] hover:bg-primary/[0.09]",
-        open && "bg-accent/60",
-        r.paused && "text-muted-foreground",
-        leaving && "cursor-default text-muted-foreground hover:bg-transparent [&>*:not(:nth-child(-n+2))]:opacity-50",
-      )}
+      className={[[sx(paint.s10), [sx(paint.s68), "group"].filter(Boolean).join(" ")].filter(Boolean).join(" "), COLS, selected && sx(paint.s11), open && sx(paint.s12), r.paused && sx(paint.s13), leaving && sx(paint.s14)].filter(Boolean).join(" ")}
     >
       {/* The checkbox selects; it never opens the row. */}
       <span
@@ -218,87 +648,87 @@ function WorktreeRow({
           e.stopPropagation();
           onToggle(e.shiftKey);
         }}
-        className="flex h-full items-center"
+        className={sx(paint.s15)}
       >
-        <Checkbox checked={selected} tabIndex={-1} aria-label={`Select ${name}`} className="pointer-events-none" />
+        <Checkbox checked={selected} tabIndex={-1} aria-label={`Select ${name}`} passive />
       </span>
 
-      <Tip className="max-w-sm" label={<NameTip row={r} />}>
-        <div className="flex min-w-0 items-center gap-1.5">
-          {r.main && <HouseIcon className="size-3.5 shrink-0 text-muted-foreground" aria-label="Main checkout" />}
-          <span className="max-w-full shrink-0 truncate font-medium">{name}</span>
-          {r.branch && r.branch !== name && <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">{r.branch}</span>}
+      <Tip width="sm" label={<NameTip row={r} />}>
+        <div className={sx(paint.s16)}>
+          {r.main && <HouseIcon className={sx(paint.s17)} aria-label="Main checkout" />}
+          <span className={sx(paint.s18)}>{name}</span>
+          {r.branch && r.branch !== name && <span className={sx(paint.s19)}>{r.branch}</span>}
           {r.paused && (
-            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-warning/12 px-1.5 py-px text-[10px] text-warning-foreground">
-              <PauseIcon className="size-2.5" />
+            <span className={sx(paint.s20)}>
+              <PauseIcon className={sx(paint.s21)} />
               Paused
             </span>
           )}
           {leaving && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-px text-[10px] text-muted-foreground">
-              <Spinner className="size-2.5" />
+            <span className={sx(paint.s22)}>
+              <Spinner  size="xs"/>
               {removalLabel(leaving)}
             </span>
           )}
         </div>
       </Tip>
 
-      <Tip className="max-w-sm" label={r.ahead || r.behind ? `${r.ahead} commit${s(r.ahead)} ahead of ${base}, ${r.behind} behind` : `Even with ${base}`}>
-        <div className="flex w-fit items-center gap-2 font-mono text-xs tabular-nums">
-          <span className={cn("inline-flex items-center gap-0.5", r.ahead ? "text-foreground" : "text-muted-foreground")}>
-            <ArrowUpIcon className="size-3" />
+      <Tip width="sm" label={r.ahead || r.behind ? `${r.ahead} commit${s(r.ahead)} ahead of ${base}, ${r.behind} behind` : `Even with ${base}`}>
+        <div className={sx(paint.s23)}>
+          <span className={[sx(paint.s24), r.ahead ? sx(paint.s25) : sx(paint.s26)].filter(Boolean).join(" ")}>
+            <ArrowUpIcon className={sx(paint.s27)} />
             {r.ahead}
           </span>
-          <span className={cn("inline-flex items-center gap-0.5", r.behind >= 10 ? "text-warning-foreground" : r.behind ? "text-foreground" : "text-muted-foreground")}>
-            <ArrowDownIcon className="size-3" />
+          <span className={[sx(paint.n0), r.behind >= 10 ? sx(paint.n1) : r.behind ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")}>
+            <ArrowDownIcon className={sx(paint.s30)} />
             {r.behind}
           </span>
         </div>
       </Tip>
 
-      <Tip className="max-w-sm" label={r.changed || r.untracked ? [r.changed && `${r.changed} modified`, r.untracked && `${r.untracked} untracked`].filter(Boolean).join(", ") : "No uncommitted changes"}>
-        <div className="flex w-fit items-center gap-2 text-xs tabular-nums">
+      <Tip width="sm" label={r.changed || r.untracked ? [r.changed && `${r.changed} modified`, r.untracked && `${r.untracked} untracked`].filter(Boolean).join(", ") : "No uncommitted changes"}>
+        <div className={sx(paint.s31)}>
           {r.changed === 0 && r.untracked === 0 ? (
-            <span className="text-muted-foreground">Clean</span>
+            <span className={sx(paint.s32)}>Clean</span>
           ) : (
             <>
               {r.changed > 0 && (
-                <span className="inline-flex items-center gap-1">
-                  <span className="size-1.5 rounded-full bg-warning" />
+                <span className={sx(paint.s33)}>
+                  <span className={sx(paint.s34)} />
                   {r.changed}
                 </span>
               )}
-              {r.untracked > 0 && <span className="text-success-foreground">+{r.untracked}</span>}
+              {r.untracked > 0 && <span className={sx(paint.s35)}>+{r.untracked}</span>}
             </>
           )}
         </div>
       </Tip>
 
-      <div className="min-w-0">
+      <div className={sx(paint.s36)}>
         {c ? (
           <Tip
             label={
               <>
-                <span className="font-mono">{c.short}</span> · {c.author} · {new Date(c.time).toLocaleString()}
+                <span className={sx(paint.s37)}>{c.short}</span> · {c.author} · {new Date(c.time).toLocaleString()}
               </>
             }
           >
-            <div className="flex min-w-0 items-baseline gap-2">
-              <span className="truncate">{c.subject}</span>
-              <span className="shrink-0 text-muted-foreground text-xs">{ago(c.time)}</span>
+            <div className={sx(paint.s38)}>
+              <span className={sx(paint.s39)}>{c.subject}</span>
+              <span className={sx(paint.s40)}>{ago(c.time)}</span>
             </div>
           </Tip>
         ) : (
-          <span className="text-muted-foreground text-xs">{r.error ?? "No commits"}</span>
+          <span className={sx(paint.s41)}>{r.error ?? "No commits"}</span>
         )}
       </div>
 
       {mine.length === 0 && serving.length === 0 ? (
-        <span className="text-muted-foreground/50 text-xs">—</span>
+        <span className={sx(paint.s42)}>—</span>
       ) : (
         <Tip
           label={
-            <span className="flex flex-col gap-0.5">
+            <span className={sx(paint.s43)}>
               {mine.map((x) => {
                 const a = agentOf(x);
                 return <span key={x.name}>{a ? `${sessionName(x, { sessions: mine })} ${r.paused ? "paused" : sessionWord(sessionState(x, stats), true)}` : sessionName(x, { sessions: mine })}</span>;
@@ -311,17 +741,17 @@ function WorktreeRow({
             </span>
           }
         >
-          <div className="flex w-fit items-center gap-1.5">
+          <div className={sx(paint.s44)}>
             {mine.slice(0, 3).map((x) => (
-              <span key={x.name} className="inline-flex items-center gap-0.5">
+              <span key={x.name} className={sx(paint.s45)}>
                 <AgentIcon agent={agentOf(x)} />
-                {!r.paused && <StateGlyph state={sessionState(x, stats)} className="size-3" />}
+                {!r.paused && <StateGlyph state={sessionState(x, stats)} className={sx(paint.s46)} />}
               </span>
             ))}
-            {mine.length > 3 && <span className="text-muted-foreground text-xs">+{mine.length - 3}</span>}
+            {mine.length > 3 && <span className={sx(paint.s47)}>+{mine.length - 3}</span>}
             {serving.length > 0 && (
-              <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
-                <span className={cn("size-1.5 rounded-full", r.paused ? "bg-muted-foreground/40" : "bg-success")} />
+              <span className={sx(paint.s48)}>
+                <span className={[sx(paint.s49), r.paused ? sx(paint.s50) : sx(paint.s51)].filter(Boolean).join(" ")} />
                 {serving.length}
               </span>
             )}
@@ -329,22 +759,22 @@ function WorktreeRow({
         </Tip>
       )}
 
-      <span className="text-right font-mono text-muted-foreground text-xs tabular-nums @max-5xl:hidden">{r.port ?? ""}</span>
+      <span className={[sx(paint.s52), sx(paint.s69)].filter(Boolean).join(" ")}>{r.port ?? ""}</span>
 
-      <span className="flex items-center justify-end gap-0.5">
+      <span className={sx(paint.s53)}>
         <ProgressMark p={progress} />
         {!leaving && (
           <Tip label="History">
             <button
               type="button"
               aria-label={`History for ${name}`}
-              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              className={sx(paint.s54)}
               onClick={(e) => {
                 e.stopPropagation();
                 onHistory();
               }}
             >
-              <EllipsisIcon className="size-3.5" />
+              <EllipsisIcon className={sx(paint.s55)} />
             </button>
           </Tip>
         )}
@@ -359,18 +789,18 @@ function NameTip({ row: r }: { row: Row }) {
   const loc = useStore((s) => s.boxes[r.box]?.locations?.find((l) => l.name === r.location));
   const wt = loc?.worktrees?.find((w) => w.path === r.path);
   return (
-    <span className="flex flex-col gap-0.5">
+    <span className={sx(paint.s56)}>
       <span>
         {r.main ? "Main checkout" : "Worktree"} on {r.box}
         {r.branch && (
           <>
             {" · "}
-            <span className="font-mono">{r.branch}</span>
+            <span className={sx(paint.s57)}>{r.branch}</span>
           </>
         )}
       </span>
       {r.port !== undefined && (
-        <span className="text-muted-foreground">
+        <span className={sx(paint.s58)}>
           Port {r.port} on {r.box}
           {loc && wt ? ` · ${previewUrl(r.box, loc, wt, r.port)}` : ""}
         </span>
@@ -383,17 +813,17 @@ function ProgressMark({ p }: { p?: RowProgress }) {
   if (!p) return <span />;
   const body =
     p.state === "running" ? (
-      <Spinner className="size-3.5" />
+      <Spinner  size="md"/>
     ) : p.state === "queued" ? (
-      <span className="size-1.5 rounded-full bg-muted-foreground/40" />
+      <span className={sx(paint.s59)} />
     ) : p.state === "ok" ? (
-      <CheckIcon className="size-3.5 text-success-foreground" />
+      <CheckIcon className={sx(paint.s60)} />
     ) : p.state === "conflict" ? (
-      <AlertTriangleIcon className="size-3.5 text-warning" />
+      <AlertTriangleIcon className={sx(paint.s61)} />
     ) : p.state === "failed" ? (
-      <XIcon className="size-3.5 text-destructive-foreground" />
+      <XIcon className={sx(paint.s62)} />
     ) : (
-      <span className="text-[10px] text-muted-foreground">—</span>
+      <span className={sx(paint.s63)}>—</span>
     );
   const label =
     p.state === "queued"
@@ -407,8 +837,8 @@ function ProgressMark({ p }: { p?: RowProgress }) {
             : (p.message ?? p.state);
   return (
     <Tooltip>
-      <TooltipTrigger render={<span className="flex items-center justify-center" />}>{body}</TooltipTrigger>
-      <TooltipPopup className="max-w-sm">{label}</TooltipPopup>
+      <TooltipTrigger render={<span className={sx(paint.s64)} />}>{body}</TooltipTrigger>
+      <TooltipPopup width="sm">{label}</TooltipPopup>
     </Tooltip>
   );
 }

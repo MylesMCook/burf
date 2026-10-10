@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArchiveIcon, CodeXmlIcon, GlobeIcon, SquareTerminalIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -16,11 +17,343 @@ import { agentLabel, agentOf, type SessionState, sessionName, sessionState } fro
 import { ago } from "@/lib/format";
 import { useRemoval } from "@/lib/removing";
 import { NONE, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { openSession, type WorktreeRef } from "@/lib/workspaces";
 import { sessionWord } from "@/lib/state-model";
 import { useTitleAt } from "@/lib/worktree-names";
 import { openRemoteChat, useRemoteChats } from "@/lib/remote-chat";
+
+const paint = stylex.create({
+  s0: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "overflowY": "auto",
+    "backgroundColor": "var(--background)",
+  },
+  s1: {
+    "position": "relative",
+    "display": "flex",
+    "minHeight": "100%",
+    "alignItems": "flex-start",
+    "justifyContent": "center",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "18vh",
+    "paddingBottom": "40px",
+  },
+  s2: {
+    "width": "100%",
+    "maxWidth": "560px",
+  },
+  s3: {
+    "marginBottom": "16px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+  },
+  s4: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 600,
+    "fontSize": "18px",
+    "lineHeight": "28px",
+    "letterSpacing": "-0.025em",
+  },
+  s5: {
+    "marginTop": "4px",
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--accent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s7: {
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--accent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s8: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s9: {
+    "wordBreak": "break-all",
+    "fontFamily": "var(--font-mono)",
+  },
+  s10: {
+    "color": "var(--muted-foreground)",
+  },
+  s11: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "textAlign": "left",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+    "direction": "rtl",
+  },
+  s12: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "12px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s13: {
+    "marginTop": "2px",
+    "display": "inline-flex",
+  },
+  s14: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s15: {
+    "fontWeight": 500,
+  },
+  s16: {
+    "color": "var(--muted-foreground)",
+  },
+  s17: {
+    "marginBottom": "20px",
+  },
+  s18: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s19: {
+    "display": "flex",
+    "height": "36px",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "textAlign": "left",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+      ":focus-visible": "var(--accent)",
+    },
+    ":not(#\\#) > svg": {
+      "width": "16px",
+      "height": "16px",
+      "flexShrink": 0,
+      "color": "var(--muted-foreground)",
+    },
+  },
+  s20: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "color": "var(--muted-foreground)",
+    ":not(#\\#) svg": {
+      "width": "16px",
+      "height": "16px",
+    },
+  },
+  s21: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s22: {
+    "marginTop": "24px",
+  },
+  s23: {
+    "marginTop": "16px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "color": "var(--destructive)",
+  },
+  s24: {
+    "marginTop": "24px",
+  },
+  s25: {
+    "marginBottom": "4px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+  },
+  s26: {
+    "display": "flex",
+    "minHeight": "40px",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "textAlign": "left",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s27: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s28: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s29: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s30: {
+    "marginTop": "24px",
+  },
+  s31: {
+    "marginBottom": "4px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s32: {
+    "display": "flex",
+    "height": "40px",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+      ":focus-visible": "var(--accent)",
+    },
+  },
+  s33: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s34: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s35: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s36: {
+    "minWidth": "0px",
+    "maxWidth": "60%",
+    "flexShrink": 1,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s37: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s38: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "gap": "6px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s39: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s40: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s41: {
+    "marginTop": "4px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The model's words (lib/state-model.ts); a shell is just "open".
 const stateWords = (s: SessionState) => (s === "idle" ? "open" : sessionWord(s, true));
@@ -103,26 +436,26 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   };
 
   return (
-    <div className="absolute inset-0 overflow-y-auto bg-background">
-      <div className="relative flex min-h-full items-start justify-center px-6 pt-[18vh] pb-10">
-        <div ref={list} onKeyDown={onKeyDown} className="w-full max-w-[560px]">
-          <header className="mb-4 px-2">
-            <h1 className="truncate font-semibold text-lg tracking-tight" title={name}>
-              {name}
-            </h1>
-            <div className="mt-1 flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
+    <div className={sx(paint.s0)}>
+      <div className={sx(paint.s1)}>
+        <div ref={list} onKeyDown={onKeyDown} className={sx(paint.s2)}>
+          <header className={sx(paint.s3)}>
+            <Tip label={name} width="lg">
+              <h1 className={sx(paint.s4)}>{name}</h1>
+            </Tip>
+            <div className={sx(paint.s5)}>
               {branch && (
                 <Tip label={middle(branch) !== branch ? branch : undefined}>
-                  <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[11px]">{middle(branch)}</span>
+                  <span className={sx(paint.s6)}>{middle(branch)}</span>
                 </Tip>
               )}
-              <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[11px]">{ref.box}</span>
+              <span className={sx(paint.s7)}>{ref.box}</span>
               <Tip
-                className="max-w-md"
+                width="md"
                 label={
-                  <span className="flex flex-col gap-0.5">
-                    <span className="break-all font-mono">{ref.path}</span>
-                    <span className="text-muted-foreground">Click to copy</span>
+                  <span className={sx(paint.s8)}>
+                    <span className={sx(paint.s9)}>{ref.path}</span>
+                    <span className={sx(paint.s10)}>Click to copy</span>
                   </span>
                 }
               >
@@ -133,7 +466,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
                     toastManager.add({ title: "Copied the path", description: ref.path, type: "success" });
                   }}
                   // Truncated from the left, so the end of the path stays visible.
-                  className="min-w-0 truncate text-left font-mono text-[11px] hover:text-foreground [direction:rtl]"
+                  className={sx(paint.s11)}
                 >
                   <bdi>{ref.path}</bdi>
                 </button>
@@ -143,11 +476,11 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
 
           {/* On its way out (archive or remove): nothing new starts here. */}
           {leaving ? (
-            <div role="status" aria-busy="true" className="flex items-start gap-3 rounded-lg border bg-muted/40 px-3.5 py-3 text-sm">
-              <Spinner className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="font-medium">{leaving.kind === "archive" ? "Archiving" : "Removing"} {name}…</span>
-                <span className="text-muted-foreground">
+            <div role="status" aria-busy="true" className={sx(paint.s12)}>
+              <span className={sx(paint.s13)}><Spinner size="lg" muted /></span>
+              <div className={sx(paint.s14)}>
+                <span className={sx(paint.s15)}>{leaving.kind === "archive" ? "Archiving" : "Removing"} {name}…</span>
+                <span className={sx(paint.s16)}>
                   {leaving.script
                     ? `The repo's archive script is running on ${ref.box}. This worktree closes when it finishes, or comes back if it fails.`
                     : `Waiting for ${ref.box}.`}
@@ -158,20 +491,20 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
             <>
             {/* The one way to start work, here: an agent on a task in this
                 worktree, or several attempts from its branch. */}
-            <div className="mb-5">
+            <div className={sx(paint.s17)}>
               <TaskComposer fixed={{ box: ref.box, location: ref.location, at: ref.main ? ref.location : `${ref.location}/${ref.worktree}`, name, branch }} autoFocus placeholder={`What should an agent do in ${name}?`} />
             </div>
-            <div className="flex flex-col">
+            <div className={sx(paint.s18)}>
               {rows.map((r) => (
                 <button
                   key={r.key}
                   type="button"
                   data-row
                   onClick={r.run}
-                  className="flex h-9 items-center gap-3 rounded-md px-2 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground"
+                  className={sx(paint.s19)}
                 >
-                  <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-4">{r.icon}</span>
-                  <span className="min-w-0 flex-1 truncate">{r.label}</span>
+                  <span className={sx(paint.s20)}>{r.icon}</span>
+                  <span className={sx(paint.s21)}>{r.label}</span>
                   {r.keys && <Kbd>{r.keys}</Kbd>}
                 </button>
               ))}
@@ -180,18 +513,18 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
           )}
 
           {/* What runs here, each with its URL, then plugins' sections. */}
-          <WorktreeSections worktree={ref} className="mt-6" />
-          {remote.error && <p role="alert" className="mt-4 text-sm text-destructive">{remote.error}</p>}
-          {remote.chats.length > 0 && <section aria-label="Chats" className="mt-6">
-            <h2 className="mb-1 px-2 text-xs font-medium text-muted-foreground">Chats</h2>
-            {remote.chats.map((chat) => <button key={chat.id} type="button" onClick={() => openRemoteChat(ref.box, chat, ref)} className="flex min-h-10 w-full items-center gap-3 rounded-md px-2 text-left text-sm hover:bg-accent">
-              <AgentIcon agent={chat.agent} /><span className="min-w-0 flex-1 truncate">{agentLabel(chat.agent)} chat <span className="text-xs text-muted-foreground">{chat.id.slice(-8)}</span></span><span className="text-xs text-muted-foreground">{chat.state}</span>
+          <WorktreeSections worktree={ref} className={sx(paint.s22)} />
+          {remote.error && <p role="alert" className={sx(paint.s23)}>{remote.error}</p>}
+          {remote.chats.length > 0 && <section aria-label="Chats" className={sx(paint.s24)}>
+            <h2 className={sx(paint.s25)}>Chats</h2>
+            {remote.chats.map((chat) => <button key={chat.id} type="button" onClick={() => openRemoteChat(ref.box, chat, ref)} className={sx(paint.s26)}>
+              <AgentIcon agent={chat.agent} /><span className={sx(paint.s27)}>{agentLabel(chat.agent)} chat <span className={sx(paint.s28)}>{chat.id.slice(-8)}</span></span><span className={sx(paint.s29)}>{chat.state}</span>
             </button>)}
           </section>}
 
           {closed.length > 0 && (
-            <section className="mt-6">
-              <h2 className="mb-1 px-2 font-medium text-muted-foreground text-xs">Pick up where you left off</h2>
+            <section className={sx(paint.s30)}>
+              <h2 className={sx(paint.s31)}>Pick up where you left off</h2>
               {shown.map((s) => {
                 const state = sessionState(s, stats);
                 return (
@@ -200,18 +533,18 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
                     data-row
                     tabIndex={0}
                     onKeyDown={(e) => e.key === "Enter" && openSession(ref.box, s)}
-                    className="flex h-10 items-center gap-3 rounded-md px-2 text-sm outline-none hover:bg-accent focus-visible:bg-accent"
+                    className={sx(paint.s32)}
                   >
-                    <span className="flex size-4 shrink-0 items-center justify-center">
-                      <AgentIcon agent={agentOf(s)} className="size-4" />
+                    <span className={sx(paint.s33)}>
+                      <AgentIcon agent={agentOf(s)} className={sx(paint.s34)} />
                     </span>
-                    <Tip label={<span className="font-mono">{s.name}</span>}>
-                      <span className="min-w-0 max-w-[60%] shrink truncate">{sessionName(s, { sessions })}</span>
+                    <Tip label={<span className={sx(paint.s35)}>{s.name}</span>}>
+                      <span className={sx(paint.s36)}>{sessionName(s, { sessions })}</span>
                     </Tip>
-                    {s.title && <span className="shrink-0 text-muted-foreground text-xs">{agentLabel(agentOf(s)!)}</span>}
-                    <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-muted-foreground text-xs">
-                      <StateGlyph state={state} className="size-3" />
-                      <span className="truncate">
+                    {s.title && <span className={sx(paint.s37)}>{agentLabel(agentOf(s)!)}</span>}
+                    <span className={sx(paint.s38)}>
+                      <StateGlyph state={state} className={sx(paint.s39)} />
+                      <span className={sx(paint.s40)}>
                         {stateWords(state)} {ago(s.state_since ?? s.created)}
                       </span>
                     </span>
@@ -222,7 +555,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
                 );
               })}
               {closed.length > 5 && (
-                <button type="button" onClick={() => setAll(!all)} className={cn("mt-1 px-2 text-muted-foreground text-xs hover:text-foreground")}>
+                <button type="button" onClick={() => setAll(!all)} className={sx(paint.s41)}>
                   {all ? "Show fewer" : `Show all ${closed.length}`}
                 </button>
               )}

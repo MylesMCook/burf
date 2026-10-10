@@ -1,10 +1,448 @@
+import * as stylex from "@stylexjs/stylex";
 import type { BerthPluginContext, Location, Session } from "@berth/plugin";
-import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Frame, FrameHeader, FramePanel, FrameTitle, Icon, PickOne, Skeleton, Spinner, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tip, cn } from "@berth/plugin/ui";
+import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Frame, FrameHeader, FramePanel, FrameTitle, Icon, PickOne, Skeleton, Spinner, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tip } from "@berth/plugin/ui";
 import { useMemo, useState } from "react";
 
 import type { Account, Agent, Limits, Window } from "./box";
 import { DailyChart, OTHER_BOXES, SERIES, agentSeries, boxColor, boxSeries } from "./chart";
 import { AGENT_NAME, ago, compact, days, firstDay, plan, summarize, total, usd, worktreeOf, type BoxSession, type Period, type Source } from "./data";
+
+const paint = stylex.create({
+  s0: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "12px",
+    },
+  },
+  s1: {
+    "height": "112px",
+    "width": "100%",
+  },
+  s2: {
+    "height": "176px",
+    "width": "100%",
+  },
+  s3: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "marginBottom": "8px",
+    "width": "20px",
+    "height": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "16px",
+    },
+  },
+  s5: {
+    "display": "grid",
+    "gap": "12px",
+  },
+  s6: {
+    "gridTemplateColumns": {
+      "@media (min-width: 768px)": {
+        "default": "repeat(2, minmax(0, 1fr))",
+      },
+    },
+  },
+  s7: {
+    "display": "grid",
+    "gap": "16px",
+  },
+  s8: {
+    "gridTemplateColumns": {
+      "@media (min-width: 1024px)": {
+        "default": "repeat(2, minmax(0, 1fr))",
+      },
+    },
+  },
+  s9: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s10: {
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "2px",
+  },
+  s11: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s12: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s13: {
+    "marginLeft": "auto",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s14: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s15: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-sm)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s16: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  s17: {
+    "width": "10px",
+    "height": "10px",
+    "borderRadius": "3px",
+  },
+  s18: {
+    "marginLeft": "auto",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s19: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "gap": "8px",
+  },
+  s20: {
+    "fontWeight": 600,
+    "fontSize": "24px",
+    "lineHeight": "32px",
+    "fontVariantNumeric": "tabular-nums",
+    "letterSpacing": "-0.025em",
+  },
+  s21: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s22: {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(4, minmax(0, 1fr))",
+    "gap": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s23: {
+    "color": "var(--muted-foreground)",
+  },
+  s24: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s25: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "6px",
+    },
+  },
+  s26: {
+    "display": "flex",
+    "height": "6px",
+    "gap": "2px",
+    "overflow": "hidden",
+    "borderRadius": "999px",
+  },
+  s27: {
+    "height": "100%",
+    "borderTopLeftRadius": {
+      ":first-child": "999px",
+    },
+    "borderBottomLeftRadius": {
+      ":first-child": "999px",
+    },
+    "borderTopRightRadius": {
+      ":last-child": "999px",
+    },
+    "borderBottomRightRadius": {
+      ":last-child": "999px",
+    },
+  },
+  s28: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "columnGap": "12px",
+    "rowGap": "2px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s29: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s30: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  s31: {
+    "color": "var(--foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s32: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingTop": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s33: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s34: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingTop": "12px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "8px",
+    },
+  },
+  s35: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s36: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "4px",
+    },
+  },
+  s37: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "gap": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s38: {
+    "fontWeight": 500,
+  },
+  s39: {
+    "color": "var(--muted-foreground)",
+  },
+  s40: {
+    "marginLeft": "auto",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s41: {
+    "height": "6px",
+    "overflow": "hidden",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--muted)",
+  },
+  s42: {
+    "height": "100%",
+    "borderRadius": "999px",
+  },
+  s43: {
+    "backgroundColor": "var(--destructive)",
+  },
+  s44: {
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s45: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "24px",
+    "paddingBottom": "24px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s46: {
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s47: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s48: {
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "2px",
+  },
+  s49: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s50: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s51: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s52: {
+    "color": "var(--muted-foreground)",
+  },
+  s53: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s54: {
+    "width": "64px",
+    "textAlign": "right",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s55: {
+    "width": "64px",
+    "textAlign": "right",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s56: {
+    "width": "64px",
+  },
+  s57: {
+    "width": "80px",
+    "textAlign": "right",
+  },
+  s58: {
+    "opacity": {
+      "default": 0,
+      ":focus-visible": 1,
+    },
+    ":is(.group:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s59: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s60: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+  },
+  s61: {
+    "borderColor": "color-mix(in oklab, var(--destructive) 40%, transparent)",
+  },
+  s62: {
+    "borderStyle": "dashed",
+    "color": "var(--muted-foreground)",
+  },
+  s63: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  s64: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 40%, transparent)",
+  },
+  s65: {
+    "fontWeight": 500,
+  },
+  s66: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s67: {
+    "color": "var(--muted-foreground)",
+  },
+  s68: {
+    "maxWidth": "256px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--destructive-foreground)",
+  },
+  s69: {
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  n0: {
+    "height": "100%",
+    "borderRadius": "999px",
+  },
+  n1: {
+    "backgroundColor": "var(--destructive)",
+  },
+  n2: {
+    "backgroundColor": "var(--warning)",
+  },
+  n3: {
+    "backgroundColor": "color-mix(in oklab, var(--primary) 70%, transparent)",
+  },
+  n4: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  n5: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 40%, transparent)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // What the screen knows about one box while reading it.
 export interface BoxState {
@@ -40,9 +478,9 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
   if (!sources.length) {
     if (busy) {
       return (
-        <div className="space-y-3">
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-44 w-full" />
+        <div className={sx(paint.s0)}>
+          <Skeleton className={sx(paint.s1)} />
+          <Skeleton className={sx(paint.s2)} />
         </div>
       );
     }
@@ -52,9 +490,9 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
   const where = multi ? (counted.length === 1 ? counted[0] : `${counted.length} boxes`) : counted[0];
   if (!agents.length) {
     return (
-      <Empty className="rounded-xl border py-16">
+      <Empty frame="panel" pad="room">
         <EmptyHeader>
-          <Icon name="ChartColumn" className="mx-auto mb-2 size-5 text-muted-foreground" />
+          <Icon name="ChartColumn" className={sx(paint.s3)} />
           <EmptyTitle>
             No agent usage on {where} {period === 1 ? "today" : `in the last ${period} days`}
           </EmptyTitle>
@@ -70,8 +508,8 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
   const files = sources.reduce((n, s) => n + s.report.files, 0);
 
   return (
-    <div className="space-y-4">
-      <div className={cn("grid gap-3", agents.length > 1 && "md:grid-cols-2")}>
+    <div className={sx(paint.s4)}>
+      <div className={[sx(paint.s5), agents.length > 1 && sx(paint.s6)].filter(Boolean).join(" ")}>
         {agents.map((a) => (
           <AgentTile
             key={a}
@@ -89,12 +527,12 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
 
       {period > 1 && (
         <Frame variant="card">
-          <FrameHeader className="flex-row items-center gap-2 py-3">
+          <FrameHeader row gap={2} pad="tight">
             <FrameTitle>Tokens per day</FrameTitle>
             {showBox && (
               <PickOne
+                align="end"
                 label="Stack by"
-                className="ml-auto"
                 value={stackBy}
                 onChange={(v: string) => setStackBy(v as "agent" | "box")}
                 options={[
@@ -104,36 +542,36 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
               />
             )}
           </FrameHeader>
-          <FramePanel className="p-4">
+          <FramePanel pad="room">
             <DailyChart days={days(sum.today, period)} byDay={byDay} series={series} />
           </FramePanel>
         </Frame>
       )}
 
-      <div className={cn("grid gap-4", !showBox && "lg:grid-cols-2")}>
+      <div className={[sx(paint.s7), !showBox && sx(paint.s8)].filter(Boolean).join(" ")}>
         <Frame variant="card">
-          <FrameHeader className="py-3">
+          <FrameHeader pad="tight">
             <FrameTitle>By model</FrameTitle>
           </FrameHeader>
-          <FramePanel className="p-0">
+          <FramePanel pad="none">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Model</TableHead>
                   {showBox && <TableHead>Box</TableHead>}
-                  <TableHead className="text-right">Input</TableHead>
-                  <TableHead className="text-right">Output</TableHead>
-                  <TableHead className="text-right">Cache</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead end>Input</TableHead>
+                  <TableHead end>Output</TableHead>
+                  <TableHead end>Cache</TableHead>
+                  <TableHead end>Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sum.byModel.slice(0, 12).map((m) => (
                   <TableRow key={m.agent + m.model + m.box}>
-                    <TableCell className="max-w-56">
-                      <span className="flex items-center gap-2">
-                        <span className={cn("size-2 shrink-0 rounded-[2px]", SERIES[m.agent].dot)} />
-                        <span className="truncate font-mono text-xs">{m.model}</span>
+                    <TableCell truncate>
+                      <span className={sx(paint.s9)}>
+                        <span className={[sx(paint.s10), SERIES[m.agent].dot].filter(Boolean).join(" ")} />
+                        <span className={sx(paint.s11)}>{m.model}</span>
                       </span>
                     </TableCell>
                     {showBox && (
@@ -141,10 +579,10 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
                         <BoxChip box={m.box} allBoxes={allBoxes} />
                       </TableCell>
                     )}
-                    <TableCell className="text-right tabular-nums">{compact(m.tokens[0])}</TableCell>
-                    <TableCell className="text-right tabular-nums">{compact(m.tokens[1])}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{compact(m.tokens[2] + m.tokens[3])}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{compact(total(m.tokens))}</TableCell>
+                    <TableCell end nums>{compact(m.tokens[0])}</TableCell>
+                    <TableCell end nums>{compact(m.tokens[1])}</TableCell>
+                    <TableCell end nums tone="muted">{compact(m.tokens[2] + m.tokens[3])}</TableCell>
+                    <TableCell end nums weight="medium">{compact(total(m.tokens))}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -152,32 +590,32 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
           </FramePanel>
         </Frame>
         <Frame variant="card">
-          <FrameHeader className="py-3">
+          <FrameHeader pad="tight">
             <FrameTitle>By project</FrameTitle>
           </FrameHeader>
-          <FramePanel className="p-0">
+          <FramePanel pad="none">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Worktree</TableHead>
                   {showBox && <TableHead>Box</TableHead>}
-                  <TableHead className="text-right">Sessions</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead end>Sessions</TableHead>
+                  <TableHead end>Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sum.byWorktree.slice(0, 12).map((w) => (
                   <TableRow key={w.box + w.name.label}>
-                    <TableCell className="max-w-56 truncate" title={w.name.path ?? w.name.label}>
-                      {w.name.location ? w.name.label : <span className="font-mono text-muted-foreground text-xs">{w.name.label}</span>}
+                    <TableCell title={w.name.path ?? w.name.label} truncate>
+                      {w.name.location ? w.name.label : <span className={sx(paint.s12)}>{w.name.label}</span>}
                     </TableCell>
                     {showBox && (
                       <TableCell>
                         <BoxChip box={w.box} allBoxes={allBoxes} />
                       </TableCell>
                     )}
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{w.sessions || ""}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{compact(total(w.tokens))}</TableCell>
+                    <TableCell end nums tone="muted">{w.sessions || ""}</TableCell>
+                    <TableCell end nums weight="medium">{compact(total(w.tokens))}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -187,18 +625,18 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
       </div>
 
       <Frame variant="card">
-        <FrameHeader className="flex-row items-center gap-2 py-3">
+        <FrameHeader row gap={2} pad="tight">
           <FrameTitle>Sessions</FrameTitle>
-          <span className="ml-auto text-muted-foreground text-xs">
+          <span className={sx(paint.s13)}>
             Cost is Claude Code's own estimate at API list prices{subscription ? "; your Claude subscription covers this use" : ""}.
           </span>
         </FrameHeader>
-        <FramePanel className="p-0">
+        <FramePanel pad="none">
           <SessionList berth={berth} sessions={sum.sessions.slice(0, 30)} sources={sources} running={running} allBoxes={allBoxes} showBox={showBox} />
         </FramePanel>
       </Frame>
 
-      <p className="text-muted-foreground text-xs">
+      <p className={sx(paint.s14)}>
         Read from {files} transcript{files === 1 ? "" : "s"}
         {sources.map((s, i) => (
           <span key={s.box}>
@@ -232,8 +670,8 @@ function foldBoxes(byDayBox: Map<string, Map<string, number>>, series: { key: st
 
 export function BoxChip({ box, allBoxes }: { box: string; allBoxes: string[] }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-sm border px-1.5 py-px font-mono text-[11px] text-muted-foreground">
-      <span className={cn("size-1.5 rounded-full", boxColor(box, allBoxes).dot)} />
+    <span className={sx(paint.s15)}>
+      <span className={[sx(paint.s16), boxColor(box, allBoxes).dot].filter(Boolean).join(" ")} />
       {box}
     </span>
   );
@@ -323,10 +761,10 @@ function AgentTile({
   const sumBoxes = boxes.reduce((n, [, v]) => n + v, 0) || 1;
   return (
     <Frame variant="card">
-      <FrameHeader className="flex-row flex-wrap items-center gap-2 py-3">
-        <span className={cn("size-2.5 rounded-[3px]", SERIES[agent].dot)} />
+      <FrameHeader row wrap gap={2} pad="tight">
+        <span className={[sx(paint.s17), SERIES[agent].dot].filter(Boolean).join(" ")} />
         <FrameTitle>{AGENT_NAME[agent]}</FrameTitle>
-        <span className="ml-auto text-muted-foreground text-xs">{period === 1 ? "today" : `last ${period} days`}</span>
+        <span className={sx(paint.s18)}>{period === 1 ? "today" : `last ${period} days`}</span>
         {labels.length > 0 && <span className="basis-full" />}
         {labels.map((p) => (
           <Badge key={identity(p.account, p.boxes[0], p.account.id)} variant="outline" size="sm" title={[p.account.email, `on ${p.boxes.join(", ")}`].filter(Boolean).join(" · ")}>
@@ -336,44 +774,44 @@ function AgentTile({
           </Badge>
         ))}
       </FrameHeader>
-      <FramePanel className="space-y-3 p-4">
-        <div className="flex items-baseline gap-2">
-          <span className="font-semibold text-2xl tabular-nums tracking-tight">{compact(total(tokens))}</span>
-          <span className="text-muted-foreground text-sm">
+      <FramePanel pad="room" space={3}>
+        <div className={sx(paint.s19)}>
+          <span className={sx(paint.s20)}>{compact(total(tokens))}</span>
+          <span className={sx(paint.s21)}>
             tokens in {sessions} session{sessions === 1 ? "" : "s"}
             {boxes.length > 1 ? ` on ${boxes.length} boxes` : ""}
           </span>
         </div>
-        <dl className="grid grid-cols-4 gap-2 text-xs">
+        <dl className={sx(paint.s22)}>
           {(["Input", "Output", "Cache read", "Cache write"] as const).map((l, i) => (
             <div key={l}>
-              <dt className="text-muted-foreground">{l}</dt>
-              <dd className="tabular-nums">{compact(tokens[i])}</dd>
+              <dt className={sx(paint.s23)}>{l}</dt>
+              <dd className={sx(paint.s24)}>{compact(tokens[i])}</dd>
             </div>
           ))}
         </dl>
         {boxes.length > 1 && (
-          <div className="space-y-1.5">
-            <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full" role="img" aria-label={`By box: ${boxes.map(([b, n]) => `${b} ${compact(n)}`).join(", ")}`}>
+          <div className={sx(paint.s25)}>
+            <div className={sx(paint.s26)} role="img" aria-label={`By box: ${boxes.map(([b, n]) => `${b} ${compact(n)}`).join(", ")}`}>
               {boxes.map(([b, n]) => (
                 <Tip key={b} label={`${b}: ${compact(n)} tokens`}>
-                  <span className={cn("h-full first:rounded-l-full last:rounded-r-full", boxColor(b, allBoxes).dot)} style={{ width: `${(n / sumBoxes) * 100}%` }} />
+                  <span className={[sx(paint.s27), boxColor(b, allBoxes).dot].filter(Boolean).join(" ")} style={{ width: `${(n / sumBoxes) * 100}%` }} />
                 </Tip>
               ))}
             </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+            <div className={sx(paint.s28)}>
               {boxes.map(([b, n]) => (
-                <span key={b} className="flex items-center gap-1">
-                  <span className={cn("size-1.5 rounded-full", boxColor(b, allBoxes).dot)} />
-                  {b} <span className="text-foreground tabular-nums">{compact(n)}</span>
+                <span key={b} className={sx(paint.s29)}>
+                  <span className={[sx(paint.s30), boxColor(b, allBoxes).dot].filter(Boolean).join(" ")} />
+                  {b} <span className={sx(paint.s31)}>{compact(n)}</span>
                 </span>
               ))}
             </div>
           </div>
         )}
         {costed.length > 0 && (
-          <p className="border-t pt-3 text-muted-foreground text-xs">
-            <span className="font-medium text-foreground tabular-nums">{usd(cost)}</span> is Claude Code's own estimate at API list prices for {costed.length === sessions ? "these sessions" : `${costed.length} of these sessions`}, whole sessions included.
+          <p className={sx(paint.s32)}>
+            <span className={sx(paint.s33)}>{usd(cost)}</span> is Claude Code's own estimate at API list prices for {costed.length === sessions ? "these sessions" : `${costed.length} of these sessions`}, whole sessions included.
             {covered ? ` ${labels.length === 1 ? labels[0].plan!.label : "Your subscriptions"} cover${labels.length === 1 ? "s" : ""} this use; it isn't billed per token.` : ""}
           </p>
         )}
@@ -396,24 +834,24 @@ function LimitRows({ shared }: { shared: SharedLimits }) {
   const l = shared.limits;
   const windows = [l.limits.primary, l.limits.secondary].filter(Boolean) as Window[];
   return (
-    <div className="space-y-2 border-t pt-3">
-      {shared.label && <div className="truncate text-[11px] text-muted-foreground">{shared.label}</div>}
+    <div className={sx(paint.s34)}>
+      {shared.label && <div className={sx(paint.s35)}>{shared.label}</div>}
       {windows.map((w, i) => {
         const reset = new Date(w.resets_at * 1000);
         const past = reset.getTime() < Date.now();
         return (
-          <div key={i} className="space-y-1">
-            <div className="flex items-baseline gap-2 text-xs">
-              <span className="font-medium">{windowName(w)}</span>
-              <span className="text-muted-foreground">as of {ago(l.at)}</span>
-              <span className="ml-auto tabular-nums">{past ? "reset since" : `${Math.round(w.used_percent)}% used`}</span>
+          <div key={i} className={sx(paint.s36)}>
+            <div className={sx(paint.s37)}>
+              <span className={sx(paint.s38)}>{windowName(w)}</span>
+              <span className={sx(paint.s39)}>as of {ago(l.at)}</span>
+              <span className={sx(paint.s40)}>{past ? "reset since" : `${Math.round(w.used_percent)}% used`}</span>
             </div>
             {!past && (
-              <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="meter" aria-valuenow={Math.round(w.used_percent)} aria-valuemin={0} aria-valuemax={100} aria-label={windowName(w)}>
-                <div className={cn("h-full rounded-full", w.used_percent >= 90 ? "bg-destructive" : w.used_percent >= 70 ? "bg-warning" : "bg-primary/70")} style={{ width: `${Math.min(100, w.used_percent)}%` }} />
+              <div className={sx(paint.s41)} role="meter" aria-valuenow={Math.round(w.used_percent)} aria-valuemin={0} aria-valuemax={100} aria-label={windowName(w)}>
+                <div className={[sx(paint.n0), w.used_percent >= 90 ? sx(paint.n1) : w.used_percent >= 70 ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")} style={{ width: `${Math.min(100, w.used_percent)}%` }} />
               </div>
             )}
-            <div className="text-[11px] text-muted-foreground">{past ? `It reset ${reset.toLocaleDateString()}; Codex reports the new window on its next turn.` : `Resets ${reset.toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}`}</div>
+            <div className={sx(paint.s44)}>{past ? `It reset ${reset.toLocaleDateString()}; Codex reports the new window on its next turn.` : `Resets ${reset.toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}`}</div>
           </div>
         );
       })}
@@ -423,7 +861,7 @@ function LimitRows({ shared }: { shared: SharedLimits }) {
 
 function SessionList({ berth, sessions, sources, running, allBoxes, showBox }: { berth: BerthPluginContext; sessions: BoxSession[]; sources: Source[]; running: Record<string, Session[] | undefined>; allBoxes: string[]; showBox: boolean }) {
   const [busy, setBusy] = useState<string>();
-  if (!sessions.length) return <p className="px-4 py-6 text-center text-muted-foreground text-sm">No sessions in this period.</p>;
+  if (!sessions.length) return <p className={sx(paint.s45)}>No sessions in this period.</p>;
   const locationsOf = (box: string): Location[] => sources.find((s) => s.box === box)?.locations ?? [];
 
   const resume = async (s: BoxSession) => {
@@ -442,38 +880,38 @@ function SessionList({ berth, sessions, sources, running, allBoxes, showBox }: {
   };
 
   return (
-    <ul className="divide-y">
+    <ul className={sx(paint.s46)}>
       {sessions.map((s) => {
         const w = worktreeOf(s.cwd, locationsOf(s.box));
         const live = (running[s.box] ?? []).find((r) => !r.exited && r.agent === s.agent && r.dir === s.cwd);
         return (
-          <li key={s.box + s.agent + s.id} className="group flex items-center gap-3 px-4 py-2 text-sm">
-            <span className={cn("size-2 shrink-0 rounded-[2px]", SERIES[s.agent].dot)} aria-label={AGENT_NAME[s.agent]} />
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate">{s.title || <span className="text-muted-foreground">Untitled session</span>}</span>
+          <li key={s.box + s.agent + s.id} className={[sx(paint.s47), "group"].filter(Boolean).join(" ")}>
+            <span className={[sx(paint.s48), SERIES[s.agent].dot].filter(Boolean).join(" ")} aria-label={AGENT_NAME[s.agent]} />
+            <div className={sx(paint.s49)}>
+              <div className={sx(paint.s50)}>
+                <span className={sx(paint.s51)}>{s.title || <span className={sx(paint.s52)}>Untitled session</span>}</span>
                 {showBox && <BoxChip box={s.box} allBoxes={allBoxes} />}
               </div>
-              <div className="truncate text-muted-foreground text-xs">
+              <div className={sx(paint.s53)}>
                 {w.label} · {s.models.join(", ")} · {ago(s.last)}
                 {s.account !== "default" && ` · ${s.account}`}
               </div>
             </div>
-            <span className="w-16 text-right tabular-nums">{compact(total(s.tokens))}</span>
+            <span className={sx(paint.s54)}>{compact(total(s.tokens))}</span>
             {s.cost != null ? (
               <Tip label="Claude Code's estimate at API list prices">
-                <span className="w-16 text-right text-muted-foreground tabular-nums">{usd(s.cost)}</span>
+                <span className={sx(paint.s55)}>{usd(s.cost)}</span>
               </Tip>
             ) : (
-              <span className="w-16" />
+              <span className={sx(paint.s56)} />
             )}
-            <span className="w-20 text-right">
+            <span className={sx(paint.s57)}>
               {live ? (
                 <Button size="xs" variant="outline" onClick={() => berth.openTerminal(s.box, live.name)}>
                   Open
                 </Button>
               ) : w.location ? (
-                <Button size="xs" variant="ghost" className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100" loading={busy === s.box + s.id} onClick={() => void resume(s)}>
+                <Button size="xs" variant="ghost" className={sx(paint.s58)} loading={busy === s.box + s.id} onClick={() => void resume(s)}>
                   Resume
                 </Button>
               ) : null}
@@ -489,23 +927,23 @@ function SessionList({ berth, sessions, sources, running, allBoxes, showBox }: {
 // visible without holding up the rest.
 export function BoxStatus({ states, files, allBoxes }: { states: BoxState[]; files: Record<string, number | undefined>; allBoxes: string[] }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+    <div className={sx(paint.s59)}>
       {states.map((s) => (
         <Tip key={s.box} label={s.error}>
-          <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5", s.error && "border-destructive/40", !s.online && "border-dashed text-muted-foreground")}>
-            <span className={cn("size-1.5 rounded-full", s.online ? boxColor(s.box, allBoxes).dot : "bg-muted-foreground/40")} />
-            <span className="font-medium">{s.box}</span>
+          <span className={[sx(paint.s60), s.error && sx(paint.s61), !s.online && sx(paint.s62)].filter(Boolean).join(" ")}>
+            <span className={[sx(paint.n4), s.online ? boxColor(s.box, allBoxes).dot : sx(paint.n5)].filter(Boolean).join(" ")} />
+            <span className={sx(paint.s65)}>{s.box}</span>
             {!s.online ? (
               <span>not counted (offline)</span>
             ) : s.loading ? (
               <>
-                <Spinner className="size-3" />
-                <span className="text-muted-foreground">reading…</span>
+                <Spinner className={sx(paint.s66)} />
+                <span className={sx(paint.s67)}>reading…</span>
               </>
             ) : s.error ? (
-              <span className="max-w-64 truncate text-destructive-foreground">couldn't read: {s.error}</span>
+              <span className={sx(paint.s68)}>couldn't read: {s.error}</span>
             ) : (
-              <span className="text-muted-foreground tabular-nums">{files[s.box] ?? 0} transcripts</span>
+              <span className={sx(paint.s69)}>{files[s.box] ?? 0} transcripts</span>
             )}
           </span>
         </Tip>

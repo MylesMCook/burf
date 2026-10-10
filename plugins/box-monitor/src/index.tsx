@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { definePlugin, type BerthPluginContext, type Stats } from "@berth/plugin";
 import {
   Badge,
@@ -11,9 +12,143 @@ import {
   FrameTitle,
   Icon,
   Skeleton,
-  cn,
 } from "@berth/plugin/ui";
 import { useSyncExternalStore } from "react";
+
+const paint = stylex.create({
+  s0: {
+    "display": "grid",
+    "gap": "16px",
+    "gridTemplateColumns": {
+      "@media (min-width: 768px)": {
+        "default": "repeat(2, minmax(0, 1fr))",
+      },
+    },
+  },
+  s1: {
+    "height": "176px",
+  },
+  s2: {
+    "height": "176px",
+  },
+  s3: {
+    "display": "grid",
+    "gap": "16px",
+    "gridTemplateColumns": {
+      "@media (min-width: 768px)": {
+        "default": "repeat(2, minmax(0, 1fr))",
+      },
+    },
+  },
+  s4: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s5: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "marginLeft": "auto",
+    "color": "var(--warning)",
+  },
+  s7: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s8: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s9: {
+    "display": "flex",
+    "gap": "12px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingTop": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s11: {
+    "color": "var(--warning)",
+  },
+  s12: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "6px",
+    },
+  },
+  s13: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "gap": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s14: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s15: {
+    "color": "var(--muted-foreground)",
+  },
+  s16: {
+    "marginLeft": "auto",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s17: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+  },
+  s18: {
+    "height": "6px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--muted)",
+  },
+  s19: {
+    "height": "100%",
+    "borderRadius": "999px",
+  },
+  s20: {
+    "width": "96px",
+    "textAlign": "right",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s21: {
+    "flexShrink": 0,
+  },
+  q22: {
+    "transitionProperty": "width",
+    "transitionDuration": "150ms",
+  },
+  toneBad: { color: "var(--destructive)" },
+  toneWarn: { color: "var(--warning)" },
+  toneMuted: { color: "var(--muted-foreground)" },
+  fillBad: { backgroundColor: "var(--destructive)" },
+  fillWarn: { backgroundColor: "var(--warning)" },
+  fillOk: { backgroundColor: "color-mix(in oklab, var(--primary) 70%, transparent)" },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Box monitor: how loaded each box is, sampled every 15 seconds while the app
 // is open and on screen (the status bar already shows each box's memory), with an hour of history and a notification when a box is about
@@ -111,8 +246,8 @@ function check(berth: BerthPluginContext, warned: Set<string>, box: string, what
 }
 
 const pct = (f: number) => `${Math.round(f * 100)}%`;
-const tone = (f: number) => (f >= CRITICAL ? "text-destructive" : f >= WARN ? "text-warning" : "text-muted-foreground");
-const fill = (f: number) => (f >= CRITICAL ? "bg-destructive" : f >= WARN ? "bg-warning" : "bg-primary/70");
+const tone = (f: number) => sx(f >= CRITICAL ? paint.toneBad : f >= WARN ? paint.toneWarn : paint.toneMuted);
+const fill = (f: number) => sx(f >= CRITICAL ? paint.fillBad : f >= WARN ? paint.fillWarn : paint.fillOk);
 
 function gib(bytes: number) {
   return `${(bytes / 2 ** 30).toFixed(bytes >= 10 * 2 ** 30 ? 0 : 1)} GB`;
@@ -131,19 +266,19 @@ function MonitorScreen() {
   return (
     <>
       {!loaded ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          <Skeleton className="h-44" />
-          <Skeleton className="h-44" />
+        <div className={sx(paint.s0)}>
+          <Skeleton className={sx(paint.s1)} />
+          <Skeleton className={sx(paint.s2)} />
         </div>
       ) : all.length === 0 ? (
-        <Empty className="py-16">
+        <Empty pad="room">
           <EmptyHeader>
             <EmptyTitle>No boxes online</EmptyTitle>
             <EmptyDescription>When a box is connected, its memory, disk and load show up here.</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className={sx(paint.s3)}>
           {all.map((v) => (
             <BoxCard key={v.box} view={v} />
           ))}
@@ -158,10 +293,10 @@ function BoxCard({ view: v }: { view: BoxView }) {
   if (!s) {
     return (
       <Frame variant="card">
-        <FrameHeader className="py-3">
+        <FrameHeader pad="tight">
           <FrameTitle>{v.box}</FrameTitle>
         </FrameHeader>
-        <FramePanel className="text-muted-foreground text-sm">{v.error ?? "No stats yet."}</FramePanel>
+        <FramePanel tone>{v.error ?? "No stats yet."}</FramePanel>
       </Frame>
     );
   }
@@ -171,24 +306,24 @@ function BoxCard({ view: v }: { view: BoxView }) {
   const waiting = s.agents.filter((a) => a.state === "waiting").length;
   return (
     <Frame variant="card">
-      <FrameHeader className="flex-row items-center gap-2 py-2.5">
-        <Icon name="Server" className="size-3.5 text-muted-foreground" />
+      <FrameHeader row gap={2} pad="snug">
+        <Icon name="Server" className={sx(paint.s4)} />
         <FrameTitle>{v.box}</FrameTitle>
-        <span className="truncate text-muted-foreground text-xs">
+        <span className={sx(paint.s5)}>
           {s.hostname} · {s.cpus} CPUs {uptime(s.uptime_s) && `· ${uptime(s.uptime_s)}`}
         </span>
         {v.error && (
-          <Badge variant="outline" size="sm" className="ml-auto text-warning">
+          <Badge variant="outline" size="sm" className={sx(paint.s6)}>
             stale
           </Badge>
         )}
       </FrameHeader>
-      <FramePanel className="space-y-4 p-4">
+      <FramePanel pad="room" space={4}>
         {s.memory.total > 0 ? (
           <Row label="Memory" value={`${gib(s.memory.used)} of ${gib(s.memory.total)}`} frac={m} history={v.history.map((h) => h.mem)} />
         ) : (
-          <p className="text-muted-foreground text-xs">
-            <span className="font-medium text-foreground">Memory</span> isn't reported by this box's system.
+          <p className={sx(paint.s7)}>
+            <span className={sx(paint.s8)}>Memory</span> isn't reported by this box's system.
           </p>
         )}
         <Row label="Load" value={`${(s.load?.[0] ?? 0).toFixed(2)} on ${s.cpus} CPUs`} frac={Math.min(1, l)} history={v.history.map((h) => Math.min(1, h.load))} />
@@ -196,12 +331,12 @@ function BoxCard({ view: v }: { view: BoxView }) {
         {s.disks.map((d) => (
           <Row key={d.mount} label={`Disk ${d.mount}`} value={`${gib(d.used)} of ${gib(d.total)}`} frac={d.total ? d.used / d.total : 0} />
         ))}
-        <p className="flex gap-3 border-t pt-3 text-muted-foreground text-xs">
+        <p className={sx(paint.s9)}>
           <span>
-            <b className="font-medium text-foreground">{s.agents.length}</b> agent{s.agents.length === 1 ? "" : "s"}
+            <b className={sx(paint.s10)}>{s.agents.length}</b> agent{s.agents.length === 1 ? "" : "s"}
           </span>
           {working > 0 && <span>{working} working</span>}
-          {waiting > 0 && <span className="text-warning">{waiting} waiting for you</span>}
+          {waiting > 0 && <span className={sx(paint.s11)}>{waiting} waiting for you</span>}
           {!s.hooks && <span>agent status hooks not installed</span>}
         </p>
       </FramePanel>
@@ -211,15 +346,15 @@ function BoxCard({ view: v }: { view: BoxView }) {
 
 function Row({ label, value, frac, history }: { label: string; value: string; frac: number; history?: number[] }) {
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-baseline gap-2 text-xs">
-        <span className="font-medium text-foreground">{label}</span>
-        <span className="text-muted-foreground">{value}</span>
-        <span className={cn("ml-auto tabular-nums", tone(frac))}>{pct(frac)}</span>
+    <div className={sx(paint.s12)}>
+      <div className={sx(paint.s13)}>
+        <span className={sx(paint.s14)}>{label}</span>
+        <span className={sx(paint.s15)}>{value}</span>
+        <span className={[sx(paint.s16), tone(frac)].filter(Boolean).join(" ")}>{pct(frac)}</span>
       </div>
-      <div className="flex items-center gap-3">
-        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted" role="meter" aria-valuenow={Math.round(frac * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
-          <div className={cn("h-full rounded-full transition-[width]", fill(frac))} style={{ width: `${Math.min(100, frac * 100)}%` }} />
+      <div className={sx(paint.s17)}>
+        <div className={sx(paint.s18)} role="meter" aria-valuenow={Math.round(frac * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
+          <div className={[[sx(paint.s19), sx(paint.q22)].filter(Boolean).join(" "), fill(frac)].filter(Boolean).join(" ")} style={{ width: `${Math.min(100, frac * 100)}%` }} />
         </div>
         {history && <Spark values={history} />}
       </div>
@@ -231,11 +366,11 @@ function Row({ label, value, frac, history }: { label: string; value: string; fr
 function Spark({ values }: { values: number[] }) {
   const w = 96;
   const h = 18;
-  if (values.length < 2) return <span className="w-24 text-right text-[10px] text-muted-foreground">collecting…</span>;
+  if (values.length < 2) return <span className={sx(paint.s20)}>collecting…</span>;
   const pts = values.map((v, i) => `${((i / (values.length - 1)) * w).toFixed(1)},${(h - Math.min(1, v) * h).toFixed(1)}`).join(" ");
   const last = values[values.length - 1];
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className={cn("shrink-0", tone(last))} aria-label="last hour">
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className={[sx(paint.s21), tone(last)].filter(Boolean).join(" ")} aria-label="last hour">
       <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" />
     </svg>
   );

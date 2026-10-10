@@ -1,4 +1,5 @@
 import { useAui, useAuiState, unstable_useMentionAdapter, unstable_useSlashCommandAdapter, type Unstable_SlashCommand } from "@assistant-ui/react";
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject, type KeyboardEvent } from "react";
 import { FileIcon, SlashIcon } from "lucide-react";
 
@@ -11,6 +12,10 @@ import { chatPermissions, type ChatModel, type ChatOptions } from "@/lib/local-c
 import { joinDraft } from "@/lib/chat-quote";
 import { usePromptRecall } from "@/lib/history";
 import type { ChatTransport } from "./chat-transport";
+
+const hug = stylex.create({
+  hug: { display: "inline-flex", flexShrink: 0 },
+}).hug;
 
 export function ChatRuntimeState({ initialDraft, onDraftChange, onBlocked, transport, input, keyDown }: { transport: ChatTransport; input: RefObject<HTMLTextAreaElement | null>; keyDown: RefObject<((event: KeyboardEvent<HTMLTextAreaElement>) => void) | undefined>; initialDraft: string; onDraftChange?: (text: string) => void; onBlocked(blocked: boolean): void }) {
   const aui = useAui();
@@ -44,11 +49,11 @@ export function ChatChoices({ agentName, models, model, effort, permission, acce
   ].map((m) => ({ ...m, efforts: m.id === model && (effort || efforts.length) ? [{ id: "", name: "Default reasoning" }, ...[...new Set([effort, ...efforts].filter(Boolean))].map((id) => ({ id, name: id }))] : undefined }));
   return <>
     <ModelSelector models={choices} value={model} effort={effort} onValueChange={onModel} onEffortChange={onEffort}
-      variant="ghost" size="sm" className="h-7 shrink-0 rounded-full" triggerProps={{ "aria-label": "Chat model", disabled: !!modelReason }} tooltip={modelReason || "Chat model. Applies from your next message."} effortLabel="Chat reasoning" effortDisabled={!!reason} />
+      variant="ghost" size="xs" shape="pill" triggerProps={{ "aria-label": "Chat model", disabled: !!modelReason }} tooltip={modelReason || "Chat model. Applies from your next message."} effortLabel="Chat reasoning" effortDisabled={!!reason} />
     <Select value={permission} disabled={!!reason} onValueChange={(value) => { if (value) onPermission(value as NonNullable<ChatOptions["permission"]>); }}>
       <Tip label={reason || `Current permission: ${chatPermissions[accepted].label}. From your next message: ${agentName} ${chatPermissions[permission].hint}`}>
-        <span className="inline-flex shrink-0">
-        <SelectTrigger aria-label="Chat permissions" disabled={!!reason} size="sm" className="h-7 w-auto min-w-0 shrink-0 justify-start gap-1 rounded-full border-0 bg-transparent px-2 text-xs shadow-none hover:bg-muted"><SelectValue>{chatPermissions[permission].label}</SelectValue></SelectTrigger>
+        <span {...stylex.props(hug)}>
+        <SelectTrigger aria-label="Chat permissions" disabled={!!reason} shape="pill" size="sm"><SelectValue>{chatPermissions[permission].label}</SelectValue></SelectTrigger>
         </span>
       </Tip>
       <SelectPopup>{Object.entries(chatPermissions).filter(([id]) => permissions.includes(id) || id === permission).map(([id, p]) => <SelectItem key={id} value={id}>{p.label}</SelectItem>)}</SelectPopup>
@@ -80,5 +85,5 @@ export function ChatWaiting({ paused, agent }: { paused: boolean; agent: string 
   const aui = useAui();
   const queued = useAuiState((s) => s.composer.queue);
   if (!queued.length) return null;
-  return <MessageQueue className="max-w-none" running={paused ? "Remaining messages are held. Cancel them or send a message to continue." : agent} paused={paused} queued={queued.map((item) => ({ id: item.id, text: item.prompt }))} onCancel={(id) => aui.composer.queueItem({ id }).remove()} />;
+  return <MessageQueue loose running={paused ? "Remaining messages are held. Cancel them or send a message to continue." : agent} paused={paused} queued={queued.map((item) => ({ id: item.id, text: item.prompt }))} onCancel={(id) => aui.composer.queueItem({ id }).remove()} />;
 }

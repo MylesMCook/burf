@@ -2,63 +2,131 @@
 
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-import { cva, type VariantProps } from "class-variance-authority";
+import * as stylex from "@stylexjs/stylex";
 import type React from "react";
-import { cn } from "@/lib/utils";
 
-export const badgeVariants = cva(
-  "relative inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-sm border border-transparent font-medium outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-64 [&_svg:not([class*='opacity-'])]:opacity-80 [&_svg:not([class*='size-'])]:size-3.5 sm:[&_svg:not([class*='size-'])]:size-3 [&_svg]:pointer-events-none [&_svg]:shrink-0 [button&,a&]:cursor-pointer [button&,a&]:pointer-coarse:after:absolute [button&,a&]:pointer-coarse:after:size-full [button&,a&]:pointer-coarse:after:min-h-11 [button&,a&]:pointer-coarse:after:min-w-11",
-  {
-    defaultVariants: {
-      size: "default",
-      variant: "default",
+import { color, radius } from "@/styles/tokens.stylex";
+
+
+const sm = "@media (min-width: 640px)";
+
+const styles = stylex.create({
+  base: {
+    position: "relative",
+    display: "inline-flex",
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    whiteSpace: "nowrap",
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "transparent",
+    fontWeight: 500,
+    outline: "none",
+    boxShadow: {
+      default: "none",
+      ":focus-visible": "0 0 0 1px var(--background), 0 0 0 3px var(--ring)",
     },
-    variants: {
-      size: {
-        default:
-          "h-5.5 min-w-5.5 px-[calc(--spacing(1)-1px)] text-sm sm:h-4.5 sm:min-w-4.5 sm:text-xs",
-        lg: "h-6.5 min-w-6.5 px-[calc(--spacing(1.5)-1px)] text-base sm:h-5.5 sm:min-w-5.5 sm:text-sm",
-        sm: "h-5 min-w-5 rounded-[.25rem] px-[calc(--spacing(1)-1px)] text-xs sm:h-4 sm:min-w-4 sm:text-[.625rem]",
-      },
-      variant: {
-        default:
-          "bg-primary text-primary-foreground [button&,a&]:hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-white [button&,a&]:hover:bg-destructive/90",
-        error:
-          "bg-destructive/8 text-destructive-foreground dark:bg-destructive/16",
-        info: "bg-info/8 text-info-foreground dark:bg-info/16",
-        outline:
-          "border-input bg-background text-foreground dark:bg-input/32 [button&,a&]:hover:bg-accent/50 dark:[button&,a&]:hover:bg-input/48",
-        secondary:
-          "bg-secondary text-secondary-foreground [button&,a&]:hover:bg-secondary/90",
-        success: "bg-success/8 text-success-foreground dark:bg-success/16",
-        warning: "bg-warning/8 text-warning-foreground dark:bg-warning/16",
-      },
-    },
+    opacity: { default: 1, ":disabled": 0.64 },
+    pointerEvents: { default: "auto", ":disabled": "none" },
+    cursor: { default: "default", ":is(button, a)": "pointer" },
   },
-);
+  sizeDefault: {
+    height: { default: 22, [sm]: 18 },
+    minWidth: { default: 22, [sm]: 18 },
+    paddingLeft: 3,
+    paddingRight: 3,
+    fontSize: { default: 14, [sm]: 12 },
+  },
+  sizeLg: {
+    height: { default: 26, [sm]: 22 },
+    minWidth: { default: 26, [sm]: 22 },
+    paddingLeft: 5,
+    paddingRight: 5,
+    fontSize: { default: 16, [sm]: 14 },
+  },
+  sizeSm: {
+    height: { default: 20, [sm]: 16 },
+    minWidth: { default: 20, [sm]: 16 },
+    borderRadius: 4,
+    paddingLeft: 3,
+    paddingRight: 3,
+    fontSize: { default: 12, [sm]: 10 },
+  },
+  primary: { backgroundColor: color.primary, color: color.primaryForeground },
+  destructive: { backgroundColor: color.destructive, color: "white" },
+  error: { backgroundColor: "var(--tint-destructive)", color: color.destructiveForeground },
+  info: { backgroundColor: "var(--tint-info)", color: "var(--info-foreground)" },
+  outline: {
+    borderColor: color.input,
+    backgroundColor: "var(--control-fill)",
+    color: color.foreground,
+  },
+  secondary: { backgroundColor: color.secondary, color: color.secondaryForeground },
+  success: { backgroundColor: "var(--tint-success)", color: "var(--success-foreground)" },
+  warning: { backgroundColor: "var(--tint-warning)", color: "var(--warning-foreground)" },
+  muted: { color: color.mutedForeground },
+  chip: {
+    alignItems: "baseline",
+    paddingTop: 2,
+    paddingBottom: 2,
+    paddingLeft: 6,
+    paddingRight: 6,
+    fontSize: 13,
+    lineHeight: 1,
+    height: "auto",
+    minWidth: 0,
+  },
+});
 
-export interface BadgeProps extends useRender.ComponentProps<"span"> {
-  variant?: VariantProps<typeof badgeVariants>["variant"];
-  size?: VariantProps<typeof badgeVariants>["size"];
+export type BadgeVariant = "default" | "destructive" | "error" | "info" | "outline" | "secondary" | "success" | "warning";
+export type BadgeSize = "default" | "sm" | "lg";
+
+const variantStyle = {
+  default: styles.primary,
+  destructive: styles.destructive,
+  error: styles.error,
+  info: styles.info,
+  outline: styles.outline,
+  secondary: styles.secondary,
+  success: styles.success,
+  warning: styles.warning,
+} as const;
+
+const sizeStyle = {
+  default: styles.sizeDefault,
+  sm: styles.sizeSm,
+  lg: styles.sizeLg,
+} as const;
+
+export interface BadgeProps extends Omit<useRender.ComponentProps<"span">, "className" | "style"> {
+  variant?: BadgeVariant;
+  size?: BadgeSize;
+  muted?: boolean;
+  chip?: boolean;
+  marker?: string;
 }
 
 export function Badge({
-  className,
-  variant,
-  size,
+  variant = "default",
+  size = "default",
+  muted = false,
+  chip = false,
+  marker,
   render,
   ...props
 }: BadgeProps): React.ReactElement {
-  const defaultProps = {
-    className: cn(badgeVariants({ className, size, variant })),
+  const painted = stylex.props(styles.base, variantStyle[variant], sizeStyle[size], muted && styles.muted, chip && styles.chip);
+  const visual = {
+    ...painted,
+    className: marker ? [marker, painted.className].filter(Boolean).join(" ") : painted.className,
     "data-slot": "badge",
   };
-
   return useRender({
     defaultTagName: "span",
-    props: mergeProps<"span">(defaultProps, props),
+    props: mergeProps<"span">(visual, props),
     render,
   });
 }

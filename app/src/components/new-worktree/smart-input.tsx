@@ -1,10 +1,132 @@
 import { ChevronDownIcon, CircleAlertIcon, GitBranchIcon, GitPullRequestIcon, InfoIcon, LoaderIcon, SparklesIcon, TicketIcon, TypeIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { Frame, FramePanel } from "@/components/ui/frame";
-import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import type { Branch, ResolveKind, Resolution } from "@/lib/projects";
-import { cn } from "@/lib/utils";
+import { color, font, radius } from "@/styles/tokens.stylex";
+
+
+const still = "@media (prefers-reduced-motion: reduce)";
+const spin = stylex.keyframes({
+  from: { transform: "rotate(0deg)" },
+  to: { transform: "rotate(360deg)" },
+});
+
+const styles = stylex.create({
+  row: {
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    paddingLeft: 6,
+    paddingRight: 8,
+  },
+  mode: {
+    display: "inline-flex",
+    height: 28,
+    flexShrink: 0,
+    alignItems: "center",
+    gap: 6,
+    borderRadius: radius.md,
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontWeight: 500,
+    fontSize: 13,
+    color: { default: color.mutedForeground, ":hover": color.foreground, "[data-popup-open]": color.foreground },
+    backgroundColor: { default: "transparent", ":hover": color.accent, "[data-popup-open]": color.accent },
+  },
+  modeIcon: { width: 14, height: 14 },
+  chevron: { width: 12, height: 12, opacity: 0.6 },
+  rule: { height: 16, width: 1, flexShrink: 0, backgroundColor: color.border },
+  field: {
+    height: 36,
+    minWidth: 0,
+    flexGrow: 1,
+    flexBasis: 0,
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    paddingLeft: 6,
+    paddingRight: 6,
+    fontSize: 14,
+    outline: "none",
+    "::placeholder": { color: "color-mix(in oklab, var(--muted-foreground) 72%, transparent)" },
+  },
+  choice: {
+    display: "flex",
+    minWidth: 0,
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  choiceIcon: { width: 14, height: 14, marginTop: 2, flexShrink: 0, opacity: 0.8 },
+  choiceText: { display: "flex", minWidth: 0, flexDirection: "column" },
+  hint: { color: color.mutedForeground, fontSize: 12 },
+  listWrap: { position: "relative", borderTopWidth: 1, borderTopStyle: "solid", borderTopColor: color.border },
+  list: {
+    height: "9.25rem",
+    overflowY: "auto",
+    padding: 4,
+    maskImage: "linear-gradient(to bottom, black calc(100% - 1.25rem), transparent)",
+  },
+  empty: { paddingLeft: 8, paddingRight: 8, paddingTop: 6, paddingBottom: 6, color: color.mutedForeground, fontSize: 13 },
+  group: { paddingLeft: 8, paddingRight: 8, paddingTop: 6, paddingBottom: 2, fontWeight: 500, fontSize: 11, color: color.mutedForeground },
+  option: {
+    display: "flex",
+    height: 28,
+    width: "100%",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: radius.md,
+    paddingLeft: 8,
+    paddingRight: 8,
+    textAlign: "left",
+    fontFamily: font.mono,
+    fontSize: "12.5px",
+  },
+  optionOn: { backgroundColor: color.accent },
+  branchIcon: { width: 14, height: 14, flexShrink: 0, color: color.mutedForeground },
+  name: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  meta: {
+    marginLeft: "auto",
+    display: "flex",
+    flexShrink: 0,
+    alignItems: "center",
+    gap: 6,
+    fontFamily: font.sans,
+    color: color.mutedForeground,
+    fontSize: 12,
+  },
+  origin: { borderRadius: radius.sm, borderWidth: 1, borderStyle: "solid", borderColor: color.border, paddingLeft: 4, paddingRight: 4, fontSize: 11 },
+  preview: {
+    display: "flex",
+    minHeight: 32,
+    minWidth: 0,
+    alignItems: "center",
+    gap: 8,
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 6,
+    paddingBottom: 6,
+    fontSize: 13,
+    color: color.mutedForeground,
+  },
+  previewIcon: { width: 14, height: 14, flexShrink: 0 },
+  good: { color: color.success },
+  warn: { color: "var(--warning)" },
+  spin: { animationName: spin, animationDuration: { default: "1s", [still]: "0s" }, animationTimingFunction: "linear", animationIterationCount: "infinite" },
+  stack: { display: "flex", flexDirection: "column" },
+  dim: { opacity: 0.6 },
+  what: { flexShrink: 0, fontWeight: 500, color: color.foreground },
+  how: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: font.mono, fontSize: "12.5px", color: color.mutedForeground },
+  howCap: { maxWidth: "40%", flexShrink: 0 },
+  title: { minWidth: 0, flexGrow: 1, flexBasis: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "color-mix(in oklab, var(--foreground) 80%, transparent)" },
+  note: { marginTop: -6, fontSize: 12 },
+  clip: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+});
+
+function cls(...parts: readonly (false | null | undefined | object)[]): string | undefined {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className;
+}
 
 const modes: { kind: ResolveKind; label: string; hint: string; placeholder: string; Icon: typeof SparklesIcon }[] = [
   { kind: "smart", label: "Smart", hint: "Works out what you typed", placeholder: "A name, #1234, a branch, or a GitHub, GitLab or Jira link", Icon: SparklesIcon },
@@ -60,24 +182,20 @@ export function StartFrom({
   }, [kind, branches, value]);
 
   return (
-    <Frame className="rounded-xl p-0.5">
-      <FramePanel className="rounded-[10px] p-0 shadow-none before:hidden dark:bg-input/32">
-        <div className="flex items-center gap-1 ps-1.5 pe-2">
+    <Frame radius="xl" tray>
+      <FramePanel bare>
+        <div className={cls(styles.row)}>
           <Menu>
             <MenuTrigger
               render={
-                <button
-                  type="button"
-                  aria-label={`Read as: ${mode.label}`}
-                  className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 font-medium text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent data-popup-open:text-foreground"
-                />
+                <button type="button" aria-label={`Read as: ${mode.label}`} className={cls(styles.mode)} />
               }
             >
-              <mode.Icon className="size-3.5" />
+              <mode.Icon className={cls(styles.modeIcon)} />
               {mode.label}
-              <ChevronDownIcon className="size-3 opacity-60" />
+              <ChevronDownIcon className={cls(styles.chevron)} />
             </MenuTrigger>
-            <MenuPopup align="start" className="min-w-64">
+            <MenuPopup align="start" width={menuWidths.w64}>
               <MenuRadioGroup
                 value={kind}
                 onValueChange={(v) => {
@@ -86,12 +204,12 @@ export function StartFrom({
                 }}
               >
                 {modes.map((m) => (
-                  <MenuRadioItem key={m.kind} value={m.kind} closeOnClick className="py-1.5">
-                    <span className="flex min-w-0 items-start gap-2">
-                      <m.Icon className="mt-0.5 size-3.5 shrink-0 opacity-80" />
-                      <span className="flex min-w-0 flex-col">
+                  <MenuRadioItem key={m.kind} value={m.kind} closeOnClick>
+                    <span className={cls(styles.choice)}>
+                      <m.Icon className={cls(styles.choiceIcon)} />
+                      <span className={cls(styles.choiceText)}>
                         <span>{m.label}</span>
-                        <span className="text-muted-foreground text-xs">{m.hint}</span>
+                        <span className={cls(styles.hint)}>{m.hint}</span>
                       </span>
                     </span>
                   </MenuRadioItem>
@@ -99,7 +217,7 @@ export function StartFrom({
               </MenuRadioGroup>
             </MenuPopup>
           </Menu>
-          <span aria-hidden className="h-4 w-px shrink-0 bg-border" />
+          <span aria-hidden className={cls(styles.rule)} />
           <input
             ref={inputRef}
             value={value}
@@ -123,30 +241,30 @@ export function StartFrom({
                 onChange(shownBranches[active].name);
               }
             }}
-            className="h-9 min-w-0 flex-1 bg-transparent px-1.5 text-sm outline-none placeholder:text-muted-foreground/72"
+            className={cls(styles.field)}
           />
         </div>
         {kind === "branch" && branches && (
-          <div className="relative border-t">
-            <div role="listbox" aria-label="Branches" className="h-[9.25rem] overflow-y-auto p-1 [mask-image:linear-gradient(to_bottom,black_calc(100%-1.25rem),transparent)]">
-              {shownBranches.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-[13px]">No branch matches, so this makes a new one.</p>}
+          <div className={cls(styles.listWrap)}>
+            <div role="listbox" aria-label="Branches" className={cls(styles.list)}>
+              {shownBranches.length === 0 && <p className={cls(styles.empty)}>No branch matches, so this makes a new one.</p>}
               {shownBranches.map((b, n) => (
                 <div key={`${b.remote ? "r" : "l"}:${b.name}`}>
-                  {(n === 0 || !!shownBranches[n - 1].remote !== !!b.remote) && <p className="px-2 pt-1.5 pb-0.5 font-medium text-[11px] text-muted-foreground">{b.remote ? "Remote" : "Local"}</p>}
+                  {(n === 0 || !!shownBranches[n - 1].remote !== !!b.remote) && <p className={cls(styles.group)}>{b.remote ? "Remote" : "Local"}</p>}
                   <button
                     type="button"
                     role="option"
                     aria-selected={b.name === value}
                     onMouseMove={() => setActive(n)}
                     onClick={() => onChange(b.name)}
-                    className={cn("flex h-7 w-full items-center gap-2 rounded-md px-2 text-left font-mono text-[12.5px]", n === active && "bg-accent")}
+                    className={cls(styles.option, n === active && styles.optionOn)}
                   >
-                    <GitBranchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 truncate">{b.name}</span>
-                    <span className="ml-auto flex shrink-0 items-center gap-1.5 font-sans text-muted-foreground text-xs">
+                    <GitBranchIcon className={cls(styles.branchIcon)} />
+                    <span className={cls(styles.name)}>{b.name}</span>
+                    <span className={cls(styles.meta)}>
                       {b.current && "checked out"}
                       {!b.current && b.name === branches.default && "default"}
-                      {b.remote && <span className="rounded border px-1 text-[11px]">origin</span>}
+                      {b.remote && <span className={cls(styles.origin)}>origin</span>}
                     </span>
                   </button>
                 </div>
@@ -161,12 +279,11 @@ export function StartFrom({
 }
 
 function Preview({ kind, value, resolution, pending, error, defaultBranch }: { kind: ResolveKind; value: string; resolution?: Resolution; pending: boolean; error?: string; defaultBranch?: string }) {
-  const row = "flex min-h-8 min-w-0 items-center gap-2 px-3 py-1.5 text-[13px]";
   if (!value.trim())
     return (
-      <div className={cn(row, "text-muted-foreground")}>
-        <GitBranchIcon className="size-3.5 shrink-0" />
-        <span className="truncate">
+      <div className={cls(styles.preview)}>
+        <GitBranchIcon className={cls(styles.previewIcon)} />
+        <span className={cls(styles.clip)}>
           {kind === "branch"
             ? "Pick a branch to check out in a new worktree."
             : kind === "github" || kind === "gitlab"
@@ -177,15 +294,15 @@ function Preview({ kind, value, resolution, pending, error, defaultBranch }: { k
     );
   if (error)
     return (
-      <div className={cn(row, "text-muted-foreground")}>
-        <CircleAlertIcon className="size-3.5 shrink-0 text-warning" />
-        <span className="truncate">Couldn't look it up, so it will be used as a name. {error}</span>
+      <div className={cls(styles.preview)}>
+        <CircleAlertIcon className={cls(styles.previewIcon, styles.warn)} />
+        <span className={cls(styles.clip)}>Couldn't look it up, so it will be used as a name. {error}</span>
       </div>
     );
   if (!resolution)
     return (
-      <div className={cn(row, "text-muted-foreground")}>
-        <LoaderIcon className="size-3.5 shrink-0 animate-spin" />
+      <div className={cls(styles.preview)}>
+        <LoaderIcon className={cls(styles.previewIcon, styles.spin)} />
         Looking it up…
       </div>
     );
@@ -203,17 +320,17 @@ function Preview({ kind, value, resolution, pending, error, defaultBranch }: { k
             ? ["Existing branch", r.branch]
             : ["New branch", `${r.branch} from ${r.base ?? defaultBranch ?? "the default branch"}`];
   return (
-    <div className={cn("flex flex-col", pending && "opacity-60")}>
-      <div className={row}>
-        <Icon className={cn("size-3.5 shrink-0", r.kind === "pr" || r.kind === "issue" ? "text-success" : "text-muted-foreground")} />
-        <span className="shrink-0 font-medium">{what}</span>
-        <span className={cn("min-w-0 truncate font-mono text-[12.5px] text-muted-foreground", r.title && "max-w-[40%] shrink-0")}>{how}</span>
-        {r.title && <span className="min-w-0 flex-1 truncate text-foreground/80">{r.title}</span>}
+    <div className={cls(styles.stack, pending && styles.dim)}>
+      <div className={cls(styles.preview)}>
+        <Icon className={cls(styles.previewIcon, (r.kind === "pr" || r.kind === "issue") && styles.good)} />
+        <span className={cls(styles.what)}>{what}</span>
+        <span className={cls(styles.how, !!r.title && styles.howCap)}>{how}</span>
+        {r.title && <span className={cls(styles.title)}>{r.title}</span>}
       </div>
       {r.note && (
-        <div className={cn(row, "-mt-1.5 text-muted-foreground text-xs")}>
-          <InfoIcon className="size-3.5 shrink-0" />
-          <span className="truncate">{r.note}</span>
+        <div className={cls(styles.preview, styles.note)}>
+          <InfoIcon className={cls(styles.previewIcon)} />
+          <span className={cls(styles.clip)}>{r.note}</span>
         </div>
       )}
     </div>

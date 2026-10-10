@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { HouseIcon, PlusIcon } from "lucide-react";
 import { Fragment } from "react";
 
@@ -7,9 +8,143 @@ import { PaneActions } from "@/components/workspace/pane";
 import { TabButton } from "@/components/workspace/tab-strip";
 import { closeTab } from "@/lib/actions";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { activateTab, goHome, homeBox, showHome, tabBeside, unsplitTab, useWorkspaces } from "@/lib/workspaces";
 import { platformKeys } from "@/lib/platform";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "40px",
+    "flexShrink": 0,
+    "alignItems": "stretch",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "var(--sidebar)",
+  },
+  s1: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "stretch",
+    "overflowX": "auto",
+    "scrollbarWidth": "none",
+  },
+  s2: {
+    "position": "relative",
+    "display": "flex",
+    "height": "100%",
+    "width": "40px",
+    "flexShrink": 0,
+    "cursor": "default",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s3: {
+    "backgroundColor": "var(--background)",
+    "color": "var(--foreground)",
+  },
+  s4: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--background) 40%, transparent)",
+    },
+  },
+  s5: {
+    "position": "absolute",
+    "left": 0,
+    "right": 0,
+    "top": "0px",
+    "height": "1px",
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 50%, transparent)",
+  },
+  s6: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s7: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+  },
+  s8: {
+    "minWidth": "16px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s9: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "paddingRight": "8px",
+    "paddingLeft": "12px",
+  },
+  s10: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "paddingRight": "6px",
+    "paddingLeft": "10px",
+  },
+  s11: {
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--accent) 70%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s12: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s13: {
+    "color": "var(--muted-foreground)",
+  },
+  s14: {
+    "display": "inline-flex",
+    "width": "28px",
+    "height": "28px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s15: {
+    "width": "16px",
+    "height": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // HomeTabs is the strip over Home: the terminals open in boxes' homes
 // (lib/box-home.ts), each box's after a chip that names it ("devl · ~"),
@@ -28,9 +163,9 @@ export function HomeTabs() {
   const onHome = !front;
 
   return (
-    <div data-tauri-drag-region data-tab-bar className="flex h-10 shrink-0 items-stretch border-b bg-sidebar">
+    <div data-tauri-drag-region data-tab-bar className={sx(paint.s0)}>
       {homes.length > 0 && (
-        <div data-tauri-drag-region data-tab-strip role="tablist" aria-label="Home tabs" className="flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]">
+        <div data-tauri-drag-region data-tab-strip role="tablist" aria-label="Home tabs" className={sx(paint.s1)}>
           <Tip label="Home" side="bottom">
             <div
               role="tab"
@@ -45,13 +180,10 @@ export function HomeTabs() {
                   goHome();
                 }
               }}
-              className={cn(
-                "relative flex h-full w-10 shrink-0 cursor-default items-center justify-center border-r outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                onHome ? "bg-background text-foreground" : "text-muted-foreground hover:bg-background/40 hover:text-foreground",
-              )}
+              className={[sx(paint.s2), onHome ? sx(paint.s3) : sx(paint.s4)].filter(Boolean).join(" ")}
             >
-              {onHome && <span className="absolute inset-x-0 top-0 h-px bg-foreground/50" />}
-              <HouseIcon className="size-3.5" />
+              {onHome && <span className={sx(paint.s5)} />}
+              <HouseIcon className={sx(paint.s6)} />
             </div>
           </Tip>
           {homes.map((key) => {
@@ -82,13 +214,13 @@ export function HomeTabs() {
         </div>
       )}
       {homes.length > 0 && (
-        <div className="flex shrink-0 items-center px-1">
+        <div className={sx(paint.s7)}>
           <NewHomeTerminal box={homeBox(current) ?? homeBox(homes[homes.length - 1])!} />
         </div>
       )}
-      <div data-tauri-drag-region className="min-w-4 flex-1" />
+      <div data-tauri-drag-region className={sx(paint.s8)} />
       {current && active && lone && (
-        <div className="flex shrink-0 items-center gap-1 pr-2 pl-3">
+        <div className={sx(paint.s9)}>
           <PaneActions wsKey={current} tab={active.id} pane={lone} />
         </div>
       )}
@@ -101,8 +233,8 @@ function BoxHomeChip({ box }: { box: string }) {
   const home = useStore((s) => (s.boxes[box]?.info as { home?: string } | undefined)?.home);
   return (
     <Tip label={`Terminals in ${box}'s home folder${home ? `, ${home}` : ""}. They belong to no worktree.`} side="bottom">
-      <span data-tauri-drag-region data-home-box={box} className="flex shrink-0 items-center pr-1.5 pl-2.5">
-        <span className="rounded bg-accent/70 px-1.5 py-px font-mono text-[10px] text-muted-foreground">{box} · ~</span>
+      <span data-tauri-drag-region data-home-box={box} className={sx(paint.s10)}>
+        <span className={sx(paint.s11)}>{box} · ~</span>
       </span>
     </Tip>
   );
@@ -113,9 +245,9 @@ function NewHomeTerminal({ box }: { box: string }) {
   return (
     <Tip
       label={
-        <span className="flex items-center gap-2">
+        <span className={sx(paint.s12)}>
           New terminal on {box}
-          <span className="text-muted-foreground">{platformKeys("⌘T")}</span>
+          <span className={sx(paint.s13)}>{platformKeys("⌘T")}</span>
         </span>
       }
       side="bottom"
@@ -124,9 +256,9 @@ function NewHomeTerminal({ box }: { box: string }) {
         type="button"
         aria-label={`New terminal on ${box}`}
         onClick={() => void openHomeTerminal(box)}
-        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        className={sx(paint.s14)}
       >
-        <PlusIcon className="size-4" />
+        <PlusIcon className={sx(paint.s15)} />
       </button>
     </Tip>
   );

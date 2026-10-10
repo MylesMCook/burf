@@ -1,8 +1,40 @@
 "use client";
 
-import type { ComponentProps } from "react";
-import { cn } from "@/lib/utils";
-import { codeScroll, codeSurface, mono, paper } from "./surfaces";
+import type { ComponentProps, CSSProperties } from "react";
+import * as stylex from "@stylexjs/stylex";
+
+import { font, radius } from "@/styles/tokens.stylex";
+import { codeScroll, codeSurface, fadeIn, mark, mono, paper } from "./surfaces";
+
+const styles = stylex.create({
+  card: { width: "100%", maxWidth: 448, overflow: "hidden", borderRadius: radius.xxl, fontFamily: font.mono, fontSize: 12, lineHeight: "16px" },
+  head: { display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: 16, paddingRight: 16, paddingTop: 12, paddingBottom: 8 },
+  name: { color: "color-mix(in oklab, var(--foreground) 90%, transparent)" },
+  nums: { fontVariantNumeric: "tabular-nums" },
+  add: { color: "light-dark(var(--color-emerald-600), var(--color-emerald-400))" },
+  del: { color: "light-dark(var(--color-red-600), var(--color-red-400))" },
+  line: {
+    display: "flex",
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingTop: 2,
+    paddingBottom: 2,
+    lineHeight: 1.625,
+    whiteSpace: "pre",
+  },
+  context: { color: "color-mix(in oklab, var(--foreground) 45%, transparent)" },
+  added: {
+    backgroundColor: "color-mix(in oklab, var(--color-emerald-500) 10%, transparent)",
+    color: "light-dark(var(--color-emerald-700), var(--color-emerald-300))",
+  },
+  removed: {
+    backgroundColor: "color-mix(in oklab, var(--color-red-500) 10%, transparent)",
+    color: "light-dark(var(--color-red-700), var(--color-red-300))",
+  },
+  gutter: { width: 16, flexShrink: 0, userSelect: "none" },
+});
+
+const kindStyle = { context: styles.context, added: styles.added, removed: styles.removed } as const;
 
 export type DiffKind = "context" | "added" | "removed";
 
@@ -23,11 +55,10 @@ export function CodeDiff({
   deletions,
   lines,
   cycle,
-  className,
   ...props
 }: Omit<
   ComponentProps<"div">,
-  "children" | "filename" | "additions" | "deletions" | "lines" | "cycle"
+  "children" | "filename" | "additions" | "deletions" | "lines" | "cycle" | "className" | "style"
 > & {
   filename: string;
   additions: number;
@@ -36,46 +67,26 @@ export function CodeDiff({
   cycle: number;
 }) {
   return (
-    <div
-      data-slot="code-diff"
-      className={cn(
-        paper,
-        "w-full max-w-md overflow-hidden rounded-2xl font-mono text-xs",
-        className,
-      )}
-
-      {...props}
-    >
-      <div className="flex items-center justify-between px-4 pt-3 pb-2">
-        <span className="text-foreground/90">{filename}</span>
-        <span className={cn(mono, "tabular-nums")}>
-          <span className="text-emerald-600 dark:text-emerald-400">
-            +{additions}
-          </span>{" "}
-          <span className="text-red-600 dark:text-red-400">−{deletions}</span>
+    <div data-slot="code-diff" {...mark(undefined, paper, styles.card)} {...props}>
+      <div {...mark(undefined, styles.head)}>
+        <span {...mark(undefined, styles.name)}>{filename}</span>
+        <span {...mark(undefined, mono, styles.nums)}>
+          <span {...mark(undefined, styles.add)}>+{additions}</span>{" "}
+          <span {...mark(undefined, styles.del)}>−{deletions}</span>
         </span>
       </div>
-      <div className={codeScroll}>
-        <div className={codeSurface}>
-          {lines.map((line, i) => (
-            <div
-              key={`${cycle}-${i}-${line.text}`}
-              className={cn(
-                "fade-in animate-in fill-mode-both flex px-4 py-0.5 leading-relaxed whitespace-pre duration-300",
-                line.kind === "context" && "text-foreground/45",
-                line.kind === "added" &&
-                  "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
-                line.kind === "removed" &&
-                  "bg-red-500/10 text-red-700 dark:text-red-300",
-              )}
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              <span className="w-4 shrink-0 select-none">
-                {GUTTER[line.kind]}
-              </span>
-              <span>{line.text}</span>
-            </div>
-          ))}
+      <div {...mark(undefined, codeScroll)}>
+        <div {...mark(undefined, codeSurface)}>
+          {lines.map((line, i) => {
+            const row = mark(undefined, styles.line, kindStyle[line.kind], fadeIn);
+            const style: CSSProperties = { ...row.style, animationDelay: `${i * 60}ms` };
+            return (
+              <div key={`${cycle}-${i}-${line.text}`} className={row.className} style={style}>
+                <span {...mark(undefined, styles.gutter)}>{GUTTER[line.kind]}</span>
+                <span>{line.text}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

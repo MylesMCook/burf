@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import {
   BellIcon,
   BellOffIcon,
@@ -78,6 +79,79 @@ import { defaultScope } from "@/views/automations/flows/project-label";
 import { isSettingsPageQuery } from "@/lib/palette-query";
 import { placeLabel, worktreeLabel } from "@/lib/worktree-names";
 
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "color": "var(--muted-foreground)",
+    ":not(#\\#) svg": {
+      "width": "16px",
+      "height": "16px",
+    },
+  },
+  s1: {
+    "display": "flex",
+    "width": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s2: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s3: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-sm)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s4: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s5: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s6: {
+    "marginLeft": "auto",
+    "minWidth": "0px",
+    "flexShrink": 1,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "marginLeft": "auto",
+  },
+  s8: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s9: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
+
 // Settings' sections ⌘K goes to, with words they answer to besides their name.
 const SETTINGS_SECTIONS: [SettingsSectionId, string, string][] = [
   ["general", "General", "close agents tabs"],
@@ -129,7 +203,7 @@ interface Group {
   items: Item[];
 }
 
-const slot = (icon: React.ReactNode) => <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-4">{icon}</span>;
+const slot = (icon: React.ReactNode) => <span className={sx(paint.s0)}>{icon}</span>;
 
 // CommandPalette (⌘K) jumps anywhere: sessions, worktrees, views, themes,
 // and whatever commands plugins add. Empty, it shows what needs you and
@@ -258,9 +332,9 @@ export function CommandPalette() {
         detail: [sessionAgent(session), state !== "idle" && sessionWord(state), where?.worktree.branch, box].filter(Boolean).join(" · "),
         search: [session.name, where?.worktree.title ? where.worktree.name : undefined].filter(Boolean).join(" "),
         icon: (
-          <span className="flex w-8 shrink-0 items-center gap-1">
+          <span className={sx(paint.s1)}>
             <AgentIcon agent={agent} />
-            <StateGlyph state={state} className="size-3" />
+            <StateGlyph state={state} className={sx(paint.s2)} />
           </span>
         ),
         run: go(() => void focusSession(box, session.name)),
@@ -289,9 +363,9 @@ export function CommandPalette() {
       theme: t.id,
       icon: slot(t.id === (before.current ?? themeId) ? <CheckIcon /> : null),
       trailing: (
-        <span className="ml-auto flex shrink-0 overflow-hidden rounded-sm border">
+        <span className={sx(paint.s3)}>
           {[t.colors.background, t.colors.sidebar, t.terminal.blue, t.terminal.green].map((c, i) => (
-            <span key={i} className="size-3" style={{ background: c }} />
+            <span key={i} className={sx(paint.s4)} style={{ background: c }} />
           ))}
         </span>
       ),
@@ -391,12 +465,12 @@ export function CommandPalette() {
                   <CommandGroupLabel>{group.value}</CommandGroupLabel>
                   <CommandCollection>
                     {(item: Item) => (
-                      <CommandItem key={item.value} value={item} className="gap-2" onClick={() => item.run()}>
+                      <CommandItem key={item.value} value={item} gap={2} onClick={() => item.run()}>
                         {item.icon}
-                        <span className="truncate">{item.label}</span>
-                        {item.detail && <span className="ml-auto min-w-0 shrink truncate text-muted-foreground text-xs">{item.detail}</span>}
+                        <span className={sx(paint.s5)}>{item.label}</span>
+                        {item.detail && <span className={sx(paint.s6)}>{item.detail}</span>}
                         {item.trailing}
-                        {item.shortcut && <Kbd className={item.detail ? "" : "ml-auto"}>{item.shortcut}</Kbd>}
+                        {item.shortcut && <span className={item.detail ? "" : sx(paint.s7)}><Kbd>{item.shortcut}</Kbd></span>}
                       </CommandItem>
                     )}
                   </CommandCollection>
@@ -404,12 +478,12 @@ export function CommandPalette() {
               )}
             </CommandList>
           </CommandPanel>
-          <CommandFooter className="text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1">
+          <CommandFooter>
+            <span className={sx(paint.s8)}>
               <Kbd>↑</Kbd>
               <Kbd>↓</Kbd> to move, <Kbd>↵</Kbd> to open
             </span>
-            <span className="flex items-center gap-1">
+            <span className={sx(paint.s9)}>
               <Kbd>esc</Kbd> to close
             </span>
           </CommandFooter>

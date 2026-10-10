@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { BoxProcessesCard } from "@/components/box-processes";
 import { ArrowUpCircleIcon, BotIcon, CopyIcon, EllipsisIcon, PlusIcon, RefreshCwIcon, ShieldIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
@@ -9,7 +10,7 @@ import { ErrorDetails } from "@/components/error-note";
 import { GuardDialog } from "@/components/guard-dialog";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
-import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
 import { OutdatedNotice, UpgradeBox } from "@/components/upgrade-box";
@@ -22,7 +23,6 @@ import { refreshOutdated, updateBoxes, useOutdated } from "@/lib/outdated";
 import { usePrefs } from "@/lib/prefs";
 import { BOX_WORDS, boxWhy } from "@/lib/state-model";
 import { NONE, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { AddAgents } from "@/views/onboarding/guided-install";
 import { BoxRouteList, BoxRoutes } from "@/views/settings/box-routes";
@@ -32,6 +32,200 @@ import { ConfirmDialog } from "@/views/settings/confirm";
 import { RemoveLocalBoxDialog } from "@/views/settings/local-box-remove";
 import { Code, SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 import { thisComputer } from "@/lib/platform";
+
+const paint = stylex.create({
+  s0: {
+    "marginTop": "calc(8px * -1)",
+  },
+  s1: {
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "32px",
+    "paddingBottom": "32px",
+    "textAlign": "center",
+  },
+  s2: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s3: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s4: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+  },
+  s5: {
+    "width": "8px",
+    "height": "8px",
+  },
+  s6: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s7: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "gap": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s8: {
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+    "textTransform": "uppercase",
+    "letterSpacing": "0.025em",
+  },
+  s9: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "color": "var(--muted-foreground)",
+  },
+  info: {
+    "color": "var(--info-foreground)",
+  },
+  bad: {
+    "color": "var(--destructive-foreground)",
+  },
+  s11: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s12: {
+    "marginTop": "2px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s13: {
+    "fontSize": "11px",
+  },
+  s14: {
+    "marginTop": "8px",
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s15: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s16: {
+    "marginTop": "4px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s17: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s18: {
+    "marginTop": "12px",
+  },
+  s19: {
+    "marginTop": "12px",
+  },
+  s20: {
+    "marginTop": "12px",
+  },
+  s21: {
+    "marginTop": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "marginTop": "2px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "2px",
+    },
+  },
+  s23: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s24: {
+    "textDecoration": "underline",
+    "textUnderlineOffset": "2px",
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+  },
+  s25: {
+    "marginTop": "8px",
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "12px",
+  },
+  s26: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "fontSize": "11px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "2px",
+    },
+  },
+  s27: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "baseline",
+    "gap": "6px",
+  },
+  s28: {
+    "flexShrink": 0,
+  },
+  s29: {
+    "color": "var(--muted-foreground)",
+  },
+  s30: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+  },
+  s31: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s32: {
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export function BoxesSection() {
   const boxes = useStore((s) => s.status?.boxes ?? NONE);
@@ -45,7 +239,7 @@ export function BoxesSection() {
         </>
       }
     >
-      <OutdatedNotice className="-mt-2" />
+      <OutdatedNotice className={sx(paint.s0)} />
       <SettingsGroup
         title={boxes.length === 1 ? "1 paired" : `${boxes.length} paired`}
         actions={
@@ -55,8 +249,8 @@ export function BoxesSection() {
         }
       >
         {boxes.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
-            <p className="text-muted-foreground text-sm">No boxes yet. Agents run on a box: any VPS or dev machine you can SSH into.</p>
+          <div className={sx(paint.s1)}>
+            <p className={sx(paint.s2)}>No boxes yet. Agents run on a box: any VPS or dev machine you can SSH into.</p>
             <Button size="sm" onClick={openAddBox}>
               Add your first box
             </Button>
@@ -112,26 +306,26 @@ function BoxRow({ box }: { box: BoxStatus }) {
   const details = [box.address, box.network && `via ${box.network}`, build, info?.os && info.arch && `${info.os}/${info.arch}`].filter(Boolean);
 
   return (
-    <div className="px-4 py-3">
-      <div className="flex items-center gap-3">
+    <div className={sx(paint.s3)}>
+      <div className={sx(paint.s4)}>
         <Tip label={boxWhy(box.name, box, state)}>
-          <StatusDot state={state} className="size-2" />
+          <StatusDot state={state} className={sx(paint.s5)} />
         </Tip>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2 text-sm">
+        <div className={sx(paint.s6)}>
+          <div className={sx(paint.s7)}>
             <span>{box.name}</span>
-            {box.local && <span className="rounded border px-1 text-[10px] text-muted-foreground uppercase tracking-wide">This Mac</span>}
-            <span className={cn("text-xs", state === "online" ? "text-muted-foreground" : state === "outdated" ? "text-info-foreground" : state === "unreachable" ? "text-destructive-foreground" : "text-muted-foreground")}>
+            {box.local && <span className={sx(paint.s8)}>This Mac</span>}
+            <span className={[sx(paint.s9), state === "outdated" ? sx(paint.info) : state === "unreachable" ? sx(paint.bad) : sx(paint.s10)].filter(Boolean).join(" ")}>
               {state === "online" && box.latency_ms != null ? latencyText(box.latency_ms, box.link) : BOX_WORDS[state].word}
             </span>
           </div>
-          <div className="truncate font-mono text-[11px] text-muted-foreground">{details.join(" · ")}</div>
+          <div className={sx(paint.s11)}>{details.join(" · ")}</div>
           <BoxRoutes box={box} open={routesOpen} onOpenChange={setRoutesOpen} />
           {online && <LinkNotes box={box} />}
           {problem && (
-            <div className="mt-0.5 text-[11px] text-muted-foreground">
+            <div className={sx(paint.s12)}>
               {problem.message}
-              <ErrorDetails text={problem.details} className="text-[11px]" />
+              <ErrorDetails text={problem.details} className={sx(paint.s13)} />
             </div>
           )}
         </div>
@@ -154,7 +348,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
           <MenuTrigger render={<Button size="icon-xs" variant="ghost" aria-label={`${box.name} actions`} />}>
             <EllipsisIcon />
           </MenuTrigger>
-          <MenuPopup align="end" className="min-w-48">
+          <MenuPopup align="end" width={menuWidths.w48}>
             <MenuItem disabled={!online || upgrading || !!check?.error || !!unsupported} onClick={() => void updateBoxes([box.name])}>
               <ArrowUpCircleIcon />
               {online ? "Install bundled box agent" : "Install bundled box agent (offline)"}
@@ -195,8 +389,8 @@ function BoxRow({ box }: { box: BoxStatus }) {
         </Menu>
       </div>
       {online && (check?.error || unsupported) && (
-        <div className="mt-2 flex flex-wrap items-start gap-2 text-xs text-muted-foreground">
-          <div className="min-w-0 flex-1">
+        <div className={sx(paint.s14)}>
+          <div className={sx(paint.s15)}>
             <p>Build comparison unavailable</p>
             <p>The connection is online, but Burf could not compare its agent with a bundled build.</p>
             <ErrorDetails text={check?.error ?? "This client backend does not support build comparisons."} />
@@ -207,14 +401,14 @@ function BoxRow({ box }: { box: BoxStatus }) {
           }}><RefreshCwIcon /> Retry build check</Button>
         </div>
       )}
-      {online && check?.outdated && check.available && !check.error && <p className="mt-1 text-xs text-muted-foreground">Bundled agent: <span className="font-mono">{check.available}</span>. Installing replaces this box's agent with Burf's bundled build.</p>}
+      {online && check?.outdated && check.available && !check.error && <p className={sx(paint.s16)}>Bundled agent: <span className={sx(paint.s17)}>{check.available}</span>. Installing replaces this box's agent with Burf's bundled build.</p>}
       {routesOpen && !box.local && <BoxRouteList box={box} />}
       {/* The agent's browser can't start here (Chromium's sandbox), or runs without it. */}
-      {online && <BrowserSandboxCard box={box.name} full className="mt-3" />}
-      {online && <BoxProcessesCard box={box.name} className="mt-3" />}
+      {online && <BrowserSandboxCard box={box.name} full className={sx(paint.s18)} />}
+      {online && <BoxProcessesCard box={box.name} className={sx(paint.s19)} />}
       {online && <BoxAgents box={box.name} />}
-      {update && update.state !== "queued" && <CommandLog className="mt-3" lines={update.lines ?? []} done={update.state === "done"} error={update.error} />}
-      {update?.state === "queued" && <p className="mt-2 text-muted-foreground text-xs">Waiting for the box before it to finish updating…</p>}
+      {update && update.state !== "queued" && <CommandLog lines={update.lines ?? []} done={update.state === "done"} error={update.error} />}
+      {update?.state === "queued" && <p className={sx(paint.s21)}>Waiting for the box before it to finish updating…</p>}
       <GuardDialog box={box.name} open={guarding} onOpenChange={setGuarding} />
       {canAddAgents && <AddAgents box={box.name} open={addingAgents} onClose={() => setAddingAgents(false)} />}
       {box.local && <RemoveLocalBoxDialog box={box.name} open={removingLocal} onOpenChange={setRemovingLocal} />}
@@ -253,18 +447,18 @@ function LinkNotes({ box }: { box: BoxStatus }) {
   if (!slow && !relay) return null;
   const latency = box.link?.slow ? latencyText(box.latency_ms, box.link) : undefined;
   return (
-    <div className="mt-0.5 space-y-0.5 text-[11px] text-muted-foreground" data-testid="box-link">
+    <div className={sx(paint.s22)} data-testid="box-link">
       {slow && (
         <div>
           {slow}
-          {latency && <span className="tabular-nums"> Latency {latency}.</span>}
+          {latency && <span className={sx(paint.s23)}> Latency {latency}.</span>}
         </div>
       )}
       {relay && (
         <div data-testid="box-relayed">
           {relay}
           {box.route && box.route !== "paired" && activeRoute(box) ? `; Burf goes ${viaRoute(box)} instead` : ""}.{" "}
-          <button type="button" onClick={() => void openDocs(RELAYED_DOCS)} className="underline underline-offset-2 hover:text-foreground">
+          <button type="button" onClick={() => void openDocs(RELAYED_DOCS)} className={sx(paint.s24)}>
             Learn more
           </button>
         </div>
@@ -295,21 +489,21 @@ function BoxAgents({ box }: { box: string }) {
     }
   };
   return (
-    <div className="mt-2 flex items-start gap-3" data-testid="box-agents">
-      <div className="min-w-0 flex-1 space-y-0.5 text-[11px]">
+    <div className={sx(paint.s25)} data-testid="box-agents">
+      <div className={sx(paint.s26)}>
         {paths.length ? (
           paths.map((a) => (
-            <div key={a.id} className="flex min-w-0 items-baseline gap-1.5">
-              <span className="shrink-0">{agentVersion(a)}</span>
-              <span className="text-muted-foreground">·</span>
+            <div key={a.id} className={sx(paint.s27)}>
+              <span className={sx(paint.s28)}>{agentVersion(a)}</span>
+              <span className={sx(paint.s29)}>·</span>
               <Tip label={a.path}>
-                <span className="truncate font-mono text-muted-foreground">{shortPath(a.path, info.home)}</span>
+                <span className={sx(paint.s30)}>{shortPath(a.path, info.home)}</span>
               </Tip>
-              {a.install && <span className="shrink-0 text-muted-foreground">({a.install})</span>}
+              {a.install && <span className={sx(paint.s31)}>({a.install})</span>}
             </div>
           ))
         ) : (
-          <div className="text-muted-foreground">No agent CLIs found on {box}.</div>
+          <div className={sx(paint.s32)}>No agent CLIs found on {box}.</div>
         )}
       </div>
       <Button size="xs" variant="ghost" loading={looking} onClick={() => void lookAgain()} data-testid="box-agents-refresh">

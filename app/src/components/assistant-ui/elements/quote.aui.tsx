@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { memo, type ComponentProps, type FC } from "react";
 import type { QuoteMessagePartComponent } from "@assistant-ui/react";
 import {
@@ -7,13 +8,129 @@ import {
   SelectionToolbarPrimitive,
 } from "@assistant-ui/react";
 import { QuoteIcon, XIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+const paint = stylex.create({
+  s0: {
+    "marginBottom": "8px",
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "6px",
+  },
+  s1: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 60%, transparent)",
+    "marginTop": "2px",
+    "width": "12px",
+    "height": "12px",
+    "flexShrink": 0,
+  },
+  s2: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 80%, transparent)",
+    "overflow": "hidden",
+    "display": "-webkit-box",
+    "WebkitLineClamp": 2,
+    "WebkitBoxOrient": "vertical",
+    "minWidth": "0px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "fontStyle": "italic",
+  },
+  s3: {
+    "backgroundColor": "var(--popover)",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s4: {
+    "color": "var(--popover-foreground)",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+  },
+  s5: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s6: {
+    "backgroundColor": "color-mix(in oklab, var(--muted) 60%, transparent)",
+    "marginLeft": "12px",
+    "marginRight": "12px",
+    "marginTop": "8px",
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s7: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 70%, transparent)",
+    "marginTop": "2px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s8: {
+    "color": "var(--muted-foreground)",
+    "overflow": "hidden",
+    "display": "-webkit-box",
+    "WebkitLineClamp": 2,
+    "WebkitBoxOrient": "vertical",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s9: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s10: {
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-sm)",
+    "padding": "2px",
+    "color": {
+      "default": "color-mix(in oklab, var(--muted-foreground) 70%, transparent)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "transitionProperty": "color, background-color",
+    "transitionDuration": "150ms",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 function QuoteBlockRoot({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="quote-block"
-      className={cn("mb-2 flex items-start gap-1.5", className)}
+      className={[sx(paint.s0), className].filter(Boolean).join(" ")}
       {...props}
     />
   );
@@ -26,10 +143,7 @@ function QuoteBlockIcon({
   return (
     <QuoteIcon
       data-slot="quote-block-icon"
-      className={cn(
-        "text-muted-foreground/60 mt-0.5 size-3 shrink-0",
-        className,
-      )}
+      className={[sx(paint.s1), className].filter(Boolean).join(" ")}
       {...props}
     />
   );
@@ -39,10 +153,7 @@ function QuoteBlockText({ className, ...props }: ComponentProps<"p">) {
   return (
     <p
       data-slot="quote-block-text"
-      className={cn(
-        "text-muted-foreground/80 line-clamp-2 min-w-0 text-sm italic",
-        className,
-      )}
+      className={[sx(paint.s2), className].filter(Boolean).join(" ")}
       {...props}
     />
   );
@@ -89,10 +200,7 @@ function SelectionToolbarRoot({
   return (
     <SelectionToolbarPrimitive.Root
       data-slot="selection-toolbar"
-      className={cn(
-        "bg-popover flex items-center gap-1 rounded-lg border px-1 py-1",
-        className,
-      )}
+      className={[sx(paint.s3), className].filter(Boolean).join(" ")}
       {...props}
     />
   );
@@ -106,15 +214,12 @@ function SelectionToolbarQuote({
   return (
     <SelectionToolbarPrimitive.Quote
       data-slot="selection-toolbar-quote"
-      className={cn(
-        "text-popover-foreground hover:bg-accent flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition-colors",
-        className,
-      )}
+      className={[sx(paint.s4), className].filter(Boolean).join(" ")}
       {...props}
     >
       {children ?? (
         <>
-          <QuoteIcon className="size-3.5" />
+          <QuoteIcon className={sx(paint.s5)} />
           Quote
         </>
       )}
@@ -164,10 +269,7 @@ function ComposerQuotePreviewRoot({
   return (
     <ComposerPrimitive.Quote
       data-slot="composer-quote"
-      className={cn(
-        "bg-muted/60 mx-3 mt-2 flex items-start gap-2 rounded-lg px-3 py-2",
-        className,
-      )}
+      className={[sx(paint.s6), className].filter(Boolean).join(" ")}
       {...props}
     />
   );
@@ -180,10 +282,7 @@ function ComposerQuotePreviewIcon({
   return (
     <QuoteIcon
       data-slot="composer-quote-icon"
-      className={cn(
-        "text-muted-foreground/70 mt-0.5 size-3.5 shrink-0",
-        className,
-      )}
+      className={[sx(paint.s7), className].filter(Boolean).join(" ")}
       {...props}
     />
   );
@@ -196,10 +295,7 @@ function ComposerQuotePreviewText({
   return (
     <ComposerPrimitive.QuoteText
       data-slot="composer-quote-text"
-      className={cn(
-        "text-muted-foreground line-clamp-2 min-w-0 flex-1 text-sm",
-        className,
-      )}
+      className={[sx(paint.s8), className].filter(Boolean).join(" ")}
       {...props}
     />
   );
@@ -210,9 +306,6 @@ function ComposerQuotePreviewDismiss({
   children,
   ...props
 }: ComponentProps<typeof ComposerPrimitive.QuoteDismiss>) {
-  const defaultClassName =
-    "shrink-0 rounded-sm p-0.5 text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground";
-
   return (
     <ComposerPrimitive.QuoteDismiss
       data-slot="composer-quote-dismiss"
@@ -224,9 +317,9 @@ function ComposerQuotePreviewDismiss({
         <button
           type="button"
           aria-label="Dismiss quote"
-          className={cn(defaultClassName, className)}
+          className={[sx(paint.s10), className].filter(Boolean).join(" ")}
         >
-          <XIcon className="size-3.5" />
+          <XIcon className={sx(paint.s9)} />
         </button>
       )}
     </ComposerPrimitive.QuoteDismiss>

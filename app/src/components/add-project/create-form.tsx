@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 
 import { Labelled } from "@/components/add-project/clone-form";
@@ -9,6 +10,49 @@ import { plainError } from "@/lib/errors";
 import { locationName, projectsApi } from "@/lib/projects";
 import { useStore } from "@/lib/store";
 import { ErrorText } from "@/components/error-note";
+
+const paint = stylex.create({
+  s0: {
+    "display": "contents",
+  },
+  s1: {
+    "display": "grid",
+    "gridTemplateColumns": "1fr 11rem",
+    "gap": "8px",
+  },
+  s2: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "13px",
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s4: {
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+  },
+  s5: {
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+  },
+  s6: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 60%, transparent)",
+  },
+  s7: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "color": "var(--warning-foreground)",
+  },
+  s8: {
+    "color": "var(--destructive)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // CreateForm starts a project from nothing: a folder with a fresh git
 // repository and an empty first commit, so worktrees work right away.
@@ -36,33 +80,33 @@ export function CreateForm({ box, onAdded, onCancel }: { box: string; onAdded(lo
 
   return (
     <form
-      className="contents"
+      className={sx(paint.s0)}
       onSubmit={(e) => {
         e.preventDefault();
         void create();
       }}
     >
-      <DialogPanel className="flex flex-col gap-3 px-5 pb-5">
-        <div className="grid grid-cols-[1fr_11rem] gap-2">
+      <DialogPanel inset="body" stack={3}>
+        <div className={sx(paint.s1)}>
           <Labelled label="Name">
             <Input autoFocus value={name} spellCheck={false} placeholder="my-app" onChange={(e) => setName(e.target.value)} />
           </Labelled>
           <Labelled label="In">
-            <Input className="font-mono" value={parent} spellCheck={false} onChange={(e) => setParent(e.target.value)} />
+            <Input mono value={parent} spellCheck={false} onChange={(e) => setParent(e.target.value)} />
           </Labelled>
         </div>
-        <p className="truncate text-[13px] text-muted-foreground">
+        <p className={sx(paint.s2)}>
           Creates{" "}
-          <span className="font-mono">
-            <span className="text-foreground/80">{dir}/</span>
-            {clean ? <span className="text-foreground/80">{clean}</span> : <span className="text-muted-foreground/60">my-app</span>}
+          <span className={sx(paint.s3)}>
+            <span className={sx(paint.s4)}>{dir}/</span>
+            {clean ? <span className={sx(paint.s5)}>{clean}</span> : <span className={sx(paint.s6)}>my-app</span>}
           </span>{" "}
           with git and an empty first commit.
         </p>
-        {taken && <p className="text-sm text-warning-foreground">{box} already has a project called {clean}.</p>}
-        {error && <ErrorText className="text-destructive text-sm" text={error} />}
+        {taken && <p className={sx(paint.s7)}>{box} already has a project called {clean}.</p>}
+        {error && <ErrorText className={sx(paint.s8)} text={error} />}
       </DialogPanel>
-      <DialogFooter className="items-center px-5 py-3">
+      <DialogFooter pad="actions">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>

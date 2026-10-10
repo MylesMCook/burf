@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { BrushCleaningIcon, ChevronRightIcon, ListChecksIcon, PlusIcon, SendIcon, ServerIcon, SquareIcon, TerminalIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -15,13 +16,221 @@ import { ago } from "@/lib/format";
 import { openBroadcast } from "@/lib/prompts";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 import { AgentCard } from "@/views/dashboard/agent-card";
 import { ColumnMenu, openStop, StopDialog } from "@/views/dashboard/stop";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { ViewHeader } from "@/views/view-header";
 import { sessionWord } from "@/lib/state-model";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "display": "flex",
+    "height": "100%",
+    "flexDirection": "column",
+  },
+  s1: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s2: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+  },
+  s3: {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(auto-fit,minmax(250px,1fr))",
+    "alignItems": "flex-start",
+    "columnGap": "16px",
+    "rowGap": "24px",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "16px",
+    "paddingBottom": "24px",
+  },
+  s4: {
+    "minWidth": "0px",
+  },
+  s5: {
+    "marginBottom": "8px",
+    "display": "flex",
+    "minHeight": "20px",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "2px",
+    "paddingRight": "2px",
+  },
+  s6: {
+    "fontWeight": 500,
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "marginLeft": "auto",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s8: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s9: {
+    "marginLeft": "auto",
+  },
+  s10: {
+    "color": "var(--warning-foreground)",
+  },
+  s11: {
+    "color": "var(--muted-foreground)",
+  },
+  s12: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "var(--row-gap)",
+  },
+  s13: {
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "dashed",
+    "borderColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "16px",
+    "paddingBottom": "16px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s14: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s15: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s16: {
+    "width": "12px",
+    "height": "12px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s17: {
+    "transform": "rotate(90deg)",
+  },
+  s18: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s19: {
+    "marginTop": "8px",
+    "marginBottom": "8px",
+    "display": "grid",
+    "gridTemplateColumns": "repeat(auto-fill,minmax(220px,1fr))",
+    "gap": "8px",
+  },
+  s20: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "left": 0,
+    "right": 0,
+    "bottom": "16px",
+    "display": "flex",
+    "justifyContent": "center",
+  },
+  s21: {
+    "pointerEvents": "auto",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--popover)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
+  },
+  s22: {
+    "paddingRight": "4px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s23: {
+    "color": "var(--destructive-foreground)",
+  },
+  s24: {
+    "height": "20px",
+    "width": "1px",
+    "backgroundColor": "var(--border)",
+  },
+  s25: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--border)",
+      ":hover": "color-mix(in oklab, var(--ring) 40%, transparent)",
+    },
+    "backgroundColor": "color-mix(in oklab, var(--card) 60%, transparent)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "textAlign": "left",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s26: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s27: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 interface Column {
   state: SessionState;
@@ -95,12 +304,12 @@ export function DashboardView() {
   };
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div className={sx(paint.s0)}>
       <ViewHeader
         title="Agent Dashboard"
         description={filtered ? `Showing ${shownBoxes.join(", ")} only` : "Every agent on every box, by what it needs."}
         actions={
-          <div className="flex items-center gap-2">
+          <div className={sx(paint.s1)}>
             {agents.length > 0 && (
               <Tip label="Pick agents to prompt or stop several at once (or ⌘-click cards)">
                 <Button size="xs" variant={picked ? "secondary" : "ghost"} aria-pressed={!!picked} onClick={() => setPicked(picked ? undefined : new Set())}>
@@ -128,7 +337,7 @@ export function DashboardView() {
       />
 
       {agents.length === 0 ? (
-        <Empty className="mt-16">
+        <Empty space="16">
           <EmptyHeader>
             <EmptyMedia>
               <Scene name="setting-out" />
@@ -149,21 +358,21 @@ export function DashboardView() {
           )}
         </Empty>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] items-start gap-x-4 gap-y-6 px-6 pt-4 pb-6">
+        <div className={sx(paint.s2)}>
+          <div className={sx(paint.s3)}>
             {COLUMNS.map((c) => {
               const items = visible.filter((e) => e.state === c.state).sort((a, b) => sinceOf(a) - sinceOf(b));
               return (
-                <section key={c.state} aria-label={c.title} className="min-w-0">
-                  <header className="mb-2 flex min-h-5 items-center gap-2 px-0.5">
+                <section key={c.state} aria-label={c.title} className={sx(paint.s4)}>
+                  <header className={sx(paint.s5)}>
                     <StateGlyph state={c.state} />
-                    <h2 className="font-medium text-xs">{c.title}</h2>
+                    <h2 className={sx(paint.s6)}>{c.title}</h2>
                     {picked && items.length > 0 && (
-                      <button type="button" className="ml-auto text-muted-foreground text-xs hover:text-foreground" onClick={() => pick(items.map(keyOf), !items.every((e) => picked.has(keyOf(e))))}>
+                      <button type="button" className={sx(paint.s7)} onClick={() => pick(items.map(keyOf), !items.every((e) => picked.has(keyOf(e))))}>
                         {items.every((e) => picked.has(keyOf(e))) ? "None" : "All"}
                       </button>
                     )}
-                    <span className={cn("font-mono text-[11px] tabular-nums", !(picked && items.length) && "ml-auto", items.length && c.state === "waiting" ? "text-warning-foreground" : "text-muted-foreground")}>{items.length}</span>
+                    <span className={[sx(paint.s8), !(picked && items.length) && sx(paint.s9), items.length && c.state === "waiting" ? sx(paint.s10) : sx(paint.s11)].filter(Boolean).join(" ")}>{items.length}</span>
                     {items.length > 0 && (
                       <ColumnMenu
                         title={c.title}
@@ -175,9 +384,9 @@ export function DashboardView() {
                       />
                     )}
                   </header>
-                  <div className="flex flex-col gap-row-gap">
+                  <div className={sx(paint.s12)}>
                     {items.length === 0 ? (
-                      <p className="rounded-lg border border-dashed px-3 py-4 text-center text-muted-foreground text-xs">{c.empty}</p>
+                      <p className={sx(paint.s13)}>{c.empty}</p>
                     ) : (
                       items.map((e) => (
                         <AgentCard
@@ -196,14 +405,14 @@ export function DashboardView() {
           </div>
 
           {rest.length > 0 && (
-            <div className="border-t px-6 py-2">
-              <button type="button" aria-expanded={showRest} onClick={() => setShowRest(!showRest)} className="flex items-center gap-1.5 rounded-md py-1 text-muted-foreground text-xs hover:text-foreground">
-                <ChevronRightIcon className={cn("size-3 transition-transform", showRest && "rotate-90")} />
-                <TerminalIcon className="size-3.5" />
+            <div className={sx(paint.s14)}>
+              <button type="button" aria-expanded={showRest} onClick={() => setShowRest(!showRest)} className={sx(paint.s15)}>
+                <ChevronRightIcon className={[sx(paint.s16), showRest && sx(paint.s17)].filter(Boolean).join(" ")} />
+                <TerminalIcon className={sx(paint.s18)} />
                 Shells & ended · {summary(rest)}
               </button>
               {showRest && (
-                <div className="mt-2 mb-2 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
+                <div className={sx(paint.s19)}>
                   {rest.map((e) => (
                     <QuietCard key={`${e.box}/${e.session.name}`} entry={e} />
                   ))}
@@ -215,20 +424,20 @@ export function DashboardView() {
       )}
 
       {picked && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-          <div ref={liftToasts} className="pointer-events-auto flex items-center gap-2 rounded-xl border bg-popover px-3 py-2 shadow-lg/10">
-            <span className="pr-1 text-sm tabular-nums">{pickedEntries.length ? `${pickedEntries.length} selected` : "Click cards to select them"}</span>
+        <div className={sx(paint.s20)}>
+          <div ref={liftToasts} className={sx(paint.s21)}>
+            <span className={sx(paint.s22)}>{pickedEntries.length ? `${pickedEntries.length} selected` : "Click cards to select them"}</span>
             <Button size="xs" disabled={!pickedEntries.length} onClick={() => openBroadcast({ targets: pickedEntries.map((e) => ({ box: e.box, session: e.session.name })) })}>
               <SendIcon />
               {pickedEntries.length ? `Send to ${pickedEntries.length} agent${pickedEntries.length === 1 ? "" : "s"}…` : "Send to agents…"}
             </Button>
             <Tip label={pickedEntries.length ? "Stop the selected agents (⌫)" : undefined}>
-              <Button size="xs" variant="outline" className="text-destructive-foreground" disabled={!pickedEntries.length} onClick={stopPicked}>
+              <span className={sx(paint.s23)}><Button size="xs" variant="outline"  disabled={!pickedEntries.length} onClick={stopPicked}>
                 <SquareIcon />
                 {pickedEntries.length ? `Stop ${pickedEntries.length}…` : "Stop…"}
-              </Button>
+              </Button></span>
             </Tip>
-            <span className="h-5 w-px bg-border" />
+            <span className={sx(paint.s24)} />
             <Button size="xs" variant="ghost" onClick={() => setPicked(undefined)}>
               Cancel
               <Kbd>Esc</Kbd>
@@ -248,10 +457,10 @@ function QuietCard({ entry }: { entry: SessionEntry }) {
   const locations = useStore((s) => s.boxes[box]?.locations);
   const where = worktreeOf(locations, session);
   return (
-    <button type="button" onClick={() => void focusSession(box, session.name)} className="flex items-center gap-2 rounded-lg border bg-card/60 px-2.5 py-1.5 text-left text-xs hover:border-ring/40">
+    <button type="button" onClick={() => void focusSession(box, session.name)} className={sx(paint.s25)}>
       <AgentIcon agent={agentOf(session)} />
-      <span className="min-w-0 flex-1 truncate">{where?.worktree.main ? where.location.name : (where?.worktree.name ?? session.name)}</span>
-      <span className="shrink-0 text-muted-foreground">{state === "exited" ? sessionWord("exited", true) : `${box} · ${ago(session.created)}`}</span>
+      <span className={sx(paint.s26)}>{where?.worktree.main ? where.location.name : (where?.worktree.name ?? session.name)}</span>
+      <span className={sx(paint.s27)}>{state === "exited" ? sessionWord("exited", true) : `${box} · ${ago(session.created)}`}</span>
     </button>
   );
 }

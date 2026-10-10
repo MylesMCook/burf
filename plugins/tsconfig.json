@@ -11,6 +11,7 @@
     "types": [],
     "typeRoots": ["../app/node_modules/@types"],
     "paths": {
+      "@stylexjs/stylex": ["../app/node_modules/@stylexjs/stylex/lib/es/stylex.d.ts"],
       "@berth/plugin": ["../packages/plugin-sdk/src/index.ts"],
       "@berth/plugin/ui": ["../packages/plugin-sdk/src/ui.ts"],
       "react": ["../app/node_modules/@types/react"],

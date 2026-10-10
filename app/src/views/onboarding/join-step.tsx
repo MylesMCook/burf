@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowRightIcon, CheckIcon, ChevronRightIcon, ExternalLinkIcon, NetworkIcon, ServerIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -11,7 +12,197 @@ import { boxList, computersApi, countdown, findJoinLink, type JoinOutput, type J
 import { plainError } from "@/lib/errors";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "40px",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--input)",
+      ":focus-within": "var(--ring)",
+    },
+    "backgroundColor": {
+      "default": "light-dark(var(--background), color-mix(in oklab, var(--input) 32%, transparent))",
+    },
+    "paddingInlineStart": "12px",
+    "paddingInlineEnd": "4px",
+    "boxShadow": {
+      "default": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+      ":focus-within": "0 0 0 2px color-mix(in oklab, var(--ring) 24%, transparent)",
+    },
+  },
+  s1: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s2: {
+    "height": "100%",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "backgroundColor": "transparent",
+    "fontFamily": {
+      "default": "var(--font-mono)",
+      "::placeholder": "var(--font-sans)",
+    },
+    "fontSize": {
+      "default": "13px",
+      "::placeholder": "14px",
+    },
+    "outline": "none",
+    "color": {
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+    },
+    "lineHeight": {
+      "::placeholder": "20px",
+    },
+    "opacity": {
+      ":disabled": 0.64,
+    },
+  },
+  s3: {
+    "flexShrink": 0,
+  },
+  s4: {
+    "marginTop": "8px",
+    "minHeight": "20px",
+    "fontSize": "12px",
+    "lineHeight": "20px",
+  },
+  s5: {
+    "color": "var(--destructive-foreground)",
+  },
+  s6: {
+    "color": "var(--muted-foreground)",
+  },
+  s7: {
+    "color": "var(--warning-foreground)",
+  },
+  s8: {
+    "color": "var(--foreground)",
+  },
+  s9: {
+    "color": "var(--muted-foreground)",
+  },
+  s10: {
+    "marginTop": "16px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s11: {
+    "marginTop": "20px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+  },
+  s12: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s13: {
+    "marginTop": "24px",
+  },
+  s14: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s15: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s16: {
+    "width": "16px",
+    "height": "16px",
+    "color": "var(--success-foreground)",
+  },
+  s17: {
+    "width": "16px",
+    "height": "16px",
+    "color": "var(--warning-foreground)",
+  },
+  s18: {
+    "width": "16px",
+    "height": "16px",
+    "color": "var(--destructive-foreground)",
+  },
+  s19: {
+    "width": "16px",
+    "height": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s20: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s21: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s22: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+  },
+  s23: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s24: {
+    "flexShrink": 0,
+  },
+
+  s25: {
+    ":not(#\\#) > :not(:last-child)": {
+      borderBottomColor: "color-mix(in oklab, var(--border) 70%, transparent)",
+    },
+  },
+  s26: {
+    color: color.mutedForeground,
+  },
+  s27: {
+    color: color.destructiveForeground,
+  },
+  s28: {
+    color: "var(--warning-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // What joining is doing, for onboarding's scene, as AddBoxStage is for
 // connecting a box: arriving while it waits, the lighthouse while pairing,
@@ -132,9 +323,9 @@ export function JoinFlow({
           e.preventDefault();
           void check();
         }}
-        className="flex h-10 items-center gap-2 rounded-lg border border-input bg-background ps-3 pe-1 shadow-xs/5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/24 dark:bg-input/32"
+        className={sx(paint.s0)}
       >
-        <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+        <ChevronRightIcon aria-hidden className={sx(paint.s1)} />
         <input
           autoFocus
           value={text}
@@ -158,12 +349,12 @@ export function JoinFlow({
             setText(e.target.value);
             setError(undefined);
           }}
-          className="h-full min-w-0 flex-1 truncate bg-transparent font-mono text-[13px] outline-none placeholder:font-sans placeholder:text-muted-foreground/72 placeholder:text-sm disabled:opacity-64"
+          className={sx(paint.s2)}
         />
         {phase === "paste" || phase === "checking" ? (
-          <Button type="submit" size="xs" className="shrink-0" disabled={!text.trim()} loading={phase === "checking"}>
+          <span className={sx(paint.s3)}><Button type="submit" size="xs"  disabled={!text.trim()} loading={phase === "checking"}>
             Continue
-          </Button>
+          </Button></span>
         ) : (
           <Tip label="Use another link">
             <Button
@@ -188,20 +379,20 @@ export function JoinFlow({
       </form>
 
       {/* One line under the field, whatever it says, so nothing below moves. */}
-      <div aria-live="polite" className="mt-2 min-h-5 text-xs leading-5">
+      <div aria-live="polite" className={sx(paint.s4)}>
         {error ? (
-          <span className="text-destructive-foreground">{error}</span>
+          <span className={sx(paint.s5)}>{error}</span>
         ) : info ? (
-          <span className={cn("text-muted-foreground", expired && "text-warning-foreground")}>
-            From <span className="text-foreground">{info.from}</span> · {expired ? "this link has expired; make a new one there" : `expires in ${countdown(left)}`}
+          <span className={[sx(paint.s6), expired && sx(paint.s7)].filter(Boolean).join(" ")}>
+            From <span className={sx(paint.s8)}>{info.from}</span> · {expired ? "this link has expired; make a new one there" : `expires in ${countdown(left)}`}
           </span>
         ) : (
-          <span className="text-muted-foreground">It works once, for ten minutes. Pasting the whole message is fine.</span>
+          <span className={sx(paint.s9)}>It works once, for ten minutes. Pasting the whole message is fine.</span>
         )}
       </div>
 
       {rows.length > 0 && (
-        <ul className="mt-4 divide-y divide-border/70 rounded-xl border" aria-label="Boxes in the link">
+        <ul className={[sx(paint.s10), sx(paint.s25)].filter(Boolean).join(" ")} aria-label="Boxes in the link">
           {rows.map((r) => (
             <BoxRow key={r.name} r={r} pairing={phase === "joining" && !settled(r) && r.status !== "failed"} signing={signing?.network === r.network ? signing : undefined} busy={phase === "joining" || !!signing} onSignIn={() => r.network && void signIn(r.network)} onCancel={() => abort.current?.abort()} />
           ))}
@@ -209,7 +400,7 @@ export function JoinFlow({
       )}
 
       {rows.length > 0 && (
-        <div className="mt-5 flex items-center gap-3">
+        <div className={sx(paint.s11)}>
           {phase === "review" || phase === "joining" ? (
             ready > 0 ? (
               <Button onClick={() => void join()} loading={phase === "joining"} disabled={expired}>
@@ -226,7 +417,7 @@ export function JoinFlow({
               {allSettled ? "Continue" : `Continue with ${boxList(done)}`} <ArrowRightIcon />
             </Button>
           )}
-          {phase === "joined" && !allSettled && rows.some((r) => r.status === "failed") && <span className="text-muted-foreground text-xs">For the others, make a new link on {info?.from ?? "your other computer"}.</span>}
+          {phase === "joined" && !allSettled && rows.some((r) => r.status === "failed") && <span className={sx(paint.s12)}>For the others, make a new link on {info?.from ?? "your other computer"}.</span>}
         </div>
       )}
     </div>
@@ -236,14 +427,14 @@ export function JoinFlow({
     return (
       <>
         <StepHeader title={head.title} description={head.description} onBack={onExit} />
-        <DialogPanel className="px-5 pb-5">{body}</DialogPanel>
+        <DialogPanel inset="body">{body}</DialogPanel>
       </>
     );
   }
   return (
     <div>
       <StepHeader variant="page" title={head.title} description={head.description} onBack={onExit} />
-      <div className="mt-6">{body}</div>
+      <div className={sx(paint.s13)}>{body}</div>
     </div>
   );
 }
@@ -265,40 +456,40 @@ function BoxRow({
 }) {
   const where = r.tailnet ? `the ${r.tailnet} tailnet` : `the ${r.network} network`;
   let detail: string;
-  let tone = "text-muted-foreground";
+  let tone = (sx(paint.s26) ?? "");
   if (pairing) detail = "Pairing…";
   else if (r.status === "paired") detail = `Paired${r.address ? ` · ${r.address}` : ""}${r.network ? ` through ${r.network}` : ""}`;
   else if (r.status === "already") detail = "Already paired with this computer";
   else if (r.status === "needs-network") {
     detail = signing ? (signing.url ? "Waiting for you to approve the sign-in in your browser…" : "Starting the sign-in…") : `On ${where}: sign in to reach it`;
-    tone = signing ? "text-muted-foreground" : "text-warning-foreground";
+    tone = signing ? sx(paint.s26) : sx(paint.s28);
   } else if (r.status === "failed") {
     detail = r.error ?? "Not paired";
-    tone = "text-destructive-foreground";
+    tone = (sx(paint.s27) ?? "");
   } else detail = r.sign_in ? `${r.address ?? ""} · on ${where}; you may need to sign in to it` : (r.address ?? "Ready");
 
   return (
-    <li className="flex items-center gap-3 px-3.5 py-2.5">
-      <span className="flex size-4 shrink-0 items-center justify-center">
+    <li className={sx(paint.s14)}>
+      <span className={sx(paint.s15)}>
         {pairing || signing ? (
-          <Spinner className="size-4 text-muted-foreground" />
+          <Spinner  size="lg" muted/>
         ) : settled(r) ? (
-          <CheckIcon aria-label="Paired" className="size-4 text-success-foreground" />
+          <CheckIcon aria-label="Paired" className={sx(paint.s16)} />
         ) : r.status === "needs-network" ? (
-          <NetworkIcon aria-label="Needs a sign-in" className="size-4 text-warning-foreground" />
+          <NetworkIcon aria-label="Needs a sign-in" className={sx(paint.s17)} />
         ) : r.status === "failed" ? (
-          <XIcon aria-label="Not paired" className="size-4 text-destructive-foreground" />
+          <XIcon aria-label="Not paired" className={sx(paint.s18)} />
         ) : (
-          <ServerIcon aria-hidden className="size-4 text-muted-foreground" />
+          <ServerIcon aria-hidden className={sx(paint.s19)} />
         )}
       </span>
-      <div className="min-w-0 flex-1">
-        <div className="text-sm">{r.name}</div>
-        <div className={cn("truncate text-[11px]", tone)}>{detail}</div>
+      <div className={sx(paint.s20)}>
+        <div className={sx(paint.s21)}>{r.name}</div>
+        <div className={[sx(paint.s22), tone].filter(Boolean).join(" ")}>{detail}</div>
       </div>
       {r.status === "needs-network" &&
         (signing ? (
-          <span className="flex shrink-0 items-center gap-1">
+          <span className={sx(paint.s23)}>
             {signing.url && (
               <Button size="xs" variant="ghost" onClick={() => void openUrl(signing.url!)}>
                 <ExternalLinkIcon /> Open again
@@ -309,9 +500,9 @@ function BoxRow({
             </Button>
           </span>
         ) : (
-          <Button size="xs" variant="outline" className="shrink-0" disabled={busy} onClick={onSignIn}>
+          <span className={sx(paint.s24)}><Button size="xs" variant="outline"  disabled={busy} onClick={onSignIn}>
             Sign in
-          </Button>
+          </Button></span>
         ))}
     </li>
   );

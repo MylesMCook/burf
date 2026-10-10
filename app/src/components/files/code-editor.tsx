@@ -19,6 +19,7 @@ import { cssVars, readableStyles, type ShikiTheme, syntaxColors } from "@/lib/sy
 import { syntaxThemes } from "@/themes/apply";
 import { mix, readable } from "@/themes/color";
 
+
 export interface CodeEditorProps {
   path: string;
   text: string;

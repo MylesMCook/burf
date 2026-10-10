@@ -1,8 +1,109 @@
+import * as stylex from "@stylexjs/stylex";
 import { definePlugin, worktreeLocation, type WorktreePanelProps } from "@berth/plugin";
-import { Button, Icon, Spinner, Textarea, Tooltip, TooltipPopup, TooltipTrigger, cn } from "@berth/plugin/ui";
+import { Button, Icon, Spinner, Textarea, Tooltip, TooltipPopup, TooltipTrigger } from "@berth/plugin/ui";
 
 import { HomeNote } from "./home";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s1: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s2: {
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "0px",
+    "flexDirection": "column",
+  },
+  s3: {
+    "display": "flex",
+    "height": "40px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s5: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s6: {
+    "cursor": "help",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+  },
+  s7: {
+    "maxWidth": "288px",
+  },
+  s8: {
+    "marginLeft": "auto",
+  },
+  s9: {
+    "color": "var(--destructive)",
+  },
+  s10: {
+    "color": "var(--muted-foreground)",
+  },
+  s11: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 6%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--destructive)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s12: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "13px",
+    "lineHeight": "24px",
+    ":not(#\\#) textarea": {
+      "height": "100%",
+      "resize": "none",
+      "paddingLeft": "16px",
+      "paddingRight": "16px",
+      "paddingTop": "12px",
+      "paddingBottom": "12px",
+      "fieldSizing": "fixed",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Notes: a scratchpad for each worktree. It lives in the worktree itself, as
 // .berth/notes.md, so it travels with the work rather than this laptop, and
@@ -104,22 +205,22 @@ function NotesPanel({ berth, box, location, worktree, main }: WorktreePanelProps
 
   if (state === "loading") {
     return (
-      <div className="flex h-full items-center justify-center gap-2 text-muted-foreground text-sm">
-        <Spinner className="size-4" /> Opening notes…
+      <div className={sx(paint.s0)}>
+        <Spinner className={sx(paint.s1)} /> Opening notes…
       </div>
     );
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="flex h-10 shrink-0 items-center gap-2 border-b px-3 text-xs">
-        <Icon name="NotebookPen" className="size-3.5 text-muted-foreground" />
-        <span className="font-medium text-sm">Notes</span>
+    <div className={sx(paint.s2)}>
+      <header className={sx(paint.s3)}>
+        <Icon name="NotebookPen" className={sx(paint.s4)} />
+        <span className={sx(paint.s5)}>Notes</span>
         <Tooltip>
-          <TooltipTrigger render={<span className="cursor-help font-mono text-muted-foreground" />}>{FILE}</TooltipTrigger>
-          <TooltipPopup className="max-w-72">Kept in this worktree on {box} and never committed. Agents here can read it: ask them to check {FILE}.</TooltipPopup>
+          <TooltipTrigger render={<span className={sx(paint.s6)} />}>{FILE}</TooltipTrigger>
+          <TooltipPopup className={sx(paint.s7)}>Kept in this worktree on {box} and never committed. Agents here can read it: ask them to check {FILE}.</TooltipPopup>
         </Tooltip>
-        <span className={cn("ml-auto", state === "error" ? "text-destructive" : "text-muted-foreground")}>
+        <span className={[sx(paint.s8), state === "error" ? sx(paint.s9) : sx(paint.s10)].filter(Boolean).join(" ")}>
           {state === "saving" ? "Saving…" : state === "unsaved" ? "Edited" : state === "error" ? "Not saved" : "Saved"}
         </span>
         {state === "error" && (
@@ -128,7 +229,7 @@ function NotesPanel({ berth, box, location, worktree, main }: WorktreePanelProps
           </Button>
         )}
       </header>
-      {error && <p className="border-b bg-destructive/6 px-3 py-1.5 font-mono text-destructive text-xs">{error}</p>}
+      {error && <p className={sx(paint.s11)}>{error}</p>}
       <Textarea
         unstyled
         spellCheck={false}
@@ -142,7 +243,7 @@ function NotesPanel({ berth, box, location, worktree, main }: WorktreePanelProps
           }
         }}
         placeholder={`Plans, links, things to remember about ${worktree}…\n\nAgents working here can read this file too.`}
-        className="flex min-h-0 flex-1 font-mono text-[13px] leading-6 [&_textarea]:h-full [&_textarea]:resize-none [&_textarea]:px-4 [&_textarea]:py-3 [&_textarea]:[field-sizing:fixed]"
+        className={sx(paint.s12)}
       />
     </div>
   );

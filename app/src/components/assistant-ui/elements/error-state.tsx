@@ -2,12 +2,68 @@
 
 import type { ComponentProps } from "react";
 import { CircleAlertIcon, RefreshCwIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ShimmerLabel } from "./surfaces";
+import * as stylex from "@stylexjs/stylex";
+
+import { radius } from "@/styles/tokens.stylex";
+import { fadeIn, mark, ShimmerLabel, spin } from "./surfaces";
+
+const still = "@media (prefers-reduced-motion: reduce)";
+const red = "light-dark(var(--color-red-600), var(--color-red-400))";
+
+const styles = stylex.create({
+  row: {
+    display: "flex",
+    width: "100%",
+    maxWidth: 384,
+    alignItems: "center",
+    gap: 10,
+    fontSize: 14,
+    lineHeight: "20px",
+  },
+  alert: {
+    display: "flex",
+    width: "100%",
+    maxWidth: 384,
+    alignItems: "flex-start",
+    gap: 10,
+    borderRadius: radius.xxl,
+    backgroundColor: "light-dark(color-mix(in oklab, var(--color-red-500) 6%, transparent), color-mix(in oklab, var(--color-red-500) 10%, transparent))",
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    fontSize: 14,
+    lineHeight: "20px",
+  },
+  spinIcon: { width: 14, height: 14, flexShrink: 0, color: "color-mix(in oklab, var(--foreground) 45%, transparent)" },
+  retrying: { color: "color-mix(in oklab, var(--foreground) 55%, transparent)" },
+  warn: { marginTop: 2, width: 16, height: 16, flexShrink: 0, color: "color-mix(in oklab, var(--color-red-500) 80%, transparent)" },
+  title: { fontWeight: 500, color: red },
+  detail: { marginTop: 2, fontSize: 13, lineHeight: 1.375, color: "light-dark(color-mix(in oklab, var(--color-red-600) 60%, transparent), color-mix(in oklab, var(--color-red-400) 60%, transparent))" },
+  retry: {
+    marginInlineStart: "auto",
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: radius.full,
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 4,
+    paddingBottom: 4,
+    fontSize: 12,
+    lineHeight: "16px",
+    fontWeight: 500,
+    color: red,
+    backgroundColor: { ":hover": "color-mix(in oklab, var(--color-red-500) 10%, transparent)" },
+    transitionProperty: "background-color, color",
+    transitionDuration: { default: "150ms", [still]: "0s" },
+  },
+  retryIcon: { width: 12, height: 12 },
+});
 
 export interface ErrorStateProps extends Omit<
   ComponentProps<"div">,
-  "children" | "role"
+  "children" | "role" | "className" | "style"
 > {
   title: string;
   detail: string;
@@ -20,55 +76,28 @@ export function ErrorState({
   detail,
   retrying,
   onRetry,
-  className,
   ...props
 }: ErrorStateProps) {
   if (retrying) {
     return (
-      <div
-        data-slot="error-state"
-        key="retrying"
-        role="status"
-        className={cn(
-          "fade-in animate-in flex w-full max-w-sm items-center gap-2.5 text-sm duration-300 motion-reduce:animate-none",
-          className,
-        )}
-
-        {...props}
-      >
-        <RefreshCwIcon className="text-foreground/45 size-3.5 shrink-0 animate-spin motion-reduce:animate-none" />
-        <ShimmerLabel className="text-foreground/55 relative inline-block">
-          Retrying
-        </ShimmerLabel>
+      <div data-slot="error-state" key="retrying" role="status" {...mark(undefined, styles.row, fadeIn)} {...props}>
+        <RefreshCwIcon {...mark(undefined, styles.spinIcon, spin)} />
+        <span {...stylex.props(styles.retrying)}>
+          <ShimmerLabel>Retrying</ShimmerLabel>
+        </span>
       </div>
     );
   }
 
   return (
-    <div
-      data-slot="error-state"
-      key="error"
-      role="alert"
-      className={cn(
-        "fade-in animate-in flex w-full max-w-sm items-start gap-2.5 rounded-2xl bg-red-500/[0.06] px-4 py-3 text-sm duration-300 motion-reduce:animate-none dark:bg-red-500/10",
-        className,
-      )}
-
-      {...props}
-    >
-      <CircleAlertIcon className="mt-0.5 size-4 shrink-0 text-red-500/80" />
+    <div data-slot="error-state" key="error" role="alert" {...mark(undefined, styles.alert, fadeIn)} {...props}>
+      <CircleAlertIcon {...mark(undefined, styles.warn)} />
       <div>
-        <p className="font-medium text-red-600 dark:text-red-400">{title}</p>
-        <p className="mt-0.5 text-[13px] leading-snug text-red-600/60 dark:text-red-400/60">
-          {detail}
-        </p>
+        <p {...mark(undefined, styles.title)}>{title}</p>
+        <p {...mark(undefined, styles.detail)}>{detail}</p>
       </div>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="ms-auto flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/10 dark:text-red-400"
-      >
-        <RefreshCwIcon className="size-3" />
+      <button type="button" onClick={onRetry} {...mark(undefined, styles.retry)}>
+        <RefreshCwIcon {...mark(undefined, styles.retryIcon)} />
         Retry
       </button>
     </div>

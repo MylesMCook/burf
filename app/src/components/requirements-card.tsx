@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { invoke } from "@tauri-apps/api/core";
 import { CheckIcon, CopyIcon, ExternalLinkIcon, PackageIcon, RefreshCwIcon, SquareTerminalIcon } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
@@ -10,8 +11,145 @@ import { useIsLocalBox } from "@/lib/local-box";
 import { openUrl } from "@/lib/open-url";
 import { parseRequirements, type Requirements, type RequirementsCard as CardKind, requirementsCard, requirementsCopy } from "@/lib/requirements";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { thisComputer } from "@/lib/platform";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "gap": "12px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--warning) 32%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 4%, transparent)",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s1: {
+    "marginTop": "2px",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--warning)",
+  },
+  s2: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "gap": "10px",
+  },
+  s3: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s4: {
+    "fontWeight": 500,
+  },
+  s5: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s6: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "2px",
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+    "textDecoration": {
+      ":hover": "underline",
+    },
+  },
+  s7: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s8: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s9: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s10: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s11: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+  },
+  s12: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "11px",
+  },
+  s13: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--background) 70%, transparent)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s14: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "wordBreak": "break-all",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "lineHeight": "1.625",
+  },
+  s15: {
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-md)",
+    "padding": "2px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s16: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s17: {
+    "width": "14px",
+    "height": "14px",
+  },
+
+  s18: {
+    textUnderlineOffset: 2,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The card that says what a box is missing before an agent can start on it
 // (lib/requirements.ts says why), with the command to install it, typed out
@@ -157,12 +295,12 @@ export function RequirementsCard({ box, agent, noAgent, className }: { box: stri
         : `Install it on ${box}, then check again.`;
 
   return (
-    <div role="status" data-requirements-card={card} className={cn("flex gap-3 rounded-lg border border-warning/32 bg-warning/4 px-3.5 py-3 text-sm", className)}>
-      <PackageIcon className="mt-0.5 size-4 shrink-0 text-warning" />
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-        <div className="flex flex-col gap-0.5">
-          <p className="font-medium">{copyText.title}</p>
-          <p className="text-muted-foreground text-xs leading-relaxed">{copyText.body}</p>
+    <div role="status" data-requirements-card={card} className={[sx(paint.s0), className].filter(Boolean).join(" ")}>
+      <PackageIcon className={sx(paint.s1)} />
+      <div className={sx(paint.s2)}>
+        <div className={sx(paint.s3)}>
+          <p className={sx(paint.s4)}>{copyText.title}</p>
+          <p className={sx(paint.s5)}>{copyText.body}</p>
         </div>
         {copyText.first && (
           <Command
@@ -173,9 +311,9 @@ export function RequirementsCard({ box, agent, noAgent, className }: { box: stri
                 {copyText.help && (
                   <>
                     {" · "}
-                    <button type="button" className="inline-flex items-center gap-0.5 underline-offset-2 hover:text-foreground hover:underline" onClick={() => void openUrl(copyText.help!.url)}>
+                    <button type="button" className={[sx(paint.s6), sx(paint.s18)].filter(Boolean).join(" ")} onClick={() => void openUrl(copyText.help!.url)}>
                       {copyText.help.label}
-                      <ExternalLinkIcon className="size-3" />
+                      <ExternalLinkIcon className={sx(paint.s7)} />
                     </button>
                   </>
                 )}
@@ -185,8 +323,8 @@ export function RequirementsCard({ box, agent, noAgent, className }: { box: stri
           />
         )}
         {copyText.command && <Command step={two ? 2 : undefined} label={two ? "Then tmux" : undefined} text={copyText.command} />}
-        <p className="text-muted-foreground text-xs leading-relaxed">{howTo}</p>
-        <div className="flex flex-wrap items-center gap-2">
+        <p className={sx(paint.s8)}>{howTo}</p>
+        <div className={sx(paint.s9)}>
           {canOpen && line && (
             <Button size="sm" variant={opened ? "outline" : "default"} onClick={() => void openIt()}>
               <SquareTerminalIcon />
@@ -197,7 +335,7 @@ export function RequirementsCard({ box, agent, noAgent, className }: { box: stri
             <RefreshCwIcon />
             Check again
           </Button>
-          {checked && !entry.checking && <span className="text-muted-foreground text-xs">Still missing on {local ? thisComputer("this Mac") : box}.</span>}
+          {checked && !entry.checking && <span className={sx(paint.s10)}>Still missing on {local ? thisComputer("this Mac") : box}.</span>}
         </div>
       </div>
     </div>
@@ -213,22 +351,22 @@ function Command({ text, step, label }: { text: string; step?: number; label?: R
     return () => window.clearTimeout(t);
   }, [copied]);
   return (
-    <div className="flex flex-col gap-1">
+    <div className={sx(paint.s11)}>
       {label && (
-        <span className="text-muted-foreground text-[11px]">
+        <span className={sx(paint.s12)}>
           {step ? `${step}.\u00a0` : ""}
           {label}
         </span>
       )}
-      <div className="flex items-start gap-2 rounded-md border bg-background/70 px-2.5 py-2">
-        <code className="min-w-0 flex-1 break-all font-mono text-[11px] leading-relaxed">{text}</code>
+      <div className={sx(paint.s13)}>
+        <code className={sx(paint.s14)}>{text}</code>
         <button
           type="button"
           aria-label="Copy the command"
-          className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          className={sx(paint.s15)}
           onClick={() => void copy(text).then((ok) => ok && setCopied(true))}
         >
-          {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+          {copied ? <CheckIcon className={sx(paint.s16)} /> : <CopyIcon className={sx(paint.s17)} />}
         </button>
       </div>
     </div>

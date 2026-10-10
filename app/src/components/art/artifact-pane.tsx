@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import "./art.css";
 
 import { BotIcon, ChevronDownIcon, CodeIcon, EyeIcon, HistoryIcon, LayoutGridIcon, LockIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
@@ -9,11 +10,479 @@ import { kindOf } from "@/components/art/kinds";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Menu, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { type Art, type ArtVersion, latest, sizeLabel, useArt, useArtBody, useArtifact } from "@/lib/art/model";
 import { openBoard } from "@/lib/art/open";
 import { PaneContext } from "@/lib/pane-context";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s1: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "padding": "24px",
+  },
+  s2: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 20%, transparent)",
+  },
+  s3: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "backgroundColor": "var(--background)",
+  },
+  s4: {
+    "flexShrink": 0,
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "20px",
+    "paddingRight": "20px",
+    "paddingTop": "12px",
+    "paddingBottom": "10px",
+  },
+  s5: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "display": "flex",
+    "width": "100%",
+    "flexDirection": "column",
+    "gap": "6px",
+  },
+  s6: {
+    "maxWidth": "88rem",
+  },
+  s7: {
+    "maxWidth": "72rem",
+  },
+  s8: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s9: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s10: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s11: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+  },
+  s12: {
+    "marginLeft": "auto",
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s13: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s14: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "10px",
+    "rowGap": "4px",
+  },
+  s15: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s16: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 600,
+    "fontSize": "16px",
+    "lineHeight": "24px",
+  },
+  s17: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s18: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "fontSize": "0.6875rem",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s19: {
+    "borderColor": "color-mix(in oklab, var(--info) 40%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--info) 10%, transparent)",
+    "color": "var(--info-foreground)",
+  },
+  s20: {
+    "color": "var(--muted-foreground)",
+  },
+  s21: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  s22: {
+    "backgroundColor": "var(--info)",
+  },
+  s23: {
+    "display": "none",
+  },
+  s24: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  s25: {
+    "fontSize": "0.8125rem",
+  },
+  s26: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--warning-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s27: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s28: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s29: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "4px",
+    "paddingTop": "2px",
+  },
+  s30: {
+    "marginInlineEnd": "2px",
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s31: {
+    "display": "inline-flex",
+    "minWidth": "0px",
+    "maxWidth": "100%",
+    "alignItems": "center",
+    "gap": "6px",
+    "whiteSpace": "nowrap",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s32: {
+    "borderColor": "var(--ring)",
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s33: {
+    "color": "var(--muted-foreground)",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+  },
+  s34: {
+    "fontWeight": 500,
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s35: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s36: {
+    "minWidth": "0px",
+    "maxWidth": "14rem",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s37: {
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s38: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 8%, transparent)",
+    "paddingLeft": "20px",
+    "paddingRight": "20px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s39: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--warning-foreground)",
+  },
+  s40: {
+    "marginLeft": "auto",
+  },
+  s41: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "auto",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s42: {
+    "display": "flex",
+    "flexDirection": "column",
+    "padding": "16px",
+  },
+  s43: {
+    "paddingLeft": "20px",
+    "paddingRight": "20px",
+    "paddingTop": "20px",
+    "paddingBottom": "20px",
+  },
+  s44: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "width": "100%",
+  },
+  s45: {
+    "maxWidth": "88rem",
+  },
+  s46: {
+    "maxWidth": "72rem",
+  },
+  s47: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s48: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s49: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "fontSize": "0.6875rem",
+    "fontVariantNumeric": "tabular-nums",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s50: {
+    "borderColor": "color-mix(in oklab, var(--info) 40%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--info) 10%, transparent)",
+    "color": "var(--info-foreground)",
+  },
+  s51: {
+    "color": "var(--muted-foreground)",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+  },
+  s52: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  s53: {
+    "backgroundColor": "var(--info)",
+  },
+  s54: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s55: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s56: {
+    "fontWeight": 500,
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s57: {
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s58: {
+    "minWidth": "0px",
+    "maxWidth": "14rem",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  n0: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  n1: {
+    "backgroundColor": "var(--info)",
+  },
+  n2: {
+    "backgroundColor": "var(--success)",
+  },
+  n3: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 60%, transparent)",
+  },
+  n4: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  n5: {
+    "backgroundColor": "var(--info)",
+  },
+  n6: {
+    "backgroundColor": "var(--success)",
+  },
+  n7: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 60%, transparent)",
+  },
+
+  s59: {
+    containerType: "inline-size",
+    containerName: "art",
+  },
+  s60: {
+    "@container art (max-width: 40rem)": {
+      paddingLeft: 12,
+      paddingRight: 12,
+      paddingTop: 6,
+      paddingBottom: 6,
+    },
+  },
+  s61: {
+    "@container art (max-width: 40rem)": {
+      position: "absolute",
+      width: 1,
+      height: 1,
+      padding: 0,
+      margin: -1,
+      overflow: "hidden",
+      clip: "rect(0, 0, 0, 0)",
+      whiteSpace: "nowrap",
+      borderWidth: 0,
+    },
+  },
+  s62: {
+    "@container art (max-width: 40rem)": {
+      flexWrap: "nowrap",
+      columnGap: 6,
+    },
+  },
+  s63: {
+    "@container art (max-width: 40rem)": {
+      fontSize: 14,
+      lineHeight: "20px",
+    },
+  },
+  s64: {
+    "@container art (max-width: 40rem)": {
+      display: "none",
+    },
+  },
+  s65: {
+    "@container art (max-width: 40rem)": {
+      display: "inline-flex",
+    },
+  },
+  s66: {
+    ":not(#\\#) > *": {
+      flex: "1 1 0%",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const Board = lazy(() => import("@/components/art/board"));
 const SourceView = lazy(() => import("@/components/art/views/source-view"));
@@ -30,13 +499,13 @@ export function ArtifactPane({ id, focus }: { id?: string; focus?: string }) {
   const loaded = useArt((s) => !!wt && wt in s.byWt);
   if (!id)
     return (
-      <Suspense fallback={<div className="flex-1" />}>
+      <Suspense fallback={<div className={sx(paint.s0)} />}>
         <Board wt={wt} focus={focus} />
       </Suspense>
     );
   if (!art)
     return loaded ? (
-      <div className="flex flex-1 items-center justify-center p-6" data-testid="artifact-pane">
+      <div className={sx(paint.s1)} data-testid="artifact-pane">
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -48,7 +517,7 @@ export function ArtifactPane({ id, focus }: { id?: string; focus?: string }) {
         </Empty>
       </div>
     ) : (
-      <div className="flex-1 animate-pulse bg-muted/20" data-testid="artifact-pane" />
+      <div className={[sx(paint.s2), "burf-pulse"].filter(Boolean).join(" ")} data-testid="artifact-pane" />
     );
   return <Shown art={art} />;
 }
@@ -78,61 +547,61 @@ function Shown({ art }: { art: Art }) {
   const pick = (n: number) => setN(n === cur.n ? null : n);
 
   return (
-    <div data-testid="artifact-pane" data-art-id={art.id} className={cn("flex min-h-0 flex-1 flex-col bg-background", kind.compact && "@container/art")}>
-      <header className={cn("shrink-0 border-b px-5 pt-3 pb-2.5", narrow("@max-[40rem]/art:px-3 @max-[40rem]/art:py-1.5"))} data-art-header>
-        <div className={cn("mx-auto flex w-full flex-col gap-1.5", kind.wide ? "max-w-[88rem]" : "max-w-[72rem]")}>
-          <div className={cn("flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs", narrow("@max-[40rem]/art:sr-only"))}>
-            <BotIcon className="size-3.5 shrink-0" aria-hidden />
-            <span className="min-w-0 truncate">Made by {madeBy(art)}</span>
+    <div data-testid="artifact-pane" data-art-id={art.id} className={[sx(paint.s3), kind.compact && sx(paint.s59)].filter(Boolean).join(" ")}>
+      <header className={[sx(paint.s4), narrow(sx(paint.s60))].filter(Boolean).join(" ")} data-art-header>
+        <div className={[sx(paint.s5), kind.wide ? sx(paint.s6) : sx(paint.s7)].filter(Boolean).join(" ")}>
+          <div className={[sx(paint.s8), narrow(sx(paint.s61))].filter(Boolean).join(" ")}>
+            <BotIcon className={sx(paint.s9)} aria-hidden />
+            <span className={sx(paint.s10)}>Made by {madeBy(art)}</span>
             {art.file && (
               <>
                 <span aria-hidden>·</span>
-                <span className="min-w-0 truncate font-mono">{art.file}</span>
+                <span className={sx(paint.s11)}>{art.file}</span>
               </>
             )}
             <Tip label={sandboxed ? "Runs on its own origin in a sandbox: no network, no access to Burf" : "Drawn by Burf from its data: no code of the agent's runs"}>
-              <span className="ml-auto inline-flex shrink-0 items-center gap-1">
-                <LockIcon className="size-3" aria-hidden />
+              <span className={sx(paint.s12)}>
+                <LockIcon className={sx(paint.s13)} aria-hidden />
                 {sandboxed ? "Sandboxed page" : (kind.drawnLabel ?? "Drawn by Burf")}
               </span>
             </Tip>
           </div>
-          <div className={cn("flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1", narrow("@max-[40rem]/art:flex-nowrap @max-[40rem]/art:gap-x-1.5"))}>
-            <ArtGlyph art={art} body={body} className="size-4 shrink-0 text-muted-foreground" />
-            <h2 className={cn("min-w-0 truncate font-semibold text-base", narrow("@max-[40rem]/art:text-sm"))}>{art.title}</h2>
-            <span className={cn("shrink-0 text-muted-foreground text-xs", narrow("@max-[40rem]/art:hidden"))}>
+          <div className={[sx(paint.s14), narrow(sx(paint.s62))].filter(Boolean).join(" ")}>
+            <ArtGlyph art={art} body={body} className={sx(paint.s15)} />
+            <h2 className={[sx(paint.s16), narrow(sx(paint.s63))].filter(Boolean).join(" ")}>{art.title}</h2>
+            <span className={[sx(paint.s17), narrow(sx(paint.s64))].filter(Boolean).join(" ")}>
               <KindWord art={art} />
             </span>
-            <span data-testid="art-live" data-pulse={pulse || undefined} className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.6875rem] tabular-nums", pulse ? "art-pulse border-info/40 bg-info/10 text-info-foreground" : "text-muted-foreground", narrow("@max-[40rem]/art:hidden"))}>
-              <span className={cn("size-1.5 rounded-full", pulse ? "art-dot bg-info" : art.watched ? "bg-success" : "bg-muted-foreground/60")} aria-hidden />
+            <span data-testid="art-live" data-pulse={pulse || undefined} className={[sx(paint.s18), pulse ? [sx(paint.s19), "art-pulse"].filter(Boolean).join(" ") : sx(paint.s20), narrow(sx(paint.s64))].filter(Boolean).join(" ")}>
+              <span className={[sx(paint.n0), pulse ? [sx(paint.n1), "art-dot"].filter(Boolean).join(" ") : art.watched ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")} aria-hidden />
               {pulse ? `Updated just now · v${cur.n}` : `${art.watched ? "Live" : "Latest"} · v${cur.n} · ${when(cur.at)}`}
             </span>
-            {kind.compact && <VersionMenu art={art} cur={cur} v={v} pulse={pulse} onPick={pick} className="hidden @max-[40rem]/art:inline-flex" />}
-            <span className="ml-auto flex shrink-0 items-center gap-0.5">
+            {kind.compact && <VersionMenu art={art} cur={cur} v={v} pulse={pulse} onPick={pick} className={[sx(paint.s23), sx(paint.s65)].filter(Boolean).join(" ")} />}
+            <span className={sx(paint.s24)}>
               <Tip label={source ? "Show the artifact" : "Show its source"}>
-                <Button size="xs" variant={source ? "secondary" : "ghost"} className="text-muted-foreground" onClick={() => setSource((s) => !s)} aria-pressed={source} data-testid="art-source-toggle">
+                <Button size="xs" variant={source ? "secondary" : "ghost"}  onClick={() => setSource((s) => !s)} aria-pressed={source} data-testid="art-source-toggle" muted>
                   {source ? <EyeIcon /> : <CodeIcon />}
-                  <span className={narrow("@max-[40rem]/art:sr-only")}>{source ? "Artifact" : "Source"}</span>
+                  <span className={narrow(sx(paint.s61))}>{source ? "Artifact" : "Source"}</span>
                 </Button>
               </Tip>
               <Tip label="All of this worktree's artifacts">
-                <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => pane && openBoard(pane.worktree, { focus: art.id })} data-testid="art-board-link">
+                <Button size="xs" variant="ghost"  onClick={() => pane && openBoard(pane.worktree, { focus: art.id })} data-testid="art-board-link" muted>
                   <LayoutGridIcon />
-                  <span className={narrow("@max-[40rem]/art:sr-only")}>Board</span>
+                  <span className={narrow(sx(paint.s61))}>Board</span>
                 </Button>
               </Tip>
             </span>
           </div>
-          <GistLine art={art} className={cn("text-[0.8125rem]", narrow("@max-[40rem]/art:sr-only"))} />
+          <GistLine art={art} className={[sx(paint.s25), narrow(sx(paint.s61))].filter(Boolean).join(" ")} />
           {art.problem && (
-            <div className="flex items-center gap-1.5 text-warning-foreground text-xs">
-              <TriangleAlertIcon className="size-3.5 shrink-0" aria-hidden />
-              <span className="min-w-0 truncate">The latest rewrite of {art.file ?? "its file"} wasn't taken: {art.problem}</span>
+            <div className={sx(paint.s26)}>
+              <TriangleAlertIcon className={sx(paint.s27)} aria-hidden />
+              <span className={sx(paint.s28)}>The latest rewrite of {art.file ?? "its file"} wasn't taken: {art.problem}</span>
             </div>
           )}
           {art.versions.length > 1 && (
-            <div className={cn("flex flex-wrap items-center gap-1 pt-0.5", narrow("@max-[40rem]/art:hidden"))} role="radiogroup" aria-label="Versions" data-testid="art-versions">
-              <HistoryIcon className="me-0.5 size-3.5 text-muted-foreground" aria-hidden />
+            <div className={[sx(paint.s29), narrow(sx(paint.s64))].filter(Boolean).join(" ")} role="radiogroup" aria-label="Versions" data-testid="art-versions">
+              <HistoryIcon className={sx(paint.s30)} aria-hidden />
               {[...art.versions].reverse().map((x) => (
                 <button
                   key={x.n}
@@ -140,12 +609,12 @@ function Shown({ art }: { art: Art }) {
                   role="radio"
                   aria-checked={x.n === v.n}
                   onClick={() => pick(x.n)}
-                  className={cn("inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs", x.n === v.n ? "border-ring bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60")}
+                  className={[sx(paint.s31), x.n === v.n ? sx(paint.s32) : sx(paint.s33)].filter(Boolean).join(" ")}
                 >
-                  <span className="font-medium tabular-nums">v{x.n}</span>
-                  <span className="tabular-nums">{x.n === cur.n ? "latest" : when(x.at)}</span>
-                  {x.note && <span className="min-w-0 max-w-[14rem] truncate">· {x.note}</span>}
-                  <span className="text-muted-foreground tabular-nums">· {sizeLabel(x.size)}</span>
+                  <span className={sx(paint.s34)}>v{x.n}</span>
+                  <span className={sx(paint.s35)}>{x.n === cur.n ? "latest" : when(x.at)}</span>
+                  {x.note && <span className={sx(paint.s36)}>· {x.note}</span>}
+                  <span className={sx(paint.s37)}>· {sizeLabel(x.size)}</span>
                 </button>
               ))}
             </div>
@@ -153,20 +622,20 @@ function Shown({ art }: { art: Art }) {
         </div>
       </header>
       {old && (
-        <div className="flex shrink-0 items-center gap-2 border-b bg-warning/8 px-5 py-1.5 text-xs" data-testid="art-old">
-          <HistoryIcon className="size-3.5 text-warning-foreground" aria-hidden />
+        <div className={sx(paint.s38)} data-testid="art-old">
+          <HistoryIcon className={sx(paint.s39)} aria-hidden />
           <span>
             Showing v{v.n} from {when(v.at)}. The latest is v{cur.n}.
           </span>
-          <Button size="xs" variant="outline" className="ml-auto" onClick={() => setN(null)}>
+          <span className={sx(paint.s40)}><Button size="xs" variant="outline"  onClick={() => setN(null)}>
             Back to latest
-          </Button>
+          </Button></span>
         </div>
       )}
       {/* Focusable, so the keyboard can scroll it when nothing in it takes
           focus (a long source, notes). */}
-      <div tabIndex={0} aria-label={art.title} role="region" className={cn("min-h-0 flex-1 overflow-auto outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset", fill || source ? "flex flex-col p-4" : "px-5 py-5")}>
-        <div className={cn("mx-auto w-full", kind.wide ? "max-w-[88rem]" : "max-w-[72rem]", (fill || source) && "flex min-h-0 flex-1 flex-col")}>
+      <div tabIndex={0} aria-label={art.title} role="region" className={[sx(paint.s41), fill || source ? sx(paint.s42) : sx(paint.s43)].filter(Boolean).join(" ")}>
+        <div className={[sx(paint.s44), kind.wide ? sx(paint.s45) : sx(paint.s46), (fill || source) && sx(paint.s47)].filter(Boolean).join(" ")}>
           {source ? (
             body === undefined ? null : (
               <Suspense fallback={null}>
@@ -176,7 +645,7 @@ function Shown({ art }: { art: Art }) {
               </Suspense>
             )
           ) : (
-            <ArtView art={art} version={v} size="full" className={cn(fill && "flex min-h-0 flex-1 flex-col *:flex-1")} />
+            <ArtView art={art} version={v} size="full" className={fill ? [sx(paint.s48), sx(paint.s66)].filter(Boolean).join(" ") : undefined} />
           )}
         </div>
       </div>
@@ -191,16 +660,21 @@ function VersionMenu({ art, cur, v, pulse, onPick, className }: { art: Art; cur:
   return (
     <Menu>
       <MenuTrigger
-        aria-label={`Version: v${v.n}${v.n === cur.n ? `, the latest (${state.toLowerCase()})` : `, the latest is v${cur.n}`}. ${art.versions.length} ${art.versions.length === 1 ? "version" : "versions"}`}
-        data-testid="art-version-menu"
-        data-pulse={pulse || undefined}
-        className={cn("shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[0.6875rem] tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring", pulse ? "art-pulse border-info/40 bg-info/10 text-info-foreground" : "text-muted-foreground hover:bg-accent/60", className)}
+        render={
+          <button
+            type="button"
+            aria-label={`Version: v${v.n}${v.n === cur.n ? `, the latest (${state.toLowerCase()})` : `, the latest is v${cur.n}`}. ${art.versions.length} ${art.versions.length === 1 ? "version" : "versions"}`}
+            data-testid="art-version-menu"
+            data-pulse={pulse || undefined}
+            className={[sx(paint.s49), pulse ? [sx(paint.s50), "art-pulse"].filter(Boolean).join(" ") : sx(paint.s51), className].filter(Boolean).join(" ")}
+          />
+        }
       >
-        <span className={cn("size-1.5 rounded-full", pulse ? "art-dot bg-info" : art.watched ? "bg-success" : "bg-muted-foreground/60")} aria-hidden />
+        <span className={[sx(paint.n4), pulse ? [sx(paint.n5), "art-dot"].filter(Boolean).join(" ") : art.watched ? sx(paint.n6) : sx(paint.n7)].filter(Boolean).join(" ")} aria-hidden />
         v{v.n}
-        <ChevronDownIcon className="size-3" aria-hidden />
+        <ChevronDownIcon className={sx(paint.s54)} aria-hidden />
       </MenuTrigger>
-      <MenuPopup align="start" className="min-w-56">
+      <MenuPopup align="start" width={menuWidths.w56}>
         <MenuGroup>
           <MenuGroupLabel>
             {state} · v{cur.n} · {when(cur.at)}
@@ -208,10 +682,10 @@ function VersionMenu({ art, cur, v, pulse, onPick, className }: { art: Art; cur:
           <MenuRadioGroup value={String(v.n)} onValueChange={(x) => onPick(Number(x))}>
             {[...art.versions].reverse().map((x) => (
               <MenuRadioItem key={x.n} value={String(x.n)}>
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="font-medium tabular-nums">v{x.n}</span>
-                  <span className="text-muted-foreground tabular-nums">{x.n === cur.n ? "latest" : when(x.at)}</span>
-                  {x.note && <span className="min-w-0 max-w-[14rem] truncate text-muted-foreground">· {x.note}</span>}
+                <span className={sx(paint.s55)}>
+                  <span className={sx(paint.s56)}>v{x.n}</span>
+                  <span className={sx(paint.s57)}>{x.n === cur.n ? "latest" : when(x.at)}</span>
+                  {x.note && <span className={sx(paint.s58)}>· {x.note}</span>}
                 </span>
               </MenuRadioItem>
             ))}

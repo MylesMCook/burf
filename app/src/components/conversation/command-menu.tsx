@@ -1,13 +1,279 @@
+import * as stylex from "@stylexjs/stylex";
 import { FileIcon, SlashIcon, SquareTerminalIcon, TerminalIcon } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { type AgentCommand, commandIn, KIND_LABEL, rankCommands, searchFiles, useCommandCatalog } from "@/lib/commands";
 import { agentLabel } from "@/lib/derive";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "position": {
+      "default": "absolute",
+      "::before": "absolute",
+    },
+    "left": {
+      "default": 0,
+      "::before": 0,
+    },
+    "right": {
+      "default": 0,
+      "::before": 0,
+    },
+    "zIndex": 30,
+    "display": "flex",
+    "maxHeight": "min(22rem,48vh)",
+    "flexDirection": "column",
+    "overflow": "hidden",
+    "borderRadius": {
+      "default": "var(--radius-lg)",
+      "::before": "calc(var(--radius-lg)-1px)",
+    },
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--popover)",
+    "color": "var(--popover-foreground)",
+    "boxShadow": {
+      "default": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
+      "::before": "light-dark(0 1px --theme(--color-black/4%), 0 -1px --theme(--color-white/6%))",
+    },
+    "pointerEvents": {
+      "::before": "none",
+    },
+    "top": {
+      "::before": 0,
+    },
+    "bottom": {
+      "::before": 0,
+    },
+  },
+  s1: {
+    "bottom": "100%",
+    "marginBottom": "8px",
+  },
+  s2: {
+    "top": "100%",
+    "marginTop": "8px",
+  },
+  s3: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+    "padding": "4px",
+  },
+  s4: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "6px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s5: {
+    "display": "flex",
+    "minHeight": "32px",
+    "cursor": "default",
+    "userSelect": "none",
+    "alignItems": "center",
+    "gap": "10px",
+    "borderRadius": "var(--radius-sm)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+  },
+  s6: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexShrink": 0,
+    "alignItems": "baseline",
+    "gap": "6px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "0.7812rem",
+  },
+  s7: {
+    "fontWeight": 500,
+  },
+  s8: {
+    "color": "var(--muted-foreground)",
+  },
+  s9: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "overflow": "hidden",
+    "display": "-webkit-box",
+    "WebkitLineClamp": 2,
+    "WebkitBoxOrient": "vertical",
+  },
+  s11: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s12: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+  },
+  s13: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+  },
+  s14: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s15: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "0.7812rem",
+  },
+  s16: {
+    "color": "var(--muted-foreground)",
+  },
+  s17: {
+    "fontWeight": 500,
+  },
+  s18: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s19: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s20: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s21: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s22: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s23: {
+    "marginLeft": "auto",
+  },
+  s24: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "0.625rem",
+  },
+  s25: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "zIndex": 20,
+    "display": "flex",
+    "height": "20px",
+    "minWidth": "0px",
+    "maxWidth": "min(72%,32rem)",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "0.6875rem",
+    "color": "var(--muted-foreground)",
+    ":not(#\\#) svg": {
+      "width": "12px",
+      "height": "12px",
+      "flexShrink": 0,
+    },
+  },
+  s26: {
+    "top": "0px",
+    "right": "12px",
+  },
+  s27: {
+    "right": "8px",
+    "bottom": "8px",
+  },
+  s28: {
+    "display": "flex",
+    "width": "12px",
+    "height": "12px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s29: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  q30: {
+    ":is(:root:not(.dark) &)": {
+      "backgroundClip": "padding-box",
+    },
+  },
+  q31: {
+    "backgroundColor": {
+      "[data-highlighted]": "var(--accent)",
+    },
+    "color": {
+      "[data-highlighted]": "var(--accent-foreground)",
+    },
+  },
+  q32: {
+    "transform": "translateY(-50%)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // useComposerMenu gives a composer what the agent's own prompt has: "/" at
 // the start lists its commands, skills and custom commands, fuzzy-matched,
@@ -158,7 +424,7 @@ export function useComposerMenu({ box, session, agent, text, setText, side = "to
         </OptionList>
       ) : loadingFiles ? (
         <MenuEmpty>
-          <Spinner className="size-3.5" /> Looking through the worktree…
+          <Spinner  size="md"/> Looking through the worktree…
         </MenuEmpty>
       ) : (
         <MenuEmpty>No file matches @{trigger?.query}.</MenuEmpty>
@@ -176,10 +442,7 @@ function MenuPanel({ side, children }: { side: "top" | "bottom"; children: React
     <div
       // The composer keeps the keyboard: a click picks without taking it.
       onMouseDown={(e) => e.preventDefault()}
-      className={cn(
-        "absolute inset-x-0 z-30 flex max-h-[min(22rem,48vh)] flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg/5 not-dark:bg-clip-padding before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
-        side === "top" ? "bottom-full mb-2" : "top-full mt-2",
-      )}
+      className={[[sx(paint.s0), sx(paint.q30)].filter(Boolean).join(" "), side === "top" ? sx(paint.s1) : sx(paint.s2)].filter(Boolean).join(" ")}
     >
       {children}
     </div>
@@ -192,8 +455,8 @@ function OptionList({ count, hi, onHover, onPick, label, children }: { count: nu
     list.current?.querySelector<HTMLElement>(`[data-index="${hi}"]`)?.scrollIntoView({ block: "nearest" });
   }, [hi]);
   return (
-    <div ref={list} role="listbox" aria-label={label} className="min-h-0 flex-1 overflow-y-auto p-1">
-      <div className="px-2 pt-1 pb-1.5 font-medium text-muted-foreground text-xs">{label}</div>
+    <div ref={list} role="listbox" aria-label={label} className={sx(paint.s3)}>
+      <div className={sx(paint.s4)}>{label}</div>
       {Array.from({ length: count }, (_, i) => (
         <div
           key={i}
@@ -203,7 +466,7 @@ function OptionList({ count, hi, onHover, onPick, label, children }: { count: nu
           data-highlighted={i === hi ? "" : undefined}
           onMouseMove={() => i !== hi && onHover(i)}
           onClick={() => onPick(i)}
-          className="flex min-h-8 cursor-default select-none items-center gap-2.5 rounded-sm px-2 py-1 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+          className={[sx(paint.s5), sx(paint.q31)].filter(Boolean).join(" ")}
         >
           {children(i)}
         </div>
@@ -218,17 +481,17 @@ function CommandRow({ c, active }: { c: AgentCommand; active: boolean }) {
   const alias = c.aliases?.length ? c.aliases.join(", ") : undefined;
   return (
     <>
-      <span className="flex min-w-0 shrink-0 items-baseline gap-1.5 font-mono text-[0.7812rem]">
-        <span className="font-medium">{c.name}</span>
-        {c.args && <span className="text-muted-foreground">{c.args}</span>}
+      <span className={sx(paint.s6)}>
+        <span className={sx(paint.s7)}>{c.name}</span>
+        {c.args && <span className={sx(paint.s8)}>{c.args}</span>}
       </span>
       {/* The highlighted one reads in full, with where it comes from. */}
-      <span className={cn("min-w-0 flex-1 text-muted-foreground text-xs", active ? "line-clamp-2" : "truncate")}>
+      <span className={[sx(paint.s9), active ? sx(paint.s10) : sx(paint.s11)].filter(Boolean).join(" ")}>
         {c.description}
-        {alias && <span className="text-muted-foreground/72"> · {alias}</span>}
-        {active && c.source && <span className="text-muted-foreground/72"> · from {c.source}</span>}
+        {alias && <span className={sx(paint.s12)}> · {alias}</span>}
+        {active && c.source && <span className={sx(paint.s13)}> · from {c.source}</span>}
       </span>
-      <Badge variant={KIND_BADGE[c.kind]} size="sm" className="shrink-0">
+      <Badge variant={KIND_BADGE[c.kind]} size="sm" >
         {KIND_LABEL[c.kind]}
       </Badge>
     </>
@@ -239,34 +502,34 @@ function FileRow({ path }: { path: string }) {
   const cut = path.lastIndexOf("/");
   return (
     <>
-      <FileIcon className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1 truncate font-mono text-[0.7812rem]">
-        {cut >= 0 && <span className="text-muted-foreground">{path.slice(0, cut + 1)}</span>}
-        <span className="font-medium">{path.slice(cut + 1)}</span>
+      <FileIcon className={sx(paint.s14)} />
+      <span className={sx(paint.s15)}>
+        {cut >= 0 && <span className={sx(paint.s16)}>{path.slice(0, cut + 1)}</span>}
+        <span className={sx(paint.s17)}>{path.slice(cut + 1)}</span>
       </span>
     </>
   );
 }
 
 function MenuEmpty({ children }: { children: ReactNode }) {
-  return <div className="flex items-center gap-2 px-3 py-3 text-muted-foreground text-sm">{children}</div>;
+  return <div className={sx(paint.s18)}>{children}</div>;
 }
 
 function MenuFooter({ kind }: { kind: "command" | "file" }) {
   return (
-    <div className="flex items-center gap-3 border-t px-3 py-1.5 text-muted-foreground text-xs">
-      <span className="flex items-center gap-1">
+    <div className={sx(paint.s19)}>
+      <span className={sx(paint.s20)}>
         <Kbd>↑</Kbd>
         <Kbd>↓</Kbd> to move
       </span>
-      <span className="flex items-center gap-1">
+      <span className={sx(paint.s21)}>
         <Kbd>↵</Kbd>
         <Kbd>Tab</Kbd> to insert
       </span>
-      <span className="flex items-center gap-1">
+      <span className={sx(paint.s22)}>
         <Kbd>Esc</Kbd> to close
       </span>
-      <span className="ml-auto">{kind === "command" ? "Sent to the agent as typed" : "Mentioned by path"}</span>
+      <span className={sx(paint.s23)}>{kind === "command" ? "Sent to the agent as typed" : "Mentioned by path"}</span>
     </div>
   );
 }
@@ -284,7 +547,7 @@ function PromptChip({ text, command, prefixes, who, side }: { text: string; comm
     words = prefixes?.["!"] ?? "Runs in the shell";
   } else if (t.startsWith("#") && t.length > 1) {
     words = prefixes?.["#"] ?? "Saves to memory";
-    icon = <span className="font-mono text-[0.625rem]">#</span>;
+    icon = <span className={sx(paint.s24)}>#</span>;
   } else if (command) {
     if (command.screen) {
       icon = <SquareTerminalIcon />;
@@ -296,16 +559,12 @@ function PromptChip({ text, command, prefixes, who, side }: { text: string; comm
   return (
     <div
       role="status"
-      className={cn(
-        "pointer-events-none absolute z-20 flex h-5 min-w-0 max-w-[min(72%,32rem)] items-center gap-1 rounded-full border bg-background px-2 text-[0.6875rem] text-muted-foreground [&_svg]:size-3 [&_svg]:shrink-0",
-        // On the field's top edge, over its own padding and the gap above.
-        side === "top" ? "top-0 right-3 -translate-y-1/2" : "right-2 bottom-2",
-      )}
+      className={[sx(paint.s25), side === "top" ? [sx(paint.s26), sx(paint.q32)].filter(Boolean).join(" ") : sx(paint.s27)].filter(Boolean).join(" ")}
     >
-      <span className="flex size-3 shrink-0 items-center justify-center">{icon}</span>
-      <span className="min-w-0 truncate" title={words}>
-        {words}
-      </span>
+      <span className={sx(paint.s28)}>{icon}</span>
+      <Tip label={words} width="lg">
+        <span className={sx(paint.s29)}>{words}</span>
+      </Tip>
     </div>
   );
 }

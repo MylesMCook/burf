@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { GlobeIcon, SettingsIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -12,7 +13,357 @@ import { bytes, errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
 import { type BoxBrowser, type BoxProcesses, type BoxSessionProcs, OWNER_WORDS, SESSION_LIMITS, age, busy, cpu, memory, summary } from "@/lib/processes";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "height": "6px",
+    "width": "24px",
+    "overflow": "hidden",
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 20%, transparent)",
+  },
+  s1: {
+    "position": "absolute",
+    "top": 0,
+    "bottom": 0,
+    "left": "0px",
+    "borderRadius": "999px",
+  },
+  s2: {
+    "backgroundColor": "var(--warning)",
+  },
+  s3: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 60%, transparent)",
+  },
+  s4: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s5: {
+    "marginLeft": "calc(4px * -1)",
+    "marginRight": "calc(4px * -1)",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+  },
+  s6: {
+    "color": {
+      "default": "light-dark(var(--warning-foreground), var(--warning))",
+    },
+  },
+  s7: {
+    "display": "flex",
+    "maxHeight": "min(34rem,70vh)",
+    "flexDirection": "column",
+  },
+  s8: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "10px",
+  },
+  s9: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s10: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s11: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s12: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+  },
+  s13: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "24px",
+    "paddingBottom": "24px",
+    "textAlign": "center",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s14: {
+    "display": "flex",
+    "justifyContent": "center",
+    "paddingTop": "24px",
+    "paddingBottom": "24px",
+  },
+  s15: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s16: {
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s17: {
+    "position": "sticky",
+    "top": "0px",
+    "zIndex": 1,
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "var(--popover)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s18: {
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s19: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "10px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s20: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s21: {
+    "color": {
+      "default": "light-dark(var(--warning-foreground), var(--warning))",
+    },
+  },
+  s22: {
+    "color": "var(--muted-foreground)",
+  },
+  s23: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s24: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s25: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s26: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s27: {
+    "width": "48px",
+    "flexShrink": 0,
+    "textAlign": "right",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s28: {
+    "fontWeight": 500,
+    "color": {
+      "default": "light-dark(var(--warning-foreground), var(--warning))",
+    },
+  },
+  s29: {
+    "width": "56px",
+    "flexShrink": 0,
+    "textAlign": "right",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s30: {
+    "display": "flex",
+    "width": "48px",
+    "flexShrink": 0,
+    "justifyContent": "flex-end",
+  },
+  s31: {
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s32: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "10px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s33: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s34: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s35: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s36: {
+    "width": "48px",
+    "flexShrink": 0,
+    "textAlign": "right",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s37: {
+    "width": "104px",
+    "flexShrink": 0,
+    "textAlign": "right",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s38: {
+    "fontWeight": 500,
+    "color": {
+      "default": "light-dark(var(--warning-foreground), var(--warning))",
+    },
+  },
+  s39: {
+    "color": "var(--muted-foreground)",
+  },
+  s40: {
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s41: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s42: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s43: {
+    "fontWeight": 500,
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s44: {
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s45: {
+    "maxHeight": "28rem",
+    "overflowY": "auto",
+    ":not(#\\#) .sticky": {
+      "backgroundColor": "var(--background)",
+    },
+  },
+  s46: {
+    "width": "176px",
+  },
+  s47: {
+    "opacity": 0.6,
+  },
+  n0: {
+    "marginLeft": "calc(4px * -1)",
+    "marginRight": "calc(4px * -1)",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+  },
+  n1: {
+    "color": {
+      "default": "light-dark(var(--warning-foreground), var(--warning))",
+    },
+  },
+
+  s48: {
+    backgroundColor: { "[data-popup-open]": color.accent },
+    color: { "[data-popup-open]": color.foreground },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // A box's browsers and what its sessions use (GET /v1/processes): from the
 // status bar's memory meter, and in Settings › Boxes. Anything Burf or
@@ -70,13 +421,13 @@ export function BoxMeter({ box, mem, route, className }: { box: string; mem: { u
   const body = (
     <>
       {box}
-      <span className="relative h-1.5 w-6 overflow-hidden rounded-full bg-muted-foreground/20">
-        <span className={cn("absolute inset-y-0 left-0 rounded-full", used > 0.85 ? "bg-warning" : "bg-muted-foreground/60")} style={{ width: `${Math.round(used * 100)}%` }} />
+      <span className={sx(paint.s0)}>
+        <span className={[sx(paint.s1), used > 0.85 ? sx(paint.s2) : sx(paint.s3)].filter(Boolean).join(" ")} style={{ width: `${Math.round(used * 100)}%` }} />
       </span>
-      <span className="tabular-nums">{Math.round(used * 100)}%</span>
+      <span className={sx(paint.s4)}>{Math.round(used * 100)}%</span>
     </>
   );
-  const cls = cn("-mx-1 flex items-center gap-1.5 rounded px-1 hover:bg-accent hover:text-foreground data-popup-open:bg-accent data-popup-open:text-foreground", used > 0.85 && "text-warning-foreground dark:text-warning", className);
+  const cls = [[sx(paint.n0), (sx(paint.s48) ?? "")].filter(Boolean).join(" "), used > 0.85 && sx(paint.n1), className].filter(Boolean).join(" ");
   if (!has) {
     return (
       <Tip label={tip}>
@@ -91,7 +442,7 @@ export function BoxMeter({ box, mem, route, className }: { box: string; mem: { u
       <Tip label={`${tip}. Click for its browsers and sessions`}>
         <PopoverTrigger render={<button type="button" data-testid={`box-meter-${box}`} className={cls} />}>{body}</PopoverTrigger>
       </Tip>
-      <PopoverPopup side="top" align="end" sideOffset={6} className="w-[32rem] max-w-[calc(100vw-2rem)] p-0 [&_[data-slot=popover-viewport]]:p-0">
+      <PopoverPopup side="top" align="end" sideOffset={6} flush width="32">
         <BoxProcessesPopover box={box} mem={mem} on={open} onSettings={() => setOpen(false)} />
       </PopoverPopup>
     </Popover>
@@ -101,11 +452,11 @@ export function BoxMeter({ box, mem, route, className }: { box: string; mem: { u
 function BoxProcessesPopover({ box, mem, on, onSettings }: { box: string; mem: { used: number; total: number }; on: boolean; onSettings(): void }) {
   const { data, error, reload } = useBoxProcesses(box, on);
   return (
-    <div data-testid="box-processes" className="flex max-h-[min(34rem,70vh)] flex-col">
-      <div className="flex items-start gap-2 border-b px-4 pt-3 pb-2.5">
-        <div className="min-w-0 flex-1">
-          <div className="font-medium text-sm">{box}</div>
-          <p className="text-muted-foreground text-xs">
+    <div data-testid="box-processes" className={sx(paint.s7)}>
+      <div className={sx(paint.s8)}>
+        <div className={sx(paint.s9)}>
+          <div className={sx(paint.s10)}>{box}</div>
+          <p className={sx(paint.s11)}>
             {bytes(mem.used)} of {bytes(mem.total)} in use{data ? ` · ${summary(data.browsers)}` : ""}
           </p>
         </div>
@@ -123,7 +474,7 @@ function BoxProcessesPopover({ box, mem, on, onSettings }: { box: string; mem: {
           </Button>
         </Tip>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className={sx(paint.s12)}>
         <ProcessesBody box={box} data={data} error={error} reload={reload} />
       </div>
     </div>
@@ -132,18 +483,18 @@ function BoxProcessesPopover({ box, mem, on, onSettings }: { box: string; mem: {
 
 // ProcessesBody is the list itself, shared by the popover and Settings.
 function ProcessesBody({ box, data, error, reload }: { box: string; data?: BoxProcesses; error?: string; reload(): Promise<void> }) {
-  if (error && !data) return <p className="px-4 py-6 text-center text-destructive-foreground text-xs">{error}</p>;
+  if (error && !data) return <p className={sx(paint.s13)}>{error}</p>;
   if (!data)
     return (
-      <div className="flex justify-center py-6">
-        <Spinner className="size-4" />
+      <div className={sx(paint.s14)}>
+        <Spinner  size="lg"/>
       </div>
     );
   const sessions = (data.sessions ?? []).slice(0, 5);
   return (
     <>
       <Section title="Browsers">
-        {data.browsers.length === 0 && <li className="px-4 py-3 text-muted-foreground text-xs">No browsers running on {box}.</li>}
+        {data.browsers.length === 0 && <li className={sx(paint.s15)}>No browsers running on {box}.</li>}
         {data.browsers.map((b) => (
           <BrowserRow key={b.id} box={box} b={b} onStopped={reload} />
         ))}
@@ -155,7 +506,7 @@ function ProcessesBody({ box, data, error, reload }: { box: string; data?: BoxPr
           ))}
         </Section>
       )}
-      <p className="border-t px-4 py-2 text-[11px] text-muted-foreground">
+      <p className={sx(paint.s16)}>
         {data.scopes ? "Each new session runs in a scope of its own: ending it stops everything it started." : "Ending a session stops the processes Burf finds for it (this box has no systemd scopes)."}
       </p>
     </>
@@ -165,8 +516,8 @@ function ProcessesBody({ box, data, error, reload }: { box: string; data?: BoxPr
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="sticky top-0 z-1 border-b bg-popover px-4 py-1 font-medium text-[11px] text-muted-foreground">{title}</div>
-      <ul className="divide-y">{children}</ul>
+      <div className={sx(paint.s17)}>{title}</div>
+      <ul className={sx(paint.s18)}>{children}</ul>
     </div>
   );
 }
@@ -175,23 +526,23 @@ function BrowserRow({ box, b, onStopped }: { box: string; b: BoxBrowser; onStopp
   const [stopping, setStopping] = useState(false);
   const hot = busy(b);
   return (
-    <li data-testid="box-browser" data-owner={b.owner} className="flex items-center gap-2.5 px-4 py-1.5 text-xs">
-      <GlobeIcon className={cn("size-3.5 shrink-0", hot ? "text-warning-foreground dark:text-warning" : "text-muted-foreground")} aria-hidden />
-      <div className="min-w-0 flex-1">
-        <div className="truncate">{b.label}</div>
-        <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground tabular-nums">
-          <Badge size="sm" variant={b.owner === "orphan" ? "warning" : "outline"} className="shrink-0">
+    <li data-testid="box-browser" data-owner={b.owner} className={sx(paint.s19)}>
+      <GlobeIcon className={[sx(paint.s20), hot ? sx(paint.s21) : sx(paint.s22)].filter(Boolean).join(" ")} aria-hidden />
+      <div className={sx(paint.s23)}>
+        <div className={sx(paint.s24)}>{b.label}</div>
+        <div className={sx(paint.s25)}>
+          <Badge size="sm" variant={b.owner === "orphan" ? "warning" : "outline"} >
             {OWNER_WORDS[b.owner]}
           </Badge>
-          <span className="truncate">
+          <span className={sx(paint.s26)}>
             {b.engine} · {b.processes} {b.processes === 1 ? "process" : "processes"}
             {b.started ? ` · ${age(b.started)} old` : ""}
           </span>
         </div>
       </div>
-      <span className={cn("w-12 shrink-0 text-right tabular-nums", b.cpu_percent >= 100 && "font-medium text-warning-foreground dark:text-warning")}>{cpu(b.cpu_percent)}</span>
-      <span className="w-14 shrink-0 text-right text-muted-foreground tabular-nums">{memory(b.memory)}</span>
-      <div className="flex w-12 shrink-0 justify-end">
+      <span className={[sx(paint.s27), b.cpu_percent >= 100 && sx(paint.s28)].filter(Boolean).join(" ")}>{cpu(b.cpu_percent)}</span>
+      <span className={sx(paint.s29)}>{memory(b.memory)}</span>
+      <div className={sx(paint.s30)}>
         {b.stoppable ? (
           <Button
             size="xs"
@@ -208,7 +559,7 @@ function BrowserRow({ box, b, onStopped }: { box: string; b: BoxBrowser; onStopp
           </Button>
         ) : (
           <Tip label="Burf didn't start this browser, so it leaves it alone">
-            <span className="text-[11px] text-muted-foreground">—</span>
+            <span className={sx(paint.s31)}>—</span>
           </Tip>
         )}
       </div>
@@ -219,16 +570,16 @@ function BrowserRow({ box, b, onStopped }: { box: string; b: BoxBrowser; onStopp
 function SessionRow({ s }: { s: BoxSessionProcs }) {
   const u = s.usage;
   return (
-    <li data-testid="box-session" className="flex items-center gap-2.5 px-4 py-1.5 text-xs">
-      <div className="min-w-0 flex-1">
-        <div className="truncate">{s.title || s.name}</div>
-        <div className="truncate text-[11px] text-muted-foreground">
+    <li data-testid="box-session" className={sx(paint.s32)}>
+      <div className={sx(paint.s33)}>
+        <div className={sx(paint.s34)}>{s.title || s.name}</div>
+        <div className={sx(paint.s35)}>
           {s.location ?? s.name}
           {u.processes ? ` · ${u.processes} ${u.processes === 1 ? "process" : "processes"}` : ""}
         </div>
       </div>
-      <span className="w-12 shrink-0 text-right tabular-nums">{cpu(u.cpu_percent)}</span>
-      <span className={cn("w-26 shrink-0 text-right tabular-nums", u.near_limit ? "font-medium text-warning-foreground dark:text-warning" : "text-muted-foreground")}>
+      <span className={sx(paint.s36)}>{cpu(u.cpu_percent)}</span>
+      <span className={[sx(paint.s37), u.near_limit ? sx(paint.s38) : sx(paint.s39)].filter(Boolean).join(" ")}>
         {memory(u.memory)}
         {u.memory_high ? ` of ${memory(u.memory_high)}` : ""}
       </span>
@@ -243,15 +594,15 @@ export function BoxProcessesCard({ box, className }: { box: string; className?: 
   const { data, error, reload } = useBoxProcesses(box, has);
   if (!has) return null;
   return (
-    <div data-testid="box-processes-card" data-box={box} className={cn("rounded-lg border", className)}>
-      <div className="flex items-center gap-2 border-b px-4 py-2">
-        <div className="min-w-0 flex-1">
-          <div className="font-medium text-xs">Browsers and sessions</div>
-          <div className="text-[11px] text-muted-foreground">{data ? summary(data.browsers) : " "}</div>
+    <div data-testid="box-processes-card" data-box={box} className={[sx(paint.s40), className].filter(Boolean).join(" ")}>
+      <div className={sx(paint.s41)}>
+        <div className={sx(paint.s42)}>
+          <div className={sx(paint.s43)}>Browsers and sessions</div>
+          <div className={sx(paint.s44)}>{data ? summary(data.browsers) : " "}</div>
         </div>
         <SessionLimit box={box} scopes={!!data?.scopes} />
       </div>
-      <div className="max-h-[28rem] overflow-y-auto [&_.sticky]:bg-background">
+      <div className={sx(paint.s45)}>
         <ProcessesBody box={box} data={data} error={error} reload={reload} />
       </div>
     </div>
@@ -289,7 +640,7 @@ function SessionLimit({ box, scopes }: { box: string; scopes: boolean }) {
   const options = SESSION_LIMITS.map((n) => ({ value: String(n), label: n ? `${n} GB per session` : "No memory limit" }));
   return (
     <Tip label={scopes ? "Near it, a session is slowed down and Burf says so in its chat; nothing is stopped" : "Needs a box with systemd (Linux), where each session runs in a scope of its own"}>
-      <div className={cn("w-44", !scopes && "opacity-60")}>
+      <div className={[sx(paint.s46), !scopes && sx(paint.s47)].filter(Boolean).join(" ")}>
         <SimpleSelect aria-label="Memory limit per session" value={String(gb)} onChange={(v) => void save(Number(v))} options={options} size="sm" disabled={!scopes || saving} />
       </div>
     </Tip>

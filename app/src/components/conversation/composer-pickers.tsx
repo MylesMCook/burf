@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { BookMarkedIcon, ChevronsUpDownIcon, CloudOffIcon, FolderPlusIcon, MinusIcon, PinIcon, UsersIcon } from "lucide-react";
 import { useEffect } from "react";
 
@@ -17,8 +18,7 @@ import {
   MenuSub,
   MenuSubPopup,
   MenuSubTrigger,
-  MenuTrigger,
-} from "@/components/ui/menu";
+  MenuTrigger, menuWidths } from "@/components/ui/menu";
 import type { SessionEntry } from "@/hooks/use-agent-counts";
 import type { AgentPreset } from "@/lib/api";
 import type { AgentPick } from "@/lib/composer";
@@ -26,7 +26,268 @@ import { BASE_PERMISSIONS, chatPermissions } from "@/lib/local-computer";
 import { sessionAgent, sessionName, sessionPlace } from "@/lib/derive";
 import { promptsFor, usePrompts } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "width": "12px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s1: {
+    "visibility": "hidden",
+  },
+  s2: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s3: {
+    "minWidth": "0px",
+    "maxWidth": "240px",
+    "flexShrink": 1,
+  },
+  s4: {
+    "display": "flex",
+    "flexShrink": 0,
+    "gap": "2px",
+  },
+  s5: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s6: {
+    "opacity": 0.6,
+  },
+  s7: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s8: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s9: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s10: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s11: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s12: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s13: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s14: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s15: {
+    "minWidth": "0px",
+    "flexShrink": 1,
+  },
+  s16: {
+    "maxWidth": "288px",
+  },
+  s17: {
+    "maxWidth": "192px",
+  },
+  s18: {
+    "color": "var(--muted-foreground)",
+  },
+  s19: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s20: {
+    "opacity": 0.6,
+  },
+  s21: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "minWidth": "0px",
+    "maxWidth": "256px",
+  },
+  s23: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s24: {
+    "opacity": 0.6,
+  },
+  s25: {
+    "minWidth": "0px",
+    "maxWidth": "176px",
+    "flexShrink": 0,
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  s26: {
+    "pointerEvents": "none",
+  },
+  s27: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s28: {
+    "opacity": 0.6,
+  },
+  s29: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "baseline",
+    "justifyContent": "space-between",
+    "gap": "12px",
+  },
+  s30: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s31: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s32: {
+    "minWidth": "0px",
+    "maxWidth": "320px",
+    "flexShrink": 1,
+  },
+  s33: {
+    "color": "var(--muted-foreground)",
+  },
+  s34: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s35: {
+    "opacity": 0.6,
+  },
+  s36: {
+    "paddingInlineStart": "20px",
+  },
+  s37: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s38: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s39: {
+    "fontWeight": 400,
+  },
+  s40: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s41: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s42: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s43: {
+    "minWidth": "0px",
+    "flexShrink": 1,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s44: {
+    "marginLeft": "auto",
+    "width": "12px",
+    "height": "12px",
+  },
+  s45: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s46: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+  },
+  s47: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s48: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The composer's pickers: where (project, box, worktree or main checkout),
 // which agents (with their models and efforts, and how many of each), the
@@ -75,8 +336,8 @@ export function pickLabel(sel: Chosen, copies: number, presets: AgentPreset[]): 
 }
 
 const Tick = ({ on }: { on: boolean }) => (
-  <span className={cn("flex w-3 shrink-0 items-center justify-center", !on && "invisible")} aria-hidden>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="size-3">
+  <span className={[sx(paint.s0), !on && sx(paint.s1)].filter(Boolean).join(" ")} aria-hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={sx(paint.s2)}>
       <path d="M5.25 12.7 10.2 18.63 18.75 5.37" />
     </svg>
   </span>
@@ -136,22 +397,22 @@ export function AgentsPicker({
   };
   return (
     <Menu>
-      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`Agents: ${label}`} className="min-w-0 max-w-60 shrink" />}>
+      <MenuTrigger render={<span className={sx(paint.s3)}><Button size="sm" variant="ghost" aria-label={`Agents: ${label}`} /></span>}>
         {ids.length > 0 && (
-          <span className="flex shrink-0 gap-0.5">
+          <span className={sx(paint.s4)}>
             {ids.map((id) => (
               <AgentIcon key={id} agent={id} />
             ))}
           </span>
         )}
-        <span className="truncate">{label}</span>
-        <ChevronsUpDownIcon className="opacity-60" />
+        <span className={sx(paint.s5)}>{label}</span>
+        <ChevronsUpDownIcon className={sx(paint.s6)} />
       </MenuTrigger>
-      <MenuPopup align="end" className="min-w-64">
+      <MenuPopup align="end" width={menuWidths.w64}>
         {onCompare && <><MenuItem onClick={() => onCompare(false)}>Use one agent</MenuItem><MenuSeparator /></>}
         <MenuGroup>
           <MenuGroupLabel>{single ? "Agent" : "Agents"}</MenuGroupLabel>
-          {presets.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-xs">No agent CLI on this box. Settings → Agents shows how to add one.</p>}
+          {presets.length === 0 && <p className={sx(paint.s7)}>No agent CLI on this box. Settings → Agents shows how to add one.</p>}
           {presets.map((p) => {
             const c = none ? undefined : sel[p.id];
             const models = p.model_flag ? (p.models ?? []) : [];
@@ -159,7 +420,7 @@ export function AgentsPicker({
             if (!models.length && !efforts.length) {
               return (
                 <MenuCheckboxItem key={p.id} checked={!!c} onCheckedChange={(on) => set(p.id, on ? { models: [""], effort: "" } : undefined)}>
-                  <span className="flex items-center gap-2">
+                  <span className={sx(paint.s8)}>
                     <AgentIcon agent={p.id} />
                     {p.name}
                   </span>
@@ -170,13 +431,13 @@ export function AgentsPicker({
             const toggle = (m: string, on: boolean) => set(p.id, { ...cur, models: on ? [...cur.models.filter((x) => x !== m), m] : cur.models.filter((x) => x !== m) });
             return (
               <MenuSub key={p.id}>
-                <MenuSubTrigger className="gap-2 ps-2">
+                <MenuSubTrigger>
                   <Tick on={!!c} />
                   <AgentIcon agent={p.id} />
-                  <span className="flex-1">{p.name}</span>
-                  {c && <span className="text-muted-foreground text-xs">{[...c.models.map((m) => (m ? nice(m) : "Default")), c.effort && nice(c.effort)].filter(Boolean).join(", ")}</span>}
+                  <span className={sx(paint.s9)}>{p.name}</span>
+                  {c && <span className={sx(paint.s10)}>{[...c.models.map((m) => (m ? nice(m) : "Default")), c.effort && nice(c.effort)].filter(Boolean).join(", ")}</span>}
                 </MenuSubTrigger>
-                <MenuSubPopup className="min-w-44">
+                <MenuSubPopup width={menuWidths.w44}>
                   <MenuGroup>
                     <MenuGroupLabel>Model</MenuGroupLabel>
                     {["", ...models].map((m) => (
@@ -206,9 +467,9 @@ export function AgentsPicker({
           })}
           {allowNone && (
             <MenuCheckboxItem checked={!!none} onCheckedChange={(on) => onNone?.(on)}>
-              <span className="flex flex-col">
+              <span className={sx(paint.s11)}>
                 No agent
-                <span className="text-muted-foreground text-xs">Just the worktree</span>
+                <span className={sx(paint.s12)}>Just the worktree</span>
               </span>
             </MenuCheckboxItem>
           )}
@@ -265,9 +526,9 @@ function SingleAgentPicker({ presets, sel, none, missing, allowNone, onChange, o
   };
   const provider = (p: PickerPreset) => (
     <MenuRadioItem key={p.id} value={p.id} closeOnClick>
-      <span className="flex min-w-0 items-center gap-2">
+      <span className={sx(paint.s13)}>
         <AgentIcon agent={p.id} />
-        <span className="truncate">{p.name}</span>
+        <span className={sx(paint.s14)}>{p.name}</span>
       </span>
     </MenuRadioItem>
   );
@@ -275,16 +536,16 @@ function SingleAgentPicker({ presets, sel, none, missing, allowNone, onChange, o
   return (
     <>
       <Menu>
-        <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`Provider: ${label}`} className={cn("min-w-0 shrink", missing && !preset ? "max-w-72" : "max-w-48")} />}>
+        <MenuTrigger render={<span className={[sx(paint.s15), missing && !preset ? sx(paint.s16) : sx(paint.s17)].filter(Boolean).join(" ")}><Button size="sm" variant="ghost" aria-label={`Provider: ${label}`} /></span>}>
           {!none && preset && <AgentIcon agent={id} />}
-          {!none && !preset && missing && <MinusIcon className="text-muted-foreground" />}
-          <span className="truncate">{label}</span>
-          <ChevronsUpDownIcon className="opacity-60" />
+          {!none && !preset && missing && <MinusIcon className={sx(paint.s18)} />}
+          <span className={sx(paint.s19)}>{label}</span>
+          <ChevronsUpDownIcon className={sx(paint.s20)} />
         </MenuTrigger>
-        <MenuPopup align="end" className="min-w-52">
+        <MenuPopup align="end" width={menuWidths.w52}>
           <MenuGroup>
             <MenuGroupLabel>Provider</MenuGroupLabel>
-            {presets.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-xs">No agent CLI on this box. Settings → Agents shows how to add one.</p>}
+            {presets.length === 0 && <p className={sx(paint.s21)}>No agent CLI on this box. Settings → Agents shows how to add one.</p>}
             <MenuRadioGroup value={value} onValueChange={select}>
               {presets.filter((p) => coreProviders.has(p.id)).map(provider)}
               {others.length > 0 && (
@@ -330,11 +591,11 @@ function AgentOption({ label, value, values, labels, required, onChange }: { lab
   const shown = text(value);
   return (
     <Menu>
-      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} className="min-w-0 max-w-64 text-muted-foreground" />}>
-        <span className="truncate">
+      <MenuTrigger render={<span className={sx(paint.s22)}><Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} muted /></span>}>
+        <span className={sx(paint.s23)}>
           {label}: {shown}
         </span>
-        <ChevronsUpDownIcon className="opacity-60" />
+        <ChevronsUpDownIcon className={sx(paint.s24)} />
       </MenuTrigger>
       <MenuPopup align="end">
         <MenuGroup>
@@ -385,21 +646,21 @@ export function Pick({
   return (
     <Menu>
       <MenuTrigger
-        render={<Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} disabled={fixed && !options.length} className={cn("min-w-0 max-w-44 shrink-0 text-muted-foreground hover:text-foreground", fixed && "pointer-events-none", className)} />}
+        render={<span className={[sx(paint.s25), fixed && sx(paint.s26), className].filter(Boolean).join(" ")}><Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} disabled={fixed && !options.length} /></span>}
       >
         {icon}
-        <span className="truncate">{shown}</span>
-        {!fixed && <ChevronsUpDownIcon className="opacity-60" />}
+        <span className={sx(paint.s27)}>{shown}</span>
+        {!fixed && <ChevronsUpDownIcon className={sx(paint.s28)} />}
       </MenuTrigger>
-      <MenuPopup align="start" className="min-w-52">
+      <MenuPopup align="start" width={menuWidths.w52}>
         <MenuGroup>
           <MenuGroupLabel>{label}</MenuGroupLabel>
           <MenuRadioGroup value={value} onValueChange={(v) => onPick(String(v))}>
             {options.map((o) => (
               <MenuRadioItem key={o.value} value={o.value} disabled={o.disabled} closeOnClick>
-                <span className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
-                  <span className="truncate">{o.label}</span>
-                  {o.detail && <span className="shrink-0 text-muted-foreground text-xs">{o.detail}</span>}
+                <span className={sx(paint.s29)}>
+                  <span className={sx(paint.s30)}>{o.label}</span>
+                  {o.detail && <span className={sx(paint.s31)}>{o.detail}</span>}
                 </span>
               </MenuRadioItem>
             ))}
@@ -464,39 +725,39 @@ export function TargetsPicker({
   const label = chosen.length === 0 ? "Pick agents" : chosen.length === 1 ? sessionName(chosen[0].session, { sessions: boxes[chosen[0].box]?.sessions }) : `${chosen.length} agents`;
   return (
     <Menu>
-      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`Send to: ${label}`} className={cn("min-w-0 max-w-80 shrink", !chosen.length && "text-muted-foreground")} />}>
+      <MenuTrigger render={<span className={[sx(paint.s32), !chosen.length && sx(paint.s33)].filter(Boolean).join(" ")}><Button size="sm" variant="ghost" aria-label={`Send to: ${label}`} /></span>}>
         {chosen.length === 1 ? <AgentIcon agent={chosen[0].session.agent} /> : <UsersIcon />}
-        <span className="truncate">{label}</span>
-        <ChevronsUpDownIcon className="opacity-60" />
+        <span className={sx(paint.s34)}>{label}</span>
+        <ChevronsUpDownIcon className={sx(paint.s35)} />
       </MenuTrigger>
-      <MenuPopup align="start" className="max-h-96 min-w-80">
+      <MenuPopup align="start" width={menuWidths.w80}>
         <MenuCheckboxItem checked={onlyFree} onCheckedChange={onOnlyFree}>
           Only agents that are ready or done
         </MenuCheckboxItem>
         {shown.length > 0 && (
           <MenuItem closeOnClick={false} onClick={() => onAll(chosen.length !== shown.length)}>
-            <span className="ps-5">{chosen.length === shown.length ? "Pick none" : `Pick all ${shown.length}`}</span>
+            <span className={sx(paint.s36)}>{chosen.length === shown.length ? "Pick none" : `Pick all ${shown.length}`}</span>
           </MenuItem>
         )}
-        {byBox.length === 0 && <p className="px-2 py-3 text-center text-muted-foreground text-xs">{onlyFree ? "Every agent is busy. Untick the filter to queue behind them." : "No agents are running."}</p>}
+        {byBox.length === 0 && <p className={sx(paint.s37)}>{onlyFree ? "Every agent is busy. Untick the filter to queue behind them." : "No agents are running."}</p>}
         {byBox.map(([box, entries]) => (
           <MenuGroup key={box}>
             <MenuSeparator />
-            <MenuGroupLabel className="flex items-center gap-1.5">
-              {away.has(box) && <CloudOffIcon className="size-3" />}
+            <MenuGroupLabel>
+              {away.has(box) && <CloudOffIcon className={sx(paint.s38)} />}
               {box}
-              {away.has(box) && <span className="font-normal">· offline, as last seen</span>}
+              {away.has(box) && <span className={sx(paint.s39)}>· offline, as last seen</span>}
             </MenuGroupLabel>
             {entries.map((e) => {
               const k = entryKey(e);
               const d = boxes[e.box];
               return (
                 <MenuCheckboxItem key={k} checked={selected.has(k)} closeOnClick={false} onCheckedChange={(on) => onToggle(k, on)}>
-                  <span className="flex min-w-0 flex-1 items-center gap-2">
-                    <AgentIcon agent={e.session.agent} className="size-3.5" />
-                    <span className="min-w-0 truncate">{sessionName(e.session, { sessions: d?.sessions })}</span>
-                    <span className="min-w-0 shrink truncate text-muted-foreground text-xs">{[sessionAgent(e.session), sessionPlace(e.session, d?.locations)].filter(Boolean).join(" · ")}</span>
-                    <StateGlyph state={e.state} className="ml-auto size-3" />
+                  <span className={sx(paint.s40)}>
+                    <AgentIcon agent={e.session.agent} className={sx(paint.s41)} />
+                    <span className={sx(paint.s42)}>{sessionName(e.session, { sessions: d?.sessions })}</span>
+                    <span className={sx(paint.s43)}>{[sessionAgent(e.session), sessionPlace(e.session, d?.locations)].filter(Boolean).join(" · ")}</span>
+                    <StateGlyph state={e.state} className={sx(paint.s44)} />
                   </span>
                 </MenuCheckboxItem>
               );
@@ -519,19 +780,19 @@ export function SavedPrompts({ onPick }: { onPick(id: string, body: string): voi
   return (
     <Menu>
       <Tip label="Start from a saved prompt">
-        <MenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Saved prompts" className="text-muted-foreground hover:text-foreground" />}>
+        <MenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Saved prompts" muted />}>
           <BookMarkedIcon />
         </MenuTrigger>
       </Tip>
-      <MenuPopup align="end" className="max-h-80 w-72">
+      <MenuPopup align="end" width={menuWidths.fixed72}>
         <MenuGroup>
           <MenuGroupLabel>Saved prompts</MenuGroupLabel>
-          {list.length === 0 && <p className="px-2 py-2 text-muted-foreground text-xs">None yet. Save prompts you use often from ⌘K → Send a saved prompt.</p>}
+          {list.length === 0 && <p className={sx(paint.s45)}>None yet. Save prompts you use often from ⌘K → Send a saved prompt.</p>}
           {list.map((p) => (
             <MenuItem key={p.id} onClick={() => onPick(p.id, p.body)}>
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate">{p.title}</span>
-                <span className="truncate text-muted-foreground text-xs">{p.body.split("\n")[0]}</span>
+              <span className={sx(paint.s46)}>
+                <span className={sx(paint.s47)}>{p.title}</span>
+                <span className={sx(paint.s48)}>{p.body.split("\n")[0]}</span>
               </span>
             </MenuItem>
           ))}

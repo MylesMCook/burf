@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import {
   cloneElement,
   createContext,
@@ -15,9 +16,17 @@ import {
   useState,
 } from "react";
 
-import { focusFromKeyboard, Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
+import { focusFromKeyboard, Tooltip, TooltipPopup, TooltipTrigger, type TooltipWidth } from "@/components/ui/tooltip";
 import { platformKeys } from "@/lib/platform";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "display": "inline-flex",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Tip gives an element a tooltip: the app's own, not the browser's title,
 // so it appears on hover and on keyboard focus alike. The element is the
@@ -39,7 +48,8 @@ export function Tip({
   side,
   align,
   delay,
-  className,
+  width,
+  narrow,
   wrapClassName,
   children,
 }: {
@@ -47,7 +57,8 @@ export function Tip({
   side?: "top" | "bottom" | "left" | "right";
   align?: "start" | "center" | "end";
   delay?: number;
-  className?: string;
+  width?: TooltipWidth;
+  narrow?: boolean;
   wrapClassName?: string;
   children: ReactElement;
 }) {
@@ -57,17 +68,17 @@ export function Tip({
   if (typeof label === "string") label = platformKeys(label);
   const disabled = !!(children.props as { disabled?: unknown }).disabled;
   const trigger = disabled ? (
-    <span data-slot="tip-disabled" className={cn("inline-flex", wrapClassName)}>
+    <span data-slot="tip-disabled" className={[sx(paint.s0), wrapClassName].filter(Boolean).join(" ")}>
       {children}
     </span>
   ) : (
     children
   );
-  if (layer) return <LayerTip layer={layer} spec={{ label, side, align, delay, className }} trigger={trigger} />;
+  if (layer) return <LayerTip layer={layer} spec={{ label, side, align, delay, width, narrow }} trigger={trigger} />;
   return (
     <Tooltip>
       <TooltipTrigger delay={delay} render={trigger} />
-      <TooltipPopup side={side} align={align} className={className}>
+      <TooltipPopup side={side} align={align} width={width} narrow={narrow}>
         {label}
       </TooltipPopup>
     </Tooltip>
@@ -81,7 +92,8 @@ interface TipSpec {
   side?: "top" | "bottom" | "left" | "right";
   align?: "start" | "center" | "end";
   delay?: number;
-  className?: string;
+  width?: TooltipWidth;
+  narrow?: boolean;
 }
 
 interface TipLayer {
@@ -202,7 +214,7 @@ export function useTipLayer() {
   const spec = cur ? layer.tips.get(cur.id)?.current : undefined;
   const tooltip = (
     <Tooltip open={open && !!spec} onOpenChange={(o) => !o && hide()}>
-      <TooltipPopup anchor={cur?.el} side={spec?.side} align={spec?.align} className={spec?.className}>
+      <TooltipPopup anchor={cur?.el} side={spec?.side} align={spec?.align} width={spec?.width} narrow={spec?.narrow}>
         {spec?.label}
       </TooltipPopup>
     </Tooltip>

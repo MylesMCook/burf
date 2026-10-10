@@ -9,37 +9,114 @@ import {
   useRef,
   useState,
 } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
+import * as stylex from "@stylexjs/stylex";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+
+import { mark, shimmer, withClass } from "./surfaces";
 
 export const ANIMATION_DURATION = 200;
 
-const ReasoningPreviewContext = createContext(false);
+const still = "@media (prefers-reduced-motion: reduce)";
 
-const reasoningVariants = cva("aui-reasoning-root mb-4 w-full", {
-  variants: {
-    variant: {
-      outline: "rounded-lg border px-3 py-2",
-      ghost: "",
-      muted: "bg-muted/50 rounded-lg px-3 py-2",
+const textIn = stylex.keyframes({
+  from: { opacity: 0, transform: "translateY(-16px)", filter: "blur(2px)" },
+  to: { opacity: 1, transform: "translateY(0)", filter: "blur(0)" },
+});
+
+const textOut = stylex.keyframes({
+  from: { opacity: 1, transform: "translateY(0)", filter: "blur(0)" },
+  to: { opacity: 0, transform: "translateY(-16px)", filter: "blur(2px)" },
+});
+
+const fadeFrames = stylex.keyframes({
+  from: { opacity: 0 },
+  to: { opacity: 1 },
+});
+
+const styles = stylex.create({
+  fade: {
+    pointerEvents: "none",
+    position: "absolute",
+    insetInline: 0,
+    zIndex: 10,
+    height: 32,
+    animationName: { default: fadeFrames, [still]: "none" },
+    animationDuration: "var(--animation-duration, 200ms)",
+    animationFillMode: "both",
+  },
+  fadeTop: {
+    top: 0,
+    backgroundImage: {
+      default: "linear-gradient(to bottom, var(--background), transparent)",
+      ":is([data-variant=muted] &)": "linear-gradient(to bottom, color-mix(in oklab, var(--muted) 50%, var(--background)), transparent)",
     },
   },
-  defaultVariants: {
-    variant: "outline",
+  fadeBottom: {
+    bottom: 0,
+    backgroundImage: {
+      default: "linear-gradient(to top, var(--background), transparent)",
+      ":is([data-variant=muted] &)": "linear-gradient(to top, color-mix(in oklab, var(--muted) 50%, var(--background)), transparent)",
+    },
+  },
+  icon: { width: 16, height: 16, flexShrink: 0 },
+  label: { display: "inline-block", lineHeight: 1, fontVariantNumeric: "tabular-nums" },
+  chevron: {
+    marginTop: 2,
+    width: 16,
+    height: 16,
+    flexShrink: 0,
+    transform: {
+      default: "rotate(-90deg)",
+      ":is([data-open] > &)": "rotate(0deg)",
+      ":is([data-panel-open] > &)": "rotate(0deg)",
+      ":is([data-state=open] > &)": "rotate(0deg)",
+    },
+    transitionProperty: "transform",
+    transitionDuration: { default: "var(--animation-duration, 200ms)", [still]: "0s" },
+    transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+  },
+  text: {
+    position: "relative",
+    zIndex: 0,
+    maxHeight: 256,
+    overflowY: "auto",
+    paddingInlineStart: 24,
+    paddingTop: 8,
+    paddingBottom: 8,
+    lineHeight: 1.625,
+    textWrap: "pretty",
+    transform: "translateZ(0)",
+    transitionProperty: "transform, opacity",
+    transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+    animationDuration: "var(--animation-duration, 200ms)",
+    animationFillMode: "both",
+    animationName: {
+      default: "none",
+      ":is([data-open] > &)": textIn,
+      ":is([data-state=open] > &)": textIn,
+      ":is([data-closed] > &)": textOut,
+      ":is([data-state=closed] > &)": textOut,
+      [still]: "none",
+    },
+  },
+  content: {
+    ":not(#\\#) > :not(:first-child)": { marginTop: 16 },
   },
 });
+
+const ReasoningPreviewContext = createContext(false);
 
 export type ReasoningRootProps = Omit<
   React.ComponentProps<typeof Collapsible>,
   "open" | "onOpenChange"
-> &
-  VariantProps<typeof reasoningVariants> & {
+> & {
+  variant?: "outline" | "ghost" | "muted";
+} & {
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
     defaultOpen?: boolean;
@@ -58,8 +135,7 @@ export type ReasoningRootProps = Omit<
   };
 
 function ReasoningRoot({
-  className,
-  variant,
+  variant = "outline",
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   defaultOpen = false,
@@ -105,10 +181,11 @@ function ReasoningRoot({
       data-variant={variant}
       open={isOpen}
       onOpenChange={handleOpenChange}
-      className={cn(
-        "group/reasoning-root",
-        reasoningVariants({ variant, className }),
-      )}
+      below
+      chrome={variant === "muted" ? "muted" : variant === "ghost" ? "none" : "outline"}
+      marker="aui-reasoning-root group/reasoning-root"
+      pad={variant === "ghost" ? "none" : "text"}
+      width="full"
       style={
         {
           "--animation-duration": `${ANIMATION_DURATION}ms`,
@@ -128,34 +205,10 @@ function ReasoningFade({
   className,
   ...props
 }: React.ComponentProps<"div"> & { side?: "top" | "bottom" }) {
-  if (side === "top") {
-    return (
-      <div
-        data-slot="reasoning-fade"
-        className={cn(
-          "aui-reasoning-fade pointer-events-none absolute inset-x-0 top-0 z-10 h-8",
-          "bg-[linear-gradient(to_bottom,var(--color-background),transparent)]",
-          "group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_bottom,color-mix(in_oklab,var(--color-muted)_50%,var(--color-background)),transparent)]",
-          "fade-in-0 animate-in",
-          "animation-duration-(--animation-duration)",
-          className,
-        )}
-        {...props}
-      />
-    );
-  }
-
   return (
     <div
       data-slot="reasoning-fade"
-      className={cn(
-        "aui-reasoning-fade pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8",
-        "bg-[linear-gradient(to_top,var(--color-background),transparent)]",
-        "group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_top,color-mix(in_oklab,var(--color-muted)_50%,var(--color-background)),transparent)]",
-        "fade-in-0 animate-in",
-        "animation-duration-(--animation-duration)",
-        className,
-      )}
+      {...withClass("aui-reasoning-fade", className, styles.fade, side === "top" ? styles.fadeTop : styles.fadeBottom)}
       {...props}
     />
   );
@@ -164,7 +217,6 @@ function ReasoningFade({
 function ReasoningTrigger({
   active,
   duration,
-  className,
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   active?: boolean;
@@ -175,41 +227,29 @@ function ReasoningTrigger({
   return (
     <CollapsibleTrigger
       data-slot="reasoning-trigger"
-      className={cn(
-        "aui-reasoning-trigger group/trigger text-muted-foreground hover:text-foreground flex max-w-[75%] origin-left items-center gap-2 py-1.5 text-sm transition-[color,scale] active:scale-[0.98]",
-        className,
-      )}
+      look="reason"
+      marker="aui-reasoning-trigger group/trigger"
       {...props}
     >
       <BrainIcon
         data-slot="reasoning-trigger-icon"
-        className="aui-reasoning-trigger-icon size-4 shrink-0"
+        {...mark("aui-reasoning-trigger-icon", styles.icon)}
       />
       <span
         data-slot="reasoning-trigger-label"
-        className={cn(
-          "aui-reasoning-trigger-label-wrapper inline-block leading-none tabular-nums",
-          active && "shimmer motion-reduce:animate-none",
-        )}
+        {...mark("aui-reasoning-trigger-label-wrapper", styles.label, active && shimmer)}
       >
         Reasoning{durationText}
       </span>
       <ChevronDownIcon
         data-slot="reasoning-trigger-chevron"
-        className={cn(
-          "aui-reasoning-trigger-chevron mt-0.5 size-4 shrink-0",
-          "transition-transform duration-(--animation-duration) ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
-          "-rotate-90",
-          "group-data-open/trigger:rotate-0",
-          "group-data-panel-open/trigger:rotate-0",
-        )}
+        {...mark("aui-reasoning-trigger-chevron", styles.chevron)}
       />
     </CollapsibleTrigger>
   );
 }
 
 function ReasoningContent({
-  className,
   children,
   ...props
 }: React.ComponentProps<typeof CollapsibleContent>) {
@@ -218,16 +258,9 @@ function ReasoningContent({
   return (
     <CollapsibleContent
       data-slot="reasoning-content"
-      className={cn(
-        "aui-reasoning-content text-muted-foreground relative overflow-hidden text-sm outline-none",
-        "group/collapsible-content ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none",
-        "data-closed:animate-collapsible-up",
-        "data-open:animate-collapsible-down",
-        "data-closed:fill-mode-forwards",
-        "data-closed:pointer-events-none",
-        "[--tw-duration:var(--animation-duration)]",
-        className,
-      )}
+      marker="aui-reasoning-content group/collapsible-content"
+      text="sm"
+      tone="muted"
       {...props}
     >
       <ReasoningFade side="top" />
@@ -294,25 +327,10 @@ function ReasoningText({
     <div
       ref={scrollRef}
       data-slot="reasoning-text"
-      className={cn(
-        "aui-reasoning-text relative z-0 max-h-64 overflow-y-auto ps-6 pt-2 pb-2 leading-relaxed text-pretty",
-        "transform-gpu transition-[transform,opacity] ease-[cubic-bezier(0.32,0.72,0,1)]",
-        "motion-reduce:animate-none",
-        "group-data-open/collapsible-content:animate-in",
-        "group-data-closed/collapsible-content:animate-out",
-        "group-data-open/collapsible-content:fade-in-0",
-        "group-data-closed/collapsible-content:fade-out-0",
-        "group-data-open/collapsible-content:slide-in-from-top-4",
-        "group-data-closed/collapsible-content:slide-out-to-top-4",
-        "group-data-open/collapsible-content:blur-in-[2px]",
-        "group-data-closed/collapsible-content:blur-out-[2px]",
-        "group-data-open/collapsible-content:animation-duration-(--animation-duration)",
-        "group-data-closed/collapsible-content:animation-duration-(--animation-duration)",
-        className,
-      )}
+      {...withClass("aui-reasoning-text", className, styles.text)}
       {...props}
     >
-      <div ref={contentRef} className="aui-reasoning-text-content space-y-4">
+      <div ref={contentRef} {...mark("aui-reasoning-text-content", styles.content)}>
         {children}
       </div>
     </div>
@@ -325,5 +343,4 @@ export {
   ReasoningContent,
   ReasoningText,
   ReasoningFade,
-  reasoningVariants,
 };

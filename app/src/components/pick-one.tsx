@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { cn } from "@/lib/utils";
 
 export interface PickOneOption<T extends string> {
   value: T;
   label: ReactNode;
   icon?: ReactNode;
   // For the rare option that needs a tone of its own when chosen.
-  className?: string;
+  tone?: "warning";
 }
 
 // PickOne is the app's one control for picking one of a few values: a coss
@@ -30,7 +29,8 @@ export function PickOne<T extends string>({
   options,
   onChange,
   label,
-  className,
+  align,
+  nudge = false,
   "aria-labelledby": labelledBy,
   "aria-describedby": describedBy,
 }: {
@@ -38,33 +38,31 @@ export function PickOne<T extends string>({
   options: PickOneOption<T>[];
   onChange(v: T): void;
   label?: string;
-  className?: string;
+  align?: "end";
+  nudge?: boolean;
   // A visible label elsewhere (a settings row's) names the group instead.
   "aria-labelledby"?: string;
   "aria-describedby"?: string;
 }) {
   return (
     <ToggleGroup
+      align={align}
+      aria-describedby={describedBy}
       aria-label={label}
       aria-labelledby={label ? undefined : labelledBy}
-      aria-describedby={describedBy}
-      size="sm"
-      value={[toItem(value)]}
-      // Clicking the chosen item again keeps it chosen.
+      nudge={nudge}
       onValueChange={(v) => v.length && onChange(fromItem(v[v.length - 1] as string) as T)}
-      // shrink-0: in a row it keeps its one line and its neighbours give way
-      // (a file path beside Review's Unified/Split); it wraps only when it
-      // is wider than the whole row (max-w-full).
-      className={cn("w-fit max-w-full shrink-0 flex-wrap rounded-lg bg-muted p-0.5", className)}
+      shrink
+      size="sm"
+      track
+      value={[toItem(value)]}
+      wrap
     >
       {options.map((o) => (
         <ToggleGroupItem
           key={toItem(o.value)}
           value={toItem(o.value)}
-          className={cn(
-            "gap-1.5 rounded-md px-2.5 font-normal text-[13px] text-foreground/80 hover:bg-background/60 hover:text-foreground data-pressed:bg-background data-pressed:font-medium data-pressed:text-foreground data-pressed:shadow-xs/5 dark:hover:bg-input/32 dark:data-pressed:bg-input",
-            o.className,
-          )}
+          tone={o.tone ?? "choice"}
         >
           {o.icon}
           {o.label}

@@ -2,102 +2,139 @@
 
 import type { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
 import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group";
-import type { VariantProps } from "class-variance-authority";
+import * as stylex from "@stylexjs/stylex";
 import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
-import {
-  Toggle as ToggleComponent,
-  type toggleVariants,
-} from "@/components/ui/toggle";
 
-export const ToggleGroupContext: React.Context<
-  VariantProps<typeof toggleVariants>
-> = React.createContext<VariantProps<typeof toggleVariants>>({
-  size: "default",
-  variant: "default",
+import { Separator } from "@/components/ui/separator";
+import { Toggle as ToggleComponent, type ToggleSize, type ToggleVariant } from "@/components/ui/toggle";
+import { color, radius } from "@/styles/tokens.stylex";
+
+const coarse = "@media (pointer: coarse)";
+
+const hot = ":not(#\\#) > [data-slot=separator]:has(+ [data-slot=toggle]:hover)::before";
+const pressed = ":not(#\\#) > [data-slot=separator]:has(+ [data-slot=toggle][data-pressed])::before";
+const hotBefore = ":not(#\\#) > [data-slot=toggle]:hover + [data-slot=separator]::before";
+const pressedBefore = ":not(#\\#) > [data-slot=toggle][data-pressed] + [data-slot=separator]::before";
+
+const styles = stylex.create({
+  base: {
+    display: "flex",
+    width: "fit-content",
+    ":not(#\\#) > :focus-visible": { zIndex: 10 },
+    [hot]: { backgroundColor: "var(--separator-hot)" },
+    [pressed]: { backgroundColor: "var(--separator-press)" },
+    [hotBefore]: { backgroundColor: "var(--separator-hot)" },
+    [pressedBefore]: { backgroundColor: "var(--separator-press)" },
+  },
+  row: { ":not(#\\#) > *::after": { minWidth: { [coarse]: "auto" } } },
+  column: { flexDirection: "column", ":not(#\\#) > *::after": { minHeight: { [coarse]: "auto" } } },
+  loose: { gap: 2 },
+  joinedRow: {
+    ":not(#\\#) > :not(:first-child)": { borderStartStartRadius: 0, borderEndStartRadius: 0, borderInlineStartWidth: 0 },
+    ":not(#\\#) > :not(:last-child)": { borderStartEndRadius: 0, borderEndEndRadius: 0, borderInlineEndWidth: 0 },
+    ":not(#\\#) > :not(:first-child)::before": { borderStartStartRadius: 0, borderEndStartRadius: 0 },
+    ":not(#\\#) > :not(:last-child)::before": { borderStartEndRadius: 0, borderEndEndRadius: 0 },
+    ":not(#\\#) > :not(:first-child):not([data-slot=separator])::before": { insetInlineStart: -0.5 },
+    ":not(#\\#) > :not(:last-child):not([data-slot=separator])::before": { insetInlineEnd: -0.5 },
+  },
+  joinedColumn: {
+    ":not(#\\#) > :not(:first-child)": { borderStartStartRadius: 0, borderStartEndRadius: 0, borderTopWidth: 0 },
+    ":not(#\\#) > :not(:last-child)": { borderEndStartRadius: 0, borderEndEndRadius: 0, borderBottomWidth: 0 },
+    ":not(#\\#) > :not(:first-child)::before": { borderStartStartRadius: 0, borderStartEndRadius: 0 },
+    ":not(#\\#) > :not(:last-child)::before": { borderEndStartRadius: 0, borderEndEndRadius: 0 },
+    ":not(#\\#) > :not(:first-child):not([data-slot=separator])::before": { top: -0.5 },
+    ":not(#\\#) > :not(:last-child):not([data-slot=separator])::before": { bottom: -0.5 },
+    ":not(#\\#) > [data-slot=toggle]:not(:last-child)::before": { display: "none" },
+  },
+  track: {
+    maxWidth: "100%",
+    flexShrink: 0,
+    borderRadius: radius.lg,
+    backgroundColor: color.muted,
+    padding: 2,
+  },
+  wrap: { flexWrap: "wrap" },
+  shrink: { flexShrink: 0 },
+  end: { marginLeft: "auto" },
+  nudge: { marginLeft: 4 },
 });
 
+export const ToggleGroupContext: React.Context<{ size: ToggleSize; variant: ToggleVariant }> = React.createContext<{
+  size: ToggleSize;
+  variant: ToggleVariant;
+}>({ size: "default", variant: "default" });
+
 export function ToggleGroup({
-  className,
   variant = "default",
   size = "default",
   orientation = "horizontal",
+  track = false,
+  wrap = false,
+  shrink = false,
+  align,
+  nudge = false,
   children,
   ...props
-}: ToggleGroupPrimitive.Props &
-  VariantProps<typeof toggleVariants>): React.ReactElement {
+}: Omit<ToggleGroupPrimitive.Props, "className"> & {
+  variant?: ToggleVariant;
+  size?: ToggleSize;
+  track?: boolean;
+  wrap?: boolean;
+  shrink?: boolean;
+  align?: "end";
+  nudge?: boolean;
+}): React.ReactElement {
+  const joined = variant !== "default";
+  const vertical = orientation === "vertical";
   return (
     <ToggleGroupPrimitive
-      className={cn(
-        "flex w-fit *:focus-visible:z-10 dark:*:[[data-slot=separator]:has(+[data-slot=toggle]:hover)]:before:bg-input/64 dark:*:[[data-slot=separator]:has(+[data-slot=toggle][data-pressed])]:before:bg-input dark:*:[[data-slot=toggle]:hover+[data-slot=separator]]:before:bg-input/64 dark:*:[[data-slot=toggle][data-pressed]+[data-slot=separator]]:before:bg-input",
-        orientation === "horizontal"
-          ? "*:pointer-coarse:after:min-w-auto"
-          : "*:pointer-coarse:after:min-h-auto",
-        variant === "default"
-          ? "gap-0.5"
-          : orientation === "horizontal"
-            ? "*:not-first:rounded-s-none *:not-last:rounded-e-none *:not-first:border-s-0 *:not-last:border-e-0 *:not-first:not-data-[slot=separator]:before:-start-[0.5px] *:not-last:not-data-[slot=separator]:before:-end-[0.5px] *:not-first:before:rounded-s-none *:not-last:before:rounded-e-none"
-            : "flex-col *:not-first:rounded-t-none *:not-last:rounded-b-none *:not-first:border-t-0 *:not-last:border-b-0 *:not-first:not-data-[slot=separator]:before:-top-[0.5px] *:not-last:not-data-[slot=separator]:before:-bottom-[0.5px] *:not-first:before:rounded-t-none *:not-last:before:rounded-b-none *:data-[slot=toggle]:not-last:before:hidden dark:*:last:before:hidden dark:*:first:before:block",
-        className,
-      )}
+      className={stylex.props(
+        styles.base,
+        vertical ? styles.column : styles.row,
+        joined ? (vertical ? styles.joinedColumn : styles.joinedRow) : styles.loose,
+        track && styles.track,
+        wrap && styles.wrap,
+        shrink && styles.shrink,
+        align === "end" && styles.end,
+        nudge && styles.nudge,
+      ).className}
       data-size={size}
       data-slot="toggle-group"
       data-variant={variant}
       orientation={orientation}
       {...props}
     >
-      <ToggleGroupContext.Provider value={{ size, variant }}>
-        {children}
-      </ToggleGroupContext.Provider>
+      <ToggleGroupContext.Provider value={{ size, variant }}>{children}</ToggleGroupContext.Provider>
     </ToggleGroupPrimitive>
   );
 }
 
 export function ToggleGroupItem({
-  className,
   children,
   variant,
   size,
+  tone,
   ...props
-}: TogglePrimitive.Props &
-  VariantProps<typeof toggleVariants>): React.ReactElement {
+}: Omit<TogglePrimitive.Props, "className" | "style"> & {
+  variant?: ToggleVariant | null;
+  size?: ToggleSize | null;
+  tone?: "choice" | "warning";
+}): React.ReactElement {
   const context = React.useContext(ToggleGroupContext);
-
   const resolvedVariant = context.variant || variant;
   const resolvedSize = context.size || size;
-
   return (
-    <ToggleComponent
-      className={className}
-      data-size={resolvedSize}
-      data-variant={resolvedVariant}
-      size={resolvedSize}
-      variant={resolvedVariant}
-      {...props}
-    >
+    <ToggleComponent data-size={resolvedSize} data-variant={resolvedVariant} size={resolvedSize} variant={resolvedVariant} tone={tone} {...props}>
       {children}
     </ToggleComponent>
   );
 }
 
 export function ToggleGroupSeparator({
-  className,
   orientation = "vertical",
   ...props
-}: {
-  className?: string;
-} & React.ComponentProps<typeof Separator>): React.ReactElement {
-  return (
-    <Separator
-      className={cn(
-        "pointer-events-none relative bg-input before:absolute before:inset-0 dark:before:bg-input/32",
-        className,
-      )}
-      orientation={orientation}
-      {...props}
-    />
-  );
+}: React.ComponentProps<typeof Separator>): React.ReactElement {
+  return <Separator orientation={orientation} shift tone="input" {...props} />;
 }
 
 export { ToggleGroupPrimitive };

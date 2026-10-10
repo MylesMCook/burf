@@ -1,28 +1,75 @@
 "use client";
 
 import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
+import * as stylex from "@stylexjs/stylex";
 import type React from "react";
-import { cn } from "@/lib/utils";
+
+import { color, radius } from "@/styles/tokens.stylex";
+
+
+const sm = "@media (min-width: 640px)";
+
+const styles = stylex.create({
+  root: {
+    display: "inline-flex",
+    height: { default: 22, [sm]: 18 },
+    width: { default: 38, [sm]: 30 },
+    flexShrink: 0,
+    alignItems: "center",
+    borderRadius: radius.full,
+    padding: 1,
+    outline: "none",
+    backgroundColor: "color-mix(in oklab, var(--input) 100%, transparent)",
+    boxShadow: {
+      default: "none",
+      ":focus-visible": "0 0 0 1px var(--background), 0 0 0 3px var(--ring)",
+    },
+    opacity: { default: 1, ":disabled": 0.64 },
+    cursor: { default: "pointer", ":disabled": "not-allowed" },
+    transitionProperty: "background-color, box-shadow",
+    transitionDuration: "200ms",
+  },
+  on: { backgroundColor: color.primary },
+  off: {
+    backgroundColor: "var(--switch-off)",
+  },
+  thumb: {
+    pointerEvents: "none",
+    display: "block",
+    aspectRatio: "1",
+    height: "100%",
+    borderRadius: radius.full,
+    backgroundColor: color.background,
+    boxShadow: "0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent)",
+    transform: "translateX(0)",
+    transformOrigin: "left center",
+    transitionProperty: "transform, border-radius, background-color",
+    transitionDuration: "150ms",
+  },
+  thumbOn: {
+    transform: { default: "translateX(16px)", [sm]: "translateX(12px)" },
+    transformOrigin: { default: "20px 50%", [sm]: "16px 50%" },
+  },
+  thumbOff: {
+    backgroundColor: "var(--switch-thumb-off)",
+  },
+});
 
 export function Switch({
-  className,
   ...props
-}: SwitchPrimitive.Root.Props): React.ReactElement {
+}: Omit<SwitchPrimitive.Root.Props, "className" | "style">): React.ReactElement {
   return (
-    // Burf: off, in dark themes, the track and thumb are drawn from the
+    // Off, in dark themes, the track and thumb are drawn from the
     // foreground: --input and the background are too close to tell apart.
     <SwitchPrimitive.Root
-      className={cn(
-        "inline-flex h-[calc(var(--thumb-size)+2px)] w-[calc(var(--thumb-size)*2-2px)] shrink-0 items-center rounded-full p-px outline-none transition-[background-color,box-shadow] duration-200 [--thumb-size:--spacing(5)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background data-disabled:cursor-not-allowed data-checked:bg-primary data-unchecked:bg-input data-disabled:opacity-64 dark:data-unchecked:bg-foreground/18 sm:[--thumb-size:--spacing(4)]",
-        className,
-      )}
+      className={(state) => stylex.props(styles.root, state.checked ? styles.on : styles.off).className}
       data-slot="switch"
       {...props}
     >
       <SwitchPrimitive.Thumb
-        className={cn(
-          "pointer-events-none block aspect-square h-full origin-left in-[[role=switch]:active,[data-slot=label]:active,[data-slot=field-label]:active]:not-data-disabled:scale-x-110 in-[[role=switch]:active,[data-slot=label]:active,[data-slot=field-label]:active]:rounded-[var(--thumb-size)/calc(var(--thumb-size)*1.1)] rounded-(--thumb-size) bg-background shadow-sm/5 will-change-transform [transition:translate_.15s,border-radius_.15s,scale_.1s_.1s,transform-origin_.15s,background-color_.15s] dark:data-unchecked:bg-foreground/64 data-checked:origin-[var(--thumb-size)_50%] data-checked:translate-x-[calc(var(--thumb-size)-4px)]",
-        )}
+        className={(state) =>
+          stylex.props(styles.thumb, state.checked ? styles.thumbOn : styles.thumbOff).className
+        }
         data-slot="switch-thumb"
       />
     </SwitchPrimitive.Root>

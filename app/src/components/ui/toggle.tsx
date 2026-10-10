@@ -1,46 +1,111 @@
 "use client";
 
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
-import { cva, type VariantProps } from "class-variance-authority";
+import * as stylex from "@stylexjs/stylex";
 import type React from "react";
-import { cn } from "@/lib/utils";
 
-export const toggleVariants = cva(
-  "relative inline-flex shrink-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg border font-medium text-base text-foreground outline-none transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-64 data-pressed:bg-input/64 data-pressed:text-accent-foreground sm:text-sm [&_svg:not([class*='opacity-'])]:opacity-80 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:-mx-0.5 [&_svg]:shrink-0",
-  {
-    defaultVariants: {
-      size: "default",
-      variant: "default",
+import { color, radius } from "@/styles/tokens.stylex";
+
+
+const sm = "@media (min-width: 640px)";
+
+const styles = stylex.create({
+  base: {
+    position: "relative",
+    display: "inline-flex",
+    flexShrink: 0,
+    cursor: "pointer",
+    userSelect: "none",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    whiteSpace: "nowrap",
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderStyle: "solid",
+    fontWeight: 500,
+    fontSize: { default: 16, [sm]: 14 },
+    color: color.foreground,
+    outline: "none",
+    backgroundColor: { default: "transparent", ":hover": color.accent, "[data-pressed]": "color-mix(in oklab, var(--input) 64%, transparent)" },
+    boxShadow: {
+      default: "none",
+      ":focus-visible": "0 0 0 1px var(--background), 0 0 0 3px var(--ring)",
     },
-    variants: {
-      size: {
-        default: "h-9 min-w-9 px-[calc(--spacing(2)-1px)] sm:h-8 sm:min-w-8",
-        lg: "h-10 min-w-10 px-[calc(--spacing(2.5)-1px)] sm:h-9 sm:min-w-9",
-        sm: "h-8 min-w-8 px-[calc(--spacing(1.5)-1px)] sm:h-7 sm:min-w-7",
-      },
-      variant: {
-        default: "border-transparent",
-        outline:
-          "border-input bg-background not-dark:bg-clip-padding shadow-xs/5 not-disabled:not-active:not-data-pressed:before:shadow-[0_1px_--theme(--color-black/4%)] dark:bg-input/32 dark:data-pressed:bg-input dark:hover:bg-input/64 dark:not-disabled:not-active:not-data-pressed:before:shadow-[0_-1px_--theme(--color-white/6%)] dark:not-disabled:not-data-pressed:before:shadow-[0_-1px_--theme(--color-white/2%)] [:disabled,:active,[data-pressed]]:shadow-none",
-      },
+    opacity: { default: 1, ":disabled": 0.64 },
+    pointerEvents: { default: "auto", ":disabled": "none" },
+  },
+  sizeDefault: {
+    height: { default: 36, [sm]: 32 },
+    minWidth: { default: 36, [sm]: 32 },
+    paddingLeft: 7,
+    paddingRight: 7,
+  },
+  sizeLg: {
+    height: { default: 40, [sm]: 36 },
+    minWidth: { default: 40, [sm]: 36 },
+    paddingLeft: 9,
+    paddingRight: 9,
+  },
+  sizeSm: {
+    height: { default: 32, [sm]: 28 },
+    minWidth: { default: 32, [sm]: 28 },
+    paddingLeft: 5,
+    paddingRight: 5,
+  },
+  outline: {
+    borderColor: color.input,
+    backgroundColor: {
+      default: "var(--control-fill)",
+      ":hover": color.accent,
+      "[data-pressed]": "color-mix(in oklab, var(--input) 64%, transparent)",
     },
   },
-);
+  plain: { borderColor: "transparent" },
+  choice: {
+    height: 28,
+    minWidth: 28,
+    borderRadius: radius.md,
+    fontWeight: { default: 400, "[data-pressed]": 500 },
+    fontSize: 13,
+    color: {
+      default: color.mutedForeground,
+      ":hover": color.foreground,
+      "[data-pressed]": color.foreground,
+    },
+    backgroundColor: {
+      default: "transparent",
+      ":hover": "color-mix(in oklab, var(--background) 60%, transparent)",
+      "[data-pressed]": color.background,
+    },
+  },
+  warning: {
+    backgroundColor: { default: "transparent", "[data-pressed]": "var(--tint-warning)" },
+    color: { default: color.mutedForeground, "[data-pressed]": "var(--warning-foreground)" },
+  },
+});
+
+export type ToggleVariant = "default" | "outline";
+export type ToggleSize = "default" | "sm" | "lg";
 
 export function Toggle({
-  className,
-  variant,
-  size,
+  variant = "default",
+  size = "default",
+  tone,
   ...props
-}: TogglePrimitive.Props &
-  VariantProps<typeof toggleVariants>): React.ReactElement {
-  return (
-    <TogglePrimitive
-      className={cn(toggleVariants({ className, size, variant }))}
-      data-slot="toggle"
-      {...props}
-    />
+}: Omit<TogglePrimitive.Props, "className" | "style"> & {
+  variant?: ToggleVariant | null;
+  size?: ToggleSize | null;
+  tone?: "choice" | "warning";
+}): React.ReactElement {
+  const visual = stylex.props(
+    styles.base,
+    size === "lg" ? styles.sizeLg : size === "sm" ? styles.sizeSm : styles.sizeDefault,
+    variant === "outline" ? styles.outline : styles.plain,
+    (tone === "choice" || tone === "warning") && styles.choice,
+    tone === "warning" && styles.warning,
   );
+  return <TogglePrimitive className={visual.className} data-slot="toggle" {...props} />;
 }
 
 export { TogglePrimitive };

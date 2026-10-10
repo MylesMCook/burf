@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CloudOffIcon, GaugeIcon, PencilIcon, RowsIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -7,7 +8,7 @@ import { BoardButton } from "@/components/art/board-buttons";
 import { DockButton } from "@/components/files/tree-dock";
 import { Tip } from "@/components/tip";
 import { Spinner } from "@/components/ui/spinner";
-import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger, menuWidths } from "@/components/ui/context-menu";
 import { NewTabMenu } from "@/components/workspace/new-tab-menu";
 import { FileTabState } from "@/components/files/file-bits";
 import { PaneActions, PaneIcon, paneLabel } from "@/components/workspace/pane";
@@ -25,10 +26,348 @@ import { removalLabel, useRemoval } from "@/lib/removing";
 import { renameSession, useRenaming } from "@/lib/session-title";
 import { useStore } from "@/lib/store";
 import { memoryNote } from "@/lib/processes";
-import { cn } from "@/lib/utils";
 import { activateTab, tabBeside, unsplitTab, useHereKey, useHereRef, useWorkspaces, type WsTab } from "@/lib/workspaces";
 import { useTitleAt } from "@/lib/worktree-names";
 import { isContextMenuKey, openContextMenu } from "@/lib/context-menu-key";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "40px",
+    "flexShrink": 0,
+    "alignItems": "stretch",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "var(--sidebar)",
+  },
+  s1: {
+    "position": "relative",
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "stretch",
+    "overflowX": "auto",
+    "scrollbarWidth": "none",
+  },
+  s2: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "stretch",
+    "borderLeftWidth": 1,
+    "borderLeftStyle": "solid",
+    "borderLeftColor": "var(--border)",
+  },
+  s3: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+  },
+  s4: {
+    "minWidth": "16px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s5: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingRight": "8px",
+    "paddingLeft": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-lg)",
+    "backgroundColor": "color-mix(in oklab, var(--accent) 70%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "color": "var(--foreground)",
+  },
+  s7: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-lg)",
+    "backgroundColor": "color-mix(in oklab, var(--accent) 70%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "color": "var(--foreground)",
+  },
+  s8: {
+    "display": "flex",
+    "maxWidth": "224px",
+    "alignItems": "center",
+    "gap": "6px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s9: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s10: {
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--accent) 70%, transparent)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "10px",
+  },
+  s11: {
+    "display": "flex",
+    "alignItems": "center",
+    "borderLeftWidth": 1,
+    "borderLeftStyle": "solid",
+    "borderLeftColor": "var(--border)",
+    "paddingLeft": "4px",
+  },
+  s12: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s13: {
+    "position": "relative",
+    "display": "flex",
+    "height": "100%",
+    "minWidth": "96px",
+    "flexShrink": 0,
+    "cursor": "default",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+    "paddingRight": "4px",
+    "paddingLeft": "12px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s14: {
+    "maxWidth": "288px",
+  },
+  s15: {
+    "maxWidth": "224px",
+  },
+  s16: {
+    "backgroundColor": "var(--background)",
+    "color": "var(--foreground)",
+  },
+  s17: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--background) 40%, transparent)",
+    },
+  },
+  s18: {
+    "opacity": 0.5,
+  },
+  s19: {
+    "position": "absolute",
+    "left": 0,
+    "right": 0,
+    "top": "0px",
+  },
+  s20: {
+    "height": "2px",
+  },
+  s21: {
+    "height": "1px",
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 50%, transparent)",
+  },
+  s22: {
+    "display": "flex",
+    "flexShrink": 0,
+  },
+  s23: {
+    "width": "8px",
+    "height": "8px",
+    "boxShadow": "0 0 0 2px 1.5px",
+  },
+  s24: {
+    "boxShadow": "0 0 0 2px var(--background)",
+  },
+  s25: {
+    "boxShadow": "0 0 0 2px var(--sidebar)",
+  },
+  s26: {
+    "width": "12px",
+    "height": "12px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s27: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s28: {
+    "width": "12px",
+    "height": "12px",
+    "flexShrink": 0,
+    "color": {
+      "default": "light-dark(var(--warning-foreground), var(--warning))",
+    },
+  },
+  s29: {
+    "width": "12px",
+    "height": "12px",
+    "flexShrink": 0,
+  },
+  s30: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s31: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s32: {
+    "maxWidth": "96px",
+    "flexShrink": 0,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s33: {
+    "flexShrink": 0,
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s34: {
+    "marginLeft": "auto",
+    "display": "inline-flex",
+    "width": "20px",
+    "height": "20px",
+    "flexShrink": 0,
+    "cursor": "default",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s35: {
+    "opacity": 0.7,
+  },
+  s36: {
+    "opacity": 0,
+    ":is(.group:hover &)": {
+      "opacity": 0.7,
+    },
+  },
+  s37: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s38: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "stretch",
+  },
+  s39: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s40: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s41: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s42: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s43: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s44: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s45: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s46: {
+    "height": "24px",
+    "width": "192px",
+    "minWidth": "0px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--ring)",
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "color": {
+      "default": "var(--foreground)",
+      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "outline": "none",
+    "boxShadow": "0 0 0 2px color-mix(in oklab, var(--ring) 24%, transparent)",
+  },
+
+  s47: {
+    backgroundColor: { "[data-popup-open]": "color-mix(in oklab, var(--background) 60%, transparent)" },
+  },
+  s48: {
+    ":not(#\\#) > :not(:first-child)": {
+      marginLeft: -2,
+    },
+  },
+  s49: {
+    maskImage: "linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)",
+  },
+  s50: {
+    maskImage: "linear-gradient(to right, transparent, black 24px)",
+  },
+  s51: {
+    maskImage: "linear-gradient(to right, black calc(100% - 24px), transparent)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // TabStrip is the current worktree's tabs across the top, as in Orca. It is
 // also the window's drag handle. A tab that is not split has no pane header,
@@ -99,10 +438,10 @@ export function TabStrip() {
     return () => ro.disconnect();
   }, [ws?.active, ws?.tabs.length, key, layoutKey, measure]);
 
-  const fade = edges.left && edges.right ? "[mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%-24px),transparent)]" : edges.left ? "[mask-image:linear-gradient(to_right,transparent,black_24px)]" : edges.right ? "[mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]" : "";
+  const fade = edges.left && edges.right ? sx(paint.s49) : edges.left ? sx(paint.s50) : edges.right ? sx(paint.s51) : "";
 
   return (
-    <div data-tauri-drag-region data-tab-bar className="flex h-10 shrink-0 items-stretch border-b bg-sidebar">
+    <div data-tauri-drag-region data-tab-bar className={sx(paint.s0)}>
       {/* Tabs scroll when they do not fit (a wheel scrolls them sideways),
           with a fade at each end that has more; + stays just after them,
           outside the scroller, so it never scrolls away. */}
@@ -119,7 +458,7 @@ export function TabStrip() {
         role="tablist"
         aria-label="Tabs"
         onKeyDown={stripKeys}
-        className={cn("relative flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]", fade)}
+        className={[sx(paint.s1), fade].filter(Boolean).join(" ")}
       >
         {/* Narrow, only the group in front scrolls here; the others wait as
             labels beside it, always in view (tiny, as chips). */}
@@ -143,7 +482,7 @@ export function TabStrip() {
         <StripMarker />
       </div>
       {grouped && narrow && (
-        <div className="flex shrink-0 items-stretch border-l" role="group" aria-label="Other tab groups" onKeyDown={stripKeys}>
+        <div className={sx(paint.s2)} role="group" aria-label="Other tab groups" onKeyDown={stripKeys}>
           {groups
             .filter((g) => g !== key)
             .map((g) => (
@@ -152,24 +491,24 @@ export function TabStrip() {
         </div>
       )}
       {ws && (
-        <div className="flex shrink-0 items-center px-1">
+        <div className={sx(paint.s3)}>
           <NewTabMenu />
         </div>
       )}
-      <div data-tauri-drag-region className="min-w-4 flex-1" />
+      <div data-tauri-drag-region className={sx(paint.s4)} />
       {ws && (
-        <div data-tauri-drag-region className="flex shrink-0 items-center gap-2 pr-2 pl-3 text-muted-foreground text-xs">
+        <div data-tauri-drag-region className={sx(paint.s5)}>
           {leaving && (
             <Tip label={leaving.script ? "The repo's archive script is running on the box. This worktree closes when it finishes, or stays if it fails." : "Waiting for the box."} side="bottom">
-              <span role="status" className="flex items-center gap-1.5 rounded-lg bg-accent/70 px-2 py-0.5 text-foreground">
-                <Spinner className="size-3" />
+              <span role="status" className={sx(paint.s6)}>
+                <Spinner  size="sm"/>
                 {removalLabel(leaving)}
               </span>
             </Tip>
           )}
           {hereLeaving && !leaving && (
-            <span role="status" className="flex items-center gap-1.5 rounded-lg bg-accent/70 px-2 py-0.5 text-foreground">
-              <Spinner className="size-3" />
+            <span role="status" className={sx(paint.s7)}>
+              <Spinner  size="sm"/>
               {removalLabel(hereLeaving)}
             </span>
           )}
@@ -177,13 +516,13 @@ export function TabStrip() {
               front; the breadcrumb only speaks up for a guest pane. */}
           {hereRef && !tiny && !(grouped && hereKey === key) && (
             <Tip label={`${hereTitle && !hereRef.main ? `${hereRef.worktree} · ` : ""}${hereRef.box}:${hereRef.path}`} side="bottom">
-              <span data-tauri-drag-region className="flex max-w-56 items-center gap-1.5 truncate">
+              <span data-tauri-drag-region className={sx(paint.s8)}>
                 <WtDot wsKey={hereKey} />
-                <span className="truncate">
+                <span className={sx(paint.s9)}>
                   {hereRef.location}
                   {hereRef.main ? "" : ` / ${hereTitle ?? hereRef.worktree}`}
                 </span>
-                <span className="rounded bg-accent/70 px-1 py-px font-mono text-[10px]">{hereRef.box}</span>
+                <span className={sx(paint.s10)}>{hereRef.box}</span>
               </span>
             </Tip>
           )}
@@ -191,7 +530,7 @@ export function TabStrip() {
           <BoardButton />
           <DockButton />
           {key && active && lone && (
-            <div className="flex items-center border-l pl-1">
+            <div className={sx(paint.s11)}>
               <PaneActions wsKey={key} tab={active.id} pane={lone} compact={tiny} />
             </div>
           )}
@@ -274,7 +613,7 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
 
   const tab$ = (
     <div
-      onPointerDown={(e) => !editing && onDrag(e, title, <PaneIcon content={c} agent={lead.agent} className="size-3" />)}
+      onPointerDown={(e) => !editing && onDrag(e, title, <PaneIcon content={c} agent={lead.agent} className={sx(paint.s12)} />)}
       data-tab={tab.id}
       data-ws={wsKey}
       role="tab"
@@ -291,12 +630,7 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
           openContextMenu(e.currentTarget);
         }
       }}
-      className={cn(
-        "group relative flex h-full min-w-24 shrink-0 cursor-default items-center gap-1.5 border-r pr-1 pl-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset data-popup-open:bg-background/60",
-        tab.compare ? "max-w-72" : "max-w-56",
-        active ? "bg-background text-foreground" : "text-muted-foreground hover:bg-background/40 hover:text-foreground",
-        dragged && "opacity-50",
-      )}
+      className={[[sx(paint.s13), [sx(paint.s47), "group"].filter(Boolean).join(" ")].filter(Boolean).join(" "), tab.compare ? sx(paint.s14) : sx(paint.s15), active ? sx(paint.s16) : sx(paint.s17), dragged && sx(paint.s18)].filter(Boolean).join(" ")}
       onMouseDown={(e) => {
         // Middle click closes, as in a browser.
         if (e.button === 1) {
@@ -307,22 +641,22 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
       onClick={onActivate}
       onDoubleClick={() => session && setEditing(true)}
     >
-      {active && <span className={cn("absolute inset-x-0 top-0", tone ? "h-0.5" : "h-px bg-foreground/50")} style={tone ? { background: tone } : undefined} />}
+      {active && <span className={[sx(paint.s19), tone ? sx(paint.s20) : sx(paint.s21)].filter(Boolean).join(" ")} style={tone ? { background: tone } : undefined} />}
       {owners.length > 0 && (
-        <span className="flex shrink-0 -space-x-0.5" aria-hidden>
+        <span className={[sx(paint.s22), sx(paint.s48)].filter(Boolean).join(" ")} aria-hidden>
           {owners.map((o) => (
-            <WtDot key={o} wsKey={o} className={cn("size-2 ring-[1.5px]", active ? "ring-background" : "ring-sidebar")} />
+            <WtDot key={o} wsKey={o} className={[sx(paint.s23), active ? sx(paint.s24) : sx(paint.s25)].filter(Boolean).join(" ")} />
           ))}
         </span>
       )}
       {offline ? (
-        <CloudOffIcon className="size-3 shrink-0 text-muted-foreground" aria-label={`${c.kind === "terminal" ? c.box : "The box"} is offline`} />
+        <CloudOffIcon className={sx(paint.s26)} aria-label={`${c.kind === "terminal" ? c.box : "The box"} is offline`} />
       ) : lead.state && lead.state !== "idle" ? (
-        <StateGlyph state={lead.state} className="size-3" />
+        <StateGlyph state={lead.state} className={sx(paint.s27)} />
       ) : null}
       {/* Near the box's per-session memory limit (its chat says more). */}
-      {!offline && memoryNote(lead.s?.usage) && <GaugeIcon data-testid="tab-memory" className="size-3 shrink-0 text-warning-foreground dark:text-warning" aria-label={`This session is ${memoryNote(lead.s?.usage)}`} />}
-      {tab.compare ? <CompareIcon aria-hidden className="size-3 shrink-0" /> : <PaneIcon content={c} agent={lead.agent} className="size-3" />}
+      {!offline && memoryNote(lead.s?.usage) && <GaugeIcon data-testid="tab-memory" className={sx(paint.s28)} aria-label={`This session is ${memoryNote(lead.s?.usage)}`} />}
+      {tab.compare ? <CompareIcon aria-hidden className={sx(paint.s29)} /> : <PaneIcon content={c} agent={lead.agent} className={sx(paint.s30)} />}
       {editing && session ? (
         <TitleInput
           initial={lead.s?.title ?? ""}
@@ -334,14 +668,14 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
           }}
         />
       ) : (
-        <span className="min-w-0 truncate">{title}</span>
+        <span className={sx(paint.s31)}>{title}</span>
       )}
       {c.kind === "file" && <FileTabState ws={paneWorktree(wsKey, lead.l)} path={c.path} />}
       {browsers.length > 0 && <TabErrorBadge paneIds={browsers} />}
       {panes.length > 1 && !tab.compare && (owners.length > 1 ? (
-        <span className="max-w-24 shrink-0 truncate text-[10px] text-muted-foreground">+ {names.slice(1).join(", ")}</span>
+        <span className={sx(paint.s32)}>+ {names.slice(1).join(", ")}</span>
       ) : (
-        <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">+{panes.length - 1}</span>
+        <span className={sx(paint.s33)}>+{panes.length - 1}</span>
       ))}
       {/* The pointer's way to close. A tab can't hold a button for screen
           readers and the keyboard (it is one control): they close it from
@@ -354,9 +688,9 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
             e.stopPropagation();
             onClose();
           }}
-          className={cn("ml-auto inline-flex size-5 shrink-0 cursor-default items-center justify-center rounded hover:bg-accent", active ? "opacity-70" : "opacity-0 group-hover:opacity-70")}
+          className={[sx(paint.s34), active ? sx(paint.s35) : sx(paint.s36)].filter(Boolean).join(" ")}
         >
-          <XIcon className="size-3" />
+          <XIcon className={sx(paint.s37)} />
         </span>
       </Tip>
     </div>
@@ -364,7 +698,7 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger render={<div className="flex shrink-0 items-stretch" />}>
+      <ContextMenuTrigger render={<div className={sx(paint.s38)} />}>
         {editing ? (
           tab$
         ) : (
@@ -373,17 +707,17 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
           </Tip>
         )}
       </ContextMenuTrigger>
-      <ContextMenuPopup className="min-w-48">
+      <ContextMenuPopup width={menuWidths.w48}>
         {session && (
           <ContextMenuItem onClick={() => setEditing(true)}>
             <PencilIcon />
-            <span className="flex-1">Rename…</span>
+            <span className={sx(paint.s39)}>Rename…</span>
           </ContextMenuItem>
         )}
         {session && lead.s?.title && (
           <ContextMenuItem onClick={() => void renameSession(session.box, session.name, "")}>
-            <span className="size-4" />
-            <span className="flex-1">Use the agent's name</span>
+            <span className={sx(paint.s40)} />
+            <span className={sx(paint.s41)}>Use the agent's name</span>
           </ContextMenuItem>
         )}
         {session && <ContextMenuSeparator />}
@@ -391,24 +725,24 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
           <>
             <ContextMenuItem onClick={() => onSplit("row")}>
               <SquareSplitHorizontalIcon />
-              <span className="flex-1">Split right</span>
+              <span className={sx(paint.s42)}>Split right</span>
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onSplit("col")}>
               <SquareSplitVerticalIcon />
-              <span className="flex-1">Split down</span>
+              <span className={sx(paint.s43)}>Split down</span>
             </ContextMenuItem>
           </>
         )}
         {panes.length > 1 && !tab.compare && (
           <ContextMenuItem onClick={onUnsplit}>
             <RowsIcon />
-            <span className="flex-1">Move panes to their own tabs</span>
+            <span className={sx(paint.s44)}>Move panes to their own tabs</span>
           </ContextMenuItem>
         )}
         {(onSplit || panes.length > 1) && !tab.compare && <ContextMenuSeparator />}
         <ContextMenuItem onClick={onClose}>
           <XIcon />
-          <span className="flex-1">Close tab</span>
+          <span className={sx(paint.s45)}>Close tab</span>
           <ContextMenuShortcut>⌘W</ContextMenuShortcut>
         </ContextMenuItem>
       </ContextMenuPopup>
@@ -456,7 +790,7 @@ export function TitleInput({ initial, placeholder, onDone }: { initial: string; 
         if (e.key === "Escape") finish(undefined, true);
       }}
       onBlur={() => ready.current && finish(v.trim())}
-      className="h-6 w-48 min-w-0 rounded border border-ring bg-background px-1.5 text-foreground text-xs outline-none ring-2 ring-ring/24 placeholder:text-muted-foreground/72"
+      className={sx(paint.s46)}
     />
   );
 }

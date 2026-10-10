@@ -7,8 +7,34 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import type { FC } from "react";
+import * as stylex from "@stylexjs/stylex";
+
+import { color, font, radius } from "@/styles/tokens.stylex";
+import { mark, withClass } from "./surfaces";
+
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const styles = stylex.create({
+  trigger: {
+    display: "flex",
+    alignItems: "center",
+    borderRadius: radius.md,
+    padding: 4,
+    fontFamily: font.mono,
+    fontSize: 12,
+    lineHeight: "16px",
+    fontVariantNumeric: "tabular-nums",
+    color: { default: color.mutedForeground, ":hover": color.accentForeground },
+    backgroundColor: { ":hover": color.accent },
+    transitionProperty: "background-color, color",
+    transitionDuration: { default: "150ms", [still]: "0s" },
+  },
+  grid: { display: "grid", minWidth: 140, gap: 6, fontSize: 12, lineHeight: "16px" },
+  row: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 },
+  label: { color: color.mutedForeground },
+  value: { fontFamily: font.mono, fontVariantNumeric: "tabular-nums" },
+});
 
 const formatTimingMs = (ms: number | undefined): string => {
   if (ms === undefined) return "—";
@@ -51,44 +77,40 @@ export const MessageTiming: FC<{
             type="button"
             data-slot="message-timing-trigger"
             aria-label="Message timing"
-            className={cn(
-              "text-muted-foreground hover:bg-accent hover:text-accent-foreground flex items-center rounded-md p-1 font-mono text-xs tabular-nums transition-colors",
-              className,
-            )}
+            {...withClass(undefined, className, styles.trigger)}
           />
         }>{formatTimingMs(timing.totalStreamTime)}</TooltipTrigger>
         <TooltipContent
           side={side}
           sideOffset={8}
           data-slot="message-timing-popover"
-          className="bg-popover text-popover-foreground border px-3 py-2 [&_[data-slot=tooltip-arrow]]:hidden"
         >
-          <div className="grid min-w-35 gap-1.5 text-xs">
+          <div {...mark(undefined, styles.grid)}>
             {timing.firstTokenTime !== undefined && (
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground">First token</span>
-                <span className="font-mono tabular-nums">
+              <div {...mark(undefined, styles.row)}>
+                <span {...mark(undefined, styles.label)}>First token</span>
+                <span {...mark(undefined, styles.value)}>
                   {formatTimingMs(timing.firstTokenTime)}
                 </span>
               </div>
             )}
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-muted-foreground">Total</span>
-              <span className="font-mono tabular-nums">
+            <div {...mark(undefined, styles.row)}>
+              <span {...mark(undefined, styles.label)}>Total</span>
+              <span {...mark(undefined, styles.value)}>
                 {formatTimingMs(timing.totalStreamTime)}
               </span>
             </div>
             {timing.tokensPerSecond !== undefined && (
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground">Speed</span>
-                <span className="font-mono tabular-nums">
+              <div {...mark(undefined, styles.row)}>
+                <span {...mark(undefined, styles.label)}>Speed</span>
+                <span {...mark(undefined, styles.value)}>
                   {timing.tokensPerSecond.toFixed(1)} tok/s
                 </span>
               </div>
             )}
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-muted-foreground">Chunks</span>
-              <span className="font-mono tabular-nums">
+            <div {...mark(undefined, styles.row)}>
+              <span {...mark(undefined, styles.label)}>Chunks</span>
+              <span {...mark(undefined, styles.value)}>
                 {timing.totalChunks}
               </span>
             </div>

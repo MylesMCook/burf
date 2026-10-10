@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,56 @@ import { plainError } from "@/lib/errors";
 import { projectsApi, repoName } from "@/lib/projects";
 import { useStore } from "@/lib/store";
 import { ErrorText } from "@/components/error-note";
+
+const paint = stylex.create({
+  s0: {
+    "display": "contents",
+  },
+  s1: {
+    "display": "grid",
+    "gridTemplateColumns": "1fr 11rem",
+    "gap": "8px",
+  },
+  s2: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "13px",
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "fontFamily": "var(--font-mono)",
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+  },
+  s4: {
+    "maxHeight": "160px",
+    "overflowY": "auto",
+    "whiteSpace": "pre-wrap",
+    "padding": "12px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "color": "var(--muted-foreground)",
+    "lineHeight": "1.625",
+  },
+  s5: {
+    "color": "var(--destructive)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s6: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+    "gap": "6px",
+  },
+  s7: {
+    "fontWeight": 500,
+    "fontSize": "13px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // CloneForm clones a repository onto the box, showing git's progress as it
 // goes, and adds it as a project.
@@ -48,23 +99,23 @@ export function CloneForm({ box, onAdded, onCancel }: { box: string; onAdded(loc
 
   return (
     <form
-      className="contents"
+      className={sx(paint.s0)}
       onSubmit={(e) => {
         e.preventDefault();
         void clone();
       }}
     >
-      <DialogPanel className="flex flex-col gap-3 px-5 pb-5">
+      <DialogPanel inset="body" stack={3}>
         <Labelled label="Repository URL">
-          <Input autoFocus className="font-mono" disabled={busy} value={url} spellCheck={false} placeholder="https://github.com/acme/shop" onChange={(e) => setUrl(e.target.value)} />
+          <Input autoFocus mono disabled={busy} value={url} spellCheck={false} placeholder="https://github.com/acme/shop" onChange={(e) => setUrl(e.target.value)} />
         </Labelled>
-        <div className="grid grid-cols-[1fr_11rem] gap-2">
+        <div className={sx(paint.s1)}>
           <Labelled label="Into">
-            <Input className="font-mono" disabled={busy} value={parent} spellCheck={false} onChange={(e) => setParent(e.target.value)} />
+            <Input mono disabled={busy} value={parent} spellCheck={false} onChange={(e) => setParent(e.target.value)} />
           </Labelled>
           <Labelled label="Folder">
             <Input
-              className="font-mono"
+              mono
               disabled={busy}
               value={shownName}
               spellCheck={false}
@@ -76,21 +127,21 @@ export function CloneForm({ box, onAdded, onCancel }: { box: string; onAdded(loc
             />
           </Labelled>
         </div>
-        <p className="truncate text-[13px] text-muted-foreground">
-          Clones to <span className="font-mono text-foreground/80">{`${parent.replace(/\/+$/, "") || "~/work"}/${shownName || "…"}`}</span> on {box}
+        <p className={sx(paint.s2)}>
+          Clones to <span className={sx(paint.s3)}>{`${parent.replace(/\/+$/, "") || "~/work"}/${shownName || "…"}`}</span> on {box}
         </p>
         {(busy || lines.length > 0) && (
-          <Frame className="rounded-xl p-0.5">
-            <FramePanel className="rounded-[10px] p-0 shadow-none before:hidden dark:bg-input/32">
-              <pre ref={logRef} aria-live="polite" className="max-h-40 overflow-y-auto whitespace-pre-wrap p-3 font-mono text-[12px] text-muted-foreground leading-relaxed">
+          <Frame radius="xl" tray>
+            <FramePanel bare>
+              <pre ref={logRef} aria-live="polite" className={sx(paint.s4)}>
                 {lines.length ? lines.join("\n") : "Starting git clone…"}
               </pre>
             </FramePanel>
           </Frame>
         )}
-        {error && <ErrorText className="text-destructive text-sm" text={error} />}
+        {error && <ErrorText className={sx(paint.s5)} text={error} />}
       </DialogPanel>
-      <DialogFooter className="items-center px-5 py-3">
+      <DialogFooter pad="actions">
         {busy ? (
           <Button type="button" variant="ghost" onClick={() => abort.current?.abort()}>
             Stop
@@ -110,8 +161,8 @@ export function CloneForm({ box, onAdded, onCancel }: { box: string; onAdded(loc
 
 export function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex min-w-0 flex-col gap-1.5">
-      <span className="font-medium text-[13px]">{label}</span>
+    <label className={sx(paint.s6)}>
+      <span className={sx(paint.s7)}>{label}</span>
       {children}
     </label>
   );

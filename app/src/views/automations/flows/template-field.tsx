@@ -1,11 +1,60 @@
+import * as stylex from "@stylexjs/stylex";
 import { BracesIcon } from "lucide-react";
 import { useRef } from "react";
 
 import { Input } from "@/components/ui/input";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import type { Variable } from "@/views/automations/flows/model";
+
+const paint = stylex.create({
+  s0: {
+    "marginBottom": "4px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s1: {
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "marginLeft": "auto",
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontSize": "11px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s3: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s4: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s5: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // TemplateField is a step's text, with the {{…}} variables it can use one
 // click away, inserted where the cursor is.
@@ -41,18 +90,17 @@ export function TemplateField({
     });
   };
 
-  const cls = cn(mono && "font-mono text-xs");
   return (
     <div>
-      <span className="mb-1 flex items-center gap-2">
-        <span className="font-medium text-muted-foreground text-xs">{label}</span>
+      <span className={sx(paint.s0)}>
+        <span className={sx(paint.s1)}>{label}</span>
         {!readOnly && variables.length > 0 && (
           <Menu>
-            <MenuTrigger render={<button type="button" className="ml-auto inline-flex items-center gap-1 rounded px-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground" />}>
-              <BracesIcon className="size-3" />
+            <MenuTrigger render={<button type="button" className={sx(paint.s2)} />}>
+              <BracesIcon className={sx(paint.s3)} />
               Insert
             </MenuTrigger>
-            <MenuPopup align="end" className="max-h-80 min-w-56">
+            <MenuPopup align="end" width={menuWidths.w56}>
               {groups.map((g) => (
                 <MenuGroup key={g}>
                   <MenuGroupLabel>{g}</MenuGroupLabel>
@@ -60,8 +108,8 @@ export function TemplateField({
                     .filter((v) => v.group === g)
                     .map((v) => (
                       <MenuItem key={v.token} onClick={() => insert(v.token)}>
-                        <span className="flex-1">{v.label}</span>
-                        <code className="font-mono text-[10px] text-muted-foreground">{v.token}</code>
+                        <span className={sx(paint.s4)}>{v.label}</span>
+                        <code className={sx(paint.s5)}>{v.token}</code>
                       </MenuItem>
                     ))}
                 </MenuGroup>
@@ -71,9 +119,9 @@ export function TemplateField({
         )}
       </span>
       {multiline ? (
-        <Textarea ref={el} value={value} readOnly={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={cls} spellCheck={!mono} />
+        <Textarea ref={el} value={value} readOnly={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} mono={mono} text={mono ? "xs" : "default"} spellCheck={!mono} />
       ) : (
-        <Input ref={el} value={value} readOnly={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={cls} spellCheck={false} />
+        <Input ref={el} value={value} readOnly={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} mono={mono} text={mono ? "xs" : "default"} spellCheck={false} />
       )}
     </div>
   );

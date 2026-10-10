@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { ParentSize } from "@visx/responsive";
 import type { Transition } from "motion/react";
 import {
@@ -13,7 +14,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { cn } from "@/lib/utils";
 import type { LineConfig, Margin } from "./chart-context";
 import { ChartLoadingLabel } from "./chart-loading-label";
 import {
@@ -25,6 +25,16 @@ import {
 } from "./chart-phase";
 import { Line, type LineProps } from "./line";
 import { TimeSeriesChartInner } from "./time-series-chart-shell";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "width": "100%",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface LineChartProps {
   /** Data array - each item should have a date field and numeric values */
@@ -254,7 +264,7 @@ export function LineChart({
 
   return (
     <div
-      className={cn("relative w-full", className)}
+      className={[sx(paint.s0), className].filter(Boolean).join(" ")}
       ref={containerRef}
       style={{
         ...(aspectRatio ? { aspectRatio } : undefined),

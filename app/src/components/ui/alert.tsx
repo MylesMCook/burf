@@ -1,84 +1,97 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import * as stylex from "@stylexjs/stylex";
 import type * as React from "react";
-import { cn } from "@/lib/utils";
 
-const alertVariants = cva(
-  "relative grid w-full items-start gap-x-2 gap-y-0.5 rounded-xl border px-3.5 py-3 text-card-foreground text-sm has-[>svg]:has-data-[slot=alert-action]:grid-cols-[calc(var(--spacing)*4)_1fr_auto] has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] has-data-[slot=alert-action]:grid-cols-[1fr_auto] has-[>svg]:gap-x-2 [&>svg]:h-lh [&>svg]:w-4",
-  {
-    defaultVariants: {
-      variant: "default",
-    },
-    variants: {
-      variant: {
-        default:
-          "bg-transparent dark:bg-input/32 [&>svg]:text-muted-foreground",
-        error:
-          "border-destructive/32 bg-destructive/4 [&>svg]:text-destructive",
-        info: "border-info/32 bg-info/4 [&>svg]:text-info",
-        success: "border-success/32 bg-success/4 [&>svg]:text-success",
-        warning: "border-warning/32 bg-warning/4 [&>svg]:text-warning",
-      },
+import { color, radius } from "@/styles/tokens.stylex";
+
+const sm = "@media (min-width: 640px)";
+
+const styles = stylex.create({
+  base: {
+    position: "relative",
+    display: "grid",
+    width: "100%",
+    alignItems: "start",
+    columnGap: 8,
+    rowGap: 2,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: color.border,
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingLeft: 14,
+    paddingRight: 14,
+    color: color.cardForeground,
+    fontSize: 14,
+    gridTemplateColumns: {
+      default: "1fr",
+      ":has(> svg)": "16px 1fr",
+      ":has([data-slot='alert-action'])": "1fr auto",
+      ":has(> svg):has([data-slot='alert-action'])": "16px 1fr auto",
     },
   },
-);
+  default: {
+    backgroundColor: "var(--alert-fill)",
+  },
+  error: {
+    borderColor: "color-mix(in oklab, var(--destructive) 32%, transparent)",
+    backgroundColor: "color-mix(in oklab, var(--destructive) 4%, transparent)",
+  },
+  info: {
+    borderColor: "color-mix(in oklab, var(--info) 32%, transparent)",
+    backgroundColor: "color-mix(in oklab, var(--info) 4%, transparent)",
+  },
+  success: {
+    borderColor: "color-mix(in oklab, var(--success) 32%, transparent)",
+    backgroundColor: "color-mix(in oklab, var(--success) 4%, transparent)",
+  },
+  warning: {
+    borderColor: "color-mix(in oklab, var(--warning) 32%, transparent)",
+    backgroundColor: "color-mix(in oklab, var(--warning) 4%, transparent)",
+  },
+  title: { fontWeight: 500 },
+  description: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    color: color.mutedForeground,
+  },
+  action: {
+    display: "flex",
+    gap: 4,
+    alignSelf: { default: "auto", [sm]: "center" },
+    gridRow: { default: "auto", [sm]: "1 / 3" },
+    marginTop: { default: 8, [sm]: 0 },
+  },
+});
+
+const variantStyle = {
+  default: styles.default,
+  error: styles.error,
+  info: styles.info,
+  success: styles.success,
+  warning: styles.warning,
+} as const;
+
+export type AlertVariant = keyof typeof variantStyle;
 
 export function Alert({
-  className,
-  variant,
+  variant = "default",
   ...props
-}: React.ComponentProps<"div"> &
-  VariantProps<typeof alertVariants>): React.ReactElement {
-  return (
-    <div
-      className={cn(alertVariants({ variant }), className)}
-      data-slot="alert"
-      role="alert"
-      {...props}
-    />
-  );
+}: Omit<React.ComponentProps<"div">, "className" | "style"> & {
+  variant?: AlertVariant;
+}): React.ReactElement {
+  return <div {...stylex.props(styles.base, variantStyle[variant])} data-slot="alert" role="alert" {...props} />;
 }
 
-export function AlertTitle({
-  className,
-  ...props
-}: React.ComponentProps<"div">): React.ReactElement {
-  return (
-    <div
-      className={cn("font-medium [svg~&]:col-start-2", className)}
-      data-slot="alert-title"
-      {...props}
-    />
-  );
+export function AlertTitle(props: Omit<React.ComponentProps<"div">, "className" | "style">): React.ReactElement {
+  return <div {...stylex.props(styles.title)} data-slot="alert-title" {...props} />;
 }
 
-export function AlertDescription({
-  className,
-  ...props
-}: React.ComponentProps<"div">): React.ReactElement {
-  return (
-    <div
-      className={cn(
-        "flex flex-col gap-2.5 text-muted-foreground [svg~&]:col-start-2",
-        className,
-      )}
-      data-slot="alert-description"
-      {...props}
-    />
-  );
+export function AlertDescription(props: Omit<React.ComponentProps<"div">, "className" | "style">): React.ReactElement {
+  return <div {...stylex.props(styles.description)} data-slot="alert-description" {...props} />;
 }
 
-export function AlertAction({
-  className,
-  ...props
-}: React.ComponentProps<"div">): React.ReactElement {
-  return (
-    <div
-      className={cn(
-        "flex gap-1 max-sm:col-start-2 max-sm:mt-2 sm:row-start-1 sm:row-end-3 sm:self-center sm:[[data-slot=alert-description]~&]:col-start-2 sm:[[data-slot=alert-title]~&]:col-start-2 sm:[svg~&]:col-start-2 sm:[svg~[data-slot=alert-description]~&]:col-start-3 sm:[svg~[data-slot=alert-title]~&]:col-start-3",
-        className,
-      )}
-      data-slot="alert-action"
-      {...props}
-    />
-  );
+export function AlertAction(props: Omit<React.ComponentProps<"div">, "className" | "style">): React.ReactElement {
+  return <div {...stylex.props(styles.action)} data-slot="alert-action" {...props} />;
 }

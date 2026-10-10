@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { ArrowLeftIcon, ArrowUpRightIcon, ArrowRightIcon, BotIcon, CrosshairIcon, ExternalLinkIcon, GlobeIcon, MonitorSmartphoneIcon, RotateCwIcon, SendIcon, ShieldAlertIcon, XIcon } from "lucide-react";
@@ -21,9 +22,683 @@ import { initialPageLoads, type PageEvent, pageEvent, type PageLoads, reloadLoop
 import { overlayOpen } from "@/lib/overlays";
 import { poll } from "@/lib/poll";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { demoDevServer } from "@/demo/dev-server";
 import { currentSpace, rememberUrl, useWorkspaces, useWorktreeRef } from "@/lib/workspaces";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "backgroundColor": "var(--background)",
+  },
+  s1: {
+    "display": "flex",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+  },
+  s2: {
+    "display": "flex",
+    "height": "26px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--border)",
+      ":focus-within": "var(--ring)",
+    },
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+  },
+  s3: {
+    "wordBreak": "break-all",
+    "fontFamily": "var(--font-mono)",
+  },
+  s4: {
+    "marginLeft": "4px",
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--accent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontWeight": 500,
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s5: {
+    "height": "100%",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "transparent",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "outline": "none",
+  },
+  s6: {
+    "marginLeft": "4px",
+    "display": "inline-flex",
+    "height": "26px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--warning) 40%, transparent)",
+    "backgroundColor": {
+      "default": "color-mix(in oklab, var(--warning) 8%, transparent)",
+      ":hover": "color-mix(in oklab, var(--warning) 16%, transparent)",
+    },
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "11px",
+    "color": "var(--warning-foreground)",
+  },
+  s7: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s8: {
+    "marginLeft": "4px",
+    "display": "inline-flex",
+    "height": "26px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "11px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s9: {
+    "flexShrink": 0,
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "flex-start",
+    "justifyContent": "center",
+    "overflowY": "auto",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 30%, transparent)",
+    "padding": "24px",
+    "paddingTop": "48px",
+  },
+  s11: {
+    "width": "100%",
+    "backgroundColor": "var(--background)",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s12: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s13: {
+    "display": "none",
+  },
+  s14: {
+    "position": "relative",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "#fff",
+  },
+  s15: {
+    "display": "none",
+  },
+  s16: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "backgroundColor": "color-mix(in oklab, var(--background) 40%, transparent)",
+  },
+  s17: {
+    "display": "inline-flex",
+    "width": "26px",
+    "height": "26px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+      ":disabled:hover": "transparent",
+    },
+    "opacity": {
+      ":disabled": 0.35,
+    },
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+  s18: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 8%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s19: {
+    "marginTop": "2px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--warning-foreground)",
+  },
+  s20: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s21: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s22: {
+    "color": "var(--muted-foreground)",
+  },
+  s23: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "padding": "24px",
+  },
+  s24: {
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "gap": "8px",
+    "textAlign": "center",
+  },
+  s25: {
+    "width": "24px",
+    "height": "24px",
+    "color": "var(--muted-foreground)",
+  },
+  s26: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s27: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s28: {
+    "marginTop": "8px",
+    "display": "flex",
+    "gap": "8px",
+  },
+  s29: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "#fff",
+  },
+  s30: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "left",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s31: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s32: {
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s33: {
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s34: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "opacity": 0.5,
+    ":is(.group:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s35: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "overflowY": "auto",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "48px",
+    "paddingBottom": "24px",
+  },
+  s36: {
+    "display": "flex",
+    "width": "100%",
+    "flexDirection": "column",
+    "gap": "24px",
+  },
+  s37: {
+    "marginBottom": "4px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s38: {
+    "marginBottom": "4px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s39: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s40: {
+    "position": "relative",
+    "display": "flex",
+    "width": "6px",
+    "height": "6px",
+    "flexShrink": 0,
+  },
+  s41: {
+    "position": "absolute",
+    "display": "inline-flex",
+    "width": "100%",
+    "height": "100%",
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, #10b981 70%, transparent)",
+  },
+  s42: {
+    "position": "relative",
+    "display": "inline-flex",
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "#10b981",
+  },
+  s43: {
+    "display": "flex",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, #10b981 6%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s44: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, #10b981 15%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+    "color": {
+      "default": "light-dark(unset, #6ee7b7)",
+    },
+  },
+  s45: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s46: {
+    "wordBreak": "break-all",
+    "fontFamily": "var(--font-mono)",
+  },
+  s47: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+  },
+  s48: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s49: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, #10b981 10%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "fontVariantNumeric": "tabular-nums",
+    "color": {
+      "default": "light-dark(unset, #a7f3d0)",
+    },
+  },
+  s50: {
+    "fontFamily": "var(--font-sans)",
+    "color": {
+      "default": "light-dark(unset, #a7f3d0)",
+    },
+  },
+  s51: {
+    "flexShrink": 0,
+  },
+  s52: {
+    "flexShrink": 0,
+  },
+  s53: {
+    "display": "flex",
+    "height": "36px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s54: {
+    "backgroundColor": "color-mix(in oklab, var(--success) 6%, transparent)",
+  },
+  s55: {
+    "backgroundColor": "color-mix(in oklab, var(--warning) 6%, transparent)",
+  },
+  s56: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+  },
+  s57: {
+    "backgroundColor": "color-mix(in oklab, var(--success) 15%, transparent)",
+    "color": "var(--success-foreground)",
+  },
+  s58: {
+    "backgroundColor": "color-mix(in oklab, var(--warning) 15%, transparent)",
+    "color": "var(--warning-foreground)",
+  },
+  s59: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s60: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  s61: {
+    "flexShrink": 0,
+  },
+  s62: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "overflow": "hidden",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 30%, transparent)",
+    "padding": "12px",
+  },
+  s63: {
+    "maxHeight": "100%",
+    "maxWidth": "100%",
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "#fff",
+    "objectFit": "contain",
+    "boxShadow": "0 0 0 2px var(--border)",
+  },
+  s64: {
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s65: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--accent) 40%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s66: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s67: {
+    "maxWidth": "224px",
+    "flexShrink": 0,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+  },
+  s68: {
+    "height": "24px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--border)",
+      ":focus": "var(--ring)",
+    },
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "outline": "none",
+  },
+  s69: {
+    "borderRadius": "var(--radius-md)",
+    "padding": "4px",
+    "color": "var(--muted-foreground)",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s70: {
+    "width": "14px",
+    "height": "14px",
+  },
+
+  s71: {
+    containerType: "inline-size",
+    containerName: "bar",
+  },
+  s72: {
+    "@container bar (max-width: 26rem)": {
+      display: "none",
+    },
+  },
+  s73: {
+    "@container bar (max-width: 30rem)": {
+      position: "absolute",
+      width: 1,
+      height: 1,
+      padding: 0,
+      margin: -1,
+      overflow: "hidden",
+      clip: "rect(0, 0, 0, 0)",
+      whiteSpace: "nowrap",
+      borderWidth: 0,
+    },
+  },
+  s74: {
+    maxWidth: "42rem",
+  },
+  s75: {
+    maxWidth: "24rem",
+  },
+  s76: {
+    maxWidth: "28rem",
+  },
+  s77: {
+    color: "var(--color-emerald-800)",
+  },
+  s78: {
+    maxWidth: "20rem",
+  },
+  s79: {
+    position: "fixed",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 interface Props {
   // The pane's id. Child webviews are keyed by it, so pass the pane's own id
@@ -179,9 +854,9 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
   };
 
   return (
-    <div data-testid="browser-pane" data-mode={mode} className="flex min-h-0 flex-1 flex-col bg-background">
+    <div data-testid="browser-pane" data-mode={mode} className={sx(paint.s0)}>
       {sandboxView ? (
-        <SandboxBar box={ctx.ref!.box} fixed={sandbox === "fixed" || sandbox === "no-sandbox"} onBack={() => setSandboxOpen(false)} />
+        <SandboxBar box={ctx.ref!.box} fixed={sandbox === (sx(paint.s79) ?? "") || sandbox === "no-sandbox"} onBack={() => setSandboxOpen(false)} />
       ) : agentView && ctx.ref ? (
         <AgentBar
           ctx={ctx}
@@ -199,7 +874,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
         <form
           // A narrow pane (a Compare tab's side in a small window) keeps the
           // address, dropping the labels around it.
-          className="@container/bar flex h-9 shrink-0 items-center gap-1 border-b px-2"
+          className={[sx(paint.s1), sx(paint.s71)].filter(Boolean).join(" ")}
           onSubmit={(e) => {
             e.preventDefault();
             const next = resolveBrowserInput(input, ctx);
@@ -213,14 +888,14 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
             <ArrowRightIcon />
           </ToolButton>
           <ToolButton label="Reload" disabled={!url} onClick={reload}>
-            {loading ? <Spinner className="size-3.5" /> : <RotateCwIcon />}
+            {loading ? <Spinner  size="md"/> : <RotateCwIcon />}
           </ToolButton>
-          <div className="flex h-6.5 min-w-0 flex-1 items-center rounded-md border bg-muted/50 focus-within:border-ring">
+          <div className={sx(paint.s2)}>
             {where && (
               // Tooltips here open upward: below the bar is the page, which in
               // the app is a native view that would cover them.
-              <Tip label={<span className="break-all font-mono">{url}</span>} className="max-w-md">
-                <span className="@max-[26rem]/bar:hidden ml-1 shrink-0 rounded bg-accent px-1.5 py-px font-medium text-[10px] text-muted-foreground">{berthUrlLabel(where)}</span>
+              <Tip label={<span className={sx(paint.s3)}>{url}</span>} width="md">
+                <span className={[sx(paint.s4), sx(paint.s72)].filter(Boolean).join(" ")}>{berthUrlLabel(where)}</span>
               </Tip>
             )}
             <input
@@ -242,7 +917,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
                 if (selecting.current) e.preventDefault();
                 selecting.current = false;
               }}
-              className="h-full min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none"
+              className={sx(paint.s5)}
             />
           </div>
           <ToolButton label="Pick an element for the agent" disabled={!url} onClick={pick}>
@@ -261,9 +936,9 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
               <button
                 type="button"
                 onClick={() => setSandboxOpen(true)}
-                className="ml-1 inline-flex h-6.5 shrink-0 items-center gap-1.5 rounded-md border border-warning/40 bg-warning/8 px-2 text-[11px] text-warning-foreground hover:bg-warning/16"
+                className={sx(paint.s6)}
               >
-                <ShieldAlertIcon className="size-3" />
+                <ShieldAlertIcon className={sx(paint.s7)} />
                 Agent's browser blocked
               </button>
             </Tip>
@@ -273,10 +948,10 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
               <button
                 type="button"
                 onClick={() => setWatching(true)}
-                className="ml-1 inline-flex h-6.5 shrink-0 items-center gap-1.5 rounded-md border px-2 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                className={sx(paint.s8)}
               >
                 <LiveDot />
-                <span className="@max-[30rem]/bar:sr-only">Agent's view · live</span>
+                <span className={sx(paint.s73)}>Agent's view · live</span>
               </button>
             </Tip>
           )}
@@ -286,12 +961,12 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
       {mode === "native" && loop && loop.url !== loopDismissed && !agentView && !sandboxView && (
         <ReloadLoopNotice loop={loop} onOpen={() => void openUrl(loop.url)} onDismiss={() => setLoopDismissed(loop.url)} />
       )}
-      {failure && mode === "iframe" && <p className="shrink-0 border-b bg-muted/40 px-3 py-1 text-muted-foreground text-xs">The built-in browser could not open ({failure}); showing the page in a frame instead.</p>}
+      {failure && mode === "iframe" && <p className={sx(paint.s9)}>The built-in browser could not open ({failure}); showing the page in a frame instead.</p>}
       {/* Watching the agent keeps your page as it was, hidden underneath. */}
       {agentView && ctx.ref && <AgentView ctx={ctx} visible={visible} onUrl={setAgentAt} onSize={setAgentSize} />}
       {sandboxView && (
-        <div className="flex min-h-0 flex-1 items-start justify-center overflow-y-auto bg-muted/30 p-6 pt-12">
-          <BrowserSandboxCard box={ctx.ref!.box} worktree={ctx.ref} className="w-full max-w-2xl bg-background shadow-xs" />
+        <div className={sx(paint.s10)}>
+          <BrowserSandboxCard box={ctx.ref!.box} worktree={ctx.ref} className={[sx(paint.s11), sx(paint.s74)].filter(Boolean).join(" ")} />
         </div>
       )}
       {!url ? (
@@ -317,7 +992,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
           }}
         />
       ) : (
-        <div className={cn("flex min-h-0 flex-1 flex-col", (agentView || sandboxView) && "hidden")}>
+        <div className={[sx(paint.s12), (agentView || sandboxView) && sx(paint.s13)].filter(Boolean).join(" ")}>
           <FramedPage key={`${url}#${nonce}`} id={id} url={url} devtools={proxied} onReload={reload} onLoading={onLoading} />
         </div>
       )}
@@ -503,8 +1178,8 @@ function NativeSurface({ id, url, visible, onUrl, onLoading, onReloadLoop, onFai
   }, [id, shown]);
 
   return (
-    <div ref={surface} className={cn("relative min-h-0 flex-1 bg-white", !visible && "hidden")}>
-      {overlay && visible && <div className="absolute inset-0 bg-background/40" />}
+    <div ref={surface} className={[sx(paint.s14), !visible && sx(paint.s15)].filter(Boolean).join(" ")}>
+      {overlay && visible && <div className={sx(paint.s16)} />}
     </div>
   );
 }
@@ -548,7 +1223,7 @@ function ToolButton({ label, disabled, onClick, children }: { label: string; dis
         aria-label={label}
         disabled={disabled}
         onClick={onClick}
-        className={cn("inline-flex size-6.5 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-35 disabled:hover:bg-transparent [&_svg]:size-3.5")}
+        className={sx(paint.s17)}
       >
         {children}
       </button>
@@ -572,11 +1247,11 @@ function isLocal(url: string): boolean {
 // which is a native view that would cover anything drawn over it.
 function ReloadLoopNotice({ loop, onOpen, onDismiss }: { loop: { url: string; count: number }; onOpen(): void; onDismiss(): void }) {
   return (
-    <div role="status" className="flex shrink-0 items-start gap-2 border-b bg-warning/8 px-3 py-2 text-xs">
-      <RotateCwIcon className="mt-0.5 size-3.5 shrink-0 text-warning-foreground" />
-      <div className="min-w-0 flex-1">
-        <p className="font-medium text-foreground">This page keeps reloading itself</p>
-        <p className="text-muted-foreground">
+    <div role="status" className={sx(paint.s18)}>
+      <RotateCwIcon className={sx(paint.s19)} />
+      <div className={sx(paint.s20)}>
+        <p className={sx(paint.s21)}>This page keeps reloading itself</p>
+        <p className={sx(paint.s22)}>
           It has loaded {loop.count} times in a row without being asked. That is the page's own code reloading it (a dev server's client does this when a script fails to load), and it can happen in WebKit, the engine this tab uses, but not in Chrome. Your browser may show it fine.
         </p>
       </div>
@@ -619,14 +1294,14 @@ function FramedPage({ id, url, devtools, onReload, onLoading }: { id: string; ur
       }
     })();
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center p-6">
-        <div className="flex max-w-sm flex-col items-center gap-2 text-center">
-          <GlobeIcon className="size-6 text-muted-foreground" />
-          <p className="font-medium text-sm">{state === "blocked" ? `${host} can't be shown inside Burf` : `${host} isn't loading`}</p>
-          <p className="text-muted-foreground text-xs">
+      <div className={sx(paint.s23)}>
+        <div className={[sx(paint.s24), sx(paint.s75)].filter(Boolean).join(" ")}>
+          <GlobeIcon className={sx(paint.s25)} />
+          <p className={sx(paint.s26)}>{state === "blocked" ? `${host} can't be shown inside Burf` : `${host} isn't loading`}</p>
+          <p className={sx(paint.s27)}>
             {state === "blocked" ? "Most sites refuse to be embedded in other apps. Open it in your browser instead." : "It has not answered in 15 seconds. It may still be starting, or it may refuse to be embedded."}
           </p>
-          <div className="mt-2 flex gap-2">
+          <div className={sx(paint.s28)}>
             <Button size="sm" onClick={() => void openUrl(url)}>
               <ExternalLinkIcon />
               Open in your browser
@@ -649,7 +1324,7 @@ function FramedPage({ id, url, devtools, onReload, onLoading }: { id: string; ur
       srcDoc={__BERTH_DEMO__ ? demoDevServer(url) : undefined}
       title={url}
       onLoad={() => setState("loaded")}
-      className="min-h-0 flex-1 bg-white"
+      className={sx(paint.s29)}
       sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
     />
   );
@@ -662,20 +1337,20 @@ export function Suggestions({ ctx, onPick }: { ctx: BrowserContext; onPick(url: 
   const list = suggestions(ctx);
   const recent = useWorkspaces((s) => s.recentUrls).slice(0, 5);
   const Row = ({ url, title, note }: { url: string; title: string; note?: string }) => (
-    <button key={url} type="button" onClick={() => onPick(url)} className="group flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-accent">
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm">{title}</span>
-        {note && <span className="block truncate font-mono text-muted-foreground text-xs">{note}</span>}
+    <button key={url} type="button" onClick={() => onPick(url)} className={[sx(paint.s30), "group"].filter(Boolean).join(" ")}>
+      <span className={sx(paint.s31)}>
+        <span className={sx(paint.s32)}>{title}</span>
+        {note && <span className={sx(paint.s33)}>{note}</span>}
       </span>
-      <ArrowUpRightIcon className="size-4 shrink-0 text-muted-foreground opacity-50 group-hover:opacity-100" />
+      <ArrowUpRightIcon className={sx(paint.s34)} />
     </button>
   );
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 pt-12 pb-6">
-      <div className="flex w-full max-w-md flex-col gap-6">
+    <div className={sx(paint.s35)}>
+      <div className={[sx(paint.s36), sx(paint.s76)].filter(Boolean).join(" ")}>
         {list.length > 0 && (
           <section>
-            <p className="mb-1 px-3 font-medium text-muted-foreground text-xs">Running in this worktree</p>
+            <p className={sx(paint.s37)}>Running in this worktree</p>
             {list.map((s) => (
               <Row key={s.port} url={s.url} title={`${s.port}${s.process ? ` · ${s.process}` : ""}`} note={s.url} />
             ))}
@@ -683,14 +1358,14 @@ export function Suggestions({ ctx, onPick }: { ctx: BrowserContext; onPick(url: 
         )}
         {recent.length > 0 && (
           <section>
-            <p className="mb-1 px-3 font-medium text-muted-foreground text-xs">Recent</p>
+            <p className={sx(paint.s38)}>Recent</p>
             {recent.map((u) => (
               <Row key={u} url={u} title={u.replace(/^https?:\/\//, "").replace(/\/$/, "")} />
             ))}
           </section>
         )}
         {list.length === 0 && recent.length === 0 && (
-          <p className="px-3 text-center text-muted-foreground text-xs">Type a port to open this worktree's dev server on {ctx.ref?.box ?? "its box"}, or any URL.</p>
+          <p className={sx(paint.s39)}>Type a port to open this worktree's dev server on {ctx.ref?.box ?? "its box"}, or any URL.</p>
         )}
       </div>
     </div>
@@ -770,9 +1445,9 @@ function useAgentBrowserLive(ref: BrowserContext["ref"], visible: boolean): Agen
 
 function LiveDot() {
   return (
-    <span className="relative flex size-1.5 shrink-0">
-      <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/70" />
-      <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+    <span className={sx(paint.s40)}>
+      <span className={[sx(paint.s41), "burf-ping"].filter(Boolean).join(" ")} />
+      <span className={sx(paint.s42)} />
     </span>
   );
 }
@@ -800,41 +1475,41 @@ function AgentBar({
   const label = size ? sizeLabel(size.w, size.h, size.scale) : fallbackSize;
   const zoom = size && size.zoom > 0 && size.zoom < 0.995 ? `${Math.round(size.zoom * 100)}%` : undefined;
   return (
-    <div className="flex h-9 shrink-0 items-center gap-2 border-b bg-emerald-500/[0.06] px-2 text-xs">
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-[11px] text-emerald-800 dark:text-emerald-300">
-        <BotIcon className="size-3" />
+    <div className={sx(paint.s43)}>
+      <span className={[sx(paint.s44), sx(paint.s77)].filter(Boolean).join(" ")}>
+        <BotIcon className={sx(paint.s45)} />
         Agent's view · live
         <LiveDot />
       </span>
-      <Tip label={<span className="break-all font-mono">{url ?? ""}</span>} className="max-w-md">
-        <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">{here ?? "…"}</span>
+      <Tip label={<span className={sx(paint.s46)}>{url ?? ""}</span>} width="md">
+        <span className={sx(paint.s47)}>{here ?? "…"}</span>
       </Tip>
       {label && (
         <Tip
           label={
             <span>
               The agent's page is {label}
-              {zoom ? `, shown at ${zoom} to fit` : ", at its own size"}. Agents set it with <span className="font-mono">berthd browser resize</span>.
+              {zoom ? `, shown at ${zoom} to fit` : ", at its own size"}. Agents set it with <span className={sx(paint.s48)}>berthd browser resize</span>.
             </span>
           }
-          className="max-w-xs"
+          width="xs"
         >
-          <span data-testid="agent-size" className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[11px] text-emerald-800 tabular-nums dark:text-emerald-200">
+          <span data-testid="agent-size" className={[sx(paint.s49), sx(paint.s77)].filter(Boolean).join(" ")}>
             {label}
-            {zoom && <span className="font-sans text-emerald-800 dark:text-emerald-200">· {zoom}</span>}
+            {zoom && <span className={[sx(paint.s50), sx(paint.s77)].filter(Boolean).join(" ")}>· {zoom}</span>}
           </span>
         </Tip>
       )}
       {logKey && <DevtoolsToggle logKey={logKey} />}
       {here && (
-        <Button size="xs" variant="ghost" className="shrink-0" onClick={() => onOpenHere(here)}>
+        <span className={sx(paint.s51)}><Button size="xs" variant="ghost"  onClick={() => onOpenHere(here)}>
           Open in your view
-        </Button>
+        </Button></span>
       )}
-      <Button size="xs" variant="outline" className="shrink-0" onClick={onBack}>
+      <span className={sx(paint.s52)}><Button size="xs" variant="outline"  onClick={onBack}>
         <XIcon />
         Your view
-      </Button>
+      </Button></span>
     </div>
   );
 }
@@ -843,16 +1518,16 @@ function AgentBar({
 // agent's browser can't start.
 function SandboxBar({ box, fixed, onBack }: { box: string; fixed: boolean; onBack(): void }) {
   return (
-    <div className={cn("flex h-9 shrink-0 items-center gap-2 border-b px-2 text-xs", fixed ? "bg-success/[0.06]" : "bg-warning/[0.06]")}>
-      <span className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 font-medium text-[11px]", fixed ? "bg-success/15 text-success-foreground" : "bg-warning/15 text-warning-foreground")}>
-        <BotIcon className="size-3" />
+    <div className={[sx(paint.s53), fixed ? sx(paint.s54) : sx(paint.s55)].filter(Boolean).join(" ")}>
+      <span className={[sx(paint.s56), fixed ? sx(paint.s57) : sx(paint.s58)].filter(Boolean).join(" ")}>
+        <BotIcon className={sx(paint.s59)} />
         {fixed ? "Agent's browser" : "Agent's browser · blocked"}
       </span>
-      <span className="min-w-0 flex-1 truncate text-muted-foreground">on {box}</span>
-      <Button size="xs" variant="outline" className="shrink-0" onClick={onBack}>
+      <span className={sx(paint.s60)}>on {box}</span>
+      <span className={sx(paint.s61)}><Button size="xs" variant="outline"  onClick={onBack}>
         <XIcon />
         Your view
-      </Button>
+      </Button></span>
     </div>
   );
 }
@@ -905,7 +1580,7 @@ function AgentView({ ctx, visible, onUrl, onSize }: { ctx: BrowserContext; visib
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, ref.box, ref.location, ref.worktree]);
   return (
-    <div ref={space} className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted/30 p-3">
+    <div ref={space} className={sx(paint.s62)}>
       {frame ? (
         <img
           alt="The agent's browser"
@@ -914,13 +1589,13 @@ function AgentView({ ctx, visible, onUrl, onSize }: { ctx: BrowserContext; visib
           src={`data:${frame.mime ?? "image/jpeg"};base64,${frame.data}`}
           // A ring, not a border: a border would take two pixels off the
           // image and blur it at its own size.
-          className="max-h-full max-w-full shrink-0 rounded bg-white object-contain shadow-sm ring-1 ring-border"
+          className={sx(paint.s63)}
           style={fit && fit.w > 0 ? { width: fit.w, height: fit.h } : undefined}
         />
       ) : error ? (
-        <p className="max-w-xs text-center text-muted-foreground text-xs">{error}</p>
+        <p className={[sx(paint.s64), sx(paint.s78)].filter(Boolean).join(" ")}>{error}</p>
       ) : (
-        <Spinner className="size-4" />
+        <Spinner  size="lg"/>
       )}
     </div>
   );
@@ -947,14 +1622,14 @@ function PickSender({ pick, ctx, onDone }: { pick: Pick; ctx: BrowserContext; on
   };
   return (
     <form
-      className="flex shrink-0 items-center gap-2 border-b bg-accent/40 px-2 py-1.5 text-xs"
+      className={sx(paint.s65)}
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
       }}
     >
-      <CrosshairIcon className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="max-w-56 shrink-0 truncate font-mono">
+      <CrosshairIcon className={sx(paint.s66)} />
+      <span className={sx(paint.s67)}>
         {pick.role}
         {pick.name && ` "${pick.name}"`}
       </span>
@@ -964,14 +1639,14 @@ function PickSender({ pick, ctx, onDone }: { pick: Pick; ctx: BrowserContext; on
         onChange={(e) => setNote(e.target.value)}
         placeholder={target ? (target.blocked ?? "What about it? (optional)") : "No agent runs in this worktree"}
         disabled={!target || !!target.blocked}
-        className="h-6 min-w-0 flex-1 rounded border bg-background px-2 outline-none focus:border-ring"
+        className={sx(paint.s68)}
       />
       <Button type="submit" size="xs" disabled={!target || !!target.blocked || busy}>
         <SendIcon />
         Send to agent
       </Button>
-      <button type="button" aria-label="Cancel" className="rounded p-1 text-muted-foreground hover:bg-accent" onClick={onDone}>
-        <XIcon className="size-3.5" />
+      <button type="button" aria-label="Cancel" className={sx(paint.s69)} onClick={onDone}>
+        <XIcon className={sx(paint.s70)} />
       </button>
     </form>
   );

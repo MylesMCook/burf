@@ -1,9 +1,45 @@
+import * as stylex from "@stylexjs/stylex";
 import { useId, useMemo } from "react";
 
 import type { ViewProps } from "@/components/art/kinds";
 import SourceView from "@/components/art/views/source-view";
 import { layoutFlowchart, parseFlowchart } from "@/lib/art/mermaid";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "0px",
+    "flexDirection": "column",
+    "gap": "8px",
+  },
+  s1: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s3: {
+    "pointerEvents": "none",
+  },
+  s4: {
+    "height": "100%",
+  },
+  s5: {
+    "height": "100%",
+    "maxHeight": "100%",
+    "width": "100%",
+    "maxWidth": "100%",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // A diagram: a Mermaid flowchart drawn by Burf in the theme (lib/art/
 // mermaid.ts); any other Mermaid diagram as its source, said so.
@@ -14,8 +50,8 @@ export default function DiagramView(props: ViewProps) {
   const arrow = `art-arrow-${useId().replace(/:/g, "")}`;
   if (!g || !layout || !g.nodes.length)
     return (
-      <div className="flex h-full min-h-0 flex-col gap-2">
-        {size === "full" && <p className="text-muted-foreground text-xs">Burf draws Mermaid flowcharts (graph or flowchart); this one is shown as written.</p>}
+      <div className={sx(paint.s0)}>
+        {size === "full" && <p className={sx(paint.s1)}>Burf draws Mermaid flowcharts (graph or flowchart); this one is shown as written.</p>}
         <SourceView {...props} />
       </div>
     );
@@ -23,8 +59,8 @@ export default function DiagramView(props: ViewProps) {
   const { pos, W, H, NW, NH, lr } = layout;
   const pad = 14;
   return (
-    <div className={cn("flex w-full items-center justify-center", thumb ? "pointer-events-none" : "h-full")} style={thumb ? { height: height ?? 120 } : undefined} data-art-diagram>
-      <svg viewBox={`${-pad} ${-pad} ${W + pad * 2} ${H + pad * 2}`} className="h-full max-h-full w-full max-w-full" preserveAspectRatio="xMidYMid meet" role="img" aria-label={`Diagram: ${g.nodes.map((n) => n.label).join(", ")}`}>
+    <div className={[sx(paint.s2), thumb ? sx(paint.s3) : sx(paint.s4)].filter(Boolean).join(" ")} style={thumb ? { height: height ?? 120 } : undefined} data-art-diagram>
+      <svg viewBox={`${-pad} ${-pad} ${W + pad * 2} ${H + pad * 2}`} className={sx(paint.s5)} preserveAspectRatio="xMidYMid meet" role="img" aria-label={`Diagram: ${g.nodes.map((n) => n.label).join(", ")}`}>
         <defs>
           <marker id={arrow} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" fill="var(--chart-foreground-muted)" />

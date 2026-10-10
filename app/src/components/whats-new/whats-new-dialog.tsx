@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import { ArrowRightIcon, ArrowUpRightIcon, ChevronLeftIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -10,10 +11,309 @@ import { Kbd } from "@/components/ui/kbd";
 import { useArt } from "@/lib/art/model";
 import { openDocs } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { closeWhatsNew, dismissNudge, openWhatsNew, useWhatsNew } from "@/lib/whats-new";
 import type { Release, WhatsNewItem } from "@/lib/whats-new-model";
 import { useWorkspaces } from "@/lib/workspaces";
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s1: {
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+  },
+  s2: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+  },
+  s3: {
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.375",
+  },
+  s5: {
+    "borderRadius": "var(--radius-sm)",
+    "color": "color-mix(in oklab, var(--foreground) 85%, transparent)",
+    "textDecoration": "underline",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s6: {
+    "display": "flex",
+    "minHeight": "0px",
+  },
+  s7: {
+    "display": {
+      "default": "flex",
+      "@media (max-width: 639px)": {
+        "default": "none",
+      },
+    },
+    "width": "248px",
+    "flexShrink": 0,
+    "flexDirection": "column",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+  },
+  s8: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "1px",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+  },
+  s9: {
+    "display": "flex",
+    "height": "32px",
+    "alignItems": "center",
+    "gap": "10px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "textAlign": "left",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--foreground) 5%, transparent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s10: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s11: {
+    "marginTop": "auto",
+    "paddingLeft": "20px",
+    "paddingRight": "20px",
+    "paddingTop": "16px",
+    "paddingBottom": "24px",
+  },
+  s12: {
+    "position": "relative",
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s13: {
+    "position": "absolute",
+    "top": "8px",
+    "right": "8px",
+    "zIndex": 10,
+  },
+  s14: {
+    "display": {
+      "default": "none",
+      "@media (max-width: 639px)": {
+        "default": "block",
+      },
+    },
+    "paddingLeft": "20px",
+    "paddingRight": "20px",
+    "paddingTop": "20px",
+  },
+  s15: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s16: {
+    "marginLeft": "8px",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s17: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "20px",
+    "paddingLeft": {
+      "default": "32px",
+      "@media (max-width: 639px)": {
+        "default": "20px",
+      },
+    },
+    "paddingRight": {
+      "default": "32px",
+      "@media (max-width: 639px)": {
+        "default": "20px",
+      },
+    },
+    "paddingTop": {
+      "default": "48px",
+      "@media (max-width: 639px)": {
+        "default": "16px",
+      },
+    },
+    "paddingBottom": "8px",
+    "outline": "none",
+  },
+  s18: {
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s19: {
+    "display": "flex",
+    "minHeight": {
+      "default": "6.75rem",
+      "@media (max-width: 639px)": {
+        "default": "0px",
+      },
+    },
+    "flexDirection": "column",
+    "gap": "6px",
+  },
+  s20: {
+    "fontWeight": 600,
+    "fontSize": "16px",
+    "lineHeight": "24px",
+  },
+  s21: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "1.625",
+  },
+  s22: {
+    "display": {
+      "default": "none",
+      "@media (max-width: 639px)": {
+        "default": "flex",
+      },
+    },
+  },
+  s23: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "12px",
+  },
+  s24: {
+    "display": {
+      "@media (max-width: 639px)": {
+        "default": "none",
+      },
+    },
+  },
+  s25: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s26: {
+    "marginRight": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s27: {
+    "visibility": "hidden",
+  },
+  s28: {
+    "minWidth": "56px",
+  },
+  s29: {
+    "minWidth": "56px",
+  },
+  s30: {
+    "marginLeft": "8px",
+    "marginRight": "8px",
+    "marginBottom": "8px",
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "padding": "12px",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s31: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s32: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s33: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "fontWeight": 500,
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s34: {
+    "marginTop": "calc(4px * -1)",
+    "marginBottom": "calc(4px * -1)",
+    "marginRight": "calc(6px * -1)",
+  },
+  s35: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.375",
+  },
+  s36: {
+    "alignSelf": "flex-start",
+  },
+
+  s37: {
+    textDecorationColor: { default: "color-mix(in oklab, var(--foreground) 30%, transparent)", ":hover": color.foreground },
+    textUnderlineOffset: 2,
+  },
+  s38: {
+    backgroundColor: { "[data-active]": "color-mix(in oklab, var(--foreground) 9%, transparent)" },
+    fontWeight: { "[data-active]": 500 },
+    color: { "[data-active]": color.foreground },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The What's new card (lib/whats-new.ts): the release's highlights one at
 // a time, each with a picture of it in the app and a way there, listed
@@ -47,8 +347,8 @@ function go(s: Shower) {
 function Hint({ item, where, className }: { item: WhatsNewItem; where: boolean; className?: string }) {
   if (!item.keys) return null;
   return (
-    <span className={cn("flex items-center gap-1.5 text-muted-foreground text-xs", className)}>
-      <Kbd className="text-foreground/80">{item.keys}</Kbd>
+    <span className={[sx(paint.s0), className].filter(Boolean).join(" ")}>
+      <span className={sx(paint.s1)}><Kbd>{item.keys}</Kbd></span>
       {where && item.where}
     </span>
   );
@@ -57,16 +357,16 @@ function Hint({ item, where, className }: { item: WhatsNewItem; where: boolean; 
 // Also is the release's smaller things, a line each.
 function Also({ release, className }: { release: Release; className?: string }) {
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <span className="font-medium text-muted-foreground text-xs">Also in this release</span>
-      <ul className="flex flex-col gap-1.5 text-muted-foreground text-xs leading-snug">
+    <div className={[sx(paint.s2), className].filter(Boolean).join(" ")}>
+      <span className={sx(paint.s3)}>Also in this release</span>
+      <ul className={sx(paint.s4)}>
         {release.also.map((a) => {
           const to = a.show && showerFor(a.show);
           return (
             <li key={a.text}>
               {a.text}{" "}
               {to && (
-                <button type="button" onClick={() => go(to)} className="rounded-sm text-foreground/85 underline decoration-foreground/30 underline-offset-2 outline-none hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                <button type="button" onClick={() => go(to)} className={[sx(paint.s5), sx(paint.s37)].filter(Boolean).join(" ")}>
                   {to.label}
                 </button>
               )}
@@ -95,7 +395,7 @@ function SpotlightCard({ open, release }: { open: boolean; release: Release }) {
       <DialogPopup
         ref={popup}
         initialFocus={popup}
-        className="max-w-[880px] overflow-hidden"
+        frame="notes"
         showCloseButton={false}
         data-testid="whats-new"
         onKeyDown={(e) => {
@@ -111,55 +411,55 @@ function SpotlightCard({ open, release }: { open: boolean; release: Release }) {
           }
         }}
       >
-        <TabsPrimitive.Root value={at} onValueChange={(v) => setAt(Number(v))} orientation="vertical" className="flex min-h-0">
-          <div className="flex w-[248px] shrink-0 flex-col border-r bg-muted/40 max-sm:hidden">
-            <DialogHeader className="gap-1 px-5 pt-5 pb-4">
-              <DialogTitle className="text-base">What's new</DialogTitle>
-              <DialogDescription className="font-mono text-xs">Burf {release.version}</DialogDescription>
+        <TabsPrimitive.Root value={at} onValueChange={(v) => setAt(Number(v))} orientation="vertical" className={sx(paint.s6)}>
+          <div className={sx(paint.s7)}>
+            <DialogHeader pad="notes">
+              <DialogTitle size="base">What's new</DialogTitle>
+              <DialogDescription mono size="xs">Burf {release.version}</DialogDescription>
             </DialogHeader>
-            <TabsPrimitive.List activateOnFocus aria-label="Highlights" className="flex flex-col gap-px px-2.5">
+            <TabsPrimitive.List activateOnFocus aria-label="Highlights" className={sx(paint.s8)}>
               {items.map((it, i) => (
                 <TabsPrimitive.Tab
                   key={it.id}
                   value={i}
-                  className="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-left text-muted-foreground text-sm outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-active:bg-foreground/9 data-active:font-medium data-active:text-foreground"
+                  className={[sx(paint.s9), sx(paint.s38)].filter(Boolean).join(" ")}
                 >
-                  <span className="truncate">{it.title}</span>
+                  <span className={sx(paint.s10)}>{it.title}</span>
                 </TabsPrimitive.Tab>
               ))}
             </TabsPrimitive.List>
-            <Also release={release} className="mt-auto px-5 pt-4 pb-6" />
+            <Also release={release} className={sx(paint.s11)} />
           </div>
-          <div className="relative flex min-w-0 flex-1 flex-col">
-            <DialogClose aria-label="Close" className="absolute top-2 right-2 z-10" render={<Button size="icon" variant="ghost" />}>
+          <div className={sx(paint.s12)}>
+            <DialogClose aria-label="Close" className={sx(paint.s13)} render={<Button size="icon" variant="ghost" />}>
               <XIcon />
             </DialogClose>
-            <div className="hidden px-5 pt-5 max-sm:block">
-              <span className="font-medium text-sm">What's new</span>
-              <span className="ml-2 font-mono text-muted-foreground text-xs">Burf {release.version}</span>
+            <div className={sx(paint.s14)}>
+              <span className={sx(paint.s15)}>What's new</span>
+              <span className={sx(paint.s16)}>Burf {release.version}</span>
             </div>
             {items.map((it, i) => (
-              <TabsPrimitive.Panel key={it.id} value={i} className="flex flex-col gap-5 px-8 pt-12 pb-2 outline-none max-sm:px-5 max-sm:pt-4" aria-label={it.title}>
-                <div className="overflow-hidden rounded-xl border bg-background shadow-xs">
+              <TabsPrimitive.Panel key={it.id} value={i} className={sx(paint.s17)} aria-label={it.title}>
+                <div className={sx(paint.s18)}>
                   <WhatsNewArt art={it.art} />
                 </div>
-                <div className="flex min-h-[6.75rem] flex-col gap-1.5 max-sm:min-h-0">
-                  <h3 className="font-semibold text-base">{it.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{it.body}</p>
+                <div className={sx(paint.s19)}>
+                  <h3 className={sx(paint.s20)}>{it.title}</h3>
+                  <p className={sx(paint.s21)}>{it.body}</p>
                 </div>
                 {/* Narrow, the list is hidden: the smaller things follow the last. */}
-                {i === items.length - 1 && <Also release={release} className="hidden max-sm:flex" />}
+                {i === items.length - 1 && <Also release={release} className={sx(paint.s22)} />}
               </TabsPrimitive.Panel>
             ))}
-            <DialogFooter variant="bare" className="mx-8 mt-auto flex-row items-center justify-between gap-3 border-t px-0 pt-4 pb-6 max-sm:mx-5 max-sm:flex-row max-sm:px-0 sm:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
+            <DialogFooter variant="bare" pad="notes">
+              <div className={sx(paint.s23)}>
                 {s && (
                   <Button size="sm" onClick={() => go(s)} data-testid="whats-new-show">
                     {s.label}
                     <ArrowRightIcon />
                   </Button>
                 )}
-                <Hint item={item} where={!s} className="max-sm:hidden" />
+                <Hint item={item} where={!s} className={sx(paint.s24)} />
                 {!s && !item.keys && item.docs && (
                   <Button size="sm" variant="outline" onClick={() => void openDocs(item.docs)}>
                     Read the guide
@@ -167,19 +467,19 @@ function SpotlightCard({ open, release }: { open: boolean; release: Release }) {
                   </Button>
                 )}
               </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <span className="mr-1 text-muted-foreground text-xs tabular-nums" aria-hidden>
+              <div className={sx(paint.s25)}>
+                <span className={sx(paint.s26)} aria-hidden>
                   {at + 1} / {items.length}
                 </span>
-                <Button size="icon-sm" variant="ghost" aria-label="Previous" className={cn(at === 0 && "invisible")} onClick={() => step(-1)}>
+                <span className={at === 0 ? sx(paint.s27) : undefined}><Button size="icon-sm" variant="ghost" aria-label="Previous"  onClick={() => step(-1)}>
                   <ChevronLeftIcon />
-                </Button>
+                </Button></span>
                 {last ? (
-                  <DialogClose render={<Button size="sm" variant="ghost" className="min-w-14" />}>Done</DialogClose>
+                  <DialogClose render={<span className={sx(paint.s28)}><Button size="sm" variant="ghost" /></span>}>Done</DialogClose>
                 ) : (
-                  <Button size="sm" variant="ghost" className="min-w-14" onClick={() => step(1)}>
+                  <span className={sx(paint.s29)}><Button size="sm" variant="ghost"  onClick={() => step(1)}>
                     Next
-                  </Button>
+                  </Button></span>
                 )}
               </div>
             </DialogFooter>
@@ -197,21 +497,21 @@ export function WhatsNewNudge() {
   if (!nudge || !release) return null;
   const [a, b] = release.items;
   return (
-    <div className="mx-2 mb-2 flex flex-col gap-2 rounded-lg border bg-background p-3 shadow-xs" data-testid="whats-new-nudge" role="region" aria-label="What's new">
-      <div className="flex flex-col gap-0.5">
-        <div className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 font-medium text-xs">New in Burf {release.version}</span>
-          <Button size="icon-xs" variant="ghost" aria-label="Dismiss" className="-my-1 -mr-1.5" onClick={dismissNudge}>
+    <div className={sx(paint.s30)} data-testid="whats-new-nudge" role="region" aria-label="What's new">
+      <div className={sx(paint.s31)}>
+        <div className={sx(paint.s32)}>
+          <span className={sx(paint.s33)}>New in Burf {release.version}</span>
+          <span className={sx(paint.s34)}><Button size="icon-xs" variant="ghost" aria-label="Dismiss"  onClick={dismissNudge}>
             <XIcon />
-          </Button>
+          </Button></span>
         </div>
-        <span className="text-muted-foreground text-xs leading-snug">
+        <span className={sx(paint.s35)}>
           {a.title}, {b.title.toLowerCase()} and more.
         </span>
       </div>
-      <Button size="xs" variant="outline" className="self-start" onClick={() => openWhatsNew("update", release)}>
+      <span className={sx(paint.s36)}><Button size="xs" variant="outline"  onClick={() => openWhatsNew("update", release)}>
         See what's new
-      </Button>
+      </Button></span>
     </div>
   );
 }

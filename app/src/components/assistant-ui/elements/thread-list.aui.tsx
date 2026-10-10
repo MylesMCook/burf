@@ -1,9 +1,9 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import {
   AuiIf,
   ThreadListItemMorePrimitive,
@@ -21,6 +21,7 @@ import {
   SearchIcon,
   TrashIcon,
 } from "lucide-react";
+import { fadeIn, riseIn, spin } from "./surfaces";
 import {
   forwardRef,
   Fragment,
@@ -32,6 +33,293 @@ import {
   type ComponentPropsWithoutRef,
   type FC,
 } from "react";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "paddingLeft": "2px",
+    "paddingRight": "2px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s1: {
+    "color": "var(--muted-foreground)",
+    "pointerEvents": "none",
+    "position": "absolute",
+    "insetInlineStart": "12px",
+    "top": "50%",
+    "transform": "translateY(-50%)",
+    "width": "16px",
+    "height": "16px",
+  },
+  s2: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s3: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s4: {
+    "color": "var(--muted-foreground)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "16px",
+    "paddingBottom": "16px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s5: {
+    "color": "var(--muted-foreground)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "12px",
+    "paddingBottom": "4px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+  },
+  s6: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+  },
+  s7: {
+    "whiteSpace": "nowrap",
+  },
+  s8: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s9: {
+    "display": "flex",
+    "height": "32px",
+    "alignItems": "center",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+  },
+  s10: {
+    "height": "14px",
+    "width": "100%",
+  },
+  s11: {
+    "backgroundColor": {
+      ":hover": "var(--muted)",
+      ":focus-visible": "var(--muted)",
+      ":is([data-state=active], [data-active])": "var(--muted)",
+      ":has(:focus-visible)": "var(--muted)",
+      ":has([data-state=open])": "var(--muted)",
+    },
+    "position": "relative",
+    "display": "flex",
+    "height": "32px",
+    "alignItems": "center",
+    "borderRadius": "var(--radius-md)",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+    "outline": {
+      ":focus-visible": "none",
+    },
+  },
+  s12: {
+    "boxShadow": {
+      ":focus-visible": "0 0 0 1px var(--ring)",
+    },
+    "display": "flex",
+    "height": "100%",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "textAlign": "start",
+    "outline": "none",
+    ":is(:hover > &)": {
+      "paddingInlineEnd": "36px",
+    },
+    ":is(:is([data-state=active], [data-active]) > &)": {
+      "paddingInlineEnd": "36px",
+    },
+    ":is(:has(:focus-visible) > &)": {
+      "paddingInlineEnd": "36px",
+    },
+    ":is(:has([data-state=open]) > &)": {
+      "paddingInlineEnd": "36px",
+    },
+  },
+  s13: {
+    "color": "var(--muted-foreground)",
+    "marginInlineEnd": "6px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s14: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s15: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+  s16: {
+    "backgroundColor": {
+      "[data-state=open]": "var(--accent)",
+    },
+    "position": "absolute",
+    "insetInlineEnd": "6px",
+    "top": "50%",
+    "transform": "translateY(-50%)",
+    "width": "24px",
+    "height": "24px",
+    "padding": "0px",
+    "opacity": {
+      "default": 0,
+      "[data-state=open]": 1,
+    },
+    ":is(:hover > &)": {
+      "opacity": 1,
+    },
+    ":is(:is([data-state=active], [data-active]) > &)": {
+      "opacity": 1,
+    },
+    ":is(:has(:focus-visible) > &)": {
+      "opacity": 1,
+    },
+  },
+  s17: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s18: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+  s19: {
+    "backgroundColor": "var(--popover)",
+    "color": "var(--popover-foreground)",
+    "zIndex": 50,
+    "minWidth": "128px",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "padding": "6px",
+  },
+  s20: {
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+      ":focus": "var(--accent)",
+    },
+    "color": {
+      ":hover": "var(--accent-foreground)",
+      ":focus": "var(--accent-foreground)",
+    },
+    "display": "flex",
+    "cursor": "pointer",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+    "userSelect": "none",
+  },
+  s21: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s22: {
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+      ":focus": "var(--accent)",
+    },
+    "color": {
+      ":hover": "var(--accent-foreground)",
+      ":focus": "var(--accent-foreground)",
+    },
+    "display": "flex",
+    "cursor": "pointer",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+    "userSelect": "none",
+  },
+  s23: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s24: {
+    "color": {
+      "default": "var(--destructive)",
+      ":hover": "var(--destructive)",
+      ":focus": "var(--destructive)",
+    },
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--destructive) 10%, transparent)",
+      ":focus": "color-mix(in oklab, var(--destructive) 10%, transparent)",
+    },
+    "display": "flex",
+    "cursor": "pointer",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+    "userSelect": "none",
+  },
+  s25: {
+    "width": "16px",
+    "height": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export const ThreadList: FC = () => {
   const [search, setSearch] = useState("");
@@ -54,12 +342,12 @@ export const ThreadListSearch = forwardRef<
     value: string;
     onValueChange: (value: string) => void;
   }
->(({ className, value, onValueChange, ...props }, ref) => {
+>(({ value, onValueChange, ...props }, ref) => {
   return (
-    <div data-slot="aui_thread-list-search" className="relative px-0.5 py-1">
+    <div data-slot="aui_thread-list-search" className={sx(paint.s0)}>
       <SearchIcon
         data-slot="aui_thread-list-search-icon"
-        className="text-muted-foreground pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2"
+        className={sx(paint.s1)}
       />
       <Input
         ref={ref}
@@ -68,7 +356,7 @@ export const ThreadListSearch = forwardRef<
         onChange={(event) => onValueChange(event.target.value)}
         aria-label="Search threads"
         placeholder="Search threads"
-        className={cn("h-8 ps-8 text-sm", className)}
+        inset="wide"
         {...props}
       />
     </div>
@@ -83,7 +371,7 @@ export const ThreadListRoot: FC<
   return (
     <ThreadListPrimitive.Root
       data-slot="aui_thread-list-root"
-      className={cn("flex flex-col gap-0.5", className)}
+      className={[sx(paint.s2), className].filter(Boolean).join(" ")}
       {...props}
     />
   );
@@ -95,7 +383,7 @@ export const ThreadListItems: FC<
   return (
     <div
       data-slot="aui_thread-list-items"
-      className={cn("flex flex-col gap-0.5", className)}
+      className={[sx(paint.s3), className].filter(Boolean).join(" ")}
       {...props}
     >
       <AuiIf condition={(s) => s.threads.isLoading}>
@@ -223,7 +511,7 @@ const ThreadListItemGroups: FC<{ searchQuery?: string }> = ({
     return (
       <div
         data-slot="aui_thread-list-empty"
-        className="text-muted-foreground px-2.5 py-4 text-sm"
+        className={sx(paint.s4)}
       >
         No threads found
       </div>
@@ -244,7 +532,7 @@ const ThreadListItemGroups: FC<{ searchQuery?: string }> = ({
     <Fragment key={group.label}>
       <div
         data-slot="aui_thread-list-group-label"
-        className="text-muted-foreground px-2.5 pt-3 pb-1 text-xs font-medium"
+        className={sx(paint.s5)}
       >
         {group.label}
       </div>
@@ -261,29 +549,26 @@ const ThreadListItemGroups: FC<{ searchQuery?: string }> = ({
 
 export const ThreadListNew = forwardRef<
   HTMLButtonElement,
-  ComponentPropsWithoutRef<typeof Button> & { labelClassName?: string }
->(({ className, labelClassName, children, ...props }, ref) => {
+  Omit<ComponentPropsWithoutRef<typeof Button>, "className" | "style"> & { labelClassName?: string }
+>(({ labelClassName, children, ...props }, ref) => {
   return (
     <ThreadListPrimitive.New asChild>
       <Button
         ref={ref}
         variant="ghost"
+        align="start"
         data-slot="aui_thread-list-new"
-        className={cn(
-          "hover:bg-muted data-active:bg-muted h-8 justify-start gap-2 rounded-md px-2.5 text-sm font-normal",
-          className,
-        )}
         {...props}
       >
         {children ?? (
           <>
             <PlusIcon
               data-slot="aui_thread-list-new-icon"
-              className="size-4 shrink-0"
+              className={sx(paint.s6)}
             />
             <span
               data-slot="aui_thread-list-new-label"
-              className={cn("whitespace-nowrap", labelClassName)}
+              className={[sx(paint.s7), labelClassName].filter(Boolean).join(" ")}
             >
               New Thread
             </span>
@@ -301,19 +586,19 @@ const ThreadListSkeleton: FC = () => {
     <div
       role="status"
       aria-label="Loading threads"
-      className="flex flex-col gap-0.5"
+      className={sx(paint.s8)}
     >
       {Array.from({ length: 5 }, (_, i) => (
         <div
           key={i}
           aria-hidden="true"
           data-slot="aui_thread-list-skeleton-wrapper"
-          className="flex h-8 items-center px-2.5"
+          className={sx(paint.s9)}
         >
-          <Skeleton
+          <div className={sx(paint.s10)}><Skeleton
             data-slot="aui_thread-list-skeleton"
-            className="h-3.5 w-full"
-          />
+           
+           /></div>
         </div>
       ))}
     </div>
@@ -335,7 +620,7 @@ export const ThreadListItem: FC = () => {
   return (
     <ThreadListItemPrimitive.Root
       data-slot="aui_thread-list-item"
-      className="group hover:bg-muted focus-visible:bg-muted data-active:bg-muted has-focus-visible:bg-muted has-data-[state=open]:bg-muted relative flex h-8 items-center rounded-md transition-colors focus-visible:outline-none"
+      className={sx(paint.s11)}
     >
       {isRenaming ? (
         <ThreadListItemRename
@@ -348,22 +633,22 @@ export const ThreadListItem: FC = () => {
         <ThreadListItemPrimitive.Trigger
           ref={triggerRef}
           data-slot="aui_thread-list-item-trigger"
-          className="focus-visible:ring-ring/50 flex h-full min-w-0 flex-1 items-center rounded-md px-2.5 text-start text-sm outline-none group-hover:pe-9 group-has-focus-visible:pe-9 group-has-data-[state=open]:pe-9 group-data-active:pe-9 focus-visible:ring-1"
+          className={sx(paint.s12)}
         >
           {isRunning && (
             <Loader2Icon
               aria-hidden
               data-slot="aui_thread-list-item-running"
-              className="text-muted-foreground me-1.5 size-3.5 shrink-0 animate-spin"
+              className={sx(paint.s13, spin)}
             />
           )}
           <span
             data-slot="aui_thread-list-item-title"
-            className="min-w-0 flex-1 truncate"
+            className={sx(paint.s14)}
           >
             <ThreadListItemPrimitive.Title fallback="New Chat" />
           </span>
-          {isRunning && <span className="sr-only">Running</span>}
+          {isRunning && <span className={sx(paint.s15)}>Running</span>}
         </ThreadListItemPrimitive.Trigger>
       )}
       <ThreadListItemMore onRename={() => setIsRenaming(true)} />
@@ -419,7 +704,7 @@ const ThreadListItemRename: FC<{
       data-slot="aui_thread-list-item-rename"
       aria-label="Rename thread"
       value={value}
-      className="h-7 min-w-0 flex-1 ps-2.5 pe-9 text-sm"
+      layout="rename"
       onChange={(event) => setValue(event.target.value)}
       onBlur={() => commit(false)}
       onKeyDown={(event) => {
@@ -441,46 +726,44 @@ const ThreadListItemMore: FC<{ onRename: () => void }> = ({ onRename }) => {
   return (
     <ThreadListItemMorePrimitive.Root sharedFocusGroup>
       <ThreadListItemMorePrimitive.Trigger asChild>
-        <Button
+        <span className={sx(paint.s16)}><Button
           variant="ghost"
           size="icon"
-          data-slot="aui_thread-list-item-more"
-          className="data-[state=open]:bg-accent absolute end-1.5 top-1/2 size-6 -translate-y-1/2 p-0 opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100 group-data-active:opacity-100 data-[state=open]:opacity-100"
-        >
-          <MoreHorizontalIcon className="size-3.5" />
-          <span className="sr-only">More options</span>
-        </Button>
+          data-slot="aui_thread-list-item-more">
+          <MoreHorizontalIcon className={sx(paint.s17)} />
+          <span className={sx(paint.s18)}>More options</span>
+        </Button></span>
       </ThreadListItemMorePrimitive.Trigger>
       <ThreadListItemMorePrimitive.Content
         side="right"
         align="start"
         sideOffset={6}
         data-slot="aui_thread-list-item-more-content"
-        className="bg-popover text-popover-foreground data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-32 overflow-hidden rounded-xl border p-1.5"
+        className={sx(paint.s19, fadeIn, riseIn)}
       >
         <ThreadListItemMorePrimitive.Item
           data-slot="aui_thread-list-item-more-item"
-          className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none select-none"
+          className={sx(paint.s20)}
           onSelect={onRename}
         >
-          <PencilIcon className="size-4" />
+          <PencilIcon className={sx(paint.s21)} />
           Rename
         </ThreadListItemMorePrimitive.Item>
         <ThreadListItemPrimitive.Archive asChild>
           <ThreadListItemMorePrimitive.Item
             data-slot="aui_thread-list-item-more-item"
-            className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none select-none"
+            className={sx(paint.s22)}
           >
-            <ArchiveIcon className="size-4" />
+            <ArchiveIcon className={sx(paint.s23)} />
             Archive
           </ThreadListItemMorePrimitive.Item>
         </ThreadListItemPrimitive.Archive>
         <ThreadListItemPrimitive.Delete asChild>
           <ThreadListItemMorePrimitive.Item
             data-slot="aui_thread-list-item-more-item"
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none select-none"
+            className={sx(paint.s24)}
           >
-            <TrashIcon className="size-4" />
+            <TrashIcon className={sx(paint.s25)} />
             Delete
           </ThreadListItemMorePrimitive.Item>
         </ThreadListItemPrimitive.Delete>

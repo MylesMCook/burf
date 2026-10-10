@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, ChevronRightIcon, CircleAlertIcon, ClipboardListIcon, CopyIcon } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
@@ -9,7 +10,76 @@ import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, Dia
 import { toastManager } from "@/components/ui/toast";
 import { detailsFor, type Explained, explain, looksRaw, type NextStep, STEP_LABEL } from "@/lib/errors";
 import { noteToast } from "@/lib/recent-events";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "display": "inline-flex",
+    "width": "fit-content",
+    "cursor": "pointer",
+    "alignItems": "center",
+    "gap": "2px",
+    "borderRadius": "var(--radius-sm)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "outline": "none",
+    "textDecoration": {
+      ":hover": "underline",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s1: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s2: {
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingBottom": "8px",
+  },
+  s3: {
+    "maxHeight": "50vh",
+    "userSelect": "text",
+    "overflow": "auto",
+    "whiteSpace": "pre-wrap",
+    "overflowWrap": "break-word",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 60%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "color": "color-mix(in oklab, var(--foreground) 90%, transparent)",
+    "lineHeight": "1.625",
+  },
+  s4: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+  },
+  s5: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+  },
+
+  s6: {
+    textUnderlineOffset: 2,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // How errors look: a title, one sentence, the one next step, and what the
 // box actually said folded away under "Details" (lib/errors.ts).
@@ -22,14 +92,11 @@ import { cn } from "@/lib/utils";
 // outlives the toast; elsewhere it is its own, nested in any open dialog.
 export function ErrorDetails({ text, className, title, message, detached }: { text?: string; className?: string; title?: string; message?: string; detached?: boolean }) {
   if (!text) return null;
-  const cls = cn(
-    "inline-flex w-fit cursor-pointer items-center gap-0.5 rounded-sm text-muted-foreground text-xs underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring",
-    className,
-  );
+  const cls = [[sx(paint.s0), (sx(paint.s6) ?? "")].filter(Boolean).join(" "), className].filter(Boolean).join(" ");
   const label = (
     <>
       Details
-      <ChevronRightIcon aria-hidden className="size-3" />
+      <ChevronRightIcon aria-hidden className={sx(paint.s1)} />
     </>
   );
   if (detached)
@@ -72,15 +139,15 @@ export function ErrorDetailsHost() {
 function DetailsPopup({ text, title, message }: DetailsReq) {
   const [copied, setCopied] = useState(false);
   return (
-    <DialogPopup className="max-w-2xl">
+    <DialogPopup width="2xl">
       <DialogHeader>
         <DialogTitle>{title ?? "Details"}</DialogTitle>
         <DialogDescription>{message ?? "What was said, word for word."}</DialogDescription>
       </DialogHeader>
-      <div className="px-6 pb-2">
+      <div className={sx(paint.s2)}>
         <pre
           aria-label="Full output"
-          className="max-h-[50vh] select-text overflow-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/60 px-3 py-2.5 font-mono text-[12px] text-foreground/90 leading-relaxed"
+          className={sx(paint.s3)}
         >
           {text}
         </pre>
@@ -117,7 +184,7 @@ function DetailsPopup({ text, title, message }: DetailsReq) {
 export function ErrorText({ text, className }: { text?: string; className?: string }) {
   if (!text) return null;
   return (
-    <div className={cn("flex flex-col gap-1", className)}>
+    <div className={[sx(paint.s4), className].filter(Boolean).join(" ")}>
       <span>{text}</span>
       <ErrorDetails text={detailsFor(text)} />
     </div>
@@ -126,11 +193,11 @@ export function ErrorText({ text, className }: { text?: string; className?: stri
 
 // ErrorNote is an error in place, as an alert: what happened, what to do,
 // and the step as a button when the caller can take it.
-export function ErrorNote({ error, box, onStep, className }: { error: unknown; box?: string; onStep?: (step: NextStep) => void; className?: string }) {
+export function ErrorNote({ error, box, onStep }: { error: unknown; box?: string; onStep?: (step: NextStep) => void }) {
   const e = explain(error, { box });
   const step = e.step && (onStep || globalStep(e)) ? e.step : undefined;
   return (
-    <Alert variant="error" className={className}>
+    <Alert variant="error">
       <CircleAlertIcon />
       <AlertTitle>{e.title}</AlertTitle>
       <AlertDescription>
@@ -164,7 +231,7 @@ const detailsLine = (e: Explained) => (/^Details has git's/.test(e.message) ? "G
 
 function description(e: Explained, title?: React.ReactNode): React.ReactNode {
   return (
-    <span className="flex flex-col gap-1">
+    <span className={sx(paint.s5)}>
       <span>{e.message}</span>
       <ErrorDetails text={e.details} title={typeof title === "string" ? title : e.title} message={detailsLine(e)} detached />
     </span>

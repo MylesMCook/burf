@@ -1,4 +1,5 @@
 import { ChevronRightIcon, FileCode2Icon } from "lucide-react";
+import * as stylex from "@stylexjs/stylex";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { nice } from "@/components/conversation/composer-pickers";
@@ -18,7 +19,94 @@ import type { AgentPick } from "@/lib/composer";
 import type { Branch, ResolveKind, Resolution } from "@/lib/projects";
 import type { PromptVariable } from "@/lib/prompts";
 import { labelFor } from "@/lib/templates";
-import { cn } from "@/lib/utils";
+import { color, font, radius } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s1: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s2: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s3: {
+    "width": "12px",
+    "height": "12px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
+
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const styles = stylex.create({
+  section: { display: "flex", minWidth: 0, flexDirection: "column", gap: 8 },
+  heading: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontWeight: 500, color: color.mutedForeground, fontSize: 12 },
+  labelled: { display: "flex", minWidth: 0, flexDirection: "column", gap: 4 },
+  caption: { color: color.mutedForeground, fontSize: 12 },
+  three: { display: "grid", gridTemplateColumns: "1fr 1fr 9rem", gap: 8 },
+  two: { display: "grid", gridTemplateColumns: "1fr 10rem", gap: 8 },
+  note: { display: "flex", alignItems: "flex-start", gap: 6, color: color.mutedForeground, fontSize: 12, lineHeight: 1.625 },
+  noteIcon: { width: 14, height: 14, marginTop: 2, flexShrink: 0 },
+  noteText: { display: "flex", minWidth: 0, flexDirection: "column", gap: 2 },
+  code: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: font.mono, color: "color-mix(in oklab, var(--foreground) 80%, transparent)" },
+  stack: { display: "flex", flexDirection: "column", gap: 6 },
+  attempt: { display: "flex", minWidth: 0, alignItems: "center", gap: 8 },
+  index: { width: 16, flexShrink: 0, textAlign: "right", color: color.mutedForeground, fontSize: 12, fontVariantNumeric: "tabular-nums" },
+  who: { display: "flex", width: 160, minWidth: 0, flexShrink: 0, alignItems: "center", gap: 6, fontSize: 13 },
+  clip: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  box: { width: 112, flexShrink: 0 },
+  checks: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20, fontSize: 13 },
+  check: { display: "flex", cursor: "pointer", alignItems: "center", gap: 8 },
+  dim: { opacity: 0.5 },
+  targets: { overflow: "hidden", borderRadius: radius.lg, borderWidth: 1, borderStyle: "solid", borderColor: color.border, backgroundColor: color.background },
+  then: { display: "flex", flexDirection: "column", gap: 8, fontSize: 13 },
+  loop: { display: "grid", gridTemplateColumns: "1fr auto", gap: 8, paddingLeft: 44 },
+  target: { borderBottomWidth: 1, borderBottomStyle: "solid", borderBottomColor: color.border, ":last-child": { borderBottomWidth: 0 } },
+  targetButton: {
+    display: "flex",
+    width: "100%",
+    minWidth: 0,
+    alignItems: "center",
+    gap: 8,
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 6,
+    paddingBottom: 6,
+    textAlign: "left",
+    outline: "none",
+    backgroundColor: {
+      default: "transparent",
+      ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)",
+      ":focus-visible": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    },
+  },
+  chevron: {
+    width: 14,
+    height: 14,
+    flexShrink: 0,
+    color: color.mutedForeground,
+    transitionProperty: "transform",
+    transitionDuration: { default: "150ms", [still]: "0s" },
+  },
+  open: { transform: "rotate(90deg)" },
+  title: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 },
+  detail: { minWidth: 0, flexShrink: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: color.mutedForeground, fontSize: 12 },
+  aside: { marginLeft: "auto", display: "flex", flexShrink: 0, alignItems: "center", gap: 8 },
+  missing: { fontFamily: font.mono, fontSize: 11, color: "var(--warning-foreground)" },
+  edited: { fontSize: 11, color: "var(--info-foreground)" },
+  edit: { display: "flex", flexDirection: "column", gap: 4, paddingLeft: 36, paddingRight: 12, paddingBottom: 10 },
+  reset: { alignSelf: "flex-start" },
+});
+
+function cls(...parts: readonly (false | null | undefined | object)[]): string | undefined {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className;
+}
 
 // The composer's options, below what to do: the new worktree (what it
 // starts from, its name, branch, base and template), the attempts (each
@@ -26,10 +114,10 @@ import { cn } from "@/lib/utils";
 // pick), and for a prompt to running agents, its variables, each agent's
 // own copy, and whether to wait, queue or loop.
 
-export function Section({ title, aside, children, className }: { title: string; aside?: React.ReactNode; children: React.ReactNode; className?: string }) {
+export function Section({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section aria-label={title} className={cn("flex min-w-0 flex-col gap-2", className)}>
-      <h3 className="flex items-center justify-between gap-2 font-medium text-muted-foreground text-xs">
+    <section aria-label={title} className={cls(styles.section)}>
+      <h3 className={cls(styles.heading)}>
         {title}
         {aside}
       </h3>
@@ -38,10 +126,10 @@ export function Section({ title, aside, children, className }: { title: string; 
   );
 }
 
-function Labelled({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className={cn("flex min-w-0 flex-col gap-1", className)}>
-      <span className="text-muted-foreground text-xs">{label}</span>
+    <label className={cls(styles.labelled)}>
+      <span className={cls(styles.caption)}>{label}</span>
       {children}
     </label>
   );
@@ -98,7 +186,7 @@ export function WorktreeOptions({
     return (
       <Section title="New worktree">
         <Labelled label="Name">
-          <Input size="sm" className="font-mono" value={v.name} placeholder={placeholders.name} spellCheck={false} onChange={(e) => set({ name: e.target.value }, ["name"])} />
+          <Input size="sm" mono value={v.name} placeholder={placeholders.name} spellCheck={false} onChange={(e) => set({ name: e.target.value }, ["name"])} />
         </Labelled>
       </Section>
     );
@@ -109,15 +197,15 @@ export function WorktreeOptions({
       {showStartFrom && (
         <StartFrom value={startFrom} onChange={onStartFrom} kind={kind} onKind={onKind} resolution={resolution} pending={pending} error={error} branches={branches} defaultBranch={location?.default_branch} focus={false} />
       )}
-      <div className="grid grid-cols-[1fr_1fr_9rem] gap-2">
+      <div className={cls(styles.three)}>
         <Labelled label="Folder">
-          <Input size="sm" className="font-mono" value={v.name} placeholder={placeholders.name} spellCheck={false} onChange={(e) => set({ name: e.target.value }, ["name"])} />
+          <Input size="sm" mono value={v.name} placeholder={placeholders.name} spellCheck={false} onChange={(e) => set({ name: e.target.value }, ["name"])} />
         </Labelled>
         <Labelled label="Branch">
-          <Input size="sm" className="font-mono" value={v.branch} placeholder={placeholders.branch} spellCheck={false} onChange={(e) => set({ branch: e.target.value }, ["branch"])} />
+          <Input size="sm" mono value={v.branch} placeholder={placeholders.branch} spellCheck={false} onChange={(e) => set({ branch: e.target.value }, ["branch"])} />
         </Labelled>
         <Labelled label="From">
-          <Input size="sm" className="font-mono" value={v.base} placeholder={placeholders.base} spellCheck={false} onChange={(e) => set({ base: e.target.value }, ["base"])} />
+          <Input size="sm" mono value={v.base} placeholder={placeholders.base} spellCheck={false} onChange={(e) => set({ base: e.target.value }, ["base"])} />
         </Labelled>
       </div>
       {templates.length > 0 && (
@@ -134,14 +222,14 @@ export function WorktreeOptions({
           )}
         </Labelled>
       ))}
-      <p className="flex items-start gap-1.5 text-muted-foreground text-xs leading-relaxed">
-        <FileCode2Icon className="mt-0.5 size-3.5 shrink-0" />
+      <p className={cls(styles.note)}>
+        <FileCode2Icon className={cls(styles.noteIcon)} />
         {scripts?.setup ? (
-          <span className="flex min-w-0 flex-col gap-0.5">
+          <span className={cls(styles.noteText)}>
             <span>Setup script {scripts.from === "repo" ? "from .berth/config.json" : "set on this project"}, runs after creating</span>
-            <code className="truncate font-mono text-foreground/80" title={scripts.setup}>
-              {scripts.setup}
-            </code>
+            <Tip label={scripts.setup} width="lg">
+              <code className={cls(styles.code)}>{scripts.setup}</code>
+            </Tip>
           </span>
         ) : (
           <span>No setup script. One in the repository's .berth/config.json runs in every new worktree.</span>
@@ -191,45 +279,45 @@ export function AttemptsOptions({
   return (
     <Section title={`${picks.length} attempts, each in its own worktree`}>
       {!runsHere && <NeedsUpdate box={box}>{box} runs an older berthd without runs, which trying several ways needs.</NeedsUpdate>}
-      <div className="grid grid-cols-[1fr_10rem] gap-2">
+      <div className={cls(styles.two)}>
         <Labelled label="Worktree names">
-          <Input size="sm" className="font-mono" value={names.name} placeholder={names.namePlaceholder} spellCheck={false} onChange={(e) => names.set({ name: e.target.value })} />
+          <Input size="sm" mono value={names.name} placeholder={names.namePlaceholder} spellCheck={false} onChange={(e) => names.set({ name: e.target.value })} />
         </Labelled>
         <Labelled label="From">
-          <Input size="sm" className="font-mono" value={names.base} placeholder={names.basePlaceholder} spellCheck={false} onChange={(e) => names.set({ base: e.target.value })} />
+          <Input size="sm" mono value={names.base} placeholder={names.basePlaceholder} spellCheck={false} onChange={(e) => names.set({ base: e.target.value })} />
         </Labelled>
       </div>
-      <div className="flex flex-col gap-1.5">
+      <div className={cls(styles.stack)}>
         {picks.map((p, i) => (
-          <div key={i} className="flex min-w-0 items-center gap-2">
-            <span className="w-4 shrink-0 text-right text-muted-foreground text-xs tabular-nums">{i + 1}</span>
-            <span className="flex w-40 min-w-0 shrink-0 items-center gap-1.5 text-[0.8125rem]">
-              <AgentIcon agent={p.agent} className="size-3.5" />
-              <span className="truncate">{[name(p.agent), p.model && nice(p.model), p.effort && nice(p.effort)].filter(Boolean).join(" · ")}</span>
+          <div key={i} className={cls(styles.attempt)}>
+            <span className={cls(styles.index)}>{i + 1}</span>
+            <span className={cls(styles.who)}>
+              <AgentIcon agent={p.agent} className={sx(paint.s1)} />
+              <span className={cls(styles.clip)}>{[name(p.agent), p.model && nice(p.model), p.effort && nice(p.effort)].filter(Boolean).join(" · ")}</span>
             </span>
             <Input size="sm" aria-label={`Extra words for attempt ${i + 1}`} value={v.extras[i]?.suffix ?? ""} placeholder="and, for this one… (optional)" onChange={(e) => extra(i, { suffix: e.target.value })} />
             {otherBoxes.length > 0 && (
-              <div className="w-28 shrink-0">
-                <SimpleSelect aria-label={`Box for attempt ${i + 1}`} size="sm" className="min-w-0" value={v.extras[i]?.box || box} onChange={(b) => extra(i, { box: b })} options={[box, ...otherBoxes].map((b) => ({ value: b, label: b }))} />
+              <div className={cls(styles.box)}>
+                <SimpleSelect aria-label={`Box for attempt ${i + 1}`} size="sm" measure="grow" value={v.extras[i]?.box || box} onChange={(b) => extra(i, { box: b })} options={[box, ...otherBoxes].map((b) => ({ value: b, label: b }))} />
               </div>
             )}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-[1fr_10rem] gap-2">
+      <div className={cls(styles.two)}>
         <Labelled label="Check, optional (exit 0 passes; a failure goes back once)">
-          <Input size="sm" className="font-mono" value={v.check} placeholder="none: the judge reads the changes" onChange={(e) => set({ check: e.target.value })} />
+          <Input size="sm" mono value={v.check} placeholder="none: the judge reads the changes" onChange={(e) => set({ check: e.target.value })} />
         </Labelled>
         <Labelled label="Judge">
-          <SimpleSelect size="sm" className="min-w-0" value={v.judge} onChange={(judge) => set({ judge })} options={presets.map((p) => ({ value: p.id, label: p.name }))} />
+          <SimpleSelect size="sm" measure="grow" value={v.judge} onChange={(judge) => set({ judge })} options={presets.map((p) => ({ value: p.id, label: p.name }))} />
         </Labelled>
       </div>
-      <div className="flex flex-wrap items-center gap-5 text-[0.8125rem]">
-        <label className="flex cursor-pointer items-center gap-2">
+      <div className={cls(styles.checks)}>
+        <label className={cls(styles.check)}>
           <Switch checked={v.auto} onCheckedChange={(auto) => set({ auto })} />
           Take the judge's pick
         </label>
-        <label className="flex cursor-pointer items-center gap-2">
+        <label className={cls(styles.check)}>
           <Switch checked={v.pr} onCheckedChange={(pr) => set({ pr })} />
           Open a draft PR for the pick
         </label>
@@ -286,7 +374,7 @@ export function SendOptions({
       )}
       {chosen.length > 0 && (
         <Section title={chosen.length === 1 ? "Goes to" : `Goes to ${chosen.length} agents, one after another`}>
-          <div className="overflow-hidden rounded-lg border bg-background">
+          <div className={cls(styles.targets)}>
             {chosen.map((e) => {
               const k = `${e.box}/${e.session.name}`;
               return <TargetRow key={k} entry={e} expanded={open === k} onExpand={() => onOpen(open === k ? undefined : k)} text={textFor(e)} edited={edited(e)} missing={missingFor(e)} onEdit={(t) => onEdit(e, t)} />;
@@ -295,31 +383,31 @@ export function SendOptions({
         </Section>
       )}
       <Section title="Then">
-        <div className="flex flex-col gap-2 text-[0.8125rem]">
-          <label className={cn("flex cursor-pointer items-center gap-2", v.loop && "opacity-50")}>
+        <div className={cls(styles.then)}>
+          <label className={cls(styles.check, v.loop && styles.dim)}>
             <Switch checked={v.wait && !v.loop} disabled={v.loop} onCheckedChange={(wait) => set({ wait })} />
             Wait for each turn to end, and show what they said
           </label>
           {awayChosen > 0 && (
-            <label className="flex cursor-pointer items-center gap-2">
+            <label className={cls(styles.check)}>
               <Switch checked={v.queueOffline} onCheckedChange={(queueOffline) => set({ queueOffline })} />
               Queue for the {awayChosen === 1 ? "agent" : `${awayChosen} agents`} on offline boxes, to send when they're back
             </label>
           )}
-          <label className="flex cursor-pointer items-center gap-2">
+          <label className={cls(styles.check)}>
             <Switch checked={v.loop} onCheckedChange={(loop) => set({ loop })} />
             Loop until a check passes: while it fails, the failure goes back
           </label>
           {v.loop && (
-            <div className="grid grid-cols-[1fr_auto] gap-2 ps-11">
+            <div className={cls(styles.loop)}>
               <Labelled label="Check (runs in each agent's worktree; exit 0 means done)">
-                <Input size="sm" className="font-mono" value={v.check} onChange={(e) => set({ check: e.target.value })} />
+                <Input size="sm" mono value={v.check} onChange={(e) => set({ check: e.target.value })} />
               </Labelled>
               <Labelled label="Rounds">
-                <NumberField className="w-28" size="sm" value={v.rounds} min={1} max={20} onValueChange={(n) => n != null && set({ rounds: n })}>
+                <NumberField measure="28" size="sm" value={v.rounds} min={1} max={20} onValueChange={(n) => n != null && set({ rounds: n })}>
                   <NumberFieldGroup>
                     <NumberFieldDecrement />
-                    <NumberFieldInput className="text-center tabular-nums" />
+                    <NumberFieldInput />
                     <NumberFieldIncrement />
                   </NumberFieldGroup>
                 </NumberField>
@@ -335,29 +423,29 @@ export function SendOptions({
 function TargetRow({ entry, expanded, onExpand, text, edited, missing, onEdit }: { entry: SessionEntry; expanded: boolean; onExpand(): void; text: string; edited: boolean; missing: string[]; onEdit(text?: string): void }) {
   const { title, short, detail } = useTargetLabel(entry.box, entry.session.name);
   return (
-    <div className="border-b last:border-b-0">
-      <button type="button" aria-expanded={expanded} onClick={onExpand} className="flex w-full min-w-0 items-center gap-2 px-3 py-1.5 text-left outline-none hover:bg-accent/50 focus-visible:bg-accent/50">
-        <ChevronRightIcon className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-90")} />
-        <AgentIcon agent={entry.session.agent} className="size-3.5" />
-        <span className="min-w-0 truncate text-[0.8125rem]">{title}</span>
-        <span className="min-w-0 shrink truncate text-muted-foreground text-xs">{detail.replace(new RegExp(` · ${entry.box}$`), "")}</span>
-        <span className="ml-auto flex shrink-0 items-center gap-2">
+    <div className={cls(styles.target)}>
+      <button type="button" aria-expanded={expanded} onClick={onExpand} className={cls(styles.targetButton)}>
+        <ChevronRightIcon className={cls(styles.chevron, expanded && styles.open)} />
+        <AgentIcon agent={entry.session.agent} className={sx(paint.s2)} />
+        <span className={cls(styles.title)}>{title}</span>
+        <span className={cls(styles.detail)}>{detail.replace(new RegExp(` · ${entry.box}$`), "")}</span>
+        <span className={cls(styles.aside)}>
           {missing.length > 0 && (
             <Tip label="Not known for this agent; left out of its prompt">
-              <span className="font-mono text-[0.6875rem] text-warning-foreground">no {missing.map((m) => `{{${m}}}`).join(" ")}</span>
+              <span className={cls(styles.missing)}>no {missing.map((m) => `{{${m}}}`).join(" ")}</span>
             </Tip>
           )}
-          {edited && <span className="text-[0.6875rem] text-info-foreground">edited</span>}
-          <StateGlyph state={entry.state} className="size-3" />
+          {edited && <span className={cls(styles.edited)}>edited</span>}
+          <StateGlyph state={entry.state} className={sx(paint.s3)} />
         </span>
       </button>
       {expanded && (
-        <div className="flex flex-col gap-1 px-3 pb-2.5 pl-9">
-          <Textarea rows={4} className="text-[0.8125rem]" value={text} onChange={(e) => onEdit(e.target.value)} aria-label={`Prompt for ${short}`} />
+        <div className={cls(styles.edit)}>
+          <Textarea rows={4} text="prompt" value={text} onChange={(e) => onEdit(e.target.value)} aria-label={`Prompt for ${short}`} />
           {edited && (
-            <Button type="button" size="xs" variant="ghost" className="self-start text-muted-foreground" onClick={() => onEdit(undefined)}>
+            <span className={cls(styles.reset)}><Button type="button" size="xs" variant="ghost"  onClick={() => onEdit(undefined)} muted>
               Use the prompt above again
-            </Button>
+            </Button></span>
           )}
         </div>
       )}

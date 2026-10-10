@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
 
 import { toastError } from "@/components/error-note";
@@ -18,8 +19,95 @@ import { findPaths, resolveIn } from "@/lib/editor-paths";
 import { somethingElseHasFocus } from "@/lib/focus-home";
 import { EchoPredictor } from "@/lib/predict-overlay";
 import { createTerminal, type TermHandle } from "@/lib/terminal";
-import { cn } from "@/lib/utils";
 import { WheelBatcher, wheelPixels } from "@/lib/wheel";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s1: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "overflow": "hidden",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "4px",
+    "transitionProperty": "opacity",
+    "transitionDuration": "150ms",
+    ":not(#\\#) canvas": {
+      "display": "block",
+    },
+  },
+  s2: {
+    "pointerEvents": "none",
+  },
+  s3: {
+    "opacity": 0.4,
+  },
+  s4: {
+    "visibility": "hidden",
+  },
+  s5: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": "8px",
+    "right": "12px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--popover) 90%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 8%, transparent)",
+  },
+  s6: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": "8px",
+    "right": "12px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--popover) 90%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 8%, transparent)",
+  },
+  s7: {
+    position: "relative",
+    height: "100%",
+    width: "100%",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type ConnState = "connecting" | "open" | "reconnecting" | "offline" | "ended";
 
@@ -115,7 +203,7 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
     let t: TermHandle | undefined;
     let echo: EchoPredictor | undefined;
     const mount = document.createElement("div");
-    mount.className = "relative h-full w-full";
+    mount.className = sx(paint.s7);
     host.current!.appendChild(mount);
     void createTerminal(mount, themeRef.current.terminal, prefs).then((made) => {
       if (disposed) {
@@ -434,20 +522,20 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
 
   const blocked = state === "offline" || state === "ended";
   return (
-    <div className="relative min-h-0 flex-1" style={{ background: theme.terminal.background }} onMouseDown={onFocus}>
-      <div ref={host} data-terminal className={cn("absolute inset-0 overflow-hidden px-3 pt-2 pb-1 transition-opacity [&_canvas]:block", blocked && "pointer-events-none", state === "offline" && "opacity-40", state === "ended" && "invisible")} />
+    <div className={sx(paint.s0)} style={{ background: theme.terminal.background }} onMouseDown={onFocus}>
+      <div ref={host} data-terminal className={[sx(paint.s1), blocked && sx(paint.s2), state === "offline" && sx(paint.s3), state === "ended" && sx(paint.s4)].filter(Boolean).join(" ")} />
       {state === "offline" && <BoxOffline box={box} state={boxState} onRetry={() => setRetry((n) => n + 1)} />}
       {stoppedService && state !== "ended" && state !== "offline" && <ServiceStopped box={box} session={stoppedService} />}
       {state === "ended" && <SessionEnded box={box} session={session} agent={agent} command={command} wsKey={wsKey} tab={tab} pane={pane} onClose={onClose} />}
       {state === "open" && stalled && (
-        <div data-testid="terminal-stalled" className="pointer-events-none absolute top-2 right-3 flex items-center gap-2 rounded-md border bg-popover/90 px-2 py-1 text-muted-foreground text-xs shadow-sm">
-          <Spinner className="size-3" />
+        <div data-testid="terminal-stalled" className={sx(paint.s5)}>
+          <Spinner  size="sm"/>
           {`Waiting for ${box} to answer… what you type may not arrive`}
         </div>
       )}
       {(state === "connecting" || state === "reconnecting") && (
-        <div className="pointer-events-none absolute top-2 right-3 flex items-center gap-2 rounded-md border bg-popover/90 px-2 py-1 text-muted-foreground text-xs shadow-sm">
-          <Spinner className="size-3" />
+        <div className={sx(paint.s6)}>
+          <Spinner  size="sm"/>
           {state === "reconnecting" ? `Reconnecting to ${box}…` : "Attaching…"}
         </div>
       )}

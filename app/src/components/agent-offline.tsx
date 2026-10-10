@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, CopyIcon, PlayIcon, RotateCwIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -8,6 +9,133 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Spinner } from "@/components/ui/spinner";
 import { type AgentBinary, findAgentBinary, retryConnection, startAgent } from "@/lib/agent-start";
 import { plainError } from "@/lib/errors";
+
+const paint = stylex.create({
+  s0: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "backgroundColor": "var(--background)",
+  },
+  s1: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "backgroundColor": "var(--background)",
+  },
+  s2: {
+    "display": "flex",
+    "width": "100%",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "gap": "12px",
+  },
+  s3: {
+    "width": "100%",
+  },
+  s4: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "flex-start",
+    "gap": "10px",
+    "textAlign": "left",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s5: {
+    "display": "block",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "width": "100%",
+    "textAlign": "left",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s7: {
+    "width": "100%",
+    "textAlign": "left",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s8: {
+    "cursor": "default",
+    "userSelect": "none",
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+  },
+  s9: {
+    "marginTop": "8px",
+  },
+  s10: {
+    "width": "100%",
+    "textAlign": "left",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s11: {
+    "cursor": "default",
+    "userSelect": "none",
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+  },
+  s12: {
+    "marginTop": "8px",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--muted)",
+    "padding": "8px",
+    "fontFamily": "var(--font-mono)",
+    "whiteSpace": "pre-wrap",
+  },
+  s13: {
+    "marginTop": "8px",
+  },
+  s14: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "paddingRight": "4px",
+    "paddingLeft": "12px",
+    "textAlign": "left",
+  },
+  s15: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Any burf command starts the agent when it is not running.
 const START = "burf status";
@@ -23,7 +151,7 @@ const ANSWER_TIMEOUT = 15_000;
 export function Connecting({ state, error }: { state: string; error?: string }) {
   if (state === "connecting") {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-background">
+      <div className={sx(paint.s0)}>
         <Empty>
           <EmptyHeader>
             <EmptyMedia>
@@ -73,8 +201,8 @@ function AgentOffline({ error }: { error?: string }) {
 
   const busy = phase.kind === "starting" || phase.kind === "waiting";
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-background">
-      <Empty className="max-w-md">
+    <div className={sx(paint.s1)}>
+      <Empty measure="md">
         <EmptyHeader>
           <EmptyMedia>
             <Scene name="offline" />
@@ -89,26 +217,26 @@ function AgentOffline({ error }: { error?: string }) {
         <EmptyContent>
           {binary === null && <TerminalCommand />}
           {binary && (
-            <div className="flex w-full flex-col items-center gap-3">
-              <Button className="w-full" disabled={busy} onClick={() => void start()}>
+            <div className={sx(paint.s2)}>
+              <span className={sx(paint.s3)}><Button  disabled={busy} onClick={() => void start()}>
                 {busy ? <Spinner /> : <PlayIcon />}
                 {phase.kind === "starting" ? "Starting the Burf agent…" : phase.kind === "waiting" ? "Connecting…" : "Start the Burf agent"}
-              </Button>
-              <label className="flex w-full items-start gap-2.5 text-left text-sm">
-                <Checkbox className="mt-0.5" checked={atLogin} disabled={busy} onCheckedChange={(v) => setAtLogin(!!v)} />
+              </Button></span>
+              <label className={sx(paint.s4)}>
+                <Checkbox offset checked={atLogin} disabled={busy} onCheckedChange={(v) => setAtLogin(!!v)} />
                 <span>
                   Start at login
-                  <span className="block text-muted-foreground text-xs">Also starts it whenever you log in to this computer, and restarts it if it stops.</span>
+                  <span className={sx(paint.s5)}>Also starts it whenever you log in to this computer, and restarts it if it stops.</span>
                 </span>
               </label>
               {phase.kind === "failed" && (
-                <p role="alert" className="w-full text-left text-destructive-foreground text-sm">
+                <p role="alert" className={sx(paint.s6)}>
                   {phase.message}
                 </p>
               )}
-              <details className="w-full text-left text-muted-foreground text-xs">
-                <summary className="cursor-default select-none hover:text-foreground">Start it from a terminal instead</summary>
-                <div className="mt-2">
+              <details className={sx(paint.s7)}>
+                <summary className={sx(paint.s8)}>Start it from a terminal instead</summary>
+                <div className={sx(paint.s9)}>
                   <TerminalCommand />
                 </div>
               </details>
@@ -119,10 +247,10 @@ function AgentOffline({ error }: { error?: string }) {
             Retry now
           </Button>
           {error && (
-            <details className="w-full text-left text-muted-foreground text-xs">
-              <summary className="cursor-default select-none hover:text-foreground">Details</summary>
-              <pre className="mt-2 rounded-md bg-muted p-2 font-mono whitespace-pre-wrap">{error}</pre>
-              {binary && <p className="mt-2">Burf starts it with {binary.path}</p>}
+            <details className={sx(paint.s10)}>
+              <summary className={sx(paint.s11)}>Details</summary>
+              <pre className={sx(paint.s12)}>{error}</pre>
+              {binary && <p className={sx(paint.s13)}>Burf starts it with {binary.path}</p>}
             </details>
           )}
         </EmptyContent>
@@ -134,8 +262,8 @@ function AgentOffline({ error }: { error?: string }) {
 function TerminalCommand() {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex w-full items-center gap-2 rounded-lg border bg-muted/50 py-1 pr-1 pl-3 text-left">
-      <code className="flex-1 font-mono text-foreground text-sm">{START}</code>
+    <div className={sx(paint.s14)}>
+      <code className={sx(paint.s15)}>{START}</code>
       <Button
         size="sm"
         variant="outline"

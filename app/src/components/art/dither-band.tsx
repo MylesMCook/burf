@@ -1,6 +1,28 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
 
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "pointerEvents": "none",
+    "overflow": "hidden",
+  },
+  s1: {
+    "display": "block",
+    "imageRendering": "pixelated",
+    "transitionProperty": "opacity",
+    "transitionDuration": "500ms",
+  },
+  s2: {
+    "opacity": 1,
+  },
+  s3: {
+    "opacity": 0,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // DitherBand draws a picture with a halftone grain: an ordered (Bayer)
 // dither of its lightness, strongest along edges and in gradients and faint
@@ -122,8 +144,8 @@ export function DitherBand({ src, position = 0.5, cell = 2, levels = 6, fade = 0
   }, [src, position, cell, levels, fade, mute]);
 
   return (
-    <div ref={wrap} aria-hidden className={cn("pointer-events-none overflow-hidden", className)}>
-      <canvas ref={canvas} className={cn("block [image-rendering:pixelated] transition-opacity duration-500", drawn ? "opacity-100" : "opacity-0")} />
+    <div ref={wrap} aria-hidden className={[sx(paint.s0), className].filter(Boolean).join(" ")}>
+      <canvas ref={canvas} className={[sx(paint.s1), drawn ? sx(paint.s2) : sx(paint.s3)].filter(Boolean).join(" ")} />
     </div>
   );
 }

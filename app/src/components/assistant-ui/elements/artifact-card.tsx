@@ -2,19 +2,62 @@
 
 import type { ComponentProps } from "react";
 import { ArrowUpRightIcon, FileTextIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { mono, paper, ShimmerLabel } from "./surfaces";
+import * as stylex from "@stylexjs/stylex";
+
+import { radius } from "@/styles/tokens.stylex";
+import { blurIn, mark, mono, paper, pulse, ShimmerLabel } from "./surfaces";
+
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const styles = stylex.create({
+  card: {
+    display: "flex",
+    width: "100%",
+    maxWidth: 320,
+    cursor: "pointer",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 20,
+    padding: 14,
+    transform: { default: "scale(1)", ":hover": "translateY(-1px)", ":active": "scale(0.98)" },
+    transitionProperty: "transform",
+    transitionDuration: { default: "150ms", [still]: "0s" },
+  },
+  iconBox: {
+    display: "flex",
+    width: 36,
+    height: 36,
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.xl,
+    backgroundColor: "color-mix(in oklab, var(--foreground) 5%, transparent)",
+    color: "color-mix(in oklab, var(--foreground) 45%, transparent)",
+  },
+  icon: { width: 16, height: 16 },
+  copy: { minWidth: 0, flexGrow: 1, flexShrink: 1, flexBasis: 0 },
+  title: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13.5, fontWeight: 500 },
+  meta: { display: "flex", alignItems: "center", gap: 4, color: "color-mix(in oklab, var(--foreground) 40%, transparent)" },
+  nums: { fontVariantNumeric: "tabular-nums" },
+  arrow: {
+    width: 14,
+    height: 14,
+    color: "color-mix(in oklab, var(--foreground) 35%, transparent)",
+    opacity: { default: 0, ":is(:hover > &)": 1 },
+    transitionProperty: "opacity",
+    transitionDuration: { default: "150ms", [still]: "0s" },
+  },
+});
 
 export function ArtifactCard({
   title,
   meta,
   generating = false,
   words = 0,
-  className,
   ...props
 }: Omit<
   ComponentProps<"div">,
-  "children" | "title" | "meta" | "generating" | "words"
+  "children" | "title" | "meta" | "generating" | "words" | "className" | "style"
 > & {
   title: string;
   meta: string;
@@ -22,46 +65,23 @@ export function ArtifactCard({
   words?: number;
 }) {
   return (
-    <div
-      data-slot="artifact-card"
-      className={cn(
-        paper,
-        "group flex w-full max-w-xs cursor-pointer items-center gap-3 rounded-[20px] p-3.5 transition-transform duration-150 hover:-translate-y-px active:scale-[0.98]",
-        className,
-      )}
-
-      {...props}
-    >
-      <span className="bg-foreground/[0.05] text-foreground/45 flex size-9 shrink-0 items-center justify-center rounded-xl">
-        <FileTextIcon
-          className={cn(
-            "size-4",
-            generating && "animate-pulse motion-reduce:animate-none",
-          )}
-        />
+    <div data-slot="artifact-card" {...mark(undefined, paper, styles.card)} {...props}>
+      <span {...mark(undefined, styles.iconBox)}>
+        <FileTextIcon {...mark(undefined, styles.icon, generating && pulse)} />
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13.5px] font-medium">{title}</p>
+      <div {...mark(undefined, styles.copy)}>
+        <p {...mark(undefined, styles.title)}>{title}</p>
         {generating ? (
-          <p className={cn(mono, "text-foreground/40 flex items-center gap-1")}>
-            <ShimmerLabel className="relative inline-block leading-none">
-              Writing
-            </ShimmerLabel>
+          <p {...mark(undefined, mono, styles.meta)}>
+            <ShimmerLabel>Writing</ShimmerLabel>
             <span>·</span>
-            <span className="tabular-nums">{words} words</span>
+            <span {...mark(undefined, styles.nums)}>{words} words</span>
           </p>
         ) : (
-          <p
-            className={cn(
-              mono,
-              "fade-in blur-in-[2px] animate-in text-foreground/40 duration-300 motion-reduce:animate-none",
-            )}
-          >
-            {meta}
-          </p>
+          <p {...mark(undefined, mono, styles.meta, blurIn)}>{meta}</p>
         )}
       </div>
-      <ArrowUpRightIcon className="text-foreground/35 size-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
+      <ArrowUpRightIcon {...mark(undefined, styles.arrow)} />
     </div>
   );
 }

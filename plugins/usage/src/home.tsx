@@ -1,8 +1,176 @@
+import * as stylex from "@stylexjs/stylex";
 import { type HomeWidgetProps, useBoxes, useWidgetData } from "@berth/plugin";
-import { Tip, WidgetEmpty, WidgetSkeleton, cn } from "@berth/plugin/ui";
+import { Tip, WidgetEmpty, WidgetSkeleton } from "@berth/plugin/ui";
 
 import { type Agent, type Report, runScript, where, type Window } from "./box";
 import { AGENT_NAME, compact, days, usd } from "./data";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "flexDirection": "column",
+    "gap": "8px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingBottom": "4px",
+  },
+  s1: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "gap": "8px",
+  },
+  s2: {
+    "fontWeight": 600,
+    "fontSize": "24px",
+    "lineHeight": "32px",
+    "fontVariantNumeric": "tabular-nums",
+    "letterSpacing": "-0.025em",
+  },
+  s3: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "marginLeft": "auto",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s5: {
+    "display": "flex",
+    "alignItems": "flex-end",
+    "gap": "2px",
+  },
+  s6: {
+    "height": "64px",
+  },
+  s7: {
+    "height": "32px",
+  },
+  s8: {
+    "display": "flex",
+    "height": "100%",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "flex-end",
+  },
+  s9: {
+    "display": "block",
+    "width": "100%",
+    "borderTopLeftRadius": "4px",
+    "borderTopRightRadius": "4px",
+    "borderBottomLeftRadius": "1px",
+    "borderBottomRightRadius": "1px",
+  },
+  s10: {
+    "backgroundColor": "var(--muted)",
+  },
+  s11: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "6px",
+  },
+  s12: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s13: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "gap": "8px",
+    "fontSize": "11px",
+  },
+  s14: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s15: {
+    "flexShrink": 0,
+    "fontVariantNumeric": "tabular-nums",
+    "color": "var(--muted-foreground)",
+  },
+  s16: {
+    "display": "block",
+    "height": "4px",
+    "overflow": "hidden",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--muted)",
+  },
+  s17: {
+    "display": "block",
+    "height": "100%",
+    "borderRadius": "999px",
+  },
+  s18: {
+    "backgroundColor": "var(--destructive)",
+  },
+  s19: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s20: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  n0: {
+    "display": "block",
+    "width": "100%",
+    "borderTopLeftRadius": "4px",
+    "borderTopRightRadius": "4px",
+    "borderBottomLeftRadius": "1px",
+    "borderBottomRightRadius": "1px",
+  },
+  n1: {
+    "backgroundColor": "var(--info)",
+  },
+  n2: {
+    "backgroundColor": "color-mix(in oklab, var(--info) 60%, transparent)",
+  },
+  n3: {
+    "backgroundColor": "var(--muted)",
+  },
+  n4: {
+    "display": "block",
+    "height": "100%",
+    "borderRadius": "999px",
+  },
+  n5: {
+    "backgroundColor": "var(--destructive)",
+  },
+  n6: {
+    "backgroundColor": "var(--warning)",
+  },
+  n7: {
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+  },
+  q21: {
+    "fontFamily": "var(--font-heading)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The Usage widget on Home: tokens your agents used today and each day of
 // the week, what Claude Code estimates they cost, and how much of a plan's
@@ -94,46 +262,46 @@ export function UsageWidget({ berth, size }: HomeWidgetProps) {
   const max = Math.max(1, ...data.week.map((d) => d.tokens));
   const total = data.week.reduce((n, d) => n + d.tokens, 0);
   return (
-    <div className="flex h-full flex-col gap-2 px-2 pb-1">
-      <div className="flex items-baseline gap-2">
-        <span className="font-heading font-semibold text-2xl tabular-nums tracking-tight">{compact(data.today)}</span>
-        <span className="min-w-0 truncate text-muted-foreground text-xs">tokens today</span>
+    <div className={sx(paint.s0)}>
+      <div className={sx(paint.s1)}>
+        <span className={[sx(paint.s2), sx(paint.q21)].filter(Boolean).join(" ")}>{compact(data.today)}</span>
+        <span className={sx(paint.s3)}>tokens today</span>
         {data.cost > 0 && (
           <Tip label="Claude Code's own estimate at API prices, for sessions active this week. A subscription isn't billed this way.">
-            <span className="ml-auto shrink-0 text-muted-foreground text-xs tabular-nums">≈ {usd(data.cost)} this week</span>
+            <span className={sx(paint.s4)}>≈ {usd(data.cost)} this week</span>
           </Tip>
         )}
       </div>
-      <div className={cn("flex items-end gap-[2px]", big ? "h-16" : "h-8")} role="list" aria-label={`Tokens a day this week, ${compact(total)} in all`}>
+      <div className={[sx(paint.s5), big ? sx(paint.s6) : sx(paint.s7)].filter(Boolean).join(" ")} role="list" aria-label={`Tokens a day this week, ${compact(total)} in all`}>
         {data.week.map((d, i) => (
           <Tip key={d.day} label={`${new Date(`${d.day}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })} · ${compact(d.tokens)} tokens`}>
-            <span role="listitem" aria-label={`${d.day}: ${d.tokens} tokens`} className="flex h-full flex-1 items-end">
-              <span className={cn("block w-full rounded-t-[4px] rounded-b-[1px]", d.tokens ? (i === data.week.length - 1 ? "bg-info" : "bg-info/60") : "bg-muted")} style={{ height: d.tokens ? `${Math.max(8, (d.tokens / max) * 100)}%` : 2 }} />
+            <span role="listitem" aria-label={`${d.day}: ${d.tokens} tokens`} className={sx(paint.s8)}>
+              <span className={[sx(paint.n0), d.tokens ? i === data.week.length - 1 ? sx(paint.n1) : sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")} style={{ height: d.tokens ? `${Math.max(8, (d.tokens / max) * 100)}%` : 2 }} />
             </span>
           </Tip>
         ))}
       </div>
       {data.limits.length > 0 && (
-        <div className="flex flex-col gap-1.5">
+        <div className={sx(paint.s11)}>
           {data.limits.slice(0, big ? 4 : 1).map((l) => (
-            <div key={l.label} className="flex flex-col gap-0.5">
-              <span className="flex items-baseline gap-2 text-[11px]">
-                <span className="min-w-0 flex-1 truncate">{l.label}</span>
-                <span className="shrink-0 tabular-nums text-muted-foreground">{Math.round(l.used * 100)}%</span>
+            <div key={l.label} className={sx(paint.s12)}>
+              <span className={sx(paint.s13)}>
+                <span className={sx(paint.s14)}>{l.label}</span>
+                <span className={sx(paint.s15)}>{Math.round(l.used * 100)}%</span>
               </span>
-              <span className="block h-1 overflow-hidden rounded-full bg-muted" role="meter" aria-valuenow={Math.round(l.used * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={l.label}>
-                <span className={cn("block h-full rounded-full", l.used >= 0.9 ? "bg-destructive" : l.used >= 0.7 ? "bg-warning" : "bg-foreground/45")} style={{ width: `${Math.min(100, l.used * 100)}%` }} />
+              <span className={sx(paint.s16)} role="meter" aria-valuenow={Math.round(l.used * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={l.label}>
+                <span className={[sx(paint.n4), l.used >= 0.9 ? sx(paint.n5) : l.used >= 0.7 ? sx(paint.n6) : sx(paint.n7)].filter(Boolean).join(" ")} style={{ width: `${Math.min(100, l.used * 100)}%` }} />
               </span>
             </div>
           ))}
         </div>
       )}
       {size !== "s" && (
-        <p className="truncate text-[11px] text-muted-foreground">
+        <p className={sx(paint.s19)}>
           This week: {data.byAgent.map((a) => `${AGENT_NAME[a.agent]} ${compact(a.tokens)}`).join(" · ") || "no tokens yet"}
         </p>
       )}
-      {data.failed.length > 0 && <p className="truncate text-[11px] text-muted-foreground">Couldn't read {data.failed.join(", ")}</p>}
+      {data.failed.length > 0 && <p className={sx(paint.s20)}>Couldn't read {data.failed.join(", ")}</p>}
     </div>
   );
 }

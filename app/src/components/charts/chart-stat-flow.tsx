@@ -1,8 +1,44 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import NumberFlow from "@number-flow/react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "marginBottom": "8px",
+    "display": "flex",
+    "height": "48px",
+    "width": "48px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+  },
+  s1: {
+    "color": "var(--foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s2: {
+    "marginTop": "2px",
+  },
+
+  s3: {
+    color: "var(--chart-label)",
+  },
+  s4: {
+    fontSize: 24,
+    lineHeight: "32px",
+    fontWeight: 700,
+  },
+  s5: {
+    fontSize: 12,
+    lineHeight: "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 /** Subset of `Intl.NumberFormatOptions` supported by NumberFlow */
 export interface ChartStatFlowFormat {
@@ -83,8 +119,8 @@ export function ChartStatFlow({
   formatOptions = defaultChartStatFlowFormat,
   prefix,
   suffix,
-  valueClassName = "text-2xl font-bold",
-  labelClassName = "text-xs",
+  valueClassName = (sx(paint.s4) ?? ""),
+  labelClassName = (sx(paint.s5) ?? ""),
   icon,
 }: ChartStatFlowProps) {
   const numberFlowReady = useNumberFlowElementReady();
@@ -96,11 +132,11 @@ export function ChartStatFlow({
   return (
     <>
       {icon ? (
-        <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
+        <div className={sx(paint.s0)}>
           {icon}
         </div>
       ) : null}
-      <span className={cn("text-foreground tabular-nums", valueClassName)}>
+      <span className={[sx(paint.s1), valueClassName].filter(Boolean).join(" ")}>
         {numberFlowReady ? (
           <NumberFlow
             format={formatOptions}
@@ -114,7 +150,7 @@ export function ChartStatFlow({
           staticValue
         )}
       </span>
-      <span className={cn("mt-0.5 text-chart-label", labelClassName)}>
+      <span className={[[sx(paint.s2), sx(paint.s3)].filter(Boolean).join(" "), labelClassName].filter(Boolean).join(" ")}>
         {label}
       </span>
     </>

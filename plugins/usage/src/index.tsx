@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { definePlugin, useBoxes, useCurrentWorktree, useLocations, useStorage, type BerthPluginContext, type Location, type ScreenProps, type Session } from "@berth/plugin";
 import { Alert, AlertDescription, BoxFilter, Button, Icon, PickOne, Tooltip, TooltipPopup, TooltipTrigger, ViewHeader } from "@berth/plugin/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -7,6 +8,34 @@ import { ACCOUNT_VAR, runScript, where, type Account, type Accounts, type Report
 import type { Period, Source } from "./data";
 import { UsageWidget } from "./home";
 import { BoxStatus, UsageView, type BoxState } from "./usage-view";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "12px",
+  },
+  s1: {
+    "paddingTop": "64px",
+    "paddingBottom": "64px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s2: {
+    "paddingTop": "64px",
+    "paddingBottom": "64px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Usage & accounts: how many tokens Claude Code and Codex used on each box,
 // read from the transcripts they write there, and which login each one uses
@@ -169,7 +198,7 @@ function UsageScreen({ berth }: ScreenProps) {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className={sx(paint.s0)}>
         <PickOne
           label="Show"
           value={tab}
@@ -181,10 +210,10 @@ function UsageScreen({ berth }: ScreenProps) {
         />
         {tab === "usage" ? (
           <>
-            <BoxFilter className="ml-auto" boxes={allBoxes} hidden={hiddenBoxes} onChange={setHiddenBoxes} />
+            <BoxFilter align="end" boxes={allBoxes} hidden={hiddenBoxes} onChange={setHiddenBoxes} />
             <PickOne
               label="Period"
-              className={allBoxes.length < 2 ? "ml-auto" : undefined}
+              align={allBoxes.length < 2 ? "end" : undefined}
               value={String(period)}
               onChange={(v: string) => setPeriod(Number(v) as Period)}
               options={[
@@ -196,7 +225,7 @@ function UsageScreen({ berth }: ScreenProps) {
           </>
         ) : (
           // Accounts are one box's at a time.
-          online.length > 1 && <PickOne label="Box" className="ml-auto" value={accountsBox} onChange={setPickedAccounts} options={online.map((b) => ({ value: b, label: b }))} />
+          online.length > 1 && <PickOne align="end" label="Box" value={accountsBox} onChange={setPickedAccounts} options={online.map((b) => ({ value: b, label: b }))} />
         )}
       </div>
 
@@ -212,10 +241,10 @@ function UsageScreen({ berth }: ScreenProps) {
       )}
 
       {!online.length ? (
-        <p className="py-16 text-center text-muted-foreground text-sm">Connect a box to see its agents' usage.</p>
+        <p className={sx(paint.s1)}>Connect a box to see its agents' usage.</p>
       ) : tab === "usage" ? (
         !multi && !online.includes(covered[0]) ? (
-          <p className="py-16 text-center text-muted-foreground text-sm">{covered[0]} is offline; its usage shows once it's back.</p>
+          <p className={sx(paint.s2)}>{covered[0]} is offline; its usage shows once it's back.</p>
         ) : (
           <UsageView
             berth={berth}

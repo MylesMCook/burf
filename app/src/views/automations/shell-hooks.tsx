@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { BellIcon, ChevronDownIcon, PackageIcon, PlusIcon, ShieldIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -10,6 +11,132 @@ import { EventsPanel, EventsRail } from "@/views/automations/events-panel";
 import { type Editing, HookSheet } from "@/views/automations/hook-sheet";
 import { HooksTable } from "@/views/automations/hooks-table";
 import { LAPTOP, useHooks } from "@/views/automations/use-hooks";
+import { color, radius } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+  },
+  s1: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s2: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "4px",
+    "paddingBottom": "12px",
+  },
+  s3: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s4: {
+    "opacity": 0.6,
+  },
+  s5: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "12px",
+    "paddingBottom": "40px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "20px",
+    },
+  },
+  s6: {
+    "marginBottom": "8px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(auto-fill,minmax(240px,1fr))",
+    "gap": "8px",
+  },
+  s8: {
+    "marginTop": "2px",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s9: {
+    "minWidth": "0px",
+  },
+  s10: {
+    "display": "block",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s11: {
+    "display": "block",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s12: {
+    "marginTop": "8px",
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--muted)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+
+  s13: {
+    display: "flex",
+    height: "100%",
+    minHeight: 64,
+    width: "100%",
+    alignItems: "flex-start",
+    gap: 10,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: { default: color.border, ":hover": "color-mix(in oklab, var(--ring) 40%, transparent)" },
+    backgroundColor: color.card,
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
+    textAlign: "left",
+    transitionProperty: "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke",
+    opacity: { ":disabled": 0.5 },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const starterIcons: Record<string, typeof BellIcon> = { notify: BellIcon, deps: PackageIcon, "no-main": ShieldIcon };
 
@@ -48,34 +175,34 @@ export function ShellHooks() {
   const startFrom = (s: Starter, machine: string) => add(machine, { ...s.hook });
 
   return (
-    <div className="flex h-full">
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex shrink-0 items-center gap-2 px-6 pt-1 pb-3">
-          <p className="min-w-0 flex-1 text-muted-foreground text-sm">Shell commands that run when an event happens. Gates run before an action and can stop it.</p>
+    <div className={sx(paint.s0)}>
+      <div className={sx(paint.s1)}>
+        <div className={sx(paint.s2)}>
+          <p className={sx(paint.s3)}>Shell commands that run when an event happens. Gates run before an action and can stop it.</p>
           <MachineMenu machines={machines} onPick={(m) => add(m)}>
             <PlusIcon />
             New hook
-            <ChevronDownIcon className="opacity-60" />
+            <ChevronDownIcon className={sx(paint.s4)} />
           </MachineMenu>
         </div>
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pt-3 pb-10">
+        <div className={sx(paint.s5)}>
           <section>
-            <h2 className="mb-2 font-medium text-muted-foreground text-xs">Start from</h2>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-2">
+            <h2 className={sx(paint.s6)}>Start from</h2>
+            <div className={sx(paint.s7)}>
               {STARTERS.map((s) => {
                 const Icon = starterIcons[s.id] ?? PlusIcon;
                 const card = (
                   <>
-                    <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0">
-                      <span className="block font-medium text-sm">{s.title}</span>
-                      <span className="block text-muted-foreground text-xs">
+                    <Icon className={sx(paint.s8)} />
+                    <span className={sx(paint.s9)}>
+                      <span className={sx(paint.s10)}>{s.title}</span>
+                      <span className={sx(paint.s11)}>
                         {s.description} {s.where === "laptop" ? "On this laptop." : "On a box."}
                       </span>
                     </span>
                   </>
                 );
-                const cls = "flex h-full min-h-16 w-full items-start gap-2.5 rounded-xl border bg-card px-3 py-2.5 text-left transition-colors hover:border-ring/40 disabled:opacity-50";
+                const cls = (sx(paint.s13) ?? "");
                 if (s.where === "laptop") {
                   return (
                     <button key={s.id} type="button" className={cls} onClick={() => startFrom(s, LAPTOP)}>
@@ -169,12 +296,12 @@ function DeleteHook({ target, hook, onClose, onConfirm }: { target?: { machine: 
   const [busy, setBusy] = useState(false);
   return (
     <AlertDialog open={!!target} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogPopup className="sm:max-w-md">
+      <AlertDialogPopup width="md">
         <AlertDialogHeader>
           <AlertDialogTitle>Delete this hook?</AlertDialogTitle>
           <AlertDialogDescription>
             It stops running on {target && machineInProse(target.machine)} straight away.
-            {hook && <code className="mt-2 block truncate rounded-md bg-muted px-2 py-1 font-mono text-xs">{`${hook.on} → ${hook.run}`}</code>}
+            {hook && <code className={sx(paint.s12)}>{`${hook.on} → ${hook.run}`}</code>}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

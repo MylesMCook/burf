@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { create } from "zustand";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,58 @@ import { IS_LINUX, LINUX_TERMINAL_KEYS } from "@/lib/platform";
 import { usePrefs } from "@/lib/prefs";
 import { describe, SHORTCUT_GROUPS, SHORTCUTS } from "@/lib/shortcuts";
 import { useStore } from "@/lib/store";
+
+const paint = stylex.create({
+  s0: {
+    "marginBottom": "4px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s1: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s2: {
+    "display": "flex",
+    "minHeight": "30px",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": {
+      "default": 1,
+      ":last-child": 0,
+    },
+    "borderBottomStyle": {
+      "default": "solid",
+      ":last-child": "solid",
+    },
+    "borderBottomColor": {
+      "default": "var(--border)",
+      ":last-child": "var(--border)",
+    },
+    "borderStyle": "dashed",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s3: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s4: {
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The Keyboard shortcuts sheet (Help → Keyboard shortcuts, ⌘/, or ⌘K): every
 // shortcut, grouped as the menu bar groups them, from the same table.
@@ -26,7 +79,7 @@ export function ShortcutsSheet() {
     <Sheet open={open} onOpenChange={(o) => useShortcutsSheet.setState({ open: o })}>
       {/* The zoom HUD (⌘+, ⌘−, ⌘0) lives with the sheet that lists those keys. */}
       <ZoomHud />
-      <SheetPopup className="sm:max-w-sm">
+      <SheetPopup width="sm">
         <SheetHeader>
           <SheetTitle>Keyboard shortcuts</SheetTitle>
           <SheetDescription>
@@ -40,16 +93,16 @@ export function ShortcutsSheet() {
             )}
           </SheetDescription>
         </SheetHeader>
-        <SheetPanel className="flex flex-col gap-4">
+        <SheetPanel stack={4}>
           {SHORTCUT_GROUPS.map((group) => (
             <section key={group} aria-label={group}>
-              <h3 className="mb-1 font-medium text-muted-foreground text-xs">{group}</h3>
-              <ul className="flex flex-col">
+              <h3 className={sx(paint.s0)}>{group}</h3>
+              <ul className={sx(paint.s1)}>
                 {SHORTCUTS.filter((s) => s.group === group).map((s) => (
-                  <li key={s.id} className="flex min-h-7.5 items-center gap-2 border-b border-dashed py-0.5 text-sm last:border-b-0">
-                    <span className="min-w-0 flex-1 truncate">{describe(s)}</span>
+                  <li key={s.id} className={sx(paint.s2)}>
+                    <span className={sx(paint.s3)}>{describe(s)}</span>
                     {s.labs && !labs && <Badge variant="outline">Labs</Badge>}
-                    <Kbd className="text-foreground/80">{s.keys}</Kbd>
+                    <span className={sx(paint.s4)}><Kbd>{s.keys}</Kbd></span>
                   </li>
                 ))}
               </ul>

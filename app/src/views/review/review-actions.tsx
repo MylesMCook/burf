@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { AlertTriangleIcon, GitCommitHorizontalIcon, GitPullRequestIcon, UploadIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -15,10 +16,227 @@ import { agentLabel } from "@/lib/derive";
 import { plainError } from "@/lib/errors";
 import { describeCode, quote } from "@/lib/git/parse";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { forgetPullRequest, markReviewed, type ReviewEntry, refreshReview, reviewName, useReview, where } from "@/views/review/review-store";
 import { commitMessage, lastMessage } from "@/views/review/summary";
 import { ErrorText } from "@/components/error-note";
+
+const paint = stylex.create({
+  s0: {
+    "display": "inline-flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s1: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--foreground)",
+  },
+  s2: {
+    "flexShrink": 0,
+  },
+  s3: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s4: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s5: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "space-between",
+    "gap": "12px",
+  },
+  s7: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "6px",
+  },
+  s8: {
+    "fontWeight": 500,
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s9: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--warning) 30%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 8%, transparent)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s11: {
+    "marginTop": "1px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--warning)",
+  },
+  s12: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s13: {
+    "maxHeight": "160px",
+    "overflow": "auto",
+    "whiteSpace": "pre-wrap",
+    "borderRadius": "var(--radius-md)",
+    "padding": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s14: {
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 8%, transparent)",
+    "color": "var(--destructive-foreground)",
+  },
+  s15: {
+    "backgroundColor": "color-mix(in oklab, var(--muted) 60%, transparent)",
+    "color": "var(--muted-foreground)",
+  },
+  s16: {
+    "marginLeft": "4px",
+    "height": "18px",
+    "backgroundColor": "color-mix(in oklab, var(--primary-foreground) 15%, transparent)",
+    "fontSize": "10px",
+    "color": "var(--primary-foreground)",
+  },
+  s17: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "space-between",
+    "gap": "12px",
+  },
+  s18: {
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 8%, transparent)",
+    "padding": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--destructive-foreground)",
+  },
+  s19: {
+    "marginLeft": "4px",
+    "height": "18px",
+    "backgroundColor": "color-mix(in oklab, var(--primary-foreground) 15%, transparent)",
+    "fontSize": "10px",
+    "color": "var(--primary-foreground)",
+  },
+  s20: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "space-between",
+    "gap": "12px",
+  },
+  s21: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "justifyContent": "space-between",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "fontWeight": 500,
+  },
+  s23: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s24: {
+    "maxHeight": "208px",
+    "overflow": "auto",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 30%, transparent)",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s25: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s26: {
+    "width": "64px",
+    "flexShrink": 0,
+    "fontFamily": "var(--font-sans)",
+    "color": "var(--muted-foreground)",
+  },
+  s27: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s28: {
+    "flexShrink": 0,
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s29: {
+    "color": "var(--success-foreground)",
+  },
+  s30: {
+    "color": "var(--destructive-foreground)",
+  },
+  s31: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s32: {
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 8%, transparent)",
+    "padding": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--destructive-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The three things to do with an agent's finished work: approve it
 // (commit, push, open a PR), send it back with a note, or discard it.
@@ -80,10 +298,10 @@ async function settle(entry: ReviewEntry) {
 
 function Target({ entry }: { entry: ReviewEntry }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5 rounded-md border bg-muted/40 px-1.5 py-0.5 text-muted-foreground text-xs">
+    <span className={sx(paint.s0)}>
       <AgentIcon agent={entry.agent} />
-      <span className="truncate text-foreground">{reviewName(entry)}</span>
-      <span className="shrink-0">· {entry.box}</span>
+      <span className={sx(paint.s1)}>{reviewName(entry)}</span>
+      <span className={sx(paint.s2)}>· {entry.box}</span>
     </span>
   );
 }
@@ -121,9 +339,9 @@ export function ApproveDialog({ entry, initial, onClose }: { entry?: ReviewEntry
   const options = useMemo(
     () =>
       [
-        ...(hasFiles ? [{ value: "commit" as const, label: "Commit", icon: <GitCommitHorizontalIcon className="size-3.5" /> }] : []),
-        { value: "push" as const, label: hasFiles ? "Commit & push" : "Push", icon: <UploadIcon className="size-3.5" /> },
-        { value: "pr" as const, label: openPR ? (hasFiles ? "Commit, push & open PR" : "Push & open PR") : `${hasFiles ? "Commit & push" : "Push"} to PR #${pr?.number}`, icon: <GitPullRequestIcon className="size-3.5" /> },
+        ...(hasFiles ? [{ value: "commit" as const, label: "Commit", icon: <GitCommitHorizontalIcon className={sx(paint.s3)} /> }] : []),
+        { value: "push" as const, label: hasFiles ? "Commit & push" : "Push", icon: <UploadIcon className={sx(paint.s4)} /> },
+        { value: "pr" as const, label: openPR ? (hasFiles ? "Commit, push & open PR" : "Push & open PR") : `${hasFiles ? "Commit & push" : "Push"} to PR #${pr?.number}`, icon: <GitPullRequestIcon className={sx(paint.s5)} /> },
       ] satisfies { value: ApproveMode; label: string; icon: React.ReactNode }[],
     [hasFiles, openPR, pr?.number],
   );
@@ -156,9 +374,9 @@ export function ApproveDialog({ entry, initial, onClose }: { entry?: ReviewEntry
 
   return (
     <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
-      <DialogPopup className="sm:max-w-[34rem]" showCloseButton={false} onKeyDown={submitOnCmdEnter(() => void go())}>
-        <DialogHeader className="gap-1.5 px-5 pt-5 pb-3">
-          <div className="flex items-center justify-between gap-3">
+      <DialogPopup width="34" showCloseButton={false} onKeyDown={submitOnCmdEnter(() => void go())}>
+        <DialogHeader pad="step">
+          <div className={sx(paint.s6)}>
             <DialogTitle>Approve</DialogTitle>
             <Target entry={entry} />
           </div>
@@ -168,39 +386,39 @@ export function ApproveDialog({ entry, initial, onClose }: { entry?: ReviewEntry
             {mode === "pr" && openPR && ` and opens a pull request into ${baseBranch(entry)}`}.
           </DialogDescription>
         </DialogHeader>
-        <DialogPanel className="flex flex-col gap-3 px-5 pb-5">
+        <DialogPanel inset="body" stack={3}>
           <PickOne<ApproveMode> label="What to do" value={mode} options={options} onChange={setMode} />
           {hasFiles && (
-            <label className="flex flex-col gap-1.5">
-              <span className="font-medium text-xs">Commit message</span>
+            <label className={sx(paint.s7)}>
+              <span className={sx(paint.s8)}>Commit message</span>
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={5}
                 placeholder="What the agent changed, in one line, then details"
-                className="font-mono text-xs"
+                mono text="xs"
                 autoFocus
               />
-              <span className="text-muted-foreground text-xs">Drafted from {agentLabel(entry.agent)}'s last message. The first line is the subject{mode === "pr" && openPR ? " and the PR's title" : ""}.</span>
+              <span className={sx(paint.s9)}>Drafted from {agentLabel(entry.agent)}'s last message. The first line is the subject{mode === "pr" && openPR ? " and the PR's title" : ""}.</span>
             </label>
           )}
           {pushes && (
-            <p className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/8 px-2.5 py-2 text-xs">
-              <AlertTriangleIcon className="mt-px size-3.5 shrink-0 text-warning" />
+            <p className={sx(paint.s10)}>
+              <AlertTriangleIcon className={sx(paint.s11)} />
               <span>
-                This pushes <span className="font-mono">{entry.branch}</span> to origin from {entry.box}, with that box's git credentials.
+                This pushes <span className={sx(paint.s12)}>{entry.branch}</span> to origin from {entry.box}, with that box's git credentials.
               </span>
             </p>
           )}
-          {(error || output) && <pre className={cn("max-h-40 overflow-auto whitespace-pre-wrap rounded-md p-2 font-mono text-[11px]", error ? "bg-destructive/8 text-destructive-foreground" : "bg-muted/60 text-muted-foreground")}>{error ?? output}</pre>}
+          {(error || output) && <pre className={[sx(paint.s13), error ? sx(paint.s14) : sx(paint.s15)].filter(Boolean).join(" ")}>{error ?? output}</pre>}
         </DialogPanel>
-        <DialogFooter className="items-center px-5 py-3">
+        <DialogFooter pad="actions">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
           <Button onClick={() => void go()} loading={busy} disabled={!valid}>
             {options.find((o) => o.value === mode)?.label}
-            <Kbd className="ml-1 h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground">⌘↵</Kbd>
+            <span className={sx(paint.s16)}><Kbd>⌘↵</Kbd></span>
           </Button>
         </DialogFooter>
       </DialogPopup>
@@ -240,15 +458,15 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
   };
   return (
     <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
-      <DialogPopup className="sm:max-w-[32rem]" showCloseButton={false} onKeyDown={submitOnCmdEnter(() => void go())}>
-        <DialogHeader className="gap-1.5 px-5 pt-5 pb-3">
-          <div className="flex items-center justify-between gap-3">
+      <DialogPopup showCloseButton={false} onKeyDown={submitOnCmdEnter(() => void go())}>
+        <DialogHeader pad="step">
+          <div className={sx(paint.s17)}>
             <DialogTitle>Send back</DialogTitle>
             <Target entry={entry} />
           </div>
           <DialogDescription>Typed into {agentLabel(entry.agent)}'s session as your next prompt. It leaves the inbox while it works.</DialogDescription>
         </DialogHeader>
-        <DialogPanel {...files.dropProps} className={cn("flex flex-col gap-2 px-5 pb-5", files.dragging && "outline-2 outline-ring/60 outline-dashed -outline-offset-4")}>
+        <DialogPanel {...files.dropProps} drop={files.dragging} inset="body" stack={2}>
           <AttachmentChips items={files.items} onRemove={files.remove} onRetry={files.retry} />
           <Textarea
             value={note}
@@ -258,15 +476,15 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
             autoFocus
             onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
           />
-          {error && <ErrorText className="rounded-md bg-destructive/8 p-2 text-xs text-destructive-foreground" text={error} />}
+          {error && <ErrorText className={sx(paint.s18)} text={error} />}
         </DialogPanel>
-        <DialogFooter className="items-center px-5 py-3">
+        <DialogFooter pad="actions">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
           <Button onClick={() => void go()} loading={busy} disabled={!!files.blocker || !note.replace(/^Changes requested:\s*/, "").trim()}>
             Send back
-            <Kbd className="ml-1 h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground">⌘↵</Kbd>
+            <span className={sx(paint.s19)}><Kbd>⌘↵</Kbd></span>
           </Button>
         </DialogFooter>
       </DialogPopup>
@@ -297,9 +515,9 @@ export function DiscardDialog({ entry, onClose }: { entry?: ReviewEntry; onClose
   const lost = entry.added + entry.removed;
   return (
     <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
-      <DialogPopup className="sm:max-w-[32rem]" showCloseButton={false}>
-        <DialogHeader className="gap-1.5 px-5 pt-5 pb-3">
-          <div className="flex items-center justify-between gap-3">
+      <DialogPopup showCloseButton={false}>
+        <DialogHeader pad="step">
+          <div className={sx(paint.s20)}>
             <DialogTitle>Discard these changes?</DialogTitle>
             <Target entry={entry} />
           </div>
@@ -308,30 +526,30 @@ export function DiscardDialog({ entry, onClose }: { entry?: ReviewEntry; onClose
             {entry.base_ahead > 0 && ` Its ${entry.base_ahead} commit${entry.base_ahead === 1 ? "" : "s"} on ${entry.branch} are kept.`}
           </DialogDescription>
         </DialogHeader>
-        <DialogPanel className="flex flex-col gap-2 px-5 pb-5">
-          <div className="flex items-baseline justify-between text-xs">
-            <span className="font-medium">
+        <DialogPanel inset="body" stack={2}>
+          <div className={sx(paint.s21)}>
+            <span className={sx(paint.s22)}>
               {entry.files.length} file{entry.files.length === 1 ? "" : "s"} lost
             </span>
-            {lost > 0 && <span className="font-mono text-muted-foreground tabular-nums">{lost} line{lost === 1 ? "" : "s"}</span>}
+            {lost > 0 && <span className={sx(paint.s23)}>{lost} line{lost === 1 ? "" : "s"}</span>}
           </div>
-          <ul className="max-h-52 overflow-auto rounded-md border bg-muted/30 py-1">
+          <ul className={sx(paint.s24)}>
             {entry.files.map((f) => (
-              <li key={f.path} className="flex items-center gap-2 px-2.5 py-0.5 font-mono text-[11px]">
-                <span className="w-16 shrink-0 font-sans text-muted-foreground">{describeCode(f.code).label}</span>
-                <span className="min-w-0 flex-1 truncate">{f.path}</span>
+              <li key={f.path} className={sx(paint.s25)}>
+                <span className={sx(paint.s26)}>{describeCode(f.code).label}</span>
+                <span className={sx(paint.s27)}>{f.path}</span>
                 {!f.binary && (
-                  <span className="shrink-0 tabular-nums">
-                    <span className="text-success-foreground">+{f.added}</span> <span className="text-destructive-foreground">−{f.removed}</span>
+                  <span className={sx(paint.s28)}>
+                    <span className={sx(paint.s29)}>+{f.added}</span> <span className={sx(paint.s30)}>−{f.removed}</span>
                   </span>
                 )}
               </li>
             ))}
           </ul>
-          <p className="font-mono text-[11px] text-muted-foreground">{DISCARD_COMMAND}</p>
-          {error && <ErrorText className="rounded-md bg-destructive/8 p-2 text-xs text-destructive-foreground" text={error} />}
+          <p className={sx(paint.s31)}>{DISCARD_COMMAND}</p>
+          {error && <ErrorText className={sx(paint.s32)} text={error} />}
         </DialogPanel>
-        <DialogFooter className="items-center px-5 py-3">
+        <DialogFooter pad="actions">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Keep them
           </Button>

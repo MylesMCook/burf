@@ -1,8 +1,40 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { motion, useReducedMotion, type Variants } from "motion/react";
 import { type ComponentProps, useCallback } from "react";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "display": "inline-flex",
+    "userSelect": "none",
+    "alignItems": "center",
+    "lineHeight": "1",
+  },
+  s1: {
+    "-Color": "var(--muted-foreground)",
+    "-ShimmeringColor": "var(--foreground)",
+  },
+  s2: {
+    "display": "inline-block",
+    "whiteSpace": "pre",
+    "lineHeight": "1",
+  },
+  s3: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export type ShimmeringTextProps = Omit<
   ComponentProps<typeof motion.span>,
@@ -64,18 +96,14 @@ export function ShimmeringText({
 
   return (
     <motion.span
-      className={cn(
-        "inline-flex select-none items-center leading-none",
-        "[--color:var(--muted-foreground)] [--shimmering-color:var(--foreground)]",
-        className
-      )}
+      className={[sx(paint.s0), sx(paint.s1), className].filter(Boolean).join(" ")}
       {...props}
     >
       {text.split("").map((char, index) => (
         <motion.span
           animate={stopped ? "stopped" : "running"}
           aria-hidden
-          className="inline-block whitespace-pre leading-none"
+          className={sx(paint.s2)}
           initial="stopped"
           // biome-ignore lint/suspicious/noArrayIndexKey: static label text, order never changes
           key={index}
@@ -84,7 +112,7 @@ export function ShimmeringText({
           {char}
         </motion.span>
       ))}
-      <span className="sr-only">{text}</span>
+      <span className={sx(paint.s3)}>{text}</span>
     </motion.span>
   );
 }

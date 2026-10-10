@@ -1,10 +1,213 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { useState, type ComponentProps } from "react";
 import { CheckIcon, Loader2Icon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { inkButton, mono, paper } from "./surfaces";
+import { fadeIn, inkButton, mono, paper, spin } from "./surfaces";
 import { clamp } from "../utils/range";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s1: {
+    "fontSize": "13.5px",
+    "lineHeight": "20px",
+    "overflowWrap": "break-word",
+  },
+  s2: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "overflowWrap": "break-word",
+  },
+  s3: {
+    "display": "flex",
+    "width": "100%",
+    "flexDirection": "column",
+    "gap": "4px",
+    "borderRadius": "var(--radius-2xl)",
+    "padding": "8px",
+    "maxWidth": "384px",
+  },
+  s4: {
+    "color": "color-mix(in oklab, var(--foreground) 35%, transparent)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s5: {
+    "color": "color-mix(in oklab, var(--foreground) 70%, transparent)",
+  },
+  s6: {
+    "display": "flex",
+    "height": "20px",
+    "width": "14px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s7: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "width": "14px",
+    "height": "14px",
+  },
+  s8: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+  s9: {
+    "color": "color-mix(in oklab, var(--foreground) 35%, transparent)",
+  },
+  s10: {
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s11: {
+    "display": "flex",
+    "height": "20px",
+    "width": "14px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s12: {
+    "display": "flex",
+    "width": "14px",
+    "height": "14px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "5px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+  },
+  s13: {
+    "borderColor": "var(--foreground)",
+    "backgroundColor": "var(--foreground)",
+  },
+  s14: {
+    "borderColor": "color-mix(in oklab, var(--foreground) 15%, transparent)",
+  },
+  s15: {
+    "color": "var(--background)",
+    "width": "10px",
+    "height": "10px",
+    "transitionDuration": "200ms",
+  },
+  s16: {
+    "display": "flex",
+    "height": "20px",
+    "width": "14px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s17: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "width": "14px",
+    "height": "14px",
+  },
+  s18: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingBottom": "4px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "overflowWrap": "break-word",
+    "color": "light-dark(var(--color-red-600), var(--color-red-400))",
+  },
+  s19: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "space-between",
+    "gap": "12px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "4px",
+  },
+  s20: {
+    "color": "color-mix(in oklab, var(--foreground) 35%, transparent)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s21: {
+    "display": "flex",
+    "height": "32px",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "999px",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+  },
+  s22: {
+    "cursor": "default",
+    "opacity": {
+      "default": 0.4,
+      ":hover": 0.4,
+    },
+  },
+  s23: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s24: {
+    "maxWidth": "none",
+    "borderWidth": 0,
+    "backgroundColor": "transparent",
+    "padding": "0px",
+  },
+  s25: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "flex-start",
+    "gap": "10px",
+    "borderRadius": "var(--radius-xl)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "start",
+    "transitionProperty": "color, background-color",
+    "transitionDuration": "150ms",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 1px color-mix(in oklab, var(--foreground) 20%, transparent)",
+    },
+  },
+  s26: {
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--foreground) 3.5%, transparent)",
+    },
+  },
+  s27: {
+    "color": "color-mix(in oklab, var(--foreground) 90%, transparent)",
+  },
+  s28: {
+    "cursor": "default",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface OptionListOption {
   id: string;
@@ -41,19 +244,18 @@ export interface OptionListProps extends Omit<
    * options and takes no further input.
    */
   choice?: readonly string[] | undefined;
+  /** Drop the card chrome so a parent can draw the frame. */
+  bare?: boolean | undefined;
 }
-
-const row =
-  "flex w-full items-start gap-2.5 rounded-xl px-2 py-2 text-start transition-colors outline-none focus-visible:ring-1 focus-visible:ring-foreground/20";
 
 function OptionText({ option }: { option: OptionListOption }) {
   return (
-    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-      <span className="text-[13.5px] leading-5 break-words">
+    <span className={sx(paint.s0)}>
+      <span className={sx(paint.s1)}>
         {option.label}
       </span>
       {option.description ? (
-        <span className="text-foreground/45 text-xs leading-4 break-words">
+        <span className={sx(paint.s2)}>
           {option.description}
         </span>
       ) : null}
@@ -70,6 +272,7 @@ export function OptionList({
   onConfirm,
   confirmLabel = "Confirm",
   choice,
+  bare = false,
   className,
   ...props
 }: OptionListProps) {
@@ -81,11 +284,7 @@ export function OptionList({
   const [confirmed, setConfirmed] = useState<readonly string[] | undefined>();
   const [error, setError] = useState<string | null>(null);
 
-  const root = cn(
-    paper,
-    "flex w-full max-w-sm flex-col gap-1 rounded-2xl p-2",
-    className,
-  );
+  const root = [sx(paper, paint.s3, bare && paint.s24), className].filter(Boolean).join(" ");
 
   const confirmedChoice = choice ?? confirmed;
 
@@ -101,18 +300,18 @@ export function OptionList({
         {...props}
       >
         {chosen.length === 0 ? (
-          <span className={cn(mono, "text-foreground/35 px-2 py-2")}>
+          <span className={sx(mono, paint.s4)}>
             Nothing selected
           </span>
         ) : (
           chosen.map((option) => (
-            <div key={option.id} className={cn(row, "text-foreground/70")}>
-              <span className="flex h-5 w-3.5 shrink-0 items-center justify-center">
+            <div key={option.id} className={sx(paint.s25, paint.s5)}>
+              <span className={sx(paint.s6)}>
                 <CheckIcon
                   aria-hidden
-                  className="text-foreground/45 size-3.5"
+                  className={sx(paint.s7)}
                 />
-                <span className="sr-only">Selected:</span>
+                <span className={sx(paint.s8)}>Selected:</span>
               </span>
               <OptionText option={option} />
             </div>
@@ -128,7 +327,7 @@ export function OptionList({
         {options.map((option) => (
           <div
             key={option.id}
-            className={cn(row, option.disabled && "text-foreground/35")}
+            className={sx(paint.s25, option.disabled && paint.s9)}
           >
             <OptionText option={option} />
           </div>
@@ -208,39 +407,32 @@ export function OptionList({
               if (multiple) toggle(option.id);
               else commit([option.id]);
             }}
-            className={cn(
-              row,
-              isSelected
-                ? "bg-foreground/[0.06]"
-                : !unavailable && !locked && "hover:bg-foreground/[0.035]",
-              unavailable ? "text-foreground/35" : "text-foreground/90",
-              (unavailable || locked) && "cursor-default",
+            className={sx(
+              paint.s25,
+              isSelected ? paint.s10 : !unavailable && !locked && paint.s26,
+              unavailable ? paint.s9 : paint.s27,
+              (unavailable || locked) && paint.s28,
             )}
           >
             {multiple ? (
               <span
                 aria-hidden
-                className="flex h-5 w-3.5 shrink-0 items-center justify-center"
+                className={sx(paint.s11)}
               >
                 <span
-                  className={cn(
-                    "flex size-3.5 items-center justify-center rounded-[5px] border transition-colors",
-                    isSelected
-                      ? "border-foreground bg-foreground"
-                      : "border-foreground/15",
-                  )}
+                  className={[sx(paint.s12), isSelected ? sx(paint.s13) : sx(paint.s14)].filter(Boolean).join(" ")}
                 >
                   {isSelected ? (
-                    <CheckIcon className="fade-in zoom-in-90 animate-in text-background size-2.5 duration-200 motion-reduce:animate-none" />
+                    <CheckIcon className={sx(paint.s15, fadeIn)} />
                   ) : null}
                 </span>
               </span>
             ) : pending?.includes(option.id) ? (
               <span
                 aria-hidden
-                className="flex h-5 w-3.5 shrink-0 items-center justify-center"
+                className={sx(paint.s16)}
               >
-                <Loader2Icon className="text-foreground/45 size-3.5 animate-spin motion-reduce:animate-none" />
+                <Loader2Icon className={sx(paint.s17, spin)} />
               </span>
             ) : null}
             <OptionText option={option} />
@@ -250,14 +442,14 @@ export function OptionList({
       {error ? (
         <p
           role="alert"
-          className="px-2 pb-1 text-xs break-words text-red-600 dark:text-red-400"
+          className={sx(paint.s18)}
         >
           {error}
         </p>
       ) : null}
       {multiple ? (
-        <div className="flex items-center justify-between gap-3 px-2 pt-1.5 pb-1">
-          <span className={cn(mono, "text-foreground/35 tabular-nums")}>
+        <div className={sx(paint.s19)}>
+          <span className={sx(mono, paint.s20)}>
             {count} of {max}
           </span>
           <button
@@ -271,16 +463,12 @@ export function OptionList({
                   .map((option) => option.id),
               );
             }}
-            className={cn(
-              inkButton,
-              "flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-medium",
-              !canConfirm && "cursor-default opacity-40 hover:opacity-40",
-            )}
+            className={sx(inkButton, paint.s21, !canConfirm && paint.s22)}
           >
             {locked ? (
               <Loader2Icon
                 aria-hidden
-                className="size-3.5 animate-spin motion-reduce:animate-none"
+                className={sx(paint.s23, spin)}
               />
             ) : null}
             {confirmLabel}

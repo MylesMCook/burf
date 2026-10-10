@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { BerthPluginContext, Project } from "@berth/plugin";
 import {
   AgentIcon,
@@ -18,13 +19,576 @@ import {
   Tooltip,
   TooltipPopup,
   TooltipTrigger,
-  cn,
 } from "@berth/plugin/ui";
 import { useEffect, useState } from "react";
 
 import * as gh from "./gh";
 import { Markdown } from "./markdown";
 import { type Run, describeProblem, detailOf, loadDetail, postComment, runnerOf, useIssuesStore } from "./store";
+
+const paint = stylex.create({
+  s0: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "16px",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "20px",
+    "paddingBottom": "20px",
+  },
+  s1: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+  },
+  s2: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s3: {
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--success) 12%, transparent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+    "color": "var(--success-foreground)",
+  },
+  s4: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s5: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s6: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s7: {
+    "fontWeight": 600,
+    "fontSize": "18px",
+    "lineHeight": "1.375",
+    "letterSpacing": "-0.025em",
+  },
+  s8: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s9: {
+    "marginLeft": "4px",
+    "display": "inline-flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s11: {
+    "marginTop": "4px",
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s12: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s13: {
+    "marginLeft": "4px",
+    "height": "18px",
+    "backgroundColor": "color-mix(in oklab, var(--primary-foreground) 15%, transparent)",
+    "fontSize": "10px",
+    "color": "var(--primary-foreground)",
+  },
+  s14: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s15: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s16: {
+    "display": "flex",
+    "flexDirection": "column",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s17: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s18: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "left",
+    "fontSize": "13px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    },
+  },
+  s19: {
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s20: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s21: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "padding": "16px",
+  },
+  s23: {
+    "height": "14px",
+  },
+  s24: {
+    "height": "14px",
+    "width": "100%",
+  },
+  s25: {
+    "height": "14px",
+  },
+  s26: {
+    "height": "14px",
+  },
+  s27: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "13px",
+    "fontStyle": "italic",
+  },
+  s28: {
+    "alignSelf": "center",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s29: {
+    "display": "flex",
+    "flexDirection": "column",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s30: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s31: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "10px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "13px",
+  },
+  s32: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s33: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s34: {
+    "fontWeight": 500,
+  },
+  s35: {
+    "color": "var(--muted-foreground)",
+  },
+  s36: {
+    "backgroundColor": "var(--info)",
+  },
+  s37: {
+    "color": "var(--info-foreground)",
+  },
+  s38: {
+    "backgroundColor": "var(--warning)",
+  },
+  s39: {
+    "color": "var(--warning-foreground)",
+  },
+  s40: {
+    "backgroundColor": "var(--success)",
+  },
+  s41: {
+    "color": "var(--success-foreground)",
+  },
+  s42: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+  },
+  s43: {
+    "color": "var(--muted-foreground)",
+  },
+  s44: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s45: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s46: {
+    "display": "inline-flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+  },
+  s47: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  s48: {
+    "display": "flex",
+    "gap": "12px",
+  },
+  s49: {
+    "marginTop": "2px",
+    "width": "24px",
+    "height": "24px",
+    "fontSize": "10px",
+  },
+  s50: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s51: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s52: {
+    "fontWeight": 500,
+  },
+  s53: {
+    "color": "var(--muted-foreground)",
+  },
+  s54: {
+    "color": "var(--muted-foreground)",
+  },
+  s55: {
+    "marginLeft": "auto",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s56: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s57: {
+    "display": "flex",
+    "gap": "12px",
+  },
+  s58: {
+    "marginTop": "2px",
+    "width": "24px",
+    "height": "24px",
+    "fontSize": "10px",
+  },
+  s59: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "gap": "8px",
+  },
+  s60: {
+    "minHeight": "80px",
+    "fontSize": "13px",
+  },
+  s61: {
+    "color": "var(--destructive)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s62: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "flex-end",
+    "gap": "8px",
+  },
+  s63: {
+    "marginRight": "auto",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s64: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s65: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s66: {
+    "marginLeft": "24px",
+    "marginRight": "24px",
+    "marginBottom": "20px",
+    "maxHeight": "192px",
+    "overflowY": "auto",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s67: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s68: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "12px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 30%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s69: {
+    "marginTop": "2px",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s70: {
+    "minWidth": "0px",
+  },
+  s71: {
+    "fontWeight": 500,
+    "fontSize": "13px",
+  },
+  s72: {
+    "marginTop": "2px",
+    "whiteSpace": "pre-wrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s73: {
+    "display": "inline-flex",
+    "maxWidth": "176px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontSize": "11px",
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+    "lineHeight": "18px",
+  },
+  s74: {
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+  },
+  s75: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s76: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": {
+      "default": "light-dark(#8250df, #a371f7)",
+    },
+  },
+  s77: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--destructive)",
+  },
+  s78: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s79: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--success)",
+  },
+  s80: {
+    "display": "grid",
+    "width": "20px",
+    "height": "20px",
+    "flexShrink": 0,
+    "placeItems": "center",
+    "borderRadius": "999px",
+    "fontWeight": 600,
+    "fontSize": "9px",
+    "color": "#fff",
+    "textTransform": "uppercase",
+  },
+  q81: {
+    "backgroundColor": "var(--info)",
+  },
+  q82: {
+    "backgroundColor": "var(--warning)",
+  },
+  q83: {
+    "backgroundColor": "var(--success)",
+  },
+  q84: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+  },
+  q85: {
+    "maxWidth": "48rem",
+  },
+  q86: {
+    "width": "33.33%",
+  },
+  q87: {
+    "width": "83.33%",
+  },
+  q88: {
+    "width": "66.67%",
+  },
+  q89: {
+    "color": "var(--info-foreground)",
+  },
+  q90: {
+    "color": "var(--warning-foreground)",
+  },
+  q91: {
+    "color": "var(--success-foreground)",
+  },
+  q92: {
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The right-hand pane: one issue, its thread, the agents on it, and
 // "Start an agent".
@@ -46,48 +610,48 @@ export function Detail({ berth, row, runs, viewer, onStart }: { berth: BerthPlug
   const open = (u: string) => berth.openUrl(u);
 
   return (
-    <article className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-5">
-      <header className="flex flex-col gap-2">
-        <p className="flex flex-wrap items-center gap-x-1.5 text-muted-foreground text-xs">
-          <span className="inline-flex items-center gap-1 rounded-full bg-success/12 px-1.5 py-px font-medium text-[11px] text-success-foreground">
-            <Icon name="CircleDot" className="size-3" />
+    <article className={[sx(paint.s0), sx(paint.q85)].filter(Boolean).join(" ")}>
+      <header className={sx(paint.s1)}>
+        <p className={sx(paint.s2)}>
+          <span className={sx(paint.s3)}>
+            <Icon name="CircleDot" className={sx(paint.s4)} />
             Open
           </span>
-          <span className="font-mono">
+          <span className={sx(paint.s5)}>
             {row.repo}#{row.number}
           </span>
           <span>·</span>
           <span>
-            opened {gh.since(row.createdAt)} by <b className="font-medium text-foreground">{row.author ?? "ghost"}</b>
+            opened {gh.since(row.createdAt)} by <b className={sx(paint.s6)}>{row.author ?? "ghost"}</b>
           </span>
         </p>
-        <h2 className="font-semibold text-lg leading-snug tracking-tight">{row.title}</h2>
+        <h2 className={sx(paint.s7)}>{row.title}</h2>
         {(row.labels.length > 0 || row.assignees.length > 0) && (
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className={sx(paint.s8)}>
             {row.labels.map((l) => (
               <LabelChip key={l.name} label={l} />
             ))}
             {row.assignees.length > 0 && (
-              <span className="ml-1 inline-flex items-center gap-1.5 text-muted-foreground text-xs">
-                <Icon name="UserRound" className="size-3" />
+              <span className={sx(paint.s9)}>
+                <Icon name="UserRound" className={sx(paint.s10)} />
                 {row.assignees.map((a) => (a === viewer ? "you" : a)).join(", ")}
               </span>
             )}
           </div>
         )}
-        <div className="mt-1 flex flex-wrap items-center gap-2">
+        <div className={sx(paint.s11)}>
           <Button size="sm" onClick={onStart}>
-            <Icon name="Bot" className="size-3.5" />
+            <Icon name="Bot" className={sx(paint.s12)} />
             Start an agent
-            <Kbd className="ml-1 h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground">S</Kbd>
+            <Kbd className={sx(paint.s13)}>S</Kbd>
           </Button>
           <Button size="sm" variant="outline" onClick={() => open(url)}>
-            <Icon name="ExternalLink" className="size-3.5" />
+            <Icon name="ExternalLink" className={sx(paint.s14)} />
             Open on GitHub
           </Button>
           <Tooltip>
             <TooltipTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Refresh this issue" onClick={() => void loadDetail(berth, row.project, row.number, true)} />}>
-              <Icon name="RefreshCw" className={cn("size-3.5", load?.status === "loading" && "animate-spin")} />
+              <Icon name="RefreshCw" className={[sx(paint.s15), load?.status === "loading" && "burf-spin"].filter(Boolean).join(" ")} />
             </TooltipTrigger>
             <TooltipPopup>Refresh this issue</TooltipPopup>
           </Tooltip>
@@ -97,14 +661,14 @@ export function Detail({ berth, row, runs, viewer, onStart }: { berth: BerthPlug
       {runs.length > 0 && <Runs berth={berth} runs={runs} />}
 
       {detail && detail.prs.length > 0 && (
-        <section className="flex flex-col rounded-lg border">
-          <h3 className="border-b px-3 py-1.5 font-medium text-[11px] text-muted-foreground">Pull requests that close it</h3>
+        <section className={sx(paint.s16)}>
+          <h3 className={sx(paint.s17)}>Pull requests that close it</h3>
           {detail.prs.map((pr) => (
-            <button key={pr.number} type="button" onClick={() => open(pr.url ?? gh.pullUrl(row.repo, pr.number))} className="flex items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-accent/50">
+            <button key={pr.number} type="button" onClick={() => open(pr.url ?? gh.pullUrl(row.repo, pr.number))} className={sx(paint.s18)}>
               <PrIcon pr={pr} />
-              <span className="font-mono text-muted-foreground text-xs">#{pr.number}</span>
-              <span className="min-w-0 flex-1 truncate">{pr.title}</span>
-              <span className="text-muted-foreground text-xs">{pr.draft ? "Draft" : pr.state === "OPEN" ? "Open" : pr.state === "MERGED" ? "Merged" : "Closed"}</span>
+              <span className={sx(paint.s19)}>#{pr.number}</span>
+              <span className={sx(paint.s20)}>{pr.title}</span>
+              <span className={sx(paint.s21)}>{pr.draft ? "Draft" : pr.state === "OPEN" ? "Open" : pr.state === "MERGED" ? "Merged" : "Closed"}</span>
             </button>
           ))}
         </section>
@@ -113,19 +677,19 @@ export function Detail({ berth, row, runs, viewer, onStart }: { berth: BerthPlug
       {load?.status === "problem" && !detail ? (
         <Problem problem={load.problem} box={runnerOf(row.project)?.box} />
       ) : !detail ? (
-        <div className="flex flex-col gap-2 rounded-lg border p-4">
-          <Skeleton className="h-3.5 w-1/3" />
-          <Skeleton className="h-3.5 w-full" />
-          <Skeleton className="h-3.5 w-5/6" />
-          <Skeleton className="h-3.5 w-2/3" />
+        <div className={sx(paint.s22)}>
+          <Skeleton className={[sx(paint.s23), sx(paint.q86)].filter(Boolean).join(" ")} />
+          <Skeleton className={sx(paint.s24)} />
+          <Skeleton className={[sx(paint.s25), sx(paint.q87)].filter(Boolean).join(" ")} />
+          <Skeleton className={[sx(paint.s26), sx(paint.q88)].filter(Boolean).join(" ")} />
         </div>
       ) : (
         <>
           <Post author={detail.author} at={detail.createdAt} viewer={viewer} badge="Author">
-            {detail.body.trim() ? <Markdown source={detail.body} repo={row.repo} onLink={open} /> : <p className="text-muted-foreground text-[13px] italic">No description.</p>}
+            {detail.body.trim() ? <Markdown source={detail.body} repo={row.repo} onLink={open} /> : <p className={sx(paint.s27)}>No description.</p>}
           </Post>
           {detail.totalComments > detail.comments.length && (
-            <button type="button" onClick={() => open(url)} className="self-center text-muted-foreground text-xs hover:text-foreground">
+            <button type="button" onClick={() => open(url)} className={sx(paint.s28)}>
               {detail.totalComments - detail.comments.length} earlier comments on GitHub
             </button>
           )}
@@ -143,14 +707,14 @@ export function Detail({ berth, row, runs, viewer, onStart }: { berth: BerthPlug
 
 function Runs({ berth, runs }: { berth: BerthPluginContext; runs: Run[] }) {
   return (
-    <section className="flex flex-col rounded-lg border">
-      <h3 className="border-b px-3 py-1.5 font-medium text-[11px] text-muted-foreground">Agents on this issue</h3>
+    <section className={sx(paint.s29)}>
+      <h3 className={sx(paint.s30)}>Agents on this issue</h3>
       {runs.map((r) => (
-        <div key={`${r.box}:${r.path}`} className="flex items-center gap-2.5 px-3 py-2 text-[13px]">
-          {r.session ? <AgentIcon agent={r.session.agent} /> : <Icon name="GitBranch" className="size-3.5 text-muted-foreground" />}
-          <span className="min-w-0 flex-1 truncate">
-            <span className="font-medium">{r.worktree}</span>
-            <span className="text-muted-foreground"> · {r.box}</span>
+        <div key={`${r.box}:${r.path}`} className={sx(paint.s31)}>
+          {r.session ? <AgentIcon agent={r.session.agent} /> : <Icon name="GitBranch" className={sx(paint.s32)} />}
+          <span className={sx(paint.s33)}>
+            <span className={sx(paint.s34)}>{r.worktree}</span>
+            <span className={sx(paint.s35)}> · {r.box}</span>
           </span>
           <StatePill run={r} />
           <Button size="xs" variant="outline" onClick={() => berth.openWorktree({ box: r.box, location: r.location, worktree: r.worktree, path: r.path })}>
@@ -163,10 +727,10 @@ function Runs({ berth, runs }: { berth: BerthPluginContext; runs: Run[] }) {
 }
 
 const STATES: Record<string, { label: string; dot: string; text: string }> = {
-  running: { label: "Running", dot: "bg-info animate-pulse", text: "text-info-foreground" },
-  waiting: { label: "Needs you", dot: "bg-warning", text: "text-warning-foreground" },
-  finished: { label: "Done", dot: "bg-success", text: "text-success-foreground" },
-  idle: { label: "Idle", dot: "bg-muted-foreground/50", text: "text-muted-foreground" },
+  running: { label: "Running", dot: [sx(paint.q81), "burf-pulse"].filter(Boolean).join(" "), text: sx(paint.q89) },
+  waiting: { label: "Needs you", dot: sx(paint.q82), text: sx(paint.q90) },
+  finished: { label: "Done", dot: sx(paint.q83), text: sx(paint.q91) },
+  idle: { label: "Idle", dot: sx(paint.q84), text: sx(paint.q92) },
 };
 
 // StatePill is how an issue's agent is doing, or that only its worktree is left.
@@ -174,15 +738,15 @@ export function StatePill({ run, compact }: { run: Run; compact?: boolean }) {
   const s = run.session ? (STATES[run.session.agent_state ?? ""] ?? STATES.idle) : undefined;
   if (!s) {
     return (
-      <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
-        <Icon name="GitBranch" className="size-3" />
+      <span className={sx(paint.s44)}>
+        <Icon name="GitBranch" className={sx(paint.s45)} />
         {compact ? "" : "No agent"}
       </span>
     );
   }
   return (
-    <span className={cn("inline-flex shrink-0 items-center gap-1.5 font-medium text-[11px]", s.text)}>
-      <span className={cn("size-1.5 rounded-full", s.dot)} />
+    <span className={[sx(paint.s46), s.text].filter(Boolean).join(" ")}>
+      <span className={[sx(paint.s47), s.dot].filter(Boolean).join(" ")} />
       {s.label}
     </span>
   );
@@ -190,16 +754,16 @@ export function StatePill({ run, compact }: { run: Run; compact?: boolean }) {
 
 function Post({ author, at, viewer, badge, children }: { author?: string; at: string; viewer?: string; badge?: string; children: React.ReactNode }) {
   return (
-    <div className="flex gap-3">
-      <Avatar login={author} className="mt-0.5 size-6 text-[10px]" />
-      <div className="min-w-0 flex-1 rounded-lg border">
-        <div className="flex items-center gap-1.5 border-b bg-muted/40 px-3 py-1.5 text-xs">
-          <b className="font-medium">{author ?? "ghost"}</b>
-          {author && author === viewer && <span className="text-muted-foreground">(you)</span>}
-          <span className="text-muted-foreground">· {gh.since(at)}</span>
-          {badge && <span className="ml-auto rounded-full border px-1.5 text-[10px] text-muted-foreground">{badge}</span>}
+    <div className={sx(paint.s48)}>
+      <Avatar login={author} className={sx(paint.s49)} />
+      <div className={sx(paint.s50)}>
+        <div className={sx(paint.s51)}>
+          <b className={sx(paint.s52)}>{author ?? "ghost"}</b>
+          {author && author === viewer && <span className={sx(paint.s53)}>(you)</span>}
+          <span className={sx(paint.s54)}>· {gh.since(at)}</span>
+          {badge && <span className={sx(paint.s55)}>{badge}</span>}
         </div>
-        <div className="px-3 py-2.5">{children}</div>
+        <div className={sx(paint.s56)}>{children}</div>
       </div>
     </div>
   );
@@ -231,11 +795,11 @@ function Composer({ berth, row, viewer }: { berth: BerthPluginContext; row: Row;
   }
 
   return (
-    <div className="flex gap-3">
-      <Avatar login={viewer} className="mt-0.5 size-6 text-[10px]" />
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
+    <div className={sx(paint.s57)}>
+      <Avatar login={viewer} className={sx(paint.s58)} />
+      <div className={sx(paint.s59)}>
         <Textarea
-          className="min-h-20 text-[13px]"
+          className={sx(paint.s60)}
           placeholder="Leave a comment (Markdown)"
           value={text}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value)}
@@ -246,11 +810,11 @@ function Composer({ berth, row, viewer }: { berth: BerthPluginContext; row: Row;
             }
           }}
         />
-        {error && <p className="text-destructive text-xs">{error}</p>}
-        <div className="flex items-center justify-end gap-2">
-          <span className="mr-auto text-muted-foreground text-xs">{viewer && box ? `Posts as @${viewer}, with gh on ${box}.` : null}</span>
+        {error && <p className={sx(paint.s61)}>{error}</p>}
+        <div className={sx(paint.s62)}>
+          <span className={sx(paint.s63)}>{viewer && box ? `Posts as @${viewer}, with gh on ${box}.` : null}</span>
           <Button size="sm" variant="outline" disabled={!text.trim() || posting} onClick={() => setConfirming(true)}>
-            {posting ? <Spinner className="size-3.5" /> : <Icon name="MessageSquare" className="size-3.5" />}
+            {posting ? <Spinner className={sx(paint.s64)} /> : <Icon name="MessageSquare" className={sx(paint.s65)} />}
             Comment
           </Button>
         </div>
@@ -265,13 +829,13 @@ function Composer({ berth, row, viewer }: { berth: BerthPluginContext; row: Row;
               It's posted publicly{viewer ? ` as @${viewer}` : ""} and everyone watching the issue is notified.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="mx-6 mb-5 max-h-48 overflow-y-auto rounded-md border bg-muted/40 px-3 py-2">
+          <div className={sx(paint.s66)}>
             <Markdown source={text} repo={row.repo} onLink={() => undefined} />
           </div>
           <AlertDialogFooter>
             <AlertDialogClose render={<Button variant="ghost" disabled={posting} />}>Cancel</AlertDialogClose>
             <Button onClick={() => void post()} disabled={posting}>
-              {posting && <Spinner className="size-3.5" />}
+              {posting && <Spinner className={sx(paint.s67)} />}
               Post comment
             </Button>
           </AlertDialogFooter>
@@ -284,11 +848,11 @@ function Composer({ berth, row, viewer }: { berth: BerthPluginContext; row: Row;
 export function Problem({ problem, box, className }: { problem: gh.Problem; box?: string; className?: string }) {
   const d = describeProblem(problem, box);
   return (
-    <div className={cn("flex items-start gap-3 rounded-lg border bg-muted/30 px-4 py-3", className)}>
-      <Icon name={d.icon} className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <div className="min-w-0">
-        <p className="font-medium text-[13px]">{d.title}</p>
-        <p className="mt-0.5 whitespace-pre-wrap text-muted-foreground text-xs">{d.body}</p>
+    <div className={[sx(paint.s68), className].filter(Boolean).join(" ")}>
+      <Icon name={d.icon} className={sx(paint.s69)} />
+      <div className={sx(paint.s70)}>
+        <p className={sx(paint.s71)}>{d.title}</p>
+        <p className={sx(paint.s72)}>{d.body}</p>
       </div>
     </div>
   );
@@ -298,18 +862,18 @@ export function Problem({ problem, box, className }: { problem: gh.Problem; box?
 // FilterChip's, in the toolbar.
 export function LabelChip({ label }: { label: gh.Label }) {
   return (
-    <span className="inline-flex max-w-44 shrink-0 items-center gap-1.5 rounded-full border px-2 py-px text-[11px] text-foreground/80 leading-[18px]">
-      <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: `#${label.color}` }} />
-      <span className="truncate">{label.name}</span>
+    <span className={sx(paint.s73)}>
+      <span className={sx(paint.s74)} style={{ backgroundColor: `#${label.color}` }} />
+      <span className={sx(paint.s75)}>{label.name}</span>
     </span>
   );
 }
 
 function PrIcon({ pr }: { pr: gh.LinkedPR }) {
-  if (pr.state === "MERGED") return <Icon name="GitMerge" className="size-3.5 shrink-0 text-[#8250df] dark:text-[#a371f7]" />;
-  if (pr.state === "CLOSED") return <Icon name="GitPullRequestClosed" className="size-3.5 shrink-0 text-destructive" />;
-  if (pr.draft) return <Icon name="GitPullRequestDraft" className="size-3.5 shrink-0 text-muted-foreground" />;
-  return <Icon name="GitPullRequest" className="size-3.5 shrink-0 text-success" />;
+  if (pr.state === "MERGED") return <Icon name="GitMerge" className={sx(paint.s76)} />;
+  if (pr.state === "CLOSED") return <Icon name="GitPullRequestClosed" className={sx(paint.s77)} />;
+  if (pr.draft) return <Icon name="GitPullRequestDraft" className={sx(paint.s78)} />;
+  return <Icon name="GitPullRequest" className={sx(paint.s79)} />;
 }
 
 export { PrIcon };
@@ -325,7 +889,7 @@ export function Avatar({ login, className }: { login?: string; className?: strin
       <span
         role="img"
         aria-label={login ?? "Unknown"}
-        className={cn("grid size-5 shrink-0 place-items-center rounded-full font-semibold text-[9px] text-white uppercase", className)}
+        className={[sx(paint.s80), className].filter(Boolean).join(" ")}
         style={{ backgroundColor: `hsl(${h} 45% 45%)` }}
       >
         {name.replace(/^app\//, "").slice(0, 1)}

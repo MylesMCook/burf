@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ChevronRightIcon, XIcon } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -7,7 +8,6 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/
 import { DialogPanel } from "@/components/ui/dialog";
 import { offerLocalBox, useLocalBox } from "@/lib/local-box";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { InstallCommand } from "@/views/onboarding/install-command";
 import { UseThisMac } from "@/views/onboarding/local-box";
 import { NetworksStep } from "@/views/onboarding/networks-step";
@@ -15,6 +15,135 @@ import { PasteLink } from "@/views/onboarding/paste-link";
 import { SshSetup } from "@/views/onboarding/ssh-setup";
 import { boxable, sourcesOf, useTailnets } from "@/views/onboarding/tailnet";
 import { TailnetMachines, UseTailscale } from "@/views/onboarding/tailnet-machines";
+
+const paint = stylex.create({
+  s0: {
+    "marginTop": "12px",
+  },
+  s1: {
+    "marginTop": "24px",
+    "marginBottom": "24px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "height": "1px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "var(--border)",
+  },
+  s3: {
+    "height": "1px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "var(--border)",
+  },
+  s4: {
+    "marginTop": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s5: {
+    "marginTop": "20px",
+  },
+  s6: {
+    "marginTop": "12px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "color": "var(--foreground)",
+  },
+  s8: {
+    "borderRadius": "var(--radius-md)",
+    "padding": "2px",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+  },
+  s9: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s10: {
+    "marginTop": "24px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingTop": "16px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "12px",
+    },
+  },
+  s11: {
+    "paddingTop": "12px",
+  },
+  s12: {
+    "paddingTop": "12px",
+  },
+  s13: {
+    "marginTop": "24px",
+  },
+  s14: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+    ":is(.group:is([data-state=panel-open], [data-panel-open]) &)": {
+      "transform": "rotate(90deg)",
+    },
+  },
+  s15: {
+    "marginBottom": "8px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s16: {
+    "display": "flex",
+    "width": "20px",
+    "height": "20px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s17: {
+    "paddingInlineStart": "28px",
+  },
+
+  s18: {
+    top: 0,
+  },
+  s19: {
+    marginTop: 12,
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // What the flow is doing, for onboarding's scene: arriving while it waits,
 // the lighthouse while a box is being set up or paired, the signal lamp
@@ -109,13 +238,13 @@ export function AddBoxFlow({
   );
 
   const useThisMac = thisMac && local.status && (
-    <UseThisMac status={local.status} compact={placement === "top"} autoFocus={placement === "bottom"} className={placement === "top" ? "mt-3" : undefined} onRunning={setBusy} onPaired={setPaired} />
+    <UseThisMac status={local.status} compact={placement === "top"} autoFocus={placement === "bottom"} className={placement === sx(paint.s18) ? sx(paint.s19) : undefined} onRunning={setBusy} onPaired={setPaired} />
   );
   const anyBox = (
-    <div aria-hidden className="my-6 flex items-center gap-3 text-muted-foreground text-xs">
-      <span className="h-px flex-1 bg-border" />
+    <div aria-hidden className={sx(paint.s1)}>
+      <span className={sx(paint.s2)} />
       or, on any box
-      <span className="h-px flex-1 bg-border" />
+      <span className={sx(paint.s3)} />
     </div>
   );
 
@@ -156,36 +285,36 @@ export function AddBoxFlow({
           )}
           <Step n={1} title="On the box, run">
             <InstallCommand />
-            <p className="mt-2 text-muted-foreground text-xs leading-relaxed">It installs berthd for your user (no root), starts it, and prints a pairing link.</p>
+            <p className={sx(paint.s4)}>It installs berthd for your user (no root), starts it, and prints a pairing link.</p>
           </Step>
-          <Step n={2} title="Paste what it printed" className="mt-5">
+          <Step n={2} title="Paste what it printed" className={sx(paint.s5)}>
             <PasteLink network={network} retry={retry.link} autoFocus={placement === "bottom" && !useThisMac} onBusy={setBusy} onPaired={setPaired} onSignIn={() => setSigningIn("link")} />
           </Step>
 
           {network && (
-            <div className="mt-3 flex items-center gap-1.5 text-muted-foreground text-xs">
-              Reaching boxes through the <span className="text-foreground">{network}</span> tailnet
+            <div className={sx(paint.s6)}>
+              Reaching boxes through the <span className={sx(paint.s7)}>{network}</span> tailnet
               <Tip label="Use this computer's own network">
-                <button type="button" aria-label="Use this computer's own network" className="rounded p-0.5 hover:bg-accent hover:text-foreground" onClick={() => setNetwork(undefined)}>
-                  <XIcon className="size-3" />
+                <button type="button" aria-label="Use this computer's own network" className={sx(paint.s8)} onClick={() => setNetwork(undefined)}>
+                  <XIcon className={sx(paint.s9)} />
                 </button>
               </Tip>
             </div>
           )}
 
-          <div className="mt-6 space-y-3 border-t pt-4">
+          <div className={sx(paint.s10)}>
             {placement === "bottom" && (
               <Collapsible open={tailscaleOpen} onOpenChange={setTailscaleOpen}>
                 <Trigger>Or use Tailscale</Trigger>
                 <CollapsiblePanel>
-                  <div className="pt-3">{machines || <UseTailscale system={tailnets.system} onRefresh={tailnets.refresh} onSignIn={() => setSigningIn("tailnet")} />}</div>
+                  <div className={sx(paint.s11)}>{machines || <UseTailscale system={tailnets.system} onRefresh={tailnets.refresh} onSignIn={() => setSigningIn("tailnet")} />}</div>
                 </CollapsiblePanel>
               </Collapsible>
             )}
             {sshSupported && <Collapsible open={sshOpen} onOpenChange={setSshOpen}>
               <Trigger>Or let Burf set it up over SSH</Trigger>
               <CollapsiblePanel>
-                <div className="pt-3">
+                <div className={sx(paint.s12)}>
                   <SshSetup network={network} retry={retry.ssh} onRunning={setBusy} onPaired={setPaired} onSignIn={() => setSigningIn("ssh")} readyLabel={readyLabel} />
                 </div>
               </CollapsiblePanel>
@@ -200,22 +329,22 @@ export function AddBoxFlow({
     return (
       <>
         <StepHeader title={head.title} description={head.description} onBack={onBack} />
-        <DialogPanel className="px-5 pb-5">{body}</DialogPanel>
+        <DialogPanel inset="body">{body}</DialogPanel>
       </>
     );
   }
   return (
     <div>
       <StepHeader variant="page" title={head.title} description={head.description} onBack={onBack} />
-      <div className="mt-6">{body}</div>
+      <div className={sx(paint.s13)}>{body}</div>
     </div>
   );
 }
 
 function Trigger({ children }: { children: ReactNode }) {
   return (
-    <CollapsibleTrigger className="group flex w-full items-center gap-1.5 rounded text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      <ChevronRightIcon className="size-3.5 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
+    <CollapsibleTrigger look="row" marker="group">
+      <ChevronRightIcon className={sx(paint.s14)} />
       {children}
     </CollapsibleTrigger>
   );
@@ -224,13 +353,13 @@ function Trigger({ children }: { children: ReactNode }) {
 function Step({ n, title, className, children }: { n: number; title: string; className?: string; children: ReactNode }) {
   return (
     <section className={className}>
-      <h2 className="mb-2 flex items-center gap-2 text-sm">
-        <span aria-hidden className="flex size-5 items-center justify-center rounded-full border font-mono text-[10px] text-muted-foreground">
+      <h2 className={sx(paint.s15)}>
+        <span aria-hidden className={sx(paint.s16)}>
           {n}
         </span>
         {title}
       </h2>
-      <div className={cn("ps-7")}>{children}</div>
+      <div className={sx(paint.s17)}>{children}</div>
     </section>
   );
 }

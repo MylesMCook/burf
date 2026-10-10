@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import {
   ChevronRightIcon,
   FolderGitIcon,
@@ -26,7 +27,6 @@ import { type BoxStatus, type Location, type Session, type Worktree } from "@/li
 import { agentOf, type SessionState, sessionName, sessionState, worktreeSessions } from "@/lib/derive";
 import { load, save } from "@/lib/storage";
 import { type BoxData, NONE, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { selectFolder } from "@/lib/open-folder-chat";
 import { addGroup, refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
 import { armDrag } from "@/components/workspace/tab-drag";
@@ -38,6 +38,550 @@ import { removalLabel, removalOf, useRemoval, useRemovals } from "@/lib/removing
 import { WorktreeNameField } from "@/components/sidebar/rename-worktree";
 import { renameKey, startRenamingWorktree, stopRenamingWorktree, useRenamingWorktree, worktreeLabel } from "@/lib/worktree-names";
 import { below, MAX_INDENT, nest, prune, size, type TreeNode } from "@/lib/worktree-tree";
+
+const paint = stylex.create({
+  s0: {
+    "marginTop": "12px",
+  },
+  s1: {
+    "marginBottom": "12px",
+  },
+  s2: {
+    "position": "relative",
+    "display": "flex",
+    "height": "28px",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+    "alignItems": "center",
+    "gap": "6px",
+    "borderRadius": "var(--radius-md)",
+    "paddingRight": "4px",
+    "paddingLeft": "8px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "backgroundColor": {
+      ":hover": "var(--sidebar-accent)",
+    },
+  },
+  s3: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s4: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s5: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "textTransform": "none",
+    "letterSpacing": "0em",
+  },
+  s6: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "fontWeight": 400,
+    "textTransform": "none",
+    "letterSpacing": "0em",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s7: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "fontWeight": 400,
+    "textTransform": "none",
+    "letterSpacing": "0em",
+  },
+  s8: {
+    "borderTopRightRadius": "var(--radius-md)",
+    "borderBottomRightRadius": "var(--radius-md)",
+  },
+  s9: {
+    "display": "inline-flex",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontFamily": "var(--font-mono)",
+    "fontWeight": 400,
+    "fontSize": "10px",
+    "lineHeight": "1",
+  },
+  s10: {
+    "backgroundColor": "color-mix(in oklab, var(--sidebar-accent) 70%, transparent)",
+    "color": "var(--muted-foreground)",
+  },
+  s11: {
+    "backgroundColor": "color-mix(in oklab, var(--sidebar-accent) 40%, transparent)",
+    "color": "var(--muted-foreground)",
+  },
+  s12: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+  },
+  s13: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--success) 45%, transparent)",
+  },
+  s14: {
+    "position": "relative",
+  },
+  s15: {
+    "marginLeft": "calc(2px * -1)",
+    "display": "inline-flex",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  s16: {
+    "width": "12px",
+    "height": "12px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s17: {
+    "transform": "rotate(90deg)",
+  },
+  s18: {
+    "flexShrink": 0,
+  },
+  s19: {
+    "minWidth": "0px",
+    "flexShrink": 1,
+    "overflow": "hidden",
+  },
+  s20: {
+    "marginLeft": "auto",
+  },
+  s21: {
+    "position": "relative",
+  },
+  s22: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s23: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s24: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s25: {
+    "opacity": 0.7,
+  },
+  s26: {
+    "display": {
+      "default": "none",
+      "@container side (min-width: 17rem)": "inline",
+    },
+    "minWidth": "0px",
+    "maxWidth": "max-content",
+    "flexGrow": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s27: {
+    "width": "6px",
+    "height": "6px",
+  },
+  s28: {
+    "display": {
+      "default": "none",
+      "@container side (min-width: 14rem)": "inline-flex",
+    },
+    "flexShrink": 0,
+  },
+  s29: {
+    "marginLeft": "auto",
+  },
+  s30: {
+    "marginLeft": "24px",
+    "display": "flex",
+    "height": "24px",
+    "width": "max-content",
+    "alignItems": "center",
+    "borderRadius": "var(--radius-md)",
+    "fontSize": "11px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "outline": "none",
+  },
+  s31: {
+    "display": "flex",
+    "height": "20px",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--sidebar-border)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    ":is(.group\\/pill:hover &)": {
+      "backgroundColor": "var(--sidebar-accent)",
+    },
+    ":is(.group\\/pill:focus-visible &)": {
+      "boxShadow": "0 0 0 2px var(--ring)",
+    },
+    ":not(#\\#) svg": {
+      "width": "12px",
+      "height": "12px",
+    },
+  },
+  s32: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s33: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s34: {
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s35: {
+    "transform": "rotate(90deg)",
+  },
+  s36: {
+    "display": "flex",
+    "height": "var(--side-row)",
+    "width": "100%",
+    "cursor": "default",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "13px",
+    "color": "var(--muted-foreground)",
+  },
+  s37: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "textDecoration": "line-through",
+    "textDecorationColor": "color-mix(in oklab, var(--muted-foreground) 40%, transparent)",
+    "opacity": 0.7,
+  },
+  s38: {
+    "marginLeft": "auto",
+    "flexShrink": 0,
+    "fontSize": "10px",
+  },
+  s39: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s40: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s41: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s42: {
+    "display": "inline-flex",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "color": "var(--muted-foreground)",
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+  s43: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s44: {
+    "width": "12px",
+    "height": "12px",
+    "opacity": 0.8,
+  },
+  s45: {
+    "display": "inline-flex",
+    "width": "12px",
+    "height": "12px",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s46: {
+    "width": "4px",
+    "height": "4px",
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+  },
+  s47: {
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s48: {
+    "pointerEvents": {
+      "default": "none",
+      ":focus-within": "auto",
+      ":is(.group\\/row:hover &)": "auto",
+      ":has([data-popup-open])": "auto",
+    },
+    "position": "absolute",
+    "top": 0,
+    "bottom": 0,
+    "right": "0px",
+    "display": "flex",
+    "alignItems": "center",
+    "borderTopRightRadius": "var(--radius-lg)",
+    "borderBottomRightRadius": "var(--radius-lg)",
+    "paddingRight": "4px",
+    "paddingLeft": "16px",
+    "opacity": {
+      "default": 0,
+      ":focus-within": 1,
+      ":is(.group\\/row:hover &)": 1,
+      ":has([data-popup-open])": 1,
+    },
+    "transitionProperty": "opacity",
+    "transitionDuration": "100ms",
+    "background": "linear-gradient(var(--sidebar-accent),var(--sidebar-accent)),var(--sidebar)",
+    "maskImage": "linear-gradient(to right,transparent,black 16px)",
+  },
+  s49: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--sidebar-accent)",
+      "[data-popup-open]": "var(--sidebar-accent)",
+    },
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+  s50: {
+    "borderRadius": "var(--radius-md)",
+  },
+  s51: {
+    "backgroundColor": "color-mix(in oklab, var(--sidebar-accent) 40%, transparent)",
+    "boxShadow": "0 0 0 2px color-mix(in oklab, var(--ring) 40%, transparent)",
+  },
+  s52: {
+    "marginTop": "8px",
+    "borderRadius": "var(--radius-md)",
+  },
+  s53: {
+    "backgroundColor": "color-mix(in oklab, var(--sidebar-accent) 40%, transparent)",
+    "boxShadow": "0 0 0 2px color-mix(in oklab, var(--ring) 40%, transparent)",
+  },
+  s54: {
+    "display": "flex",
+    "height": "28px",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingRight": "4px",
+    "paddingLeft": "6px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--sidebar-accent) 40%, transparent)",
+    },
+  },
+  s55: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "gap": "4px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s56: {
+    "width": "12px",
+    "height": "12px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s57: {
+    "transform": "rotate(90deg)",
+  },
+  s58: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s59: {
+    "fontWeight": 400,
+    "textTransform": "none",
+    "letterSpacing": "0em",
+  },
+  s60: {
+    "opacity": {
+      "default": 0,
+      ":is(.group\\/row:hover &)": 1,
+      ":has([data-popup-open])": 1,
+    },
+  },
+  s61: {
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s62: {
+    "position": "relative",
+  },
+  s63: {
+    "marginLeft": "calc(2px * -1)",
+    "display": "inline-flex",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+  },
+  s64: {
+    "width": "12px",
+    "height": "12px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s65: {
+    "transform": "rotate(90deg)",
+  },
+  s66: {
+    "flexShrink": 0,
+  },
+  s67: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexShrink": 1,
+    "alignItems": "center",
+    "gap": "2px",
+    "overflow": "hidden",
+  },
+  s68: {
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s69: {
+    "marginLeft": "auto",
+  },
+  s70: {
+    "display": "flex",
+    "maxWidth": "384px",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s71: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s72: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "12px",
+  },
+  s73: {
+    "wordBreak": "break-all",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s74: {
+    "flexShrink": 0,
+    "fontSize": "10px",
+    "color": "var(--muted-foreground)",
+  },
+  s75: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "fontSize": "10px",
+    "color": "var(--destructive-foreground)",
+  },
+  s76: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--destructive)",
+  },
+  q77: {
+    "display": "flex",
+    "width": "100%",
+    "minWidth": "0px",
+  },
+  q78: {
+    "display": "flex",
+    "width": "100%",
+    "minWidth": "0px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Projects lists repositories, as Orca does: one group per repository on a
 // box (the same repository on two boxes is two groups, told apart by the
@@ -118,7 +662,7 @@ export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
         <>
           <ProjectSections prefs={prefs} update={update} />
           {notable.length > 0 && (
-            <div className="mt-3">
+            <div className={sx(paint.s0)}>
               {notable.map((b) => (
                 <BoxHeader key={b.name} box={b} empty={!data[b.name]?.locations?.length} />
               ))}
@@ -127,9 +671,9 @@ export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
         </>
       ) : (
         boxes.map((b) => (
-          <div key={b.name} className="mb-3">
+          <div key={b.name} className={sx(paint.s1)}>
             <BoxHeader box={b} empty={!data[b.name]?.locations?.length} />
-            <SidebarMenu className="gap-px">
+            <SidebarMenu gap="tight">
               {group(
                 repos.filter((r) => r.box.name === b.name),
                 false,
@@ -153,24 +697,24 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
         tabIndex={0}
         role="group"
         aria-label={`${box.name}, ${online ? (box.link?.slow ? "online, slow link" : "online") : awayText(box)}`}
-        className="group/row relative flex h-7 outline-none focus-visible:ring-2 focus-visible:ring-ring items-center gap-1.5 rounded-md pr-1 pl-2 font-medium text-[11px] text-muted-foreground hover:bg-sidebar-accent"
+        className={[sx(paint.s2), "group/row"].filter(Boolean).join(" ")}
       >
-        {online ? <ServerIcon className="size-3" /> : <ServerOffIcon className="size-3" />}
-        <span className="truncate normal-case tracking-normal">{box.name}</span>
+        {online ? <ServerIcon className={sx(paint.s3)} /> : <ServerOffIcon className={sx(paint.s4)} />}
+        <span className={sx(paint.s5)}>{box.name}</span>
         {online ? (
-          <span className="ml-auto flex items-center gap-1.5 font-normal normal-case tracking-normal tabular-nums">
+          <span className={sx(paint.s6)}>
             {empty && <span>no projects</span>}
             {/* A slow link says so instead of its latency: still online, not alarming. */}
             {box.link?.slow ? <span data-testid="box-slow">slow</span> : box.latency_ms !== undefined && <span>{box.latency_ms} ms</span>}
             <BoxStateDot box={box.name} />
           </span>
         ) : (
-          <span className="ml-auto flex items-center gap-1.5 font-normal normal-case tracking-normal">
+          <span className={sx(paint.s7)}>
             {awayText(box)}
             <BoxStateDot box={box.name} />
           </span>
         )}
-        <RowOverlay className="rounded-r-md">
+        <RowOverlay corner="md">
           {online ? (
             <RowButton label={`Add a project on ${box.name}`} onClick={() => useStore.getState().openAddLocation(box.name)}>
               <PlusIcon />
@@ -193,13 +737,10 @@ function BoxChip({ box }: { box: BoxStatus }) {
   const online = box.state === "online";
   const chip = (
     <span
-      className={cn(
-        "inline-flex h-4 shrink-0 items-center gap-1 rounded px-1 font-mono font-normal text-[10px] leading-none",
-        online ? "bg-sidebar-accent/70 text-muted-foreground" : "bg-sidebar-accent/40 text-muted-foreground",
-      )}
+      className={[sx(paint.s9), online ? sx(paint.s10) : sx(paint.s11)].filter(Boolean).join(" ")}
     >
-      {!online && <span className="size-1.5 rounded-full bg-muted-foreground/50" />}
-      {online && box.link?.slow && <span className="size-1.5 rounded-full bg-success/45" />}
+      {!online && <span className={sx(paint.s12)} />}
+      {online && box.link?.slow && <span className={sx(paint.s13)} />}
       {box.name}
     </span>
   );
@@ -241,8 +782,8 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
 
   return (
     <SidebarMenuItem>
-      <ContextRow items={() => projectActions(box.name, loc)} className="group/row relative">
-        <Tip side="right" delay={700} wrapClassName="flex w-full min-w-0" label={<PlaceTip name={`${loc.name} on ${box.name}`} lines={[loc.path]} />}>
+      <ContextRow items={() => projectActions(box.name, loc)} marker="group/row" look={paint.s14}>
+        <Tip side="right" delay={700} wrapClassName={sx(paint.q77)} label={<PlaceTip name={`${loc.name} on ${box.name}`} lines={[loc.path]} />}>
           <SidebarMenuButton
             size="sm"
             isActive={mainSel && !all}
@@ -256,30 +797,31 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
                 toggle();
               }
             }}
-            className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
+            density="place"
+            offline={!online}
           >
             {/* The pointer's way; the keyboard's is ← and → on the row. */}
             <Tip label={collapsed ? `Show ${loc.name}` : `Hide ${loc.name}`} side="right">
               <span
                 aria-hidden
                 data-fold=""
-                className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                className={sx(paint.s15)}
                 onClick={(e) => {
                   e.stopPropagation();
                   toggle();
                 }}
               >
-                <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
+                <ChevronRightIcon className={[sx(paint.s16), !collapsed && sx(paint.s17)].filter(Boolean).join(" ")} />
               </span>
             </Tip>
             <LeadIcon sessions={!all && main ? mainSessions : []} data={data} icon={<FolderGitIcon />} />
-            <span className="shrink-0">{loc.name}</span>
+            <span className={sx(paint.s18)}>{loc.name}</span>
             {chip && (
-              <span className="min-w-0 shrink overflow-hidden">
+              <span className={sx(paint.s19)}>
                 <BoxChip box={box} />
               </span>
             )}
-            <span className="ml-auto" />
+            <span className={sx(paint.s20)} />
             {!all && main && <Glyphs sessions={mainSessions} data={data} />}
           </SidebarMenuButton>
         </Tip>
@@ -289,7 +831,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
       </ContextRow>
 
       {!collapsed && (all || shown.length > 0 || hidden > 0) && (
-        <SidebarMenuSub className="mx-0 ml-[17px] gap-px py-0.5 pr-0 pl-1.5">
+        <SidebarMenuSub indent="repo">
           {all && main && <WorktreeRow box={box.name} loc={loc} wt={main} sessions={mainSessions} data={data} selected={mainSel} onOpen={() => open(main)} away={online ? undefined : box} />}
           <WorktreeNodes nodes={shown} depth={0} prefs={prefs} update={update} />
           {hidden > 0 && (
@@ -297,7 +839,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
               <SidebarMenuSubButton
                 render={<button type="button" />}
                 size="sm"
-                className="h-6 w-full text-muted-foreground/80"
+                density="quiet"
                 onClick={() => update({ expanded: { ...prefs.expanded, [repo.key]: true } })}
               >
                 <span>
@@ -311,7 +853,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
               <SidebarMenuSubButton
                 render={<button type="button" />}
                 size="sm"
-                className="h-6 w-full text-muted-foreground/80"
+                density="quiet"
                 onClick={() => update({ expanded: { ...prefs.expanded, [repo.key]: false } })}
               >
                 <span>Show fewer</span>
@@ -388,7 +930,7 @@ const WorktreeRow = memo(function WorktreeRow({ box, loc, wt, sessions, data, se
     );
   return (
     <SidebarMenuSubItem>
-      <ContextRow items={() => (away ? awayActions(away) : worktreeActions(box, loc, wt))} className="group/row relative">
+      <ContextRow items={() => (away ? awayActions(away) : worktreeActions(box, loc, wt))} marker="group/row" look={paint.s21}>
         <Tip side="right" delay={700} label={where}>
           <SidebarMenuSubButton
             render={<button type="button" />}
@@ -408,24 +950,25 @@ const WorktreeRow = memo(function WorktreeRow({ box, loc, wt, sessions, data, se
                 startRenamingWorktree(box, wt.path);
               }
             }}
-            onPointerDown={(e: React.PointerEvent<HTMLElement>) => labs && !away && armDrag(e, { kind: "worktree", key }, wt.main ? loc.name : name, wt.main ? <HomeIcon className="size-3" /> : <GitBranchIcon className="size-3" />)}
-            className={cn("h-side-row w-full text-[13px] sm:h-side-row [&>svg]:text-muted-foreground", away && "text-muted-foreground")}
+            onPointerDown={(e: React.PointerEvent<HTMLElement>) => labs && !away && armDrag(e, { kind: "worktree", key }, wt.main ? loc.name : name, wt.main ? <HomeIcon className={sx(paint.s22)} /> : <GitBranchIcon className={sx(paint.s23)} />)}
+            density="row"
+            away={!!away}
           >
             <LeadIcon sessions={away ? [] : sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
-            <span className={cn("min-w-0 truncate", away && "opacity-70")}>{name}</span>
+            <span className={[sx(paint.s24), away && sx(paint.s25)].filter(Boolean).join(" ")}>{name}</span>
             {/* Its own name beside the title, when the sidebar is wide enough. */}
-            {!wt.main && wt.title && <span data-testid="worktree-row-name" className="hidden min-w-0 max-w-max grow basis-0 truncate font-mono text-[10px] text-muted-foreground @min-[17rem]/side:inline">{wt.name}</span>}
+            {!wt.main && wt.title && <span data-testid="worktree-row-name" className={sx(paint.s26)}>{wt.name}</span>}
             {/* On screen beside another worktree: its colour. */}
-            <WtDot wsKey={key} className="size-1.5" />
+            <WtDot wsKey={key} className={sx(paint.s27)} />
             {/* Narrower than the default the name needs the room more; the
                 tip still says which box. */}
             {chip && (
-              <span className="hidden shrink-0 @min-[14rem]/side:inline-flex">
+              <span className={sx(paint.s28)}>
                 <BoxChip box={chip} />
               </span>
             )}
             {!away && <SetupMark box={box} wt={wt} />}
-            <span className="ml-auto" />
+            <span className={sx(paint.s29)} />
             {away ? <AwayMark box={away} short={!!chip} /> : <Glyphs sessions={sessions} data={data} />}
           </SidebarMenuSubButton>
         </Tip>
@@ -481,13 +1024,13 @@ function WorktreeNode({ node, depth, prefs, update }: { node: TreeNode<TreeRow>;
           aria-label={`${closed ? "Show" : "Hide"} ${what} of ${worktreeLabel(r.wt)}`}
           onClick={() => update({ collapsed: { ...prefs.collapsed, [fold]: !closed } })}
           // A 24px target around a 20px pill.
-          className="group/pill ml-6 flex h-6 w-max items-center rounded-md text-[11px] text-muted-foreground outline-none hover:text-foreground"
+          className={[sx(paint.s30), "group/pill"].filter(Boolean).join(" ")}
         >
-          <span className="flex h-5 items-center gap-1 rounded-md border border-sidebar-border px-1.5 group-hover/pill:bg-sidebar-accent group-focus-visible/pill:ring-2 group-focus-visible/pill:ring-ring [&_svg]:size-3">
+          <span className={sx(paint.s31)}>
             <WorkflowIcon />
-            <span className="tabular-nums">{what}</span>
-            {(state === "running" || state === "waiting" || state === "finished") && <StateGlyph state={state} className="size-3" />}
-            <ChevronRightIcon className={cn("transition-transform", !closed && "rotate-90")} />
+            <span className={sx(paint.s32)}>{what}</span>
+            {(state === "running" || state === "waiting" || state === "finished") && <StateGlyph state={state} className={sx(paint.s33)} />}
+            <ChevronRightIcon className={[sx(paint.s34), !closed && sx(paint.s35)].filter(Boolean).join(" ")} />
           </span>
         </button>
       </SidebarMenuSubItem>
@@ -495,7 +1038,7 @@ function WorktreeNode({ node, depth, prefs, update }: { node: TreeNode<TreeRow>;
         <SidebarMenuSubItem>
           {/* Up to MAX_INDENT levels step in, with a guide; deeper ones line
               up with their parent. */}
-          <SidebarMenuSub className={cn("mx-0 gap-px py-0 pr-0", depth + 1 < MAX_INDENT ? "ml-[9px] pl-1.5" : "ml-0 border-l-0 pl-0")}>
+          <SidebarMenuSub indent={depth + 1 < MAX_INDENT ? "tree" : "flush"}>
             <WorktreeNodes nodes={node.children} depth={depth + 1} prefs={prefs} update={update} />
           </SidebarMenuSub>
         </SidebarMenuSubItem>
@@ -510,10 +1053,10 @@ function LeavingRow({ wt, label, script }: { wt: Worktree; label: string; script
   return (
     <SidebarMenuSubItem>
       <Tip side="right" delay={400} label={script ? "The repo's archive script is running on the box. The worktree goes when it finishes, or comes back if it fails." : "Waiting for the box."}>
-        <div aria-disabled="true" aria-busy="true" data-leaving="" className="flex h-side-row w-full cursor-default items-center gap-2 rounded-lg px-2 text-[13px] text-muted-foreground">
-          <Spinner className="size-3.5 shrink-0 opacity-70" />
-          <span className="min-w-0 truncate line-through decoration-muted-foreground/40 opacity-70">{worktreeLabel(wt)}</span>
-          <span className="ml-auto shrink-0 text-[10px]">{label}</span>
+        <div aria-disabled="true" aria-busy="true" data-leaving="" className={sx(paint.s36)}>
+          <Spinner size="md" soft />
+          <span className={sx(paint.s37)}>{worktreeLabel(wt)}</span>
+          <span className={sx(paint.s38)}>{label}</span>
         </div>
       </Tip>
     </SidebarMenuSubItem>
@@ -538,8 +1081,8 @@ function awayText(box: BoxStatus) {
 // just its icon when the row's box chip already says which box.
 function AwayMark({ box, short }: { box: BoxStatus; short?: boolean }) {
   return (
-    <span className="flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
-      <ServerOffIcon aria-label={short ? `${box.name} is ${awayText(box)}` : undefined} aria-hidden={!short} className="size-3" />
+    <span className={sx(paint.s39)}>
+      <ServerOffIcon aria-label={short ? `${box.name} is ${awayText(box)}` : undefined} aria-hidden={!short} className={sx(paint.s40)} />
       {!short && awayText(box)}
     </span>
   );
@@ -554,8 +1097,8 @@ function AwayMark({ box, short }: { box: BoxStatus; short?: boolean }) {
 // same 14px box.
 function LeadIcon({ sessions, data, icon }: { sessions: Session[]; data?: BoxData; icon: React.ReactNode }) {
   const { state } = summary(sessions, data);
-  if (state === "running" || state === "waiting" || state === "finished") return <StateGlyph state={state} className="size-3.5" />;
-  return <span className="inline-flex size-3.5 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-3.5">{icon}</span>;
+  if (state === "running" || state === "waiting" || state === "finished") return <StateGlyph state={state} className={sx(paint.s41)} />;
+  return <span className={sx(paint.s42)}>{icon}</span>;
 }
 
 // Glyphs are what runs in a row: the most urgent agent's icon, or a dot for
@@ -566,17 +1109,17 @@ function Glyphs({ sessions, data }: { sessions: Session[]; data?: BoxData }) {
   const agent = sessions.find((s) => agentOf(s) && sessionState(s, data?.stats) === state) ?? sessions.find((s) => agentOf(s) && !s.exited);
   const shells = sessions.filter((s) => !agentOf(s)).length;
   return (
-    <span className="flex shrink-0 items-center gap-1">
+    <span className={sx(paint.s43)}>
       {agent ? (
-        <AgentIcon agent={agentOf(agent)} className="size-3 opacity-80" />
+        <AgentIcon agent={agentOf(agent)} className={sx(paint.s44)} />
       ) : (
         <Tip label={`${shells} shell${shells === 1 ? "" : "s"} open`}>
-          <span className="inline-flex size-3 items-center justify-center">
-            <span className="size-1 rounded-full bg-muted-foreground/50" />
+          <span className={sx(paint.s45)}>
+            <span className={sx(paint.s46)} />
           </span>
         </Tip>
       )}
-      {count > 1 && <span className="text-[10px] text-muted-foreground tabular-nums">{count}</span>}
+      {count > 1 && <span className={sx(paint.s47)}>{count}</span>}
     </span>
   );
 }
@@ -586,10 +1129,10 @@ function Glyphs({ sessions, data }: { sessions: Session[]; data?: BoxData }) {
 // fade on its left edge, so it covers chips, counts and glyphs under it and
 // nothing in the row moves. Its buttons and their menus are only made once
 // the row is first pointed at or focused (Armed).
-function RowOverlay({ className, children }: { className?: string; children: React.ReactNode }) {
+function RowOverlay({ corner, children }: { corner?: "md"; children: React.ReactNode }) {
   if (!useArmed()) return null;
   return (
-    <div className={cn("pointer-events-none absolute inset-y-0 right-0 flex items-center rounded-r-lg pr-1 pl-4 opacity-0 transition-opacity duration-100 [background:linear-gradient(var(--sidebar-accent),var(--sidebar-accent)),var(--sidebar)] [mask-image:linear-gradient(to_right,transparent,black_16px)] focus-within:pointer-events-auto focus-within:opacity-100 group-hover/row:pointer-events-auto group-hover/row:opacity-100 has-[[data-popup-open]]:pointer-events-auto has-[[data-popup-open]]:opacity-100", className)}>
+    <div {...stylex.props(paint.s48, corner === "md" && paint.s8)}>
       {children}
     </div>
   );
@@ -627,7 +1170,7 @@ function RowButton({ label, ...props }: React.ComponentProps<"button"> & { label
         type="button"
         aria-label={label}
         {...props}
-        className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent [&_svg]:size-3.5"
+        className={sx(paint.s49)}
       />
     </Tip>
   );
@@ -658,27 +1201,27 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
 
   return (
     <>
-      <div {...drop(undefined)} className={cn("rounded-md", over === "" && "bg-sidebar-accent/40 ring-1 ring-ring/40")}>
-        <SidebarMenu className="gap-px">{list(loose)}</SidebarMenu>
+      <div {...drop(undefined)} className={[sx(paint.s50), over === "" && sx(paint.s51)].filter(Boolean).join(" ")}>
+        <SidebarMenu gap="tight">{list(loose)}</SidebarMenu>
       </div>
       {sections.map((name) => {
         const inside = projects.filter((p) => p.section === name);
         const key = `section:${name}`;
         const closed = prefs.collapsed[key] ?? false;
         return (
-          <div key={name} {...drop(name)} className={cn("mt-2 rounded-md", over === name && "bg-sidebar-accent/40 ring-1 ring-ring/40")}>
+          <div key={name} {...drop(name)} className={[sx(paint.s52), over === name && sx(paint.s53)].filter(Boolean).join(" ")}>
             <ContextRow items={() => sectionActions(name)}>
-              <div className="group/row flex h-7 items-center gap-1 rounded-md pr-1 pl-1.5 hover:bg-sidebar-accent/40">
+              <div className={[sx(paint.s54), "group/row"].filter(Boolean).join(" ")}>
                 <button
                   type="button"
                   onClick={() => update({ collapsed: { ...prefs.collapsed, [key]: !closed } })}
-                  className="flex min-w-0 flex-1 items-center gap-1 font-medium text-[11px] text-muted-foreground"
+                  className={sx(paint.s55)}
                 >
-                  <ChevronRightIcon className={cn("size-3 transition-transform", !closed && "rotate-90")} />
-                  <span className="truncate">{name}</span>
-                  <span className="font-normal normal-case tracking-normal">{inside.length || ""}</span>
+                  <ChevronRightIcon className={[sx(paint.s56), !closed && sx(paint.s57)].filter(Boolean).join(" ")} />
+                  <span className={sx(paint.s58)}>{name}</span>
+                  <span className={sx(paint.s59)}>{inside.length || ""}</span>
                 </button>
-                <span className="opacity-0 group-hover/row:opacity-100 has-[[data-popup-open]]:opacity-100">
+                <span className={sx(paint.s60)}>
                   <Armed>
                     <DotsMenu label={`${name} section`} items={() => sectionActions(name)} />
                   </Armed>
@@ -686,7 +1229,7 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
               </div>
             </ContextRow>
             {!closed &&
-              (inside.length ? <SidebarMenu className="gap-px">{list(inside)}</SidebarMenu> : <p className="px-6 py-1 text-muted-foreground text-xs">Drag a project here.</p>)}
+              (inside.length ? <SidebarMenu gap="tight">{list(inside)}</SidebarMenu> : <p className={sx(paint.s61)}>Drag a project here.</p>)}
           </div>
         );
       })}
@@ -770,8 +1313,8 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
 
   return (
     <SidebarMenuItem>
-      <ContextRow items={() => projectGroupActions(p)} className="group/row relative">
-        <Tip side="right" delay={700} wrapClassName="flex w-full min-w-0" label={<PlaceTip name={`${p.name}${p.slug ? ` (${p.slug})` : ""}`} lines={p.members.map((m) => `${m.box.name}: ${m.loc.path}`)} />}>
+      <ContextRow items={() => projectGroupActions(p)} marker="group/row" look={paint.s62}>
+        <Tip side="right" delay={700} wrapClassName={sx(paint.q78)} label={<PlaceTip name={`${p.name}${p.slug ? ` (${p.slug})` : ""}`} lines={p.members.map((m) => `${m.box.name}: ${m.loc.path}`)} />}>
           <SidebarMenuButton
             size="sm"
             draggable
@@ -789,32 +1332,33 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
                 update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
               }
             }}
-            className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
+            density="place"
+            offline={!online}
           >
             <Tip label={collapsed ? `Show ${p.name}` : `Hide ${p.name}`} side="right">
               <span
                 aria-hidden
                 data-fold=""
-                className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                className={sx(paint.s63)}
                 onClick={(e) => {
                   e.stopPropagation();
                   update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
                 }}
               >
-                <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
+                <ChevronRightIcon className={[sx(paint.s64), !collapsed && sx(paint.s65)].filter(Boolean).join(" ")} />
               </span>
             </Tip>
             <LeadIcon sessions={!all ? glyphSessions : []} data={boxes[def.box.name]} icon={<FolderGitIcon />} />
-            <span className="shrink-0">{p.name}</span>
+            <span className={sx(paint.s66)}>{p.name}</span>
             {chips && (
-              <span className="flex min-w-0 shrink items-center gap-0.5 overflow-hidden">
+              <span className={sx(paint.s67)}>
                 {p.members.slice(0, 3).map((m) => (
                   <BoxChip key={m.box.name} box={m.box} />
                 ))}
-                {p.members.length > 3 && <span className="text-[10px] text-muted-foreground">+{p.members.length - 3}</span>}
+                {p.members.length > 3 && <span className={sx(paint.s68)}>+{p.members.length - 3}</span>}
               </span>
             )}
-            <span className="ml-auto" />
+            <span className={sx(paint.s69)} />
             {!all && <Glyphs sessions={glyphSessions} data={boxes[def.box.name]} />}
           </SidebarMenuButton>
         </Tip>
@@ -832,7 +1376,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
       </ContextRow>
 
       {!collapsed && (all || shown.length > 0 || hidden > 0) && (
-        <SidebarMenuSub className="mx-0 ml-[17px] gap-px py-0.5 pr-0 pl-1.5">
+        <SidebarMenuSub indent="repo">
           {!multi && all && defMain && (
             <WorktreeRow
               box={def.box.name}
@@ -851,7 +1395,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               <SidebarMenuSubButton
                 render={<button type="button" />}
                 size="sm"
-                className="h-6 w-full text-muted-foreground/80"
+                density="quiet"
                 onClick={() => update({ expanded: { ...prefs.expanded, [key]: true } })}
               >
                 <span>
@@ -865,7 +1409,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               <SidebarMenuSubButton
                 render={<button type="button" />}
                 size="sm"
-                className="h-6 w-full text-muted-foreground/80"
+                density="quiet"
                 onClick={() => update({ expanded: { ...prefs.expanded, [key]: false } })}
               >
                 <span>Show fewer</span>
@@ -881,16 +1425,16 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
 // PlaceTip says where a sidebar row is: its name, then its path on each box.
 function PlaceTip({ name, sub, lines, work = [] }: { name: string; sub?: string; lines: string[]; work?: string[] }) {
   return (
-    <span className="flex max-w-96 flex-col gap-0.5">
+    <span className={sx(paint.s70)}>
       <span>{name}</span>
-      {sub && <span className="font-mono text-[11px] text-muted-foreground">{sub}</span>}
+      {sub && <span className={sx(paint.s71)}>{sub}</span>}
       {work.map((w, i) => (
-        <span key={i} className="truncate text-[12px]">
+        <span key={i} className={sx(paint.s72)}>
           {w}
         </span>
       ))}
       {lines.map((l) => (
-        <span key={l} className="break-all font-mono text-[11px] text-muted-foreground">
+        <span key={l} className={sx(paint.s73)}>
           {l}
         </span>
       ))}
@@ -903,13 +1447,13 @@ function PlaceTip({ name, sub, lines, work = [] }: { name: string; sub?: string;
 function SetupMark({ box, wt }: { box: string; wt: Worktree }) {
   // Setup and archive failures share a category; the title tells them apart.
   const failed = useNotifications((s) => s.notes.find((n) => n.category === "setupFailed" && !n.resolved && n.box === box && n.path === wt.path));
-  if (wt.setting_up) return <span className="shrink-0 text-[10px] text-muted-foreground">{WORKTREE_WORDS["setting-up"].lower}</span>;
+  if (wt.setting_up) return <span className={sx(paint.s74)}>{WORKTREE_WORDS["setting-up"].lower}</span>;
   if (!failed) return null;
   const archive = failed.title.startsWith("Archiving");
   return (
     <Tip label={`Its ${archive ? "archive" : "setup"} script failed. The notification has its output.`}>
-      <span className="flex shrink-0 items-center gap-1 text-[10px] text-destructive-foreground">
-        <span className="size-1.5 rounded-full bg-destructive" />
+      <span className={sx(paint.s75)}>
+        <span className={sx(paint.s76)} />
         {archive ? "archive failed" : WORKTREE_WORDS["setup-failed"].lower}
       </span>
     </Tip>

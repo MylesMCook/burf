@@ -1,7 +1,13 @@
 "use client";
 
 import type { FC } from "react";
+import * as stylex from "@stylexjs/stylex";
+
 import { Badge } from "@/components/ui/badge";
+
+const styles = stylex.create({
+  text: { whiteSpace: "pre-wrap" },
+});
 
 type IconComponent = FC<{ className?: string }>;
 
@@ -46,7 +52,7 @@ export function createDirectiveText(
         {segments.map((seg, i) => {
           if (seg.kind === "text") {
             return (
-              <span key={i} className="whitespace-pre-wrap">
+              <span key={i} {...stylex.props(styles.text)}>
                 {seg.text}
               </span>
             );
@@ -61,7 +67,8 @@ export function createDirectiveText(
               data-directive-type={seg.type}
               data-directive-id={seg.id}
               aria-label={`${seg.type}: ${seg.label}`}
-              className="aui-directive-chip items-baseline px-1.5 py-0.5 text-[13px] leading-none [&_svg]:self-center"
+              chip
+              marker="aui-directive-chip"
             >
               {Icon && <Icon />}
               {seg.label}

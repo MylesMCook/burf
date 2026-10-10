@@ -1,16 +1,78 @@
 "use client";
 
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
+import * as stylex from "@stylexjs/stylex";
 import type React from "react";
-import { cn } from "@/lib/utils";
 
-export const TooltipCreateHandle: typeof TooltipPrimitive.createHandle =
-  TooltipPrimitive.createHandle;
+import { color, radius } from "@/styles/tokens.stylex";
 
-export const TooltipProvider: typeof TooltipPrimitive.Provider =
-  TooltipPrimitive.Provider;
+const wide = "@media (min-width: 1201px)";
 
-// Burf: a tooltip opens on focus only when the keyboard moved focus there
+const styles = stylex.create({
+  positioner: {
+    zIndex: 50,
+    height: "var(--positioner-height)",
+    width: "var(--positioner-width)",
+    maxWidth: "var(--available-width)",
+    transitionProperty: "top, left, right, bottom, transform",
+  },
+  instant: { transitionDuration: "0s" },
+  popup: {
+    position: "relative",
+    display: "flex",
+    height: "var(--popup-height, auto)",
+    width: "var(--popup-width, auto)",
+    transformOrigin: "var(--transform-origin)",
+    textWrap: "balance",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: color.border,
+    backgroundColor: color.popover,
+    color: color.popoverForeground,
+    fontSize: 12,
+    boxShadow: "0 4px 8px color-mix(in oklab, var(--foreground) 5%, transparent)",
+    transitionProperty: "width, height, scale, opacity",
+  },
+  motion: {
+    opacity: 0,
+    scale: 0.98,
+  },
+  viewport: {
+    position: "relative",
+    width: "100%",
+    height: "100%",
+    overflow: "clip",
+    overflowWrap: "anywhere",
+    paddingTop: 4,
+    paddingBottom: 4,
+    paddingLeft: 8,
+    paddingRight: 8,
+  },
+  sm: { maxWidth: 384 },
+  md: { maxWidth: 448 },
+  lg: { maxWidth: 512 },
+  xs: { maxWidth: 320 },
+  w72: { maxWidth: 288 },
+  none: { maxWidth: "none" },
+  narrow: { display: { default: "flex", [wide]: "none" } },
+});
+
+export type TooltipWidth = "xs" | "sm" | "md" | "lg" | "72" | "none";
+
+const widthStyle = {
+  xs: styles.xs,
+  sm: styles.sm,
+  md: styles.md,
+  lg: styles.lg,
+  "72": styles.w72,
+  none: styles.none,
+} as const;
+
+export const TooltipCreateHandle: typeof TooltipPrimitive.createHandle = TooltipPrimitive.createHandle;
+export const TooltipProvider: typeof TooltipPrimitive.Provider = TooltipPrimitive.Provider;
+
+// A tooltip opens on focus only when the keyboard moved focus there
 // (Tab, arrows). Focus put back by code (a popover closing onto its
 // trigger, a sheet's first button) leaves it shut, so it never covers what
 // just appeared.
@@ -41,50 +103,55 @@ export function Tooltip({ onOpenChange, ...props }: TooltipPrimitive.Root.Props)
   );
 }
 
-export function TooltipTrigger(
-  props: TooltipPrimitive.Trigger.Props,
-): React.ReactElement {
+export function TooltipTrigger(props: TooltipPrimitive.Trigger.Props): React.ReactElement {
   return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
 }
 
 export function TooltipPopup({
-  className,
   align = "center",
   sideOffset = 4,
   side = "top",
   anchor,
   children,
   portalProps,
+  width,
+  narrow = false,
   ...props
-}: TooltipPrimitive.Popup.Props & {
+}: Omit<TooltipPrimitive.Popup.Props, "className" | "style"> & {
   align?: TooltipPrimitive.Positioner.Props["align"];
   side?: TooltipPrimitive.Positioner.Props["side"];
   sideOffset?: TooltipPrimitive.Positioner.Props["sideOffset"];
   anchor?: TooltipPrimitive.Positioner.Props["anchor"];
   portalProps?: TooltipPrimitive.Portal.Props;
+  width?: TooltipWidth;
+  /** Hide the popup once the window is wider than the settings rail. */
+  narrow?: boolean;
 }): React.ReactElement {
+  const positioner = stylex.props(styles.positioner);
   return (
     <TooltipPrimitive.Portal {...portalProps}>
       <TooltipPrimitive.Positioner
         align={align}
         anchor={anchor}
-        className="z-50 h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,left,right,bottom,transform] data-instant:transition-none"
+        className={positioner.className}
         data-slot="tooltip-positioner"
         side={side}
         sideOffset={sideOffset}
       >
         <TooltipPrimitive.Popup
-          className={cn(
-            "relative flex h-(--popup-height,auto) w-(--popup-width,auto) origin-(--transform-origin) text-balance rounded-md border bg-popover not-dark:bg-clip-padding text-popover-foreground text-xs shadow-md/5 transition-[width,height,scale,opacity] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-md)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 data-instant:duration-0 dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
-            className,
-          )}
+          className={(state) =>
+            stylex.props(
+              styles.popup,
+              width && widthStyle[width],
+              narrow && styles.narrow,
+              (state.transitionStatus === "starting" || state.transitionStatus === "ending") && styles.motion,
+              state.instant && styles.instant,
+            ).className
+          }
           data-slot="tooltip-popup"
           {...props}
         >
-          <TooltipPrimitive.Viewport
-            className="relative size-full overflow-clip px-(--viewport-inline-padding) py-1 [--viewport-inline-padding:--spacing(2)] data-instant:transition-none **:data-current:data-ending-style:opacity-0 **:data-current:data-starting-style:opacity-0 **:data-previous:data-ending-style:opacity-0 **:data-previous:data-starting-style:opacity-0 **:data-current:w-[calc(var(--popup-width)-2*var(--viewport-inline-padding)-2px)] **:data-previous:w-[calc(var(--popup-width)-2*var(--viewport-inline-padding)-2px)] **:data-previous:truncate **:data-current:opacity-100 **:data-previous:opacity-100 **:data-current:transition-opacity **:data-previous:transition-opacity"
-            data-slot="tooltip-viewport"
-          >
+          <TooltipPrimitive.Viewport className={stylex.props(styles.viewport).className} data-slot="tooltip-viewport">
             {children}
           </TooltipPrimitive.Viewport>
         </TooltipPrimitive.Popup>

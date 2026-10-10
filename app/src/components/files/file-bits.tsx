@@ -1,9 +1,40 @@
+import * as stylex from "@stylexjs/stylex";
 import { FileCodeIcon, FileIcon, FileImageIcon, FileJsonIcon, FileTextIcon, HashIcon, TriangleAlertIcon } from "lucide-react";
 
 import { Tip } from "@/components/tip";
 import { usePreferredEditor } from "@/lib/editors";
 import { docKey, isDirty, useFiles } from "@/lib/files";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s1: {
+    "width": "12px",
+    "height": "12px",
+    "flexShrink": 0,
+    "color": "var(--warning-foreground)",
+  },
+  s2: {
+    "width": "6px",
+    "height": "6px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 60%, transparent)",
+  },
+  n0: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The small pieces of the ⌘P picker and File tabs that load with the app:
 // a file's icon, its tab's state, and names. The editor and the File tab
@@ -16,7 +47,7 @@ export const agentName = (a?: string) => (a ? (AGENT_NAMES[a] ?? a.charAt(0).toU
 
 // FileGlyph is a file's icon in tabs, headers and the picker, by its kind.
 export function FileGlyph({ path, className }: { path: string; className?: string }) {
-  const cls = cn("size-3.5 shrink-0 text-muted-foreground", className);
+  const cls = [sx(paint.n0), className].filter(Boolean).join(" ");
   if (/\.(tsx?|jsx?|mjs|cjs|go|py|rs|rb|java|kt|swift|c|h|cpp|cs|php|sh|vue|svelte)$/i.test(path)) return <FileCodeIcon className={cls} />;
   if (/\.jsonc?$/i.test(path)) return <FileJsonIcon className={cls} />;
   if (/\.(md|mdx|txt|rst)$/i.test(path)) return <FileTextIcon className={cls} />;
@@ -35,10 +66,10 @@ export function FileTabState({ ws, path }: { ws: string; path: string }) {
   if (state === "conflict")
     return (
       <Tip label="Changed on the box under your unsaved edits" side="bottom">
-        <TriangleAlertIcon aria-label="Changed under your edits" data-testid="file-tab-conflict" className="size-3 shrink-0 text-warning-foreground" />
+        <TriangleAlertIcon aria-label="Changed under your edits" data-testid="file-tab-conflict" className={sx(paint.s1)} />
       </Tip>
     );
-  if (state === "dirty") return <span role="img" aria-label="Unsaved" data-testid="file-tab-dirty" className="size-1.5 shrink-0 rounded-full bg-foreground/60" />;
+  if (state === "dirty") return <span role="img" aria-label="Unsaved" data-testid="file-tab-dirty" className={sx(paint.s2)} />;
   return null;
 }
 

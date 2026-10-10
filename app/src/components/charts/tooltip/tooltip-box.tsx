@@ -1,12 +1,44 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { motion, useSpring } from "motion/react";
 import type { RefObject } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@/lib/utils";
 import { type SpringConfig, useChartConfig } from "../chart-config-context";
 import { chartCssVars } from "../chart-context";
+
+const paint = stylex.create({
+  s0: {
+    "minWidth": "140px",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
+  },
+  s1: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "zIndex": 50,
+  },
+  s2: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "zIndex": 50,
+  },
+
+  s3: {
+    color: "var(--chart-tooltip-foreground)",
+  },
+  s4: {
+    backgroundColor: "var(--chart-tooltip-background)",
+  },
+  s5: {
+    backdropFilter: "blur(12px)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface TooltipBoxProps {
   /** X position in pixels (relative to container) */
@@ -175,13 +207,8 @@ function TooltipBoxInner({
   const isFlipped = flippedOverride ?? shouldFlipX;
   const transformOrigin = isFlipped ? "right top" : "left top";
 
-  const panelClassName = cn(
-    "min-w-[140px] overflow-hidden rounded-lg text-chart-tooltip-foreground shadow-lg",
-    panelStyle?.backgroundColor === undefined &&
-      backgroundColor === chartCssVars.tooltipBackground &&
-      "bg-chart-tooltip-background",
-    panelStyle?.backdropFilter === undefined && "backdrop-blur-md"
-  );
+  const panelClassName = [[sx(paint.s0), (sx(paint.s3) ?? "")].filter(Boolean).join(" "), panelStyle?.backgroundColor === undefined &&
+      backgroundColor === chartCssVars.tooltipBackground && (sx(paint.s4) ?? ""), panelStyle?.backdropFilter === undefined && (sx(paint.s5) ?? "")].filter(Boolean).join(" ");
   const panelStyleResolved = {
     transformOrigin,
     ...(panelStyle?.backgroundColor === undefined && {
@@ -193,7 +220,7 @@ function TooltipBoxInner({
   if (!entrance) {
     return createPortal(
       <div
-        className={cn("pointer-events-none absolute z-50", className)}
+        className={[sx(paint.s1), className].filter(Boolean).join(" ")}
         ref={tooltipRef}
         style={{ left: staticPosition.left, top: staticPosition.top }}
       >
@@ -208,7 +235,7 @@ function TooltipBoxInner({
   return createPortal(
     <motion.div
       animate={{ opacity: 1 }}
-      className={cn("pointer-events-none absolute z-50", className)}
+      className={[sx(paint.s2), className].filter(Boolean).join(" ")}
       exit={{ opacity: 0 }}
       initial={{ opacity: 0 }}
       ref={tooltipRef}

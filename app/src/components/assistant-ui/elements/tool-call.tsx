@@ -1,19 +1,53 @@
 "use client";
 
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
+import * as stylex from "@stylexjs/stylex";
+
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
-import {
-  collapsePanel,
-  field,
-  mono,
-  ShimmerLabel,
-  SwapLabel,
-} from "./surfaces";
+import { font, radius } from "@/styles/tokens.stylex";
+import { field, mark, mono, popIn, ShimmerLabel, SwapLabel } from "./surfaces";
+
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const styles = stylex.create({
+  chevron: {
+    width: 14,
+    height: 14,
+    flexShrink: 0,
+    opacity: 0.6,
+    transform: {
+      default: "rotate(0deg)",
+      ":is([data-open] > &)": "rotate(90deg)",
+      ":is([data-panel-open] > &)": "rotate(90deg)",
+      ":is([data-state=open] > &)": "rotate(90deg)",
+    },
+    transitionProperty: "transform",
+    transitionDuration: { default: "200ms", [still]: "0s" },
+    transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+  },
+  chip: {
+    backgroundColor: "color-mix(in oklab, var(--foreground) 6%, transparent)",
+    color: "color-mix(in oklab, var(--foreground) 70%, transparent)",
+    borderRadius: radius.md,
+    paddingLeft: 6,
+    paddingRight: 6,
+    paddingTop: 2,
+    paddingBottom: 2,
+  },
+  checkSlot: { marginInlineStart: "auto", display: "flex", width: 16, alignItems: "center", justifyContent: "flex-end" },
+  check: { width: 14, height: 14, color: "var(--color-emerald-500)" },
+  body: { marginTop: 8, overflow: "hidden", borderRadius: radius.xxl, fontSize: 12, lineHeight: "16px" },
+  request: { paddingLeft: 14, paddingRight: 14, paddingTop: 10, paddingBottom: 8 },
+  result: { paddingLeft: 14, paddingRight: 14, paddingTop: 8, paddingBottom: 10 },
+  kicker: { marginBottom: 4, color: "color-mix(in oklab, var(--foreground) 35%, transparent)" },
+  requestText: { color: "color-mix(in oklab, var(--foreground) 55%, transparent)", fontFamily: font.mono },
+  resultText: { color: "color-mix(in oklab, var(--foreground) 90%, transparent)" },
+  rule: { height: 1, marginLeft: 14, marginRight: 14, backgroundColor: "color-mix(in oklab, var(--foreground) 6%, transparent)" },
+});
 
 export interface ToolCallProps {
   label: string;
@@ -24,7 +58,6 @@ export interface ToolCallProps {
   running: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  className?: string;
 }
 
 export function ToolCall({
@@ -36,50 +69,30 @@ export function ToolCall({
   running,
   open,
   onOpenChange,
-  className,
 }: ToolCallProps) {
   return (
-    <Collapsible
-      data-slot="tool-call"
-      open={open}
-      onOpenChange={onOpenChange}
-      className={cn("w-full max-w-sm", className)}
-    >
-      <CollapsibleTrigger className="group/trigger text-foreground/55 hover:text-foreground/90 flex items-center gap-2 rounded-md py-1 text-[13.5px] transition-colors outline-none">
-        <ChevronRightIcon className="size-3.5 shrink-0 opacity-60 transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] group-data-open/trigger:rotate-90 group-data-panel-open/trigger:rotate-90 motion-reduce:transition-none" />
-        <SwapLabel active={running ? 0 : 1} className="text-start">
-          <ShimmerLabel
-            active={running}
-            className="relative inline-block leading-none"
-          >
-            {activeLabel}
-          </ShimmerLabel>
+    <Collapsible data-slot="tool-call" onOpenChange={onOpenChange} open={open} width="tool">
+      <CollapsibleTrigger look="tool" marker="group/trigger">
+        <ChevronRightIcon {...mark(undefined, styles.chevron)} />
+        <SwapLabel active={running ? 0 : 1} align="start">
+          <ShimmerLabel active={running}>{activeLabel}</ShimmerLabel>
           <>{label}</>
         </SwapLabel>
-        <span
-          className={cn(
-            mono,
-            "bg-foreground/[0.06] text-foreground/70 rounded-md px-1.5 py-0.5",
-          )}
-        >
-          {query}
-        </span>
-        <span className="ms-auto flex w-4 items-center justify-end">
-          {!running && (
-            <CheckIcon className="fade-in zoom-in-90 animate-in size-3.5 text-emerald-500 duration-200" />
-          )}
+        <span {...mark(undefined, mono, styles.chip)}>{query}</span>
+        <span {...mark(undefined, styles.checkSlot)}>
+          {!running && <CheckIcon {...mark(undefined, styles.check, popIn)} />}
         </span>
       </CollapsibleTrigger>
-      <CollapsibleContent className={cn(collapsePanel, "outline-none")}>
-        <div className={cn(field, "mt-2 overflow-hidden rounded-2xl text-xs")}>
-          <div className="px-3.5 pt-2.5 pb-2">
-            <p className={cn(mono, "text-foreground/35 mb-1")}>Request</p>
-            <p className="text-foreground/55 font-mono">{request}</p>
+      <CollapsibleContent>
+        <div {...mark(undefined, field, styles.body)}>
+          <div {...mark(undefined, styles.request)}>
+            <p {...mark(undefined, mono, styles.kicker)}>Request</p>
+            <p {...mark(undefined, styles.requestText)}>{request}</p>
           </div>
-          <div className="bg-foreground/[0.06] mx-3.5 h-px" />
-          <div className="px-3.5 pt-2 pb-2.5">
-            <p className={cn(mono, "text-foreground/35 mb-1")}>Result</p>
-            <p className="text-foreground/90">{result}</p>
+          <div {...mark(undefined, styles.rule)} />
+          <div {...mark(undefined, styles.result)}>
+            <p {...mark(undefined, mono, styles.kicker)}>Result</p>
+            <p {...mark(undefined, styles.resultText)}>{result}</p>
           </div>
         </div>
       </CollapsibleContent>

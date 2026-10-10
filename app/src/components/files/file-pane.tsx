@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowUpRightIcon, ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, FileX2Icon, GitCompareArrowsIcon, TriangleAlertIcon, WrapTextIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
@@ -14,8 +15,495 @@ import { fileName } from "@/lib/file-match";
 import { docKey, type Doc, edit, filesApi, isDirty, keepMine, openDoc, openFile, poll, reload, save, setComparing, setWrap, useFiles } from "@/lib/files";
 import { ago } from "@/lib/format";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { useWorktreeRef } from "@/lib/workspaces";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "backgroundColor": "var(--background)",
+  },
+  s1: {
+    "alignItems": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "width": "20px",
+    "height": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s3: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s4: {
+    "minHeight": "0px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s5: {
+    "position": "relative",
+    "display": "flex",
+    "minHeight": "0px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "backgroundColor": "var(--background)",
+  },
+  s6: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "2px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexShrink": 1,
+    "alignItems": "center",
+    "gap": "2px",
+    "color": "var(--muted-foreground)",
+  },
+  s8: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s9: {
+    "width": "12px",
+    "height": "12px",
+    "flexShrink": 0,
+    "opacity": 0.5,
+  },
+  s10: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s11: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s12: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s13: {
+    "width": "6px",
+    "height": "6px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 70%, transparent)",
+  },
+  s14: {
+    "display": "inline-flex",
+    "height": "24px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s15: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s16: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s17: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s18: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s19: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s20: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s21: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "display": "flex",
+    "height": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+  },
+  s23: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s24: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
+    "paddingLeft": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s25: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s26: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s27: {
+    "color": "var(--success-foreground)",
+  },
+  s28: {
+    "color": "var(--destructive-foreground)",
+  },
+  s29: {
+    "marginLeft": "2px",
+    "display": "flex",
+    "alignItems": "center",
+  },
+  s30: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s31: {
+    "minWidth": "28px",
+    "textAlign": "center",
+    "fontSize": "11px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s32: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s33: {
+    "marginLeft": "2px",
+    "marginRight": "2px",
+    "height": "14px",
+    "width": "1px",
+    "backgroundColor": "var(--border)",
+  },
+  s34: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s35: {
+    "display": "flex",
+    "flexShrink": 0,
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "12px",
+    "rowGap": "6px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "borderLeftWidth": 2,
+    "borderLeftStyle": "solid",
+    "borderLeftColor": "var(--warning)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 8%, transparent)",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "paddingRight": "12px",
+    "paddingLeft": "10px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s36: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s37: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--warning-foreground)",
+  },
+  s38: {
+    "flexShrink": 0,
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s39: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  s40: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s41: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s42: {
+    "display": "flex",
+    "height": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--warning) 6%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s43: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s44: {
+    "color": "var(--muted-foreground)",
+  },
+  s45: {
+    "color": "color-mix(in oklab, var(--muted-foreground) 60%, transparent)",
+  },
+  s46: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s47: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s48: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s49: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s50: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "auto",
+  },
+  s51: {
+    "margin": "24px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s52: {
+    "margin": "24px",
+    "display": "inline-flex",
+  },
+  s53: {
+    "display": "flex",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "12px",
+    "padding": "24px",
+    "textAlign": "center",
+  },
+  s54: {
+    "display": "flex",
+    "width": "40px",
+    "height": "40px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+  },
+  s55: {
+    "width": "20px",
+    "height": "20px",
+  },
+  s56: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "4px",
+  },
+  s57: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s58: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s59: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s60: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s61: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "overflow": "auto",
+    "backgroundColor": "repeating-conic-gradient(color-mix(in oklab,var(--muted) 70%,transparent) 0% 25%,transparent 0% 50%)",
+    "padding": "32px",
+  },
+  s62: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s63: {
+    "maxHeight": "100%",
+    "maxWidth": "100%",
+    "borderRadius": "var(--radius-sm)",
+    "objectFit": "contain",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 8%, transparent)",
+  },
+  s64: {
+    "display": "flex",
+    "height": "28px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "12px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+
+  s65: {
+    "@media (max-width: 1099px)": {
+      display: "none",
+    },
+  },
+  s66: {
+    "@media (max-width: 759px)": {
+      display: "none",
+    },
+  },
+  s67: {
+    "@media (max-width: 979px)": {
+      display: "none",
+    },
+  },
+  s68: {
+    maxWidth: "24rem",
+  },
+  s69: {
+    backgroundSize: "16px 16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The editor is its own chunk: nothing of CodeMirror loads until a File
 // tab or the picker's preview shows.
@@ -90,28 +578,28 @@ export function FilePane({ path, owner, visible, onClose }: Props) {
 
   if (!doc || doc.state === "loading")
     return (
-      <div className="flex flex-1 items-center justify-center bg-background" data-testid="file-pane" data-state="loading">
-        <Spinner className="size-4 text-muted-foreground" />
+      <div className={sx(paint.s0)} data-testid="file-pane" data-state="loading">
+        <Spinner  size="lg" muted/>
       </div>
     );
 
   const dirty = isDirty(doc);
   const showCompare = doc.comparing && doc.conflict?.content !== undefined;
   let body: React.ReactNode;
-  if (doc.state === "error") body = <Refusal path={path} title={`Couldn't open ${fileName(path)}`} detail={<ErrorText text={doc.error} className="items-center text-muted-foreground text-xs" />} retry={() => ref && void openDoc(owner, ref, path)} />;
-  else if (doc.state === "gone") body = <Refusal path={path} icon={<FileX2Icon className="size-5 text-muted-foreground" />} title={`${fileName(path)} isn't in this worktree any more`} detail="It was deleted or moved on the box." onClose={onClose} />;
+  if (doc.state === "error") body = <Refusal path={path} title={`Couldn't open ${fileName(path)}`} detail={<ErrorText text={doc.error} className={sx(paint.s1)} />} retry={() => ref && void openDoc(owner, ref, path)} />;
+  else if (doc.state === "gone") body = <Refusal path={path} icon={<FileX2Icon className={sx(paint.s2)} />} title={`${fileName(path)} isn't in this worktree any more`} detail="It was deleted or moved on the box." onClose={onClose} />;
   else if (doc.image && !doc.tooLarge) body = <ImageView doc={doc} />;
   else if (doc.binary || doc.tooLarge) body = <Refusal path={path} title={doc.tooLarge ? "Too large to open here" : "Not a text file"} detail={doc.reason} external />;
   else if (showCompare) body = <CompareMine doc={doc} />;
   else
     body = (
-      <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Spinner className="size-4 text-muted-foreground" /></div>}>
-        <CodeEditor path={path} text={doc.text} onChange={(t) => edit(key, t)} onSave={() => void save(key)} changes={marks} conflictLines={conflicted} revealLine={hunks[at]?.from} reveal={reveal} wrap={wrap} className="min-h-0 min-w-0 flex-1" />
+      <Suspense fallback={<div className={sx(paint.s3)}><Spinner  size="lg" muted/></div>}>
+        <CodeEditor path={path} text={doc.text} onChange={(t) => edit(key, t)} onSave={() => void save(key)} changes={marks} conflictLines={conflicted} revealLine={hunks[at]?.from} reveal={reveal} wrap={wrap} className={sx(paint.s4)} />
       </Suspense>
     );
 
   return (
-    <div ref={frame} className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-background" data-testid="file-pane" data-state={doc.state} data-path={path} data-wrap={wrap || undefined}>
+    <div ref={frame} className={sx(paint.s5)} data-testid="file-pane" data-state={doc.state} data-path={path} data-wrap={wrap || undefined}>
       <FileHeader narrow={narrow} doc={doc} dirty={dirty} added={marks?.added} removed={marks?.removed} hunks={hunks.length} at={at} onStep={step} wrap={wrap} text={!doc.binary && !doc.tooLarge && doc.state === "ready"} />
       {doc.conflict && !showCompare && <ConflictBanner doc={doc} />}
       {body}
@@ -127,18 +615,18 @@ function Crumbs({ path, dirty, compact }: { path: string; dirty: boolean; compac
   // alone, rather than folders squeezed to a stray chevron.
   const dirs = compact ? [] : parts.slice(0, -1);
   return (
-    <span className="flex min-w-0 items-center gap-0.5 text-xs" aria-label={path} data-testid="file-crumbs">
+    <span className={sx(paint.s6)} aria-label={path} data-testid="file-crumbs">
       {dirs.map((p, i) => (
         // Narrow, only the nearest folders stay.
-        <span key={i} className={cn("flex min-w-0 shrink items-center gap-0.5 text-muted-foreground", i < dirs.length - 2 && "max-[1099px]:hidden", i < dirs.length - 1 && "max-[759px]:hidden")}>
-          <span className="truncate">{p}</span>
-          <ChevronRightIcon className="size-3 shrink-0 opacity-50" />
+        <span key={i} className={[sx(paint.s7), i < dirs.length - 2 && sx(paint.s65), i < dirs.length - 1 && sx(paint.s66)].filter(Boolean).join(" ")}>
+          <span className={sx(paint.s8)}>{p}</span>
+          <ChevronRightIcon className={sx(paint.s9)} />
         </span>
       ))}
-      <span className="flex min-w-0 shrink-0 items-center gap-1.5 font-medium text-foreground">
-        <FileGlyph path={path} className="size-3" />
-        <span className="truncate">{parts[parts.length - 1]}</span>
-        {dirty && <span role="img" aria-label="Unsaved" className="size-1.5 shrink-0 rounded-full bg-foreground/70" />}
+      <span className={sx(paint.s10)}>
+        <FileGlyph path={path} className={sx(paint.s11)} />
+        <span className={sx(paint.s12)}>{parts[parts.length - 1]}</span>
+        {dirty && <span role="img" aria-label="Unsaved" className={sx(paint.s13)} />}
       </span>
     </span>
   );
@@ -148,9 +636,9 @@ export function OpenInEditor({ path, line, compact }: { path: string; line?: num
   const name = useEditorName();
   return (
     <Tip label={`Open in ${name}`} side="bottom">
-      <button type="button" aria-label={`Open in ${name}`} onClick={() => openFile(path, "external", line)} className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 text-muted-foreground text-xs hover:bg-accent hover:text-foreground">
-        {!compact && <span className="max-[759px]:hidden">{name}</span>}
-        <ArrowUpRightIcon className="size-3.5" />
+      <button type="button" aria-label={`Open in ${name}`} onClick={() => openFile(path, "external", line)} className={sx(paint.s14)}>
+        {!compact && <span className={sx(paint.s66)}>{name}</span>}
+        <ArrowUpRightIcon className={sx(paint.s15)} />
       </button>
     </Tip>
   );
@@ -158,7 +646,7 @@ export function OpenInEditor({ path, line, compact }: { path: string; line?: num
 
 const IconButton = ({ label, onClick, pressed, children }: { label: string; onClick(): void; pressed?: boolean; children: React.ReactNode }) => (
   <Tip label={label} side="bottom">
-    <button type="button" aria-label={label} aria-pressed={pressed} onClick={onClick} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground", pressed && "bg-accent text-foreground")}>
+    <button type="button" aria-label={label} aria-pressed={pressed} onClick={onClick} className={[sx(paint.s16), pressed && sx(paint.s17)].filter(Boolean).join(" ")}>
       {children}
     </button>
   </Tip>
@@ -172,16 +660,16 @@ function SaveState({ doc }: { doc: Doc }) {
     const id = window.setTimeout(() => tick((n) => n + 1), 2600);
     return () => window.clearTimeout(id);
   }, [recent, doc.savedAt]);
-  if (doc.saving) return <span className="shrink-0 text-muted-foreground text-xs">Saving…</span>;
+  if (doc.saving) return <span className={sx(paint.s18)}>Saving…</span>;
   if (doc.saveError)
     return (
       <Tip label={doc.saveError} side="bottom">
-        <span role="alert" className="flex shrink-0 items-center gap-1 text-destructive-foreground text-xs">
-          <TriangleAlertIcon className="size-3" /> Not saved
+        <span role="alert" className={sx(paint.s19)}>
+          <TriangleAlertIcon className={sx(paint.s20)} /> Not saved
         </span>
       </Tip>
     );
-  if (recent) return <span className="shrink-0 text-muted-foreground text-xs" data-testid="file-saved">Saved</span>;
+  if (recent) return <span className={sx(paint.s21)} data-testid="file-saved">Saved</span>;
   return null;
 }
 
@@ -194,39 +682,39 @@ function FileHeader({ narrow, doc, dirty, added, removed, hunks, at, onStep, wra
     return () => window.clearInterval(id);
   }, []);
   return (
-    <div className="flex h-8 shrink-0 items-center gap-2 border-b px-3" data-testid="file-header">
+    <div className={sx(paint.s22)} data-testid="file-header">
       <Crumbs path={doc.path} dirty={dirty} compact={narrow} />
       <SaveState doc={doc} />
-      <div className="ml-auto flex shrink-0 items-center gap-1">
+      <div className={sx(paint.s23)}>
         {turn && text && (
-          <span className="flex items-center gap-1.5 py-0.5 pl-1.5 text-muted-foreground text-xs" data-testid="file-turn">
-            <AgentIcon agent={turn.agent} className="size-3" />
-            <span className="max-[979px]:hidden">
+          <span className={sx(paint.s24)} data-testid="file-turn">
+            <AgentIcon agent={turn.agent} className={sx(paint.s25)} />
+            <span className={sx(paint.s67)}>
               {agentName(turn.agent)}
               {turn.at ? `, ${ago(new Date(turn.at).toISOString())}` : ""}
             </span>
-            <span className="font-mono text-[11px] tabular-nums">
-              <span className="text-success-foreground">+{added ?? turn.added}</span> <span className="text-destructive-foreground">−{removed ?? turn.removed}</span>
+            <span className={sx(paint.s26)}>
+              <span className={sx(paint.s27)}>+{added ?? turn.added}</span> <span className={sx(paint.s28)}>−{removed ?? turn.removed}</span>
             </span>
             {hunks > 0 && (
-              <span className="ml-0.5 flex items-center" role="group" aria-label="Changes">
+              <span className={sx(paint.s29)} role="group" aria-label="Changes">
                 <IconButton label="Previous change" onClick={() => onStep(-1)}>
-                  <ChevronUpIcon className="size-3.5" />
+                  <ChevronUpIcon className={sx(paint.s30)} />
                 </IconButton>
-                <span className="min-w-7 text-center text-[11px] tabular-nums" data-testid="file-hunk">
+                <span className={sx(paint.s31)} data-testid="file-hunk">
                   {at + 1}/{hunks}
                 </span>
                 <IconButton label="Next change" onClick={() => onStep(1)}>
-                  <ChevronDownIcon className="size-3.5" />
+                  <ChevronDownIcon className={sx(paint.s32)} />
                 </IconButton>
               </span>
             )}
           </span>
         )}
-        {turn && text && <span aria-hidden className="mx-0.5 h-3.5 w-px bg-border" />}
+        {turn && text && <span aria-hidden className={sx(paint.s33)} />}
         {text && (
           <IconButton label={wrap ? "Don't wrap long lines" : "Wrap long lines"} pressed={wrap} onClick={() => setWrap(!wrap)}>
-            <WrapTextIcon className="size-3.5" />
+            <WrapTextIcon className={sx(paint.s34)} />
           </IconButton>
         )}
         <OpenInEditor path={doc.path} />
@@ -240,13 +728,13 @@ function FileHeader({ narrow, doc, dirty, added, removed, hunks, at, onStep, wra
 function ConflictBanner({ doc }: { doc: Doc }) {
   const who = doc.turn ? `${agentName(doc.turn.agent)} ${doc.conflict?.deleted ? "deleted" : "changed"} this.` : doc.conflict?.deleted ? "This file was deleted on the box." : "This file changed on the box.";
   return (
-    <div role="alert" className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-l-2 border-l-warning bg-warning/8 py-1.5 pr-3 pl-2.5 text-xs" data-testid="file-conflict">
-      <span className="flex min-w-0 flex-1 items-center gap-2">
-        <TriangleAlertIcon className="size-3.5 shrink-0 text-warning-foreground" />
-        <span className="shrink-0 font-medium text-foreground">{who}</span>
-        <span className="truncate text-muted-foreground">Your unsaved edits are still here.</span>
+    <div role="alert" className={sx(paint.s35)} data-testid="file-conflict">
+      <span className={sx(paint.s36)}>
+        <TriangleAlertIcon className={sx(paint.s37)} />
+        <span className={sx(paint.s38)}>{who}</span>
+        <span className={sx(paint.s39)}>Your unsaved edits are still here.</span>
       </span>
-      <span className="ml-auto flex shrink-0 items-center gap-1.5">
+      <span className={sx(paint.s40)}>
         <Button size="xs" variant="outline" onClick={() => reload(doc.key)}>
           {doc.conflict?.deleted ? "Discard mine" : "Reload"}
         </Button>
@@ -272,15 +760,15 @@ function CompareMine({ doc }: { doc: Doc }) {
   const fd = useMemo(() => (diffs && "mod" in diffs ? diffs.mod.fromTexts(doc.path, doc.text, theirs) : undefined), [diffs, doc.path, doc.text, theirs]);
   const who = agentName(doc.turn?.agent);
   return (
-    <div className="flex min-h-0 flex-1 flex-col" data-testid="file-compare">
-      <div className="flex h-8 shrink-0 items-center gap-2 border-b bg-warning/6 px-3 text-xs">
-        <GitCompareArrowsIcon className="size-3.5 text-muted-foreground" />
-        <span className="text-muted-foreground">Yours</span>
-        <span className="text-muted-foreground/60">→</span>
-        <span className="flex items-center gap-1">
-          {doc.turn && <AgentIcon agent={doc.turn.agent} className="size-3" />} {doc.turn ? `${who}'s` : "On the box"}
+    <div className={sx(paint.s41)} data-testid="file-compare">
+      <div className={sx(paint.s42)}>
+        <GitCompareArrowsIcon className={sx(paint.s43)} />
+        <span className={sx(paint.s44)}>Yours</span>
+        <span className={sx(paint.s45)}>→</span>
+        <span className={sx(paint.s46)}>
+          {doc.turn && <AgentIcon agent={doc.turn.agent} className={sx(paint.s47)} />} {doc.turn ? `${who}'s` : "On the box"}
         </span>
-        <span className="ml-auto flex items-center gap-1.5">
+        <span className={sx(paint.s48)}>
           <Button size="xs" variant="outline" onClick={() => reload(doc.key)}>
             Take {doc.turn ? `${who}'s` : "theirs"}
           </Button>
@@ -288,12 +776,12 @@ function CompareMine({ doc }: { doc: Doc }) {
             Keep mine
           </Button>
           <IconButton label="Back to the file" onClick={() => setComparing(doc.key, false)}>
-            <XIcon className="size-3.5" />
+            <XIcon className={sx(paint.s49)} />
           </IconButton>
         </span>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto">
-        {diffs && "error" in diffs ? <ErrorText text={diffs.error} className="m-6 text-muted-foreground text-xs" /> : fd && diffs && "mod" in diffs ? <diffs.mod.Diff fileDiff={fd} layout="split" dark={dark} /> : <Spinner className="m-6 size-4" />}
+      <div className={sx(paint.s50)}>
+        {diffs && "error" in diffs ? <ErrorText text={diffs.error} className={sx(paint.s51)} /> : fd && diffs && "mod" in diffs ? <diffs.mod.Diff fileDiff={fd} layout="split" dark={dark} /> : <span className={sx(paint.s52)}><Spinner size="lg" /></span>}
       </div>
     </div>
   );
@@ -304,13 +792,13 @@ function CompareMine({ doc }: { doc: Doc }) {
 function Refusal({ path, icon, title, detail, external, retry, onClose }: { path: string; icon?: React.ReactNode; title: string; detail?: React.ReactNode; external?: boolean; retry?(): void; onClose?(): void }) {
   const name = useEditorName();
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center" data-testid="file-refusal">
-      <span className="flex size-10 items-center justify-center rounded-xl border bg-muted/40">{icon ?? <FileGlyph path={path} className="size-5" />}</span>
-      <div className="flex max-w-sm flex-col gap-1">
-        <p className="font-medium text-sm">{title}</p>
-        {typeof detail === "string" ? <p className="text-muted-foreground text-xs">{detail}</p> : detail}
+    <div className={sx(paint.s53)} data-testid="file-refusal">
+      <span className={sx(paint.s54)}>{icon ?? <FileGlyph path={path} className={sx(paint.s55)} />}</span>
+      <div className={[sx(paint.s56), sx(paint.s68)].filter(Boolean).join(" ")}>
+        <p className={sx(paint.s57)}>{title}</p>
+        {typeof detail === "string" ? <p className={sx(paint.s58)}>{detail}</p> : detail}
       </div>
-      <div className="flex items-center gap-2">
+      <div className={sx(paint.s59)}>
         {external && (
           <Button size="sm" variant="outline" onClick={() => openFile(path, "external")}>
             Open in {name}
@@ -357,11 +845,11 @@ function ImageView({ doc }: { doc: Doc }) {
     };
   }, [c, doc.ref, doc.path, doc.etag]);
   return (
-    <div className="flex min-h-0 flex-1 flex-col" data-testid="file-image">
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-[repeating-conic-gradient(color-mix(in_oklab,var(--muted)_70%,transparent)_0%_25%,transparent_0%_50%)] bg-size-[16px_16px] p-8">
-        {err ? <ErrorText text={err} className="text-muted-foreground text-xs" /> : url ? <img src={url} alt={fileName(doc.path)} onLoad={(e) => setDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} className="max-h-full max-w-full rounded-sm object-contain shadow-sm" /> : <Spinner className="size-4 text-muted-foreground" />}
+    <div className={sx(paint.s60)} data-testid="file-image">
+      <div className={[sx(paint.s61), sx(paint.s69)].filter(Boolean).join(" ")}>
+        {err ? <ErrorText text={err} className={sx(paint.s62)} /> : url ? <img src={url} alt={fileName(doc.path)} onLoad={(e) => setDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} className={sx(paint.s63)} /> : <Spinner  size="lg" muted/>}
       </div>
-      <div className="flex h-7 shrink-0 items-center gap-3 border-t px-3 text-[11px] text-muted-foreground tabular-nums">
+      <div className={sx(paint.s64)}>
         <span>{doc.image?.replace("image/", "").toUpperCase()}</span>
         {dims && (
           <span>

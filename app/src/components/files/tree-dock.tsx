@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { PanelRightIcon } from "lucide-react";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
@@ -7,8 +8,90 @@ import { NARROW, setTreeOpen, toggleTree, useTouchedLive, useTree, useWorkingSes
 import { openFile, useFiles } from "@/lib/files";
 import { findLeaf, paneWorktree } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
-import { cn } from "@/lib/utils";
 import { useHereKey, useHereRef, useWorkspaces } from "@/lib/workspaces";
+
+const paint = stylex.create({
+  s0: {
+    "position": "absolute",
+    "top": 0,
+    "bottom": 0,
+    "left": "0px",
+  },
+  s1: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "zIndex": NaN,
+    "backgroundColor": {
+      "default": "light-dark(color-mix(in oklab, #000 25%, transparent), color-mix(in oklab, #000 45%, transparent))",
+    },
+  },
+  s2: {
+    "position": "absolute",
+    "top": 0,
+    "bottom": 0,
+    "right": "0px",
+    "display": "flex",
+    "flexDirection": "column",
+    "borderLeftWidth": 1,
+    "borderLeftStyle": "solid",
+    "borderLeftColor": "var(--border)",
+    "backgroundColor": "var(--sidebar)",
+  },
+  s3: {
+    "zIndex": NaN,
+    "boxShadow": "-18px 0 40px -10px rgb(0 0 0/0.45)",
+  },
+  s4: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s5: {
+    "position": "relative",
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s6: {
+    "backgroundColor": "var(--accent)",
+    "color": "var(--foreground)",
+  },
+  s7: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s8: {
+    "position": "absolute",
+    "top": "2px",
+    "right": "2px",
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--info)",
+    "boxShadow": "0 0 0 2px var(--background)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The Files panel: the worktree's files at the right of its tabs, under the
 // tab strip, beside whatever tab is in front (Chat, Shell, Preview, a File
@@ -91,17 +174,17 @@ export function TreeDockFrame({ showing, children }: { showing: boolean; childre
   }, [float]);
   return (
     <>
-      <div className="absolute inset-y-0 left-0" style={{ right: on && !float ? DOCK_W : 0 }}>
+      <div className={sx(paint.s0)} style={{ right: on && !float ? DOCK_W : 0 }}>
         {children}
       </div>
-      {float && <div aria-hidden data-testid="tree-scrim" className="absolute inset-0 z-[41] bg-black/25 dark:bg-black/45" onClick={() => setTreeOpen(false)} />}
+      {float && <div aria-hidden data-testid="tree-scrim" className={sx(paint.s1)} onClick={() => setTreeOpen(false)} />}
       {on && (
         <aside
           ref={aside}
           aria-label="Files in this worktree"
           data-testid="files-panel"
           data-float={float || undefined}
-          className={cn("absolute inset-y-0 right-0 flex flex-col border-l bg-sidebar", float && "z-[42] shadow-[-18px_0_40px_-10px_rgb(0_0_0/0.45)]")}
+          className={[sx(paint.s2), float && sx(paint.s3)].filter(Boolean).join(" ")}
           style={{ width: float ? FLOAT_W : DOCK_W }}
         >
           <TreePanel
@@ -113,7 +196,7 @@ export function TreeDockFrame({ showing, children }: { showing: boolean; childre
               if (float && how !== "external") setTreeOpen(false);
             }}
             onClose={() => setTreeOpen(false)}
-            className="flex-1"
+            className={sx(paint.s4)}
           />
         </aside>
       )}
@@ -138,10 +221,10 @@ export function DockButton() {
         aria-pressed={open}
         data-testid="files-panel-button"
         onClick={toggleTree}
-        className={cn("relative inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring", open && "bg-accent text-foreground")}
+        className={[sx(paint.s5), open && sx(paint.s6)].filter(Boolean).join(" ")}
       >
-        <PanelRightIcon className="size-3.5" />
-        {!open && n > 0 && <span data-testid="files-panel-dot" className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-info ring-2 ring-background" />}
+        <PanelRightIcon className={sx(paint.s7)} />
+        {!open && n > 0 && <span data-testid="files-panel-dot" className={sx(paint.s8)} />}
       </button>
     </Tip>
   );

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowRightIcon, ChevronRightIcon, KeyRoundIcon, RotateCwIcon, ServerIcon, SquareTerminalIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -8,9 +9,213 @@ import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, Dia
 import { Kbd } from "@/components/ui/kbd";
 import { type AgentChoice, type GuidedInstallRequest, laptopApi } from "@/lib/api";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { CommandLine, type InstallRun, type InstallTarget, InstallTerminal, type StepRow, StepIcon, useInstallRun } from "@/views/onboarding/guided-install";
 import { FailurePanel } from "@/views/onboarding/ssh-setup";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "10px",
+  },
+  s1: {
+    "display": "flex",
+    "width": "32px",
+    "height": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+    "color": "var(--muted-foreground)",
+  },
+  s2: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s3: {
+    "minWidth": "0px",
+  },
+  s4: {
+    "marginLeft": "calc(8px * -1)",
+    "marginRight": "calc(8px * -1)",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "2px",
+    },
+  },
+  s5: {
+    "marginTop": "12px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--info) 6%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s6: {
+    "fontWeight": 500,
+  },
+  s7: {
+    "marginTop": "8px",
+    "display": "flex",
+    "height": "176px",
+    "flexDirection": "column",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s8: {
+    "marginTop": "12px",
+  },
+  s9: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "width": "14px",
+    "height": "14px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s11: {
+    "transform": "rotate(90deg)",
+  },
+  s12: {
+    "marginTop": "8px",
+    "display": "flex",
+    "height": "176px",
+    "flexDirection": "column",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s13: {
+    "marginTop": "12px",
+  },
+  s14: {
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+  },
+  s15: {
+    "backgroundColor": "color-mix(in oklab, var(--warning) 8%, transparent)",
+  },
+  s16: {
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 6%, transparent)",
+  },
+  s17: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "10px",
+  },
+  s18: {
+    "flexShrink": 0,
+    "fontSize": "13px",
+  },
+  s19: {
+    "color": "var(--muted-foreground)",
+  },
+  s20: {
+    "fontWeight": 500,
+  },
+  s21: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "marginInlineStart": "auto",
+  },
+  s23: {
+    "marginTop": "4px",
+    "marginLeft": "30px",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s24: {
+    "marginTop": "6px",
+    "marginLeft": "30px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "8px",
+    },
+  },
+  s25: {
+    "color": "var(--destructive-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s26: {
+    "marginTop": "6px",
+    "marginLeft": "30px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "8px",
+    },
+  },
+  s27: {
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s28: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "gap": "8px",
+  },
+  s29: {
+    "marginTop": "8px",
+    "height": "16px",
+  },
+  s30: {
+    "marginTop": "8px",
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "columnGap": "12px",
+    "rowGap": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s31: {
+    "color": "var(--muted-foreground)",
+  },
+  s32: {
+    "display": "flex",
+    "cursor": "pointer",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s33: {
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // QuickInstall is adding a box the usual way: no plan to read, no Enter to
 // press. Once the person has said where (and which agents), burf add ssh
@@ -67,51 +272,51 @@ export function QuickInstall({ target, onClose, onReady, readyLabel }: { target?
 
   return (
     <Dialog open={!!target} onOpenChange={(o) => !o && !busy && onClose()}>
-      <DialogPopup data-testid="quick-install" data-state={ready ? "ready" : run.state} data-needs={needed ? "password" : asking ? "ask" : question ? "answer" : ""} className={cn("transition-[max-width]", showTerminal || output ? "sm:max-w-2xl" : "sm:max-w-md")} showCloseButton={!busy}>
-        <DialogHeader className="pb-3">
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted/50 text-muted-foreground">
-              <ServerIcon className="size-4" />
+      <DialogPopup data-testid="quick-install" data-state={ready ? "ready" : run.state} data-needs={needed ? "password" : asking ? "ask" : question ? "answer" : ""} showCloseButton={!busy} width={showTerminal || output ? "2xl" : "md"}>
+        <DialogHeader pad="short">
+          <div className={sx(paint.s0)}>
+            <span className={sx(paint.s1)}>
+              <ServerIcon className={sx(paint.s2)} />
             </span>
-            <div className="min-w-0">
-              <DialogTitle className="truncate text-base leading-tight">{title}</DialogTitle>
-              <DialogDescription className="mt-0.5 text-xs">{sub}</DialogDescription>
+            <div className={sx(paint.s3)}>
+              <DialogTitle size="tight" truncate>{title}</DialogTitle>
+              <DialogDescription nudge size="xs">{sub}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
-        <DialogPanel className="pt-1">
-          <ol data-testid="quick-steps" className="-mx-2 space-y-0.5">
+        <DialogPanel>
+          <ol data-testid="quick-steps" className={sx(paint.s4)}>
             {run.steps.map((s) => (
               <QuickRow key={s.id} step={s} run={run} host={where} user={user} busy={busy} agents={target?.agents ?? []} needed={needed?.id === s.id} onRetry={() => run.start(request(), s.id === "connect" ? undefined : s.id)} />
             ))}
           </ol>
           {question && (
-            <div data-testid="quick-question" className="mt-3 rounded-lg border bg-info/6 px-3 py-2 text-xs leading-relaxed">
-              <span className="font-medium">{where} needs an answer.</span> Answer in the terminal below and press <Kbd>↵</Kbd>.
+            <div data-testid="quick-question" className={sx(paint.s5)}>
+              <span className={sx(paint.s6)}>{where} needs an answer.</span> Answer in the terminal below and press <Kbd>↵</Kbd>.
             </div>
           )}
           {showTerminal && (
-            <div className="mt-2 flex h-44 flex-col overflow-hidden rounded-lg border" data-testid="quick-terminal">
+            <div className={sx(paint.s7)} data-testid="quick-terminal">
               <InstallTerminal run={run} fontSize={11.5} />
             </div>
           )}
           {run.failure && run.state === "failed" && <FailurePanel failure={run.failure} identity={identity} setIdentity={setIdentity} onRetry={(trust) => run.start(request({ trust_host_key: trust ?? target?.trust_host_key }))} />}
           {run.state === "failed" && !showTerminal && (
-            <div className="mt-3">
-              <button type="button" className="flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground" aria-expanded={output} onClick={() => setOutput((o) => !o)}>
-                <ChevronRightIcon className={cn("size-3.5 transition-transform", output && "rotate-90")} /> {output ? "Hide" : "Show"} what the box printed
+            <div className={sx(paint.s8)}>
+              <button type="button" className={sx(paint.s9)} aria-expanded={output} onClick={() => setOutput((o) => !o)}>
+                <ChevronRightIcon className={[sx(paint.s10), output && sx(paint.s11)].filter(Boolean).join(" ")} /> {output ? "Hide" : "Show"} what the box printed
               </button>
               {output && (
-                <div className="mt-2 flex h-44 flex-col overflow-hidden rounded-lg border" data-testid="quick-output">
+                <div className={sx(paint.s12)} data-testid="quick-output">
                   <InstallTerminal run={run} fontSize={11.5} />
                 </div>
               )}
             </div>
           )}
           {run.state === "failed" && !failed && !run.failure && (
-            <Button size="sm" variant="outline" className="mt-3" onClick={() => run.start(request())}>
+            <span className={sx(paint.s13)}><Button size="sm" variant="outline"  onClick={() => run.start(request())}>
               <RotateCwIcon /> Start again
-            </Button>
+            </Button></span>
           )}
         </DialogPanel>
         <DialogFooter>
@@ -158,26 +363,26 @@ function QuickRow({ step: s, run, host, user, busy, agents, needed, onRetry }: {
   // lingering on without sudo, or why a step was skipped.
   const message = s.state === "skip" ? s.message?.replace(/^skipped: /, "") : (s.id === "connect" || s.id === "linger") && s.state === "done" ? s.message : undefined;
   return (
-    <li data-testid={`quick-step-${s.id}`} data-state={s.state} data-needs={s.needs ?? ""} className={cn("rounded-lg px-2 py-1.5", (needed || s.needs === "ask") && "bg-warning/8", s.state === "fail" && "bg-destructive/6")}>
-      <div className="flex min-w-0 items-center gap-2.5">
+    <li data-testid={`quick-step-${s.id}`} data-state={s.state} data-needs={s.needs ?? ""} className={[sx(paint.s14), (needed || s.needs === "ask") && sx(paint.s15), s.state === "fail" && sx(paint.s16)].filter(Boolean).join(" ")}>
+      <div className={sx(paint.s17)}>
         <StepIcon state={s.state} />
-        <span className={cn("shrink-0 text-[13px]", (s.state === "todo" || s.state === "skip") && "text-muted-foreground", s.state === "running" && "font-medium")}>{s.id === "tools" ? "tmux and git" : s.title}</span>
-        <span className="min-w-0 truncate text-muted-foreground text-xs">{message ?? hint(s, agents)}</span>
+        <span className={[sx(paint.s18), (s.state === "todo" || s.state === "skip") && sx(paint.s19), s.state === "running" && sx(paint.s20)].filter(Boolean).join(" ")}>{s.id === "tools" ? "tmux and git" : s.title}</span>
+        <span className={sx(paint.s21)}>{message ?? hint(s, agents)}</span>
         {s.sudo && s.state !== "skip" && (
-          <Badge variant="warning" size="sm" className="ms-auto shrink-0">
+          <span className={sx(paint.s22)}><Badge variant="warning" size="sm">
             <KeyRoundIcon /> sudo
-          </Badge>
+          </Badge></span>
         )}
       </div>
       {needed && (
-        <p data-testid="quick-password" className="mt-1 ml-7.5 text-xs leading-relaxed">
+        <p data-testid="quick-password" className={sx(paint.s23)}>
           Type it in the terminal below and press <Kbd>↵</Kbd>; nothing shows as you type. It goes to sudo on {host}: Burf never sees it or keeps it.
         </p>
       )}
       {s.needs === "ask" && s.state === "running" && <LingerChoice run={run} user={user} host={host} question={s.question} />}
       {s.state === "fail" && (
-        <div className="mt-1.5 ml-7.5 space-y-2">
-          {s.message && <p className="text-destructive-foreground text-xs leading-relaxed">{s.message}</p>}
+        <div className={sx(paint.s24)}>
+          {s.message && <p className={sx(paint.s25)}>{s.message}</p>}
           {s.command && <CommandLine command={s.command} />}
           {!busy && (
             <Button size="xs" data-testid={`quick-retry-${s.id}`} onClick={onRetry}>
@@ -197,11 +402,11 @@ function LingerChoice({ run, user, host }: { run: InstallRun; user: string; host
   const yes = useRef<HTMLButtonElement>(null);
   useEffect(() => yes.current?.focus(), []);
   return (
-    <div data-testid="quick-linger" className="mt-1.5 ml-7.5 space-y-2">
-      <p className="text-xs leading-relaxed">
+    <div data-testid="quick-linger" className={sx(paint.s26)}>
+      <p className={sx(paint.s27)}>
         {host} needs root to keep berthd running after you log out: sudo asks for {user}'s password, once. Without it, berthd stops when your last login there ends, and the box goes offline until you log in again.
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className={sx(paint.s28)}>
         <Button ref={yes} size="xs" data-testid="quick-linger-yes" onClick={() => run.answer("linger", true)}>
           <SquareTerminalIcon /> Keep it running
         </Button>
@@ -217,14 +422,14 @@ function LingerChoice({ run, user, host }: { run: InstallRun; user: string; host
 // the first time, the choice remembered for the next box.
 export function InlineAgents({ value, onChange, disabled }: { value: string[]; onChange(ids: string[]): void; disabled?: boolean }) {
   const offered = useAgentCatalog().filter((a) => a.offered);
-  if (!offered.length) return <div className="mt-2 h-4" />;
+  if (!offered.length) return <div className={sx(paint.s29)} />;
   return (
-    <div data-testid="inline-agents" className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
-      <span className="text-muted-foreground">Agents</span>
+    <div data-testid="inline-agents" className={sx(paint.s30)}>
+      <span className={sx(paint.s31)}>Agents</span>
       {offered.map((a) => {
         const on = value.includes(a.id);
         return (
-          <label key={a.id} data-testid={`inline-agent-${a.id}`} data-checked={on || undefined} className="flex cursor-pointer items-center gap-1.5">
+          <label key={a.id} data-testid={`inline-agent-${a.id}`} data-checked={on || undefined} className={sx(paint.s32)}>
             <Checkbox checked={on} disabled={disabled} aria-label={a.name} onCheckedChange={(c) => onChange(c ? [...value.filter((v) => v !== a.id), a.id].sort((x, y) => order(x) - order(y)) : value.filter((v) => v !== a.id))} />
             {a.name}
           </label>
@@ -237,7 +442,7 @@ export function InlineAgents({ value, onChange, disabled }: { value: string[]; o
 
 const ORDER = ["claude", "codex", "cursor", "opencode"];
 const order = (id: string) => (ORDER.indexOf(id) + 1 || 99) as number;
-const busyHint = (v: string[]) => (v.length === 0 ? <span className="text-muted-foreground">none: add them later in Settings</span> : null);
+const busyHint = (v: string[]) => (v.length === 0 ? <span className={sx(paint.s33)}>none: add them later in Settings</span> : null);
 
 // The agent CLIs Burf can install, as the laptop agent lists them; asked
 // once per window.

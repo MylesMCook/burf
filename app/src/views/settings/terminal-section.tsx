@@ -1,4 +1,5 @@
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, type CSSProperties } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 import { Button } from "@/components/ui/button";
 import { SimpleSelect } from "@/components/simple-select";
@@ -10,6 +11,36 @@ import { DEFAULT_TERMINAL_PREFS, onRendererOutcome, rendererOutcome, type Termin
 import { useActiveTheme } from "@/hooks/use-theme";
 import { Segmented, Stepper } from "@/views/settings/controls";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
+import { color, radius } from "@/styles/tokens.stylex";
+
+const pulse = stylex.keyframes({ "50%": { opacity: 0.5 } });
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const styles = stylex.create({
+  link: {
+    textDecoration: { default: "underline", ":hover": "underline" },
+    textUnderlineOffset: 2,
+    color: { default: "inherit", ":hover": color.foreground },
+  },
+  preview: {
+    overflow: "hidden",
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: color.border,
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingLeft: 16,
+    paddingRight: 16,
+  },
+  caret: { display: "inline-block", verticalAlign: "-0.2em" },
+  blink: {
+    animationName: pulse,
+    animationDuration: { default: "2s", [still]: "0s" },
+    animationTimingFunction: "cubic-bezier(0.4, 0, 0.6, 1)",
+    animationIterationCount: "infinite",
+  },
+});
 
 const FONTS = [
   { value: DEFAULT_TERMINAL_PREFS.fontFamily, label: "Code font" },
@@ -41,7 +72,7 @@ export function TerminalSection() {
       title="Terminal"
       description="Applies to every terminal pane; open ones update as you change these."
       actions={
-        <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => setPrefs({ terminal: DEFAULT_TERMINAL_PREFS, terminalFont: null })}>
+        <Button size="xs" variant="ghost"  onClick={() => setPrefs({ terminal: DEFAULT_TERMINAL_PREFS, terminalFont: null })} muted>
           Restore defaults
         </Button>
       }
@@ -49,7 +80,7 @@ export function TerminalSection() {
       <TerminalPreview prefs={t} />
       <SettingsGroup title="Text">
         <SettingsRow label="Font" description="Uses Code font from Appearance unless you choose another font here.">
-          <SimpleSelect className="w-56" options={fonts} value={chosen ?? saved.fontFamily} onChange={pickFont} />
+          <SimpleSelect measure="56" options={fonts} value={chosen ?? saved.fontFamily} onChange={pickFont} />
         </SettingsRow>
         <SettingsRow label="Size" description="Or ⌘+ and ⌘− with a terminal focused; ⌘0 resets it.">
           <Stepper value={t.fontSize} min={9} max={24} onChange={(fontSize) => set({ fontSize })} />
@@ -103,7 +134,7 @@ export function TerminalSection() {
             fellBack ? (
               <>
                 In use: xterm.js, because ghostty-web couldn't start{outcome.reason ? `: ${outcome.reason}` : ""}.{" "}
-                <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => void copyText(outcome.details ?? outcome.reason ?? "", "Details copied")}>
+                <button type="button" {...stylex.props(styles.link)} onClick={() => void copyText(outcome.details ?? outcome.reason ?? "", "Details copied")}>
                   Copy details
                 </button>
               </>
@@ -133,6 +164,7 @@ function TerminalPreview({ prefs }: { prefs: TerminalPrefs }) {
   const t = useActiveTheme().terminal;
   const cursor =
     prefs.cursorStyle === "bar" ? { width: 2, height: "1.15em" } : prefs.cursorStyle === "underline" ? { width: "0.6em", height: 2, verticalAlign: "-0.15em" } : { width: "0.6em", height: "1.15em" };
+  const painted = stylex.props(styles.preview);
   return (
     <div
       aria-hidden
@@ -140,8 +172,8 @@ function TerminalPreview({ prefs }: { prefs: TerminalPrefs }) {
       // own choice: the axe spec leaves it out (the app's text it checks).
       data-a11y-skip
       data-testid="terminal-preview"
-      className="overflow-hidden rounded-xl border px-4 py-3"
-      style={{ background: t.background, color: t.foreground, fontFamily: prefs.fontFamily, fontSize: prefs.fontSize, lineHeight: prefs.lineHeight }}
+      {...painted}
+      style={{ ...painted.style, background: t.background, color: t.foreground, fontFamily: prefs.fontFamily, fontSize: prefs.fontSize, lineHeight: prefs.lineHeight }}
     >
       <div>
         <span style={{ color: t.green }}>me@devl</span> <span style={{ color: t.blue }}>~/work/shop-checkout-fix</span> <span style={{ color: t.magenta }}>(me/checkout-fix)</span>
@@ -157,8 +189,13 @@ function TerminalPreview({ prefs }: { prefs: TerminalPrefs }) {
       </div>
       <div>
         <span style={{ color: t.brightBlack }}>$</span>{" "}
-        <span className={prefs.cursorBlink ? "animate-pulse" : undefined} style={{ display: "inline-block", background: t.cursor, verticalAlign: "-0.2em", ...cursor }} />
+        <Caret blink={prefs.cursorBlink} color={t.cursor} box={cursor} />
       </div>
     </div>
   );
+}
+
+function Caret({ blink, color, box }: { blink: boolean; color: string; box: CSSProperties }) {
+  const painted = stylex.props(styles.caret, blink && styles.blink);
+  return <span {...painted} style={{ ...painted.style, background: color, ...box }} />;
 }

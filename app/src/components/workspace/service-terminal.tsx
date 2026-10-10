@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { PlayIcon, ServerCogIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -9,8 +10,63 @@ import { worktreeOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
 import { load, save } from "@/lib/storage";
 import { scheduleRefresh, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { focusSession, type WorktreeRef } from "@/lib/workspaces";
+
+const paint = stylex.create({
+  s0: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s1: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": "8px",
+    "right": "12px",
+    "zIndex": 10,
+    "display": "flex",
+    "justifyContent": "flex-end",
+  },
+  s2: {
+    "pointerEvents": "auto",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "10px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--popover) 95%, transparent)",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "paddingRight": "4px",
+    "paddingLeft": "12px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "boxShadow": "0 10px 15px color-mix(in oklab, var(--foreground) 12%, transparent)",
+  },
+  s3: {
+    "width": "6px",
+    "height": "6px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
+  },
+  s4: {
+    "fontWeight": 500,
+  },
+  s5: {
+    "color": "var(--muted-foreground)",
+  },
+
+  s6: {
+    backdropFilter: "blur(4px)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // A service with "terminal": true runs in a terminal of its own on the box
 // (a tmux session that says which service it is), shown as a tab in its
@@ -19,7 +75,7 @@ import { focusSession, type WorktreeRef } from "@/lib/workspaces";
 // same tab.
 
 export function ServiceIcon({ className }: { className?: string }) {
-  return <ServerCogIcon className={cn("size-3.5 shrink-0 text-muted-foreground", className)} />;
+  return <ServerCogIcon className={[sx(paint.s0), className].filter(Boolean).join(" ")} />;
 }
 
 export const boxHasServiceTerminals = (box: string) => !!useStore.getState().boxes[box]?.info?.capabilities?.includes("service.terminal");
@@ -78,14 +134,14 @@ export function ServiceStopped({ box, session }: { box: string; session: Session
     setBusy(false);
   };
   return (
-    <div className="pointer-events-none absolute top-2 right-3 z-10 flex justify-end">
-      <div role="status" className="pointer-events-auto flex items-center gap-2.5 rounded-lg border bg-popover/95 py-1 pr-1 pl-3 text-xs shadow-lg/5 backdrop-blur-sm">
-        <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
+    <div className={sx(paint.s1)}>
+      <div role="status" className={[sx(paint.s2), sx(paint.s6)].filter(Boolean).join(" ")}>
+        <span className={sx(paint.s3)} />
         <span>
-          <span className="font-medium">{name}</span> <span className="text-muted-foreground">stopped</span>
+          <span className={sx(paint.s4)}>{name}</span> <span className={sx(paint.s5)}>stopped</span>
         </span>
         <Button size="xs" disabled={busy || !where} onClick={() => void start()}>
-          {busy ? <Spinner className="size-3" /> : <PlayIcon />}
+          {busy ? <Spinner  size="sm"/> : <PlayIcon />}
           Start
         </Button>
       </div>

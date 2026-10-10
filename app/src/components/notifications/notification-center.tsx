@@ -1,31 +1,6 @@
-import {
-  AlarmClockIcon,
-  BellIcon,
-  BellOffIcon,
-  CheckCheckIcon,
-  CheckIcon,
-  ChevronDownIcon,
-  CircleCheckIcon,
-  CloudOffIcon,
-  EllipsisIcon,
-  GitPullRequestArrowIcon,
-  GlobeIcon,
-  KeyRoundIcon,
-  MailIcon,
-  MailOpenIcon,
-  MegaphoneIcon,
-  MessageCircleQuestionIcon,
-  PuzzleIcon,
-  SendIcon,
-  ServerCrashIcon,
-  SettingsIcon,
-  ShieldAlertIcon,
-  SquareTerminalIcon,
-  TrashIcon,
-  WorkflowIcon,
-  WrenchIcon,
-  XIcon,
-} from "lucide-react";
+import * as stylex from "@stylexjs/stylex";
+import { color } from "@/styles/tokens.stylex";
+import { AlarmClockIcon, BellIcon, BellOffIcon, CheckCheckIcon, CheckIcon, ChevronDownIcon, CircleCheckIcon, CloudOffIcon, EllipsisIcon, GitPullRequestArrowIcon, GlobeIcon, KeyRoundIcon, MailIcon, MailOpenIcon, MegaphoneIcon, MessageCircleQuestionIcon, PuzzleIcon, SendIcon, ServerCrashIcon, SettingsIcon, ShieldAlertIcon, SquareTerminalIcon, TrashIcon, WorkflowIcon, WrenchIcon, XIcon } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 
 import { watchReviewNotes } from "@/components/notifications/review-source";
@@ -34,38 +9,608 @@ import { Button } from "@/components/ui/button";
 import { Scene } from "@/components/art/scenes";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Kbd } from "@/components/ui/kbd";
-import { Menu, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Sheet, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Session } from "@/lib/api";
 import { sessionAgent, sessionName, sessionPlace, sessionState } from "@/lib/derive";
-import {
-  type Category,
-  categoryInfo,
-  clearEarlier,
-  dismiss,
-  markAllRead,
-  markRead,
-  type Note,
-  needsYou,
-  noteLabel,
-  openNote,
-  quietNow,
-  runAction,
-  quietState,
-  setDoNotDisturb,
-  setNotificationsOpen,
-  snooze,
-  snoozed,
-  toggleNotifications,
-  unsnooze,
-  useNotifications,
-  useNotifyPrefs,
-} from "@/lib/notifications";
+import { type Category, categoryInfo, clearEarlier, dismiss, markAllRead, markRead, type Note, needsYou, noteLabel, openNote, quietNow, runAction, quietState, setDoNotDisturb, setNotificationsOpen, snooze, snoozed, toggleNotifications, unsnooze, useNotifications, useNotifyPrefs } from "@/lib/notifications";
 import { type BoxData, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { attentionCount, shownNoteTitle } from "@/lib/attention";
 import { titleAt } from "@/lib/worktree-names";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s1: {
+    "position": "relative",
+    "display": "inline-flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--sidebar-accent)",
+    },
+  },
+  s2: {
+    "width": "32px",
+    "height": "32px",
+    "borderRadius": "var(--radius-lg)",
+    ":not(#\\#) svg": {
+      "width": "16px",
+      "height": "16px",
+    },
+  },
+  s3: {
+    "width": "26px",
+    "height": "26px",
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+  s4: {
+    "backgroundColor": "var(--sidebar-accent)",
+    "color": "var(--foreground)",
+  },
+  s5: {
+    "color": {
+      "default": "light-dark(var(--warning-foreground), var(--warning))",
+    },
+  },
+  s6: {
+    "position": "absolute",
+    "display": "flex",
+    "height": "14px",
+    "minWidth": "14px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--warning)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontWeight": 600,
+    "fontSize": "9px",
+    "color": "#000",
+    "fontVariantNumeric": "tabular-nums",
+    "lineHeight": "1",
+  },
+  s7: {
+    "display": "flex",
+    "height": "48px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingRight": "8px",
+    "paddingLeft": "16px",
+    "outline": "none",
+  },
+  s8: {
+    "gap": "4px",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+  },
+  s9: {
+    "width": "12px",
+    "height": "12px",
+    "opacity": 0.7,
+  },
+  s10: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "16px",
+  },
+  s11: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s12: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s13: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "2px",
+  },
+  s14: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s15: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s16: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s17: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "40px",
+    "paddingBottom": "40px",
+  },
+  s18: {
+    "color": "var(--muted-foreground)",
+  },
+  s19: {
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "6px",
+    "paddingBottom": "8px",
+  },
+  s20: {
+    "display": "flex",
+    "height": "32px",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s21: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": {
+      "default": "light-dark(var(--success-foreground), var(--success))",
+    },
+  },
+  s22: {
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "32px",
+    "paddingBottom": "32px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s23: {
+    "display": "flex",
+    "height": "32px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "fontSize": "11px",
+    "color": {
+      "default": "light-dark(var(--destructive-foreground), var(--destructive))",
+    },
+  },
+  s24: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s25: {
+    "display": "flex",
+    "height": "28px",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "fontWeight": 500,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s26: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--warning)",
+  },
+  s27: {
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s28: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s29: {
+    "display": "none",
+    "flexShrink": 0,
+    "alignItems": "center",
+    ":is(.group\\/row:focus-within &)": {
+      "display": "flex",
+    },
+    ":is(.group\\/row:hover &)": {
+      "display": "flex",
+    },
+  },
+  s30: {
+    "flexShrink": 0,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+    ":is(.group\\/row:focus-within &)": {
+      "display": "none",
+    },
+    ":is(.group\\/row:hover &)": {
+      "display": "none",
+    },
+  },
+  s31: {
+    "position": "relative",
+    "display": "flex",
+    "cursor": "default",
+    "gap": "8px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+      ":focus-visible": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px color-mix(in oklab, var(--ring) 60%, transparent)",
+    },
+  },
+  s32: {
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s33: {
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+  },
+  s34: {
+    "display": "flex",
+    "height": "20px",
+    "width": "6px",
+    "flexShrink": 0,
+    "alignItems": "center",
+  },
+  s35: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  s36: {
+    "backgroundColor": "var(--warning)",
+  },
+  s37: {
+    "backgroundColor": "var(--info)",
+  },
+  s38: {
+    "display": "flex",
+    "height": "20px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    ":not(#\\#) svg": {
+      "width": "16px",
+      "height": "16px",
+    },
+  },
+  s39: {
+    "opacity": 0.6,
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+  s40: {
+    "display": "flex",
+    "height": "20px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s41: {
+    "minWidth": "0px",
+    "flexShrink": 1,
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s42: {
+    "flexShrink": 0,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s43: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s44: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s45: {
+    "display": "flex",
+    "height": "20px",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s46: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "13px",
+  },
+  s47: {
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+  },
+  s48: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s49: {
+    "flexShrink": 0,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s50: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s51: {
+    "display": "flex",
+    "height": "18px",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s52: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s53: {
+    "display": "none",
+    "flexShrink": 0,
+    "color": {
+      "default": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "textDecoration": {
+      ":hover": "underline",
+    },
+    ":is(.group\\/row:focus-within &)": {
+      "display": "inline",
+    },
+    ":is(.group\\/row:hover &)": {
+      "display": "inline",
+    },
+  },
+  s54: {
+    "position": "relative",
+    "display": "flex",
+    "cursor": "default",
+    "gap": "8px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+      ":focus-visible": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px color-mix(in oklab, var(--ring) 60%, transparent)",
+    },
+  },
+  s55: {
+    "display": "flex",
+    "height": "20px",
+    "width": "6px",
+    "flexShrink": 0,
+    "alignItems": "center",
+  },
+  s56: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--warning)",
+  },
+  s57: {
+    "display": "flex",
+    "height": "20px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "color": {
+      "default": "light-dark(var(--warning-foreground), var(--warning))",
+    },
+    ":not(#\\#) svg": {
+      "width": "16px",
+      "height": "16px",
+    },
+  },
+  s58: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s59: {
+    "display": "flex",
+    "height": "20px",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s60: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "13px",
+    "color": "var(--foreground)",
+  },
+  s61: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s62: {
+    "flexShrink": 0,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s63: {
+    "display": "flex",
+    "height": "18px",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s64: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s65: {
+    "display": "none",
+    "flexShrink": 0,
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    ":is(.group\\/row:focus-within &)": {
+      "display": "inline",
+    },
+    ":is(.group\\/row:hover &)": {
+      "display": "inline",
+    },
+  },
+  s66: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s67: {
+    "marginTop": "calc(4px * -1)",
+    "marginBottom": "calc(4px * -1)",
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--background)",
+    },
+    ":not(#\\#) svg": {
+      "width": "14px",
+      "height": "14px",
+    },
+  },
+
+  s68: {
+    top: -2,
+    right: -2,
+  },
+  s69: {
+    marginTop: { ":not(:first-child)": 6 },
+  },
+  s70: {
+    textUnderlineOffset: 2,
+  },
+  s71: {
+    color: color.mutedForeground,
+  },
+  s72: {
+    color: { default: color.destructiveForeground, ":is(.dark *)": color.destructive },
+  },
+  s73: {
+    color: { default: "var(--warning-foreground)", ":is(.dark *)": color.warning },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // useMinute re-renders once a minute, so relative times and snoozes move.
 export function useMinute(): number {
@@ -92,7 +637,7 @@ export function NotificationBell({ className, size = "sm" }: { className?: strin
   return (
     <Tip
       label={
-        <span className="flex items-center gap-2">
+        <span className={sx(paint.s0)}>
           {label}
           <Kbd>⌘⇧N</Kbd>
         </span>
@@ -104,17 +649,11 @@ export function NotificationBell({ className, size = "sm" }: { className?: strin
         aria-label={label}
         aria-keyshortcuts="Meta+Shift+N"
         onClick={toggleNotifications}
-        className={cn(
-          "relative inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
-          size === "rail" ? "size-8 rounded-lg [&_svg]:size-4" : "size-6.5 [&_svg]:size-3.5",
-          open && "bg-sidebar-accent text-foreground",
-          count > 0 && "text-warning-foreground dark:text-warning",
-          className,
-        )}
+        className={[sx(paint.s1), size === "rail" ? sx(paint.s2) : sx(paint.s3), open && sx(paint.s4), count > 0 && sx(paint.s5), className].filter(Boolean).join(" ")}
       >
         <Icon />
         {count > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-warning px-1 font-semibold text-[9px] text-black tabular-nums leading-none">
+          <span className={[sx(paint.s6), sx(paint.s68)].filter(Boolean).join(" ")}>
             {count > 99 ? "99+" : count}
           </span>
         )}
@@ -385,23 +924,23 @@ export function NotificationCenter() {
     <Sheet open={open} onOpenChange={setNotificationsOpen}>
       <SheetPopup
         variant="inset"
-        className="outline-none sm:h-auto sm:max-h-[calc(100%-26px)] sm:max-w-[420px] sm:self-start"
+        tone="notices"
         showCloseButton={false}
         initialFocus={panel}
         data-notification-center=""
         onKeyDown={onKeyDown}
       >
-        <div ref={panel} tabIndex={-1} className="flex h-12 shrink-0 items-center gap-1 border-b pr-2 pl-4 outline-none">
-          <SheetTitle className="mr-1 font-semibold text-sm">Notifications</SheetTitle>
+        <div ref={panel} tabIndex={-1} className={sx(paint.s7)}>
+          <SheetTitle size="sm">Notifications</SheetTitle>
           {notes.length > 0 && (
             <Menu>
               <MenuTrigger
-                render={<Button size="xs" variant="ghost" data-filter="" aria-label={`Show: ${current.label}`} className="gap-1 px-1.5 text-muted-foreground" />}
+                render={<span className={sx(paint.s8)}><Button size="xs" variant="ghost" data-filter="" aria-label={`Show: ${current.label}`} muted /></span>}
               >
                 {current.label}
-                <ChevronDownIcon className="size-3 opacity-70" />
+                <ChevronDownIcon className={sx(paint.s9)} />
               </MenuTrigger>
-              <MenuPopup align="start" className="min-w-44">
+              <MenuPopup align="start" width={menuWidths.w44}>
                 <MenuRadioGroup value={filter} onValueChange={(v) => setFilter(v as Filter)}>
                   {FILTERS.map((f, i) => {
                     const count = notes.filter((n) => matches(f.id, n)).length;
@@ -409,9 +948,9 @@ export function NotificationCenter() {
                       <Fragment key={f.id}>
                         {i === 2 && <MenuSeparator />}
                         <MenuRadioItem value={f.id} closeOnClick>
-                          <span className="flex items-center gap-4">
-                            <span className="flex-1">{f.label}</span>
-                            <span className="text-muted-foreground text-xs tabular-nums">{count || ""}</span>
+                          <span className={sx(paint.s10)}>
+                            <span className={sx(paint.s11)}>{f.label}</span>
+                            <span className={sx(paint.s12)}>{count || ""}</span>
                           </span>
                         </MenuRadioItem>
                       </Fragment>
@@ -421,18 +960,18 @@ export function NotificationCenter() {
               </MenuPopup>
             </Menu>
           )}
-          <div className="ml-auto flex items-center gap-0.5">
+          <div className={sx(paint.s13)}>
             {notes.length > 0 && (
-              <Button size="xs" variant="ghost" disabled={!unread} onClick={markAllRead} className="text-muted-foreground">
+              <Button size="xs" variant="ghost" disabled={!unread} onClick={markAllRead} muted>
                 <CheckCheckIcon />
                 Mark all read
               </Button>
             )}
             <Menu>
-              <MenuTrigger render={<Button size="icon-xs" variant="ghost" aria-label="More" className="text-muted-foreground" />}>
+              <MenuTrigger render={<Button size="icon-xs" variant="ghost" aria-label="More" muted />}>
                 <EllipsisIcon />
               </MenuTrigger>
-              <MenuPopup align="end" className="min-w-56">
+              <MenuPopup align="end" width={menuWidths.w56}>
                 {quiet ? (
                   <MenuItem onClick={() => setDoNotDisturb(false)}>
                     <BellIcon />
@@ -461,16 +1000,16 @@ export function NotificationCenter() {
                 </MenuItem>
               </MenuPopup>
             </Menu>
-            <Button size="icon-xs" variant="ghost" aria-label="Close" className="text-muted-foreground" onClick={() => setNotificationsOpen(false)}>
+            <Button size="icon-xs" variant="ghost" aria-label="Close"  onClick={() => setNotificationsOpen(false)} muted>
               <XIcon />
             </Button>
           </div>
         </div>
 
         {quiet && (
-          <div className="flex shrink-0 items-center gap-2 border-b bg-muted/40 px-4 py-1.5 text-muted-foreground text-xs">
-            <BellOffIcon className="size-3.5 shrink-0" />
-            <span className="min-w-0 flex-1">
+          <div className={sx(paint.s14)}>
+            <BellOffIcon className={sx(paint.s15)} />
+            <span className={sx(paint.s16)}>
               Do not disturb{hush.until ? ` until ${clock(hush.until.toISOString())}` : ""}
               {prefs.dnd.allowWaiting ? "; waiting agents still come through." : "; they still collect here."}
             </span>
@@ -478,24 +1017,25 @@ export function NotificationCenter() {
         )}
 
         {notes.length === 0 && live.length === 0 ? (
-          <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-10">
-            <Empty className="p-0">
+          <div className={sx(paint.s17)}>
+            <Empty pad="none">
               <EmptyHeader>
                 <EmptyMedia>
-                  <Scene name="bottle" width={128} className="text-muted-foreground" />
+                  <Scene name="bottle" width={128} className={sx(paint.s18)} />
                 </EmptyMedia>
-                <EmptyTitle className="text-base">You're all caught up</EmptyTitle>
-                <EmptyDescription className="text-sm">Agents that need you, failures and finished work land here.</EmptyDescription>
+                <EmptyTitle size="base">You're all caught up</EmptyTitle>
+                <EmptyDescription>Agents that need you, failures and finished work land here.</EmptyDescription>
               </EmptyHeader>
             </Empty>
           </div>
         ) : (
           <ScrollArea
-            className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:max-h-(--list-max)"
-            style={{ "--list-max": `calc(100dvh - ${chrome}px)` } as React.CSSProperties}
+            cap
+            grow
             scrollFade
+            style={{ "--list-max": `calc(100dvh - ${chrome}px)` } as React.CSSProperties}
           >
-            <div ref={list} className="px-1.5 pt-1.5 pb-2">
+            <div ref={list} className={sx(paint.s19)}>
               {needs.length + live.length > 0 ? (
                 <Section title="Needs you" count={attentionCount(needs.length, live.length)} amber>
                   {needs.map((i) => (
@@ -507,8 +1047,8 @@ export function NotificationCenter() {
                 </Section>
               ) : (
                 filter === "all" && (
-                  <p className="flex h-8 items-center gap-2 px-2.5 text-muted-foreground text-xs">
-                    <CheckIcon className="size-3.5 shrink-0 text-success-foreground dark:text-success" />
+                  <p className={sx(paint.s20)}>
+                    <CheckIcon className={sx(paint.s21)} />
                     Nothing needs you right now
                   </p>
                 )
@@ -521,7 +1061,7 @@ export function NotificationCenter() {
                 </Section>
               ))}
               {items.length === 0 && live.length === 0 && (
-                <div className="flex flex-col items-center gap-2 px-4 py-8 text-center text-muted-foreground text-xs">
+                <div className={sx(paint.s22)}>
                   {current.empty}
                   <Button size="xs" variant="ghost" onClick={() => setFilter("all")}>
                     Show all
@@ -533,10 +1073,10 @@ export function NotificationCenter() {
         )}
 
         {error && (
-          <div className="flex h-8 shrink-0 items-center gap-2 border-t px-4 text-[11px] text-destructive-foreground dark:text-destructive">
-            <span className="min-w-0 flex-1 truncate" title={error}>
-              Not saved: the Burf agent did not take the history.
-            </span>
+          <div className={sx(paint.s23)}>
+            <Tip label={error} width="lg">
+              <span className={sx(paint.s24)}>Not saved: the Burf agent did not take the history.</span>
+            </Tip>
           </div>
         )}
       </SheetPopup>
@@ -546,13 +1086,13 @@ export function NotificationCenter() {
 
 function Section({ title, count, amber, children }: { title: string; count?: number; amber?: boolean; children: React.ReactNode }) {
   return (
-    <section className="not-first:mt-1.5">
-      <h3 className="flex h-7 items-center gap-1.5 px-2.5 font-medium text-[11px] text-muted-foreground">
-        {amber && <span className="size-1.5 rounded-full bg-warning" />}
+    <section className={sx(paint.s69)}>
+      <h3 className={sx(paint.s25)}>
+        {amber && <span className={sx(paint.s26)} />}
         {title}
-        {count !== undefined && <span className="tabular-nums">{count}</span>}
+        {count !== undefined && <span className={sx(paint.s27)}>{count}</span>}
       </h3>
-      <ul className="flex flex-col">{children}</ul>
+      <ul className={sx(paint.s28)}>{children}</ul>
     </section>
   );
 }
@@ -586,12 +1126,12 @@ function Row({
   const context = contextOf(n, boxes);
   const folded = n.resolved;
   // Tone only where it signals: something that needs the person.
-  const tone = !needs ? "text-muted-foreground" : n.tone === "error" ? "text-destructive-foreground dark:text-destructive" : "text-warning-foreground dark:text-warning";
+  const tone = !needs ? sx(paint.s71) : n.tone === "error" ? sx(paint.s72) : sx(paint.s73);
   const status = isSnoozed && n.snoozedUntil ? `Snoozed until ${clock(n.snoozedUntil)}` : folded ? (n.category === "review" ? "Reviewed" : "Resolved") : undefined;
   const line = [status, context, folded ? undefined : n.detail].filter(Boolean).join(" · ");
 
   const cluster = (
-    <span className="hidden shrink-0 items-center group-focus-within/row:flex group-hover/row:flex">
+    <span className={sx(paint.s29)}>
       {n.category === "waiting" && !n.resolved && (
         <RowButton label={isSnoozed ? "Unsnooze" : "Snooze 1 hour"} onClick={() => (isSnoozed ? unsnooze(n.id) : snooze(n.id))}>
           <AlarmClockIcon />
@@ -608,7 +1148,7 @@ function Row({
     </span>
   );
   const time = (
-    <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums group-focus-within/row:hidden group-hover/row:hidden">{short(n.time, now)}</span>
+    <span className={sx(paint.s30)}>{short(n.time, now)}</span>
   );
 
   return (
@@ -618,42 +1158,39 @@ function Row({
       tabIndex={tabStop ? 0 : -1}
       onFocus={(e) => e.target === e.currentTarget && onFocus(n.id)}
       onClick={() => activate(n)}
-      className={cn(
-        "group/row relative flex cursor-default gap-2 rounded-md px-1.5 outline-none hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:ring-1 focus-visible:ring-ring/60",
-        folded ? "py-1" : "py-1.5",
-      )}
+      className={[[sx(paint.s31), "group/row"].filter(Boolean).join(" "), folded ? sx(paint.s32) : sx(paint.s33)].filter(Boolean).join(" ")}
     >
       {/* Unread: a dot in its own column, so titles stay aligned. */}
-      <span className="flex h-5 w-1.5 shrink-0 items-center" aria-hidden>
-        {!n.read && !n.resolved && <span className={cn("size-1.5 rounded-full", needs ? "bg-warning" : "bg-info")} />}
+      <span className={sx(paint.s34)} aria-hidden>
+        {!n.read && !n.resolved && <span className={[sx(paint.s35), needs ? sx(paint.s36) : sx(paint.s37)].filter(Boolean).join(" ")} />}
       </span>
       <Tip label={folded ? `${info.label} · ${status}` : info.label} side="left" delay={600}>
-        <span className={cn("flex h-5 shrink-0 items-center [&_svg]:size-4", tone, folded && "opacity-60 [&_svg]:size-3.5")}>
+        <span className={[sx(paint.s38), tone, folded && sx(paint.s39)].filter(Boolean).join(" ")}>
           <Icon />
         </span>
       </Tip>
       {folded ? (
-        <div className="flex h-5 min-w-0 flex-1 items-center gap-1.5">
-          <span className="min-w-0 shrink truncate text-muted-foreground text-xs">{shownNoteTitle(n.title, n.resolved)}</span>
-          {item.count > 1 && <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">×{item.count}</span>}
-          <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">{line}</span>
+        <div className={sx(paint.s40)}>
+          <span className={sx(paint.s41)}>{shownNoteTitle(n.title, n.resolved)}</span>
+          {item.count > 1 && <span className={sx(paint.s42)}>×{item.count}</span>}
+          <span className={sx(paint.s43)}>{line}</span>
           {time}
           {cluster}
         </div>
       ) : (
-        <div className="min-w-0 flex-1">
-          <div className="flex h-5 items-center gap-1.5">
-            <span className={cn("min-w-0 truncate text-[13px]", n.read ? "text-foreground/80" : "font-medium text-foreground")}>{shownNoteTitle(n.title, n.resolved)}</span>
-            {item.count > 1 && <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">×{item.count}</span>}
-            <span className="flex-1" />
+        <div className={sx(paint.s44)}>
+          <div className={sx(paint.s45)}>
+            <span className={[sx(paint.s46), n.read ? sx(paint.s47) : sx(paint.s48)].filter(Boolean).join(" ")}>{shownNoteTitle(n.title, n.resolved)}</span>
+            {item.count > 1 && <span className={sx(paint.s49)}>×{item.count}</span>}
+            <span className={sx(paint.s50)} />
             {time}
             {cluster}
           </div>
           {(line || label) && (
-            <div className="flex h-4.5 items-center gap-2">
-              <span className="min-w-0 flex-1 truncate text-muted-foreground text-xs" title={line}>
-                {line}
-              </span>
+            <div className={sx(paint.s51)}>
+              <Tip label={line || undefined} width="lg">
+                <span className={sx(paint.s52)}>{line}</span>
+              </Tip>
               {label && (
                 <button
                   type="button"
@@ -661,7 +1198,7 @@ function Row({
                     e.stopPropagation();
                     openNote(n.id);
                   }}
-                  className="hidden shrink-0 text-foreground/80 text-xs underline-offset-2 hover:text-foreground hover:underline group-focus-within/row:inline group-hover/row:inline"
+                  className={[sx(paint.s53), sx(paint.s70)].filter(Boolean).join(" ")}
                 >
                   {label}
                 </button>
@@ -691,25 +1228,25 @@ function LiveRow({ live, now, tabStop, onFocus }: { live: Live; now: number; tab
       tabIndex={tabStop ? 0 : -1}
       onFocus={(e) => e.target === e.currentTarget && onFocus(live.key)}
       onClick={() => openLive(live)}
-      className="group/row relative flex cursor-default gap-2 rounded-md px-1.5 py-1.5 outline-none hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:ring-1 focus-visible:ring-ring/60"
+      className={[sx(paint.s54), "group/row"].filter(Boolean).join(" ")}
     >
-      <span className="flex h-5 w-1.5 shrink-0 items-center" aria-hidden>
-        <span className="size-1.5 rounded-full bg-warning" />
+      <span className={sx(paint.s55)} aria-hidden>
+        <span className={sx(paint.s56)} />
       </span>
       <Tip label={categoryInfo("waiting").label} side="left" delay={600}>
-        <span className="flex h-5 shrink-0 items-center text-warning-foreground dark:text-warning [&_svg]:size-4">
+        <span className={sx(paint.s57)}>
           <MessageCircleQuestionIcon />
         </span>
       </Tip>
-      <div className="min-w-0 flex-1">
-        <div className="flex h-5 items-center gap-1.5">
-          <span className="min-w-0 truncate font-medium text-[13px] text-foreground">{live.name} needs you</span>
-          <span className="flex-1" />
-          {since && <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">{short(since, now)}</span>}
+      <div className={sx(paint.s58)}>
+        <div className={sx(paint.s59)}>
+          <span className={sx(paint.s60)}>{live.name} needs you</span>
+          <span className={sx(paint.s61)} />
+          {since && <span className={sx(paint.s62)}>{short(since, now)}</span>}
         </div>
-        <div className="flex h-4.5 items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-muted-foreground text-xs">{live.place}</span>
-          <span className="hidden shrink-0 text-foreground/80 text-xs group-focus-within/row:inline group-hover/row:inline">Open session</span>
+        <div className={sx(paint.s63)}>
+          <span className={sx(paint.s64)}>{live.place}</span>
+          <span className={sx(paint.s65)}>Open session</span>
         </div>
       </div>
     </li>
@@ -720,7 +1257,7 @@ function RowButton({ label, shortcut, onClick, children }: { label: string; shor
   return (
     <Tip
       label={
-        <span className="flex items-center gap-2">
+        <span className={sx(paint.s66)}>
           {label}
           {shortcut && <Kbd>{shortcut}</Kbd>}
         </span>
@@ -733,7 +1270,7 @@ function RowButton({ label, shortcut, onClick, children }: { label: string; shor
           e.stopPropagation();
           onClick();
         }}
-        className="-my-1 inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground [&_svg]:size-3.5"
+        className={sx(paint.s67)}
       >
         {children}
       </button>

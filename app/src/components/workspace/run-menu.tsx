@@ -1,9 +1,10 @@
+import * as stylex from "@stylexjs/stylex";
 import { ChevronDownIcon, ExternalLinkIcon, MonitorSmartphoneIcon, PlayIcon, RotateCwIcon, ScrollTextIcon, Settings2Icon, SquareIcon, SquareTerminalIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { openProjectSettings } from "@/components/skills/project-settings-dialog";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { serviceRunning, showServiceTerminal } from "@/components/workspace/service-terminal";
 import { toastManager } from "@/components/ui/toast";
@@ -12,9 +13,133 @@ import { portUrl } from "@/lib/browser-url";
 import { errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { focusedPane, openFor, useHereRef, type WorktreeRef } from "@/lib/workspaces";
 import { contribute } from "@/plugins/registry";
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "26px",
+    "alignItems": "stretch",
+    "borderRadius": "var(--radius-md)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s1: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "borderTopLeftRadius": "var(--radius-md)",
+    "borderBottomLeftRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s2: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+    "backgroundColor": "var(--success)",
+  },
+  s3: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s4: {
+    "display": "flex",
+    "minWidth": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderTopRightRadius": "var(--radius-md)",
+    "borderBottomRightRadius": "var(--radius-md)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s5: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "maxWidth": "256px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s8: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  s9: {
+    "backgroundColor": "var(--success)",
+  },
+  s10: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s11: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "10px",
+  },
+  n0: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  n1: {
+    "backgroundColor": "var(--success)",
+  },
+  n2: {
+    "backgroundColor": "var(--destructive)",
+  },
+  n3: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 40%, transparent)",
+  },
+
+  s12: {
+    opacity: { "[aria-disabled=\"true\"]": 0.45 },
+    backgroundColor: { "[aria-disabled=\"true\"]:hover": "transparent" },
+  },
+  s13: {
+    backgroundColor: { "[data-popup-open]": color.accent },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type Action = "start" | "stop" | "restart";
 
@@ -112,16 +237,16 @@ export function RunMenu() {
   };
 
   return (
-    <div className="flex h-6.5 items-stretch rounded-md text-xs">
+    <div className={sx(paint.s0)}>
       <Tip label={away ? `${ref.box} is offline, so nothing can start there` : primary ? (running ? `Open ${primary.name}` : `Start ${primary.name}: ${primary.run}`) : "This repository defines no services"} side="bottom">
         <button
           type="button"
           // Not disabled when there is nothing to run, so the tooltip can say why.
           aria-disabled={!primary || busy !== undefined || away}
           onClick={() => primary && busy === undefined && !away && onPrimary()}
-          className="flex items-center gap-1.5 rounded-l-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground aria-disabled:opacity-45 aria-disabled:hover:bg-transparent"
+          className={[sx(paint.s1), sx(paint.s12)].filter(Boolean).join(" ")}
         >
-          {busy ? <Spinner className="size-3" /> : running ? <span className="size-1.5 rounded-full bg-success" /> : <PlayIcon className="size-3" />}
+          {busy ? <Spinner  size="sm"/> : running ? <span className={sx(paint.s2)} /> : <PlayIcon className={sx(paint.s3)} />}
           {running ? primary.name : "Run"}
         </button>
       </Tip>
@@ -130,27 +255,27 @@ export function RunMenu() {
           if (open) void reload();
         }}
       >
-        <MenuTrigger render={<button type="button" aria-label="Services" className="flex min-w-6 items-center justify-center rounded-r-md px-1 text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent" />}>
-          <ChevronDownIcon className="size-3" />
+        <MenuTrigger render={<button type="button" aria-label="Services" className={[sx(paint.s4), sx(paint.s13)].filter(Boolean).join(" ")} />}>
+          <ChevronDownIcon className={sx(paint.s5)} />
         </MenuTrigger>
-        <MenuPopup align="end" className="min-w-64">
+        <MenuPopup align="end" width={menuWidths.w64}>
           {services === undefined && (
-            <div className="flex items-center gap-2 px-2 py-2 text-muted-foreground text-xs">
-              <Spinner className="size-3" /> Loading services…
+            <div className={sx(paint.s6)}>
+              <Spinner  size="sm"/> Loading services…
             </div>
           )}
           {services?.length === 0 && (
-            <div className="max-w-64 px-2 py-2 text-muted-foreground text-xs">
+            <div className={sx(paint.s7)}>
               {error ?? `${ref.location} defines no services yet. Add a dev server so every worktree can run its own on its own ports.`}
             </div>
           )}
           {services?.map((svc, i) => (
             <MenuGroup key={svc.name}>
               {i > 0 && <MenuSeparator />}
-              <MenuGroupLabel className="flex items-center gap-1.5">
-                <span className={cn("size-1.5 rounded-full", live(svc) ? "bg-success" : svc.state === "failed" ? "bg-destructive" : "bg-muted-foreground/40")} />
-                <span className="font-medium text-foreground">{svc.name}</span>
-                <span className="truncate font-mono text-[10px]">{svc.terminal ? (live(svc) ? "running" : "stopped") : svc.state}{svc.port ? ` · :${svc.port}` : ""}</span>
+              <MenuGroupLabel>
+                <span className={[sx(paint.n0), live(svc) ? sx(paint.n1) : svc.state === "failed" ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")} />
+                <span className={sx(paint.s10)}>{svc.name}</span>
+                <span className={sx(paint.s11)}>{svc.terminal ? (live(svc) ? "running" : "stopped") : svc.state}{svc.port ? ` · :${svc.port}` : ""}</span>
               </MenuGroupLabel>
               {live(svc) ? (
                 <>

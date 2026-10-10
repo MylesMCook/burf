@@ -1,18 +1,36 @@
+import * as stylex from "@stylexjs/stylex";
 import type React from "react";
-import { cn } from "@/lib/utils";
+
+import { color, radius } from "@/styles/tokens.stylex";
+
+const sweep = stylex.keyframes({
+  to: { backgroundPosition: "-200% 0" },
+});
+
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const styles = stylex.create({
+  bone: {
+    width: "100%",
+    height: "100%",
+    borderRadius: radius.sm,
+    backgroundColor: color.muted,
+    backgroundImage: "linear-gradient(120deg, transparent 40%, color-mix(in oklab, var(--foreground) 12%, transparent) 50%, transparent 60%)",
+    backgroundSize: "200% 100%",
+    animationName: sweep,
+    animationDuration: { default: "2s", [still]: "0s" },
+    animationTimingFunction: "linear",
+    animationIterationCount: "infinite",
+  },
+  lg: { borderRadius: radius.xl },
+  full: { borderRadius: radius.full },
+});
 
 export function Skeleton({
-  className,
+  shape = "sm",
   ...props
-}: React.ComponentProps<"div">): React.ReactElement {
-  return (
-    <div
-      className={cn(
-        "animate-skeleton rounded-sm [--skeleton-highlight:--alpha(var(--color-white)/64%)] [background:linear-gradient(120deg,transparent_40%,var(--skeleton-highlight),transparent_60%)_var(--color-muted)_0_0/200%_100%_fixed] dark:[--skeleton-highlight:--alpha(var(--color-white)/4%)]",
-        className,
-      )}
-      data-slot="skeleton"
-      {...props}
-    />
-  );
+}: Omit<React.ComponentProps<"div">, "className" | "style"> & {
+  shape?: "sm" | "lg" | "full";
+}): React.ReactElement {
+  return <div {...stylex.props(styles.bone, shape === "lg" && styles.lg, shape === "full" && styles.full)} data-slot="skeleton" {...props} />;
 }

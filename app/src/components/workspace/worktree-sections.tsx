@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CableIcon, ChevronRightIcon, CopyIcon, DatabaseIcon, GlobeIcon, MonitorIcon, MonitorSmartphoneIcon, PlayIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -13,12 +14,327 @@ import { openBrowserAt, openPreviewAt } from "@/lib/actions";
 import { hostSuffix, worktreeHost } from "@/lib/browser-url";
 import { copyText } from "@/lib/clipboard";
 import { NONE, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { type LiveService, liveServices } from "@/lib/worktree-services";
 import type { WorktreeRef } from "@/lib/workspaces";
 import { PluginBoundary, pluginContexts } from "@/plugins/plugin-boundary";
 import { useRegistry } from "@/plugins/registry";
 import { useTitleAt } from "@/lib/worktree-names";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "24px",
+  },
+  s1: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+  },
+  s2: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s3: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+  },
+  s4: {
+    "flexShrink": 0,
+  },
+  s5: {
+    "marginBottom": "4px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s6: {
+    "minWidth": "0px",
+  },
+  s7: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+  },
+  s8: {
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s9: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+  },
+  s10: {
+    "marginTop": "4px",
+  },
+  s11: {
+    "display": "flex",
+    "height": "28px",
+    "alignItems": "center",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s12: {
+    "width": "14px",
+    "height": "14px",
+    "transitionProperty": "transform",
+    "transitionDuration": "150ms",
+  },
+  s13: {
+    "transform": "rotate(90deg)",
+  },
+  s14: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+  },
+  s15: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+  },
+  s16: {
+    "display": "flex",
+    "height": "40px",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+  },
+  s17: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s18: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s19: {
+    "display": "flex",
+    "minWidth": "0px",
+    "maxWidth": "45%",
+    "flexShrink": 0,
+    "alignItems": "baseline",
+    "gap": "6px",
+  },
+  s20: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+  },
+  s21: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s22: {
+    "display": "block",
+    "wordBreak": "break-all",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s23: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s24: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s25: {
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+  },
+  s26: {
+    "color": "var(--muted-foreground)",
+  },
+  s27: {
+    "width": "6px",
+    "height": "6px",
+    "borderRadius": "999px",
+  },
+  s28: {
+    "backgroundColor": "var(--success)",
+  },
+  s29: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 40%, transparent)",
+  },
+  s30: {
+    "width": "24px",
+    "height": "24px",
+    "flexShrink": 0,
+  },
+  s31: {
+    "flexShrink": 0,
+  },
+  s32: {
+    "flexShrink": 0,
+  },
+  s33: {
+    "display": "flex",
+    "height": "40px",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+  },
+  s34: {
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "color": "var(--muted-foreground)",
+  },
+  s35: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s36: {
+    "display": "block",
+    "wordBreak": "break-all",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s37: {
+    "display": "flex",
+    "minWidth": "0px",
+    "maxWidth": "45%",
+    "flexShrink": 0,
+    "alignItems": "baseline",
+    "gap": "6px",
+  },
+  s38: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+  },
+  s39: {
+    "fontWeight": 400,
+    "color": "var(--muted-foreground)",
+  },
+  s40: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s41: {
+    "wordBreak": "break-all",
+    "fontFamily": "var(--font-mono)",
+  },
+  s42: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s43: {
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--accent)",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s44: {
+    "flexShrink": 0,
+  },
+  s45: {
+    "flexShrink": 0,
+  },
+  s46: {
+    "flexShrink": 0,
+  },
+  s47: {
+    "visibility": "hidden",
+    "flexShrink": 0,
+  },
+
+  s48: {
+    maxWidth: "24rem",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // WorktreeSections sit under the composer wherever work starts in a
 // worktree (its launcher, and a new agent's first prompt): what runs there,
@@ -27,7 +343,7 @@ import { useTitleAt } from "@/lib/worktree-names";
 export function WorktreeSections({ worktree: ref, className }: { worktree: WorktreeRef; className?: string }) {
   const sections = useRegistry((s) => s.worktreeSections);
   return (
-    <div className={cn("flex flex-col gap-6", className)}>
+    <div className={[sx(paint.s0), className].filter(Boolean).join(" ")}>
       <LiveServices worktree={ref} />
       {sections.map(({ plugin, item }) => {
         const ctx = pluginContexts.get(plugin);
@@ -63,21 +379,21 @@ export function SessionWorktreeSections({ box, session, className }: { box: stri
 
 function PrivateUrl({ url }: { url: string }) {
   return (
-    <div className="flex min-w-0 items-center gap-1 px-2">
-      <Tip label={<span className="font-mono">{url}</span>}>
-        <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground/80">{url}</code>
+    <div className={sx(paint.s1)}>
+      <Tip label={<span className={sx(paint.s2)}>{url}</span>}>
+        <code className={sx(paint.s3)}>{url}</code>
       </Tip>
       <Tip label="Copy URL">
-        <Button size="icon-xs" variant="ghost" aria-label="Copy URL" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => void copyText(url, "Copied the URL")}>
+        <span className={sx(paint.s4)}><Button size="icon-xs" variant="ghost" aria-label="Copy URL"  onClick={() => void copyText(url, "Copied the URL")} muted>
           <CopyIcon />
-        </Button>
+        </Button></span>
       </Tip>
     </div>
   );
 }
 
 function Heading({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-1 px-2 font-medium text-muted-foreground text-xs">{children}</h2>;
+  return <h2 className={sx(paint.s5)}>{children}</h2>;
 }
 
 const ICONS = { dev: MonitorIcon, web: GlobeIcon, data: DatabaseIcon, other: CableIcon };
@@ -104,22 +420,22 @@ function LiveServices({ worktree: ref }: { worktree: WorktreeRef }) {
   const other = rows.filter((r) => r.kind === "other");
 
   return (
-    <section aria-label={`Running in ${name}`} className="min-w-0">
+    <section aria-label={`Running in ${name}`} className={sx(paint.s6)}>
       <Heading>Running in {name}</Heading>
       <TerminalServices worktree={ref} own={own} />
       {main.length ? (
-        <ul className="flex min-w-0 flex-col">
+        <ul className={sx(paint.s7)}>
           {main.map((r) => (
             <ServiceRow key={r.port} row={r} />
           ))}
         </ul>
       ) : (
         <>
-          <p className="px-2 text-muted-foreground text-xs leading-relaxed">
+          <p className={sx(paint.s8)}>
             Nothing to open yet.{" "}
             {devPort ? (
               <>
-                A dev server on <code className="font-mono text-[11px] text-foreground/80">$BERTH_PORT</code> ({devPort}) opens at {host ? "this address" : "its private URL"}.
+                A dev server on <code className={sx(paint.s9)}>$BERTH_PORT</code> ({devPort}) opens at {host ? "this address" : "its private URL"}.
               </>
             ) : (
               "Start a dev server here and its private URL shows up."
@@ -129,18 +445,18 @@ function LiveServices({ worktree: ref }: { worktree: WorktreeRef }) {
         </>
       )}
       {other.length > 0 && (
-        <div className="mt-1">
+        <div className={sx(paint.s10)}>
           <button
             type="button"
             aria-expanded={showOther}
             onClick={() => setShowOther(!showOther)}
-            className="flex h-7 items-center gap-1 rounded-md px-2 text-muted-foreground text-xs outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className={sx(paint.s11)}
           >
-            <ChevronRightIcon className={cn("size-3.5 transition-transform", showOther && "rotate-90")} />
+            <ChevronRightIcon className={[sx(paint.s12), showOther && sx(paint.s13)].filter(Boolean).join(" ")} />
             Other ports ({other.length})
           </button>
           {showOther && (
-            <ul className="flex min-w-0 flex-col">
+            <ul className={sx(paint.s14)}>
               {other.map((r) => (
                 <ServiceRow key={r.port} row={r} />
               ))}
@@ -174,37 +490,37 @@ function TerminalServices({ worktree: ref, own: { services, reload } }: { worktr
     }
   };
   return (
-    <ul className="flex min-w-0 flex-col">
+    <ul className={sx(paint.s15)}>
       {rows.map((svc) => {
         const running = serviceRunning(svc, sessions);
         return (
-          <li key={svc.name} className="flex h-10 min-w-0 items-center gap-3 rounded-md px-2 text-sm hover:bg-accent/60">
-            <span className="flex size-4 shrink-0 items-center justify-center">
-              <ServiceIcon className="size-4" />
+          <li key={svc.name} className={sx(paint.s16)}>
+            <span className={sx(paint.s17)}>
+              <ServiceIcon className={sx(paint.s18)} />
             </span>
-            <span className="flex min-w-0 max-w-[45%] shrink-0 items-baseline gap-1.5">
-              <span className="truncate font-medium">{svc.title || svc.name}</span>
-              {svc.title && svc.title !== svc.name && <span className="truncate font-mono text-[11px] text-muted-foreground">{svc.name}</span>}
+            <span className={sx(paint.s19)}>
+              <span className={sx(paint.s20)}>{svc.title || svc.name}</span>
+              {svc.title && svc.title !== svc.name && <span className={sx(paint.s21)}>{svc.name}</span>}
             </span>
-            <Tip label={<span className="block max-w-sm break-all font-mono text-[11px]">{svc.run}</span>}>
-              <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{svc.run}</span>
+            <Tip label={<span className={[sx(paint.s22), sx(paint.s48)].filter(Boolean).join(" ")}>{svc.run}</span>}>
+              <span className={sx(paint.s23)}>{svc.run}</span>
             </Tip>
-            <span className={cn("flex shrink-0 items-center gap-1.5 text-xs", running ? "text-foreground/80" : "text-muted-foreground")}>
-              <span className={cn("size-1.5 rounded-full", running ? "bg-success" : "bg-muted-foreground/40")} />
+            <span className={[sx(paint.s24), running ? sx(paint.s25) : sx(paint.s26)].filter(Boolean).join(" ")}>
+              <span className={[sx(paint.s27), running ? sx(paint.s28) : sx(paint.s29)].filter(Boolean).join(" ")} />
               {running ? "Running" : "Stopped"}
             </span>
             {running ? (
-              <span aria-hidden className="size-6 shrink-0" />
+              <span aria-hidden className={sx(paint.s30)} />
             ) : (
               <Tip label={`Start ${svc.title || svc.name}`}>
-                <Button size="icon-xs" variant="ghost" aria-label={`Start ${svc.title || svc.name}`} disabled={busy === svc.name} className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => void start(svc)}>
-                  {busy === svc.name ? <Spinner className="size-3" /> : <PlayIcon />}
-                </Button>
+                <span className={sx(paint.s31)}><Button size="icon-xs" variant="ghost" aria-label={`Start ${svc.title || svc.name}`} disabled={busy === svc.name}  onClick={() => void start(svc)} muted>
+                  {busy === svc.name ? <Spinner  size="sm"/> : <PlayIcon />}
+                </Button></span>
               </Tip>
             )}
-            <Button size="xs" variant="outline" className="shrink-0" onClick={() => void showServiceTerminal(ref, svc)}>
+            <span className={sx(paint.s32)}><Button size="xs" variant="outline"  onClick={() => void showServiceTerminal(ref, svc)}>
               Show terminal
-            </Button>
+            </Button></span>
           </li>
         );
       })}
@@ -217,42 +533,42 @@ function ServiceRow({ row: r }: { row: LiveService }) {
   const web = r.kind === "dev" || r.kind === "web";
   const address = web ? r.url : `localhost:${r.port}`;
   return (
-    <li className="flex h-10 min-w-0 items-center gap-3 rounded-md px-2 text-sm hover:bg-accent/60">
-      <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
-        <Icon className="size-4" />
+    <li className={sx(paint.s33)}>
+      <span className={sx(paint.s34)}>
+        <Icon className={sx(paint.s35)} />
       </span>
-      <Tip label={r.command ? <span className="block max-w-sm break-all font-mono text-[11px]">{r.command}</span> : undefined}>
-        <span className="flex min-w-0 max-w-[45%] shrink-0 items-baseline gap-1.5">
-          <span className={cn("truncate font-medium", r.kind === "other" && "font-normal text-muted-foreground")}>{r.label}</span>
-          {r.detail && <span className="truncate text-muted-foreground text-xs">{r.detail}</span>}
+      <Tip label={r.command ? <span className={[sx(paint.s36), sx(paint.s48)].filter(Boolean).join(" ")}>{r.command}</span> : undefined}>
+        <span className={sx(paint.s37)}>
+          <span className={[sx(paint.s38), r.kind === "other" && sx(paint.s39)].filter(Boolean).join(" ")}>{r.label}</span>
+          {r.detail && <span className={sx(paint.s40)}>{r.detail}</span>}
         </span>
       </Tip>
-      <Tip label={<span className="break-all font-mono">{r.url}</span>}>
-        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{r.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}</span>
+      <Tip label={<span className={sx(paint.s41)}>{r.url}</span>}>
+        <span className={sx(paint.s42)}>{r.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}</span>
       </Tip>
-      <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[11px] text-muted-foreground tabular-nums">:{r.port}</span>
+      <span className={sx(paint.s43)}>:{r.port}</span>
       <Tip label={web ? "Copy URL" : "Copy address"}>
-        <Button size="icon-xs" variant="ghost" aria-label={`Copy ${r.label}'s ${web ? "URL" : "address"}`} className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => void copyText(address, web ? "Copied the URL" : "Copied the address")}>
+        <span className={sx(paint.s44)}><Button size="icon-xs" variant="ghost" aria-label={`Copy ${r.label}'s ${web ? "URL" : "address"}`}  onClick={() => void copyText(address, web ? "Copied the URL" : "Copied the address")} muted>
           <CopyIcon />
-        </Button>
+        </Button></span>
       </Tip>
       {web && (
         <Tip label="This page at every size: phones, tablet and Tailwind's breakpoints">
-          <Button size="xs" variant="ghost" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => openPreviewAt(r.url)}>
+          <span className={sx(paint.s45)}><Button size="xs" variant="ghost"  onClick={() => openPreviewAt(r.url)} muted>
             <MonitorSmartphoneIcon />
             Preview
-          </Button>
+          </Button></span>
         </Tip>
       )}
       {web ? (
-        <Button size="xs" variant="outline" className="shrink-0" onClick={() => openBrowserAt(r.url)}>
+        <span className={sx(paint.s46)}><Button size="xs" variant="outline"  onClick={() => openBrowserAt(r.url)}>
           Open in tab
-        </Button>
+        </Button></span>
       ) : (
         // Keeps the rows' buttons in one column.
-        <Button aria-hidden tabIndex={-1} size="xs" variant="outline" className="invisible shrink-0">
+        <span className={sx(paint.s47)}><Button aria-hidden tabIndex={-1} size="xs" variant="outline">
           Open in tab
-        </Button>
+        </Button></span>
       )}
     </li>
   );

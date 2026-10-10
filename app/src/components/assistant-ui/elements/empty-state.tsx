@@ -1,68 +1,85 @@
 "use client";
 
-import type { ComponentProps } from "react";
+import type { ComponentProps, CSSProperties } from "react";
 import { ArrowUpIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { inkButton, paper } from "./surfaces";
+import * as stylex from "@stylexjs/stylex";
 
-export function EmptyState({ className, ...props }: ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="empty-state"
-      className={cn(
-        "flex w-full max-w-md flex-col items-center gap-7",
-        className,
-      )}
-      {...props}
-    />
-  );
+import { radius } from "@/styles/tokens.stylex";
+import { inkButton, mark, paper, riseFar, riseIn, slow } from "./surfaces";
+
+const still = "@media (prefers-reduced-motion: reduce)";
+
+const styles = stylex.create({
+  root: { display: "flex", width: "100%", maxWidth: 448, flexDirection: "column", alignItems: "center", gap: 28 },
+  greeting: { textAlign: "center", fontSize: 24, lineHeight: "32px", fontWeight: 500, letterSpacing: "-0.025em" },
+  suggestions: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8 },
+  chip: {
+    borderRadius: radius.full,
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    fontSize: 13,
+    lineHeight: "18px",
+    outline: "none",
+    transform: { default: "scale(1)", ":hover": "translateY(-1px)", ":active": "scale(0.96)" },
+    boxShadow: { ":focus-visible": "0 0 0 1px color-mix(in oklab, var(--foreground) 20%, transparent)" },
+    transitionProperty: "transform",
+    transitionDuration: { default: "500ms", [still]: "0s" },
+  },
+  composer: {
+    display: "flex",
+    height: 52,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: radius.full,
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingInlineStart: 20,
+    paddingInlineEnd: 10,
+  },
+  placeholder: { fontSize: 15, color: "color-mix(in oklab, var(--foreground) 35%, transparent)" },
+  send: {
+    display: "flex",
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.full,
+    opacity: { default: 1, ":disabled": 0.3 },
+    pointerEvents: { default: "auto", ":disabled": "none" },
+  },
+  sendIcon: { width: 16, height: 16 },
+});
+
+function painted(delay: string | undefined, style: CSSProperties | undefined, ...parts: readonly (false | null | undefined | object)[]) {
+  const visual = mark(undefined, ...parts);
+  return { className: visual.className, style: { ...visual.style, ...(delay ? { animationDelay: delay } : {}), ...style } };
 }
 
-export function EmptyStateGreeting({
-  className,
-  ...props
-}: ComponentProps<"h2">) {
-  return (
-    <h2
-      data-slot="empty-state-greeting"
-      className={cn(
-        "fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-center text-2xl font-medium tracking-tight duration-500 motion-reduce:animate-none",
-        className,
-      )}
-      {...props}
-    />
-  );
+export function EmptyState({ ...props }: Omit<ComponentProps<"div">, "className" | "style">) {
+  return <div data-slot="empty-state" {...mark(undefined, styles.root)} {...props} />;
 }
 
-export function EmptyStateSuggestions({
-  className,
-  ...props
-}: ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="empty-state-suggestions"
-      className={cn("flex flex-wrap justify-center gap-2", className)}
-      {...props}
-    />
-  );
+export function EmptyStateGreeting({ ...props }: Omit<ComponentProps<"h2">, "className" | "style">) {
+  return <h2 data-slot="empty-state-greeting" {...mark(undefined, styles.greeting, riseIn, slow)} {...props} />;
+}
+
+export function EmptyStateSuggestions({ ...props }: Omit<ComponentProps<"div">, "className" | "style">) {
+  return <div data-slot="empty-state-suggestions" {...mark(undefined, styles.suggestions)} {...props} />;
 }
 
 export function EmptyStateSuggestion({
   index = 0,
-  className,
   style,
   ...props
-}: ComponentProps<"button"> & { index?: number }) {
+}: Omit<ComponentProps<"button">, "className"> & { index?: number }) {
   return (
     <button
       type="button"
       data-slot="empty-state-suggestion"
-      style={{ animationDelay: `${120 + index * 70}ms`, ...style }}
-      className={cn(
-        paper,
-        "fade-in slide-in-from-bottom-2 animate-in fill-mode-both focus-visible:ring-foreground/20 rounded-full px-4 py-2 text-[13px] transition-transform duration-500 outline-none hover:-translate-y-px focus-visible:ring-1 active:scale-[0.96] motion-reduce:animate-none",
-        className,
-      )}
+      {...painted(`${120 + index * 70}ms`, style, paper, styles.chip, riseFar, slow)}
       {...props}
     />
   );
@@ -71,36 +88,23 @@ export function EmptyStateSuggestion({
 export function EmptyStateComposer({
   placeholder,
   onSend,
-  className,
   style,
   ...props
-}: Omit<ComponentProps<"div">, "children" | "placeholder"> & {
+}: Omit<ComponentProps<"div">, "children" | "placeholder" | "className"> & {
   placeholder: string;
   onSend?: () => void;
 }) {
   return (
-    <div
-      data-slot="empty-state-composer"
-      style={{ animationDelay: "360ms", ...style }}
-      className={cn(
-        paper,
-        "fade-in slide-in-from-bottom-2 animate-in fill-mode-both flex h-13 w-full items-center justify-between rounded-full py-2 ps-5 pe-2.5 duration-500 motion-reduce:animate-none",
-        className,
-      )}
-      {...props}
-    >
-      <span className="text-foreground/35 text-[15px]">{placeholder}</span>
+    <div data-slot="empty-state-composer" {...painted("360ms", style, paper, styles.composer, riseFar, slow)} {...props}>
+      <span {...mark(undefined, styles.placeholder)}>{placeholder}</span>
       <button
         type="button"
         aria-label="Send"
         onClick={onSend}
         disabled={!onSend}
-        className={cn(
-          inkButton,
-          "flex size-8 items-center justify-center rounded-full disabled:pointer-events-none disabled:opacity-30",
-        )}
+        {...mark(undefined, inkButton, styles.send)}
       >
-        <ArrowUpIcon className="size-4" />
+        <ArrowUpIcon {...mark(undefined, styles.sendIcon)} />
       </button>
     </div>
   );

@@ -1,4 +1,5 @@
 import { BellIcon } from "lucide-react";
+import * as stylex from "@stylexjs/stylex";
 
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,33 @@ import {
 } from "@/lib/notifications";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 import { IS_MAC } from "@/lib/platform";
+import { color, radius } from "@/styles/tokens.stylex";
+
+const styles = stylex.create({
+  head: {
+    display: "flex",
+    alignItems: "center",
+    gap: 24,
+    paddingTop: 10,
+    paddingBottom: 4,
+    paddingLeft: 16,
+    paddingRight: 16,
+    fontSize: 11,
+    color: color.mutedForeground,
+  },
+  kind: { minWidth: 0, flexGrow: 1, flexShrink: 1, flexBasis: "0%" },
+  col: {
+    width: 56,
+    borderRadius: radius.sm,
+    textAlign: "center",
+    outline: "none",
+    boxShadow: { ":focus-visible": "0 0 0 2px var(--ring)" },
+  },
+  checks: { display: "flex", alignItems: "center", gap: 24 },
+  cell: { display: "flex", width: 56, justifyContent: "center" },
+  hours: { display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", gap: 12 },
+  clock: { display: "flex", alignItems: "center", gap: 6, color: color.mutedForeground, fontSize: 12 },
+});
 
 const DAYS = ["S", "M", "T", "W", "T", "F", "S"];
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -80,12 +108,12 @@ export function NotificationsSection() {
       }
     >
       <SettingsGroup title="What to show">
-        <div className="flex items-center gap-6 px-4 pt-2.5 pb-1 text-[11px] text-muted-foreground">
-          <span className="min-w-0 flex-1">Kind</span>
+        <div {...stylex.props(styles.head)}>
+          <span {...stylex.props(styles.kind)}>Kind</span>
           {columns.map(([key, label, tip]) => (
             <Tip key={key} label={tip}>
               {/* Focusable, so the column's meaning is there for the keyboard too. */}
-              <span tabIndex={0} className="w-14 rounded-sm text-center outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <span tabIndex={0} {...stylex.props(styles.col)}>
                 {label}
               </span>
             </Tip>
@@ -94,10 +122,10 @@ export function NotificationsSection() {
         {CATEGORIES.map((c) => {
           const ch = prefs.categories[c.id];
           return (
-            <SettingsRow key={c.id} label={c.label} description={c.description} className="gap-6 py-2">
-              <div className="flex items-center gap-6">
+            <SettingsRow key={c.id} label={c.label} description={c.description} pad="snug">
+              <div {...stylex.props(styles.checks)}>
                 {columns.map(([key, label]) => (
-                  <span key={key} className="flex w-14 justify-center">
+                  <span key={key} {...stylex.props(styles.cell)}>
                     <Checkbox aria-label={`${c.label}: ${label}`} checked={ch[key]} onCheckedChange={(v) => setChannel(c.id, { [key]: v === true })} />
                   </span>
                 ))}
@@ -116,28 +144,28 @@ export function NotificationsSection() {
         </SettingsRow>
         {dnd.scheduled && (
           <SettingsRow label="Quiet hours">
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                <Input type="time" size="sm" aria-label="From" className="w-28" value={dnd.from} onChange={(e) => e.target.value && setQuietHours({ from: e.target.value })} />
+            <div {...stylex.props(styles.hours)}>
+              <div {...stylex.props(styles.clock)}>
+                <Input type="time" size="sm" aria-label="From" measure="time" value={dnd.from} onChange={(e) => e.target.value && setQuietHours({ from: e.target.value })} />
                 to
-                <Input type="time" size="sm" aria-label="To" className="w-28" value={dnd.to} onChange={(e) => e.target.value && setQuietHours({ to: e.target.value })} />
+                <Input type="time" size="sm" aria-label="To" measure="time" value={dnd.to} onChange={(e) => e.target.value && setQuietHours({ to: e.target.value })} />
               </div>
               {/* Days are a multi-pick in PickOne's track: a day that's on is
                   raised, a day that's off sits flat and muted. */}
               <ToggleGroup
-                multiple
                 aria-label="Days"
-                size="sm"
-                value={dnd.days.map(String)}
+                multiple
                 onValueChange={(v) => setQuietHours({ days: (v as string[]).map(Number).sort() })}
-                className="gap-0.5 rounded-lg bg-muted p-0.5"
+                size="sm"
+                track
+                value={dnd.days.map(String)}
               >
                 {WEEK.map((i) => (
                   <Tip key={i} label={`${DAY_NAMES[i]}: ${dnd.days.includes(i) ? "quiet" : "not quiet"}`}>
                     <ToggleGroupItem
                       value={String(i)}
                       aria-label={DAY_NAMES[i]}
-                      className="min-w-7 rounded-md px-0 font-normal text-muted-foreground text-xs hover:bg-background/60 hover:text-foreground data-pressed:bg-background data-pressed:font-medium data-pressed:text-foreground data-pressed:shadow-xs/5 dark:hover:bg-input/32 dark:data-pressed:bg-input"
+                      tone="choice"
                     >
                       {DAYS[i]}
                     </ToggleGroupItem>

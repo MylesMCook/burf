@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowLeftIcon, ChevronsUpDownIcon, ClockIcon, GitPullRequestIcon, FlaskConicalIcon, LayersIcon, LockIcon, PlusIcon, ServerIcon, Trash2Icon, ZapIcon } from "lucide-react";
 
 import { confirm } from "@/components/sidebar/confirm";
@@ -8,17 +9,638 @@ import { SimpleSelect } from "@/components/simple-select";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { Switch } from "@/components/ui/switch";
 import { sortedWorktrees } from "@/lib/derive";
 import { DEFAULT_MAX_RUNS_PER_HOUR, type Flow, type FlowRun, type FlowSource, flowsApi, type GitHubOn, type Scope, type Step, type StepKind, scopeLocation, slug, type TriggerKind, triggerKind, triggerType } from "@/lib/flows";
 import { plainError } from "@/lib/errors";
 import { NONE, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { isEditableKind, blankStep, describeCron, GITHUB_ONS, KIND_ORDER, SCHEDULE_PRESETS, STEP_KINDS, summary, TRIGGERS, variablesAt } from "@/views/automations/flows/model";
 import { ProjectLabel, savedWhere } from "@/views/automations/flows/project-label";
 import { StepCard } from "@/views/automations/flows/step-card";
 import { ErrorText } from "@/components/error-note";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "flexDirection": "column",
+  },
+  s1: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "12px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s2: {
+    "height": "16px",
+    "width": "1px",
+    "backgroundColor": "var(--border)",
+  },
+  s3: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+  },
+  s5: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "24px",
+    "paddingBottom": "96px",
+  },
+  s6: {
+    "marginBottom": "20px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s7: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s8: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s9: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "marginBottom": "20px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s11: {
+    "marginBottom": "20px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--destructive) 30%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 8%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "color": "var(--destructive-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s12: {
+    "marginBottom": "16px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s13: {
+    "position": "relative",
+  },
+  s14: {
+    "marginLeft": "40px",
+    "position": {
+      "::before": "absolute",
+    },
+    "top": {
+      "::before": "0px",
+    },
+    "bottom": {
+      "::before": "0px",
+    },
+    "width": {
+      "::before": "2px",
+    },
+    "borderRadius": {
+      "::before": "999px",
+    },
+    "backgroundColor": {
+      "::before": "color-mix(in oklab, var(--warning) 40%, transparent)",
+    },
+  },
+  s15: {
+    "marginTop": "12px",
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+  },
+  s16: {
+    "height": "20px",
+    "width": "1px",
+    "backgroundColor": "var(--border)",
+  },
+  s17: {
+    "marginTop": "40px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "16px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--card) 40%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s18: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s19: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s20: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s21: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "color-mix(in oklab, var(--ring) 25%, transparent)",
+    "backgroundColor": "var(--card)",
+    "boxShadow": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+  },
+  s23: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "10px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+  },
+  s24: {
+    "display": "inline-flex",
+    "width": "28px",
+    "height": "28px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-lg)",
+    "backgroundColor": "color-mix(in oklab, var(--primary) 12%, transparent)",
+    "color": "var(--primary)",
+  },
+  s25: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s26: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s27: {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(2, minmax(0, 1fr))",
+    "gap": "12px",
+    "paddingLeft": "14px",
+    "paddingRight": "14px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s28: {
+    "gridColumn": "span 2 / span 2",
+  },
+  s29: {
+    "marginBottom": "4px",
+    "display": "block",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s30: {
+    "marginTop": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s31: {
+    "marginTop": "4px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s32: {
+    "textDecoration": {
+      ":hover": "underline",
+    },
+  },
+  s33: {
+    "gridColumn": "span 2 / span 2",
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "8px",
+  },
+  s34: {
+    "display": "block",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s35: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s36: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s37: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s38: {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(0,1fr) auto",
+    "gap": "8px",
+  },
+  s39: {
+    "gridColumn": "span 2 / span 2",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s40: {
+    "fontFamily": "var(--font-mono)",
+  },
+  s41: {
+    "gridColumn": "span 2 / span 2",
+    "display": "block",
+  },
+  s42: {
+    "marginBottom": "4px",
+    "display": "block",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s43: {
+    "marginTop": "4px",
+    "display": "block",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s44: {
+    "display": "none",
+  },
+  s45: {
+    "marginBottom": "4px",
+    "display": "block",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s46: {
+    "display": "block",
+  },
+  s47: {
+    "gridColumn": "span 2 / span 2",
+  },
+  s48: {
+    "marginBottom": "4px",
+    "display": "block",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s49: {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(0,1fr) minmax(0,1fr)",
+    "gap": "8px",
+  },
+  s50: {
+    "gridColumn": "span 2 / span 2",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s51: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s52: {
+    "gridColumn": "span 2 / span 2",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s53: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s54: {
+    "display": "flex",
+    "height": {
+      "default": "36px",
+      "@media (min-width: 640px)": {
+        "default": "32px",
+      },
+    },
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--input)",
+    "backgroundColor": {
+      "default": "light-dark(var(--background), color-mix(in oklab, var(--input) 32%, transparent))",
+      ":hover": "color-mix(in oklab, var(--accent) 40%, transparent)",
+    },
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "textAlign": "left",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "boxShadow": {
+      "default": "0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent)",
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+    "outline": "none",
+    "cursor": {
+      ":disabled": "default",
+    },
+    "opacity": {
+      ":disabled": 0.8,
+    },
+  },
+  s55: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s56: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "opacity": 0.6,
+  },
+  s57: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s58: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+  },
+  s59: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s60: {
+    "position": "relative",
+    "display": "flex",
+    "height": "40px",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s61: {
+    "position": "absolute",
+    "top": 0,
+    "bottom": 0,
+    "width": "1px",
+  },
+  s62: {
+    "backgroundColor": "color-mix(in oklab, var(--warning) 50%, transparent)",
+  },
+  s63: {
+    "position": "relative",
+    "zIndex": 10,
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "1px",
+    "paddingBottom": "1px",
+    "fontSize": "11px",
+  },
+  s64: {
+    "borderColor": "color-mix(in oklab, var(--warning) 40%, transparent)",
+    "color": "var(--warning-foreground)",
+  },
+  s65: {
+    "color": "var(--muted-foreground)",
+  },
+  s66: {
+    "position": "absolute",
+    "zIndex": 10,
+    "display": "inline-flex",
+    "width": "20px",
+    "height": "20px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "opacity": {
+      "default": 0,
+      ":focus-visible": 1,
+    },
+    "transitionProperty": "opacity",
+    "transitionDuration": "150ms",
+    ":is(.group:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s67: {
+    "left": "calc(50%+64px)",
+  },
+  s68: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s69: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s70: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s71: {
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s72: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s73: {
+    "marginBottom": "20px",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s74: {
+    "borderColor": "color-mix(in oklab, var(--success) 30%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--success) 6%, transparent)",
+  },
+  s75: {
+    "borderColor": "color-mix(in oklab, var(--destructive) 30%, transparent)",
+    "backgroundColor": "color-mix(in oklab, var(--destructive) 6%, transparent)",
+  },
+  s76: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+  },
+  s77: {
+    "color": "var(--success)",
+  },
+  s78: {
+    "color": "var(--destructive-foreground)",
+  },
+  s79: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  n0: {
+    "position": "absolute",
+    "top": 0,
+    "bottom": 0,
+    "width": "1px",
+  },
+  n1: {
+    "backgroundColor": "color-mix(in oklab, var(--warning) 50%, transparent)",
+  },
+  n2: {
+    "borderLeftWidth": 1,
+    "borderLeftStyle": "solid",
+    "borderLeftColor": "var(--border)",
+    "borderStyle": "dashed",
+    "borderColor": "color-mix(in oklab, var(--muted-foreground) 40%, transparent)",
+    "backgroundColor": "transparent",
+  },
+  n3: {
+    "backgroundColor": "var(--border)",
+  },
+
+  s80: {
+    maxWidth: "42rem",
+  },
+  s81: {
+    "::before": {
+      left: -24,
+      content: "\"\"",
+    },
+  },
+  s82: {
+    textUnderlineOffset: 2,
+  },
+  s83: {
+    left: "50%",
+    translate: "-50%",
+  },
+  s84: {
+    top: "50%",
+    left: "50%",
+    translate: "0px -50%",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface EditTarget {
   box: string;
@@ -104,13 +726,13 @@ export function FlowEditor({
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex shrink-0 items-center gap-3 border-b px-4 py-2.5">
+    <div className={sx(paint.s0)}>
+      <header className={sx(paint.s1)}>
         <Button size="sm" variant="ghost" onClick={onClose}>
           <ArrowLeftIcon />
           Automations
         </Button>
-        <span className="h-4 w-px bg-border" />
+        <span className={sx(paint.s2)} />
         <Input
           value={flow.name}
           // A new flow starts by being named.
@@ -119,10 +741,10 @@ export function FlowEditor({
           onChange={(e) => setFlow({ ...flow, name: e.target.value })}
           placeholder="Name this flow"
           unstyled
-          className="min-w-0 flex-1 font-medium text-[15px]"
+          plain="title"
           aria-label="Flow name"
         />
-        <label className="flex items-center gap-2 text-muted-foreground text-xs">
+        <label className={sx(paint.s3)}>
           <Switch checked={flow.enabled} disabled={readOnly} onCheckedChange={(enabled) => setFlow({ ...flow, enabled })} />
           {flow.enabled ? "On" : "Off"}
         </label>
@@ -143,13 +765,13 @@ export function FlowEditor({
         )}
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-2xl px-6 pt-6 pb-24">
+      <div className={sx(paint.s4)}>
+        <div className={[sx(paint.s5), sx(paint.s80)].filter(Boolean).join(" ")}>
           {readOnly && (
-            <div className="mb-5 flex items-center gap-3 rounded-xl border bg-muted/40 px-4 py-3 text-sm">
-              <LockIcon className="size-4 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1">
-                Committed in the repository's <code className="font-mono text-xs">.berth/config.json</code>. Change it there, or override it on this box.
+            <div className={sx(paint.s6)}>
+              <LockIcon className={sx(paint.s7)} />
+              <span className={sx(paint.s8)}>
+                Committed in the repository's <code className={sx(paint.s9)}>.berth/config.json</code>. Change it there, or override it on this box.
               </span>
               {onOverride && (
                 <Button size="sm" variant="outline" onClick={onOverride}>
@@ -158,18 +780,18 @@ export function FlowEditor({
               )}
             </div>
           )}
-          {runSteps && !target.readOnly && <p className="mb-5 rounded-xl border bg-muted/40 px-4 py-3 text-muted-foreground text-sm">This flow uses run steps (loop, gate, map…) that the editor shows but does not change. Edit it in its JSON: the box's config or the repository's .berth/config.json.</p>}
-          {error && <ErrorText className="mb-5 rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-destructive-foreground text-sm" text={error} />}
+          {runSteps && !target.readOnly && <p className={sx(paint.s10)}>This flow uses run steps (loop, gate, map…) that the editor shows but does not change. Edit it in its JSON: the box's config or the repository's .berth/config.json.</p>}
+          {error && <ErrorText className={sx(paint.s11)} text={error} />}
           {run && <RunBanner run={run} onClear={() => setRun(undefined)} />}
 
-          <p className="mb-4 text-muted-foreground text-sm">{summary(flow)}</p>
+          <p className={sx(paint.s12)}>{summary(flow)}</p>
 
           <TriggerCard flow={flow} setFlow={setFlow} readOnly={readOnly} where={where} setWhere={setWhere} scopes={scopes} />
 
           {flow.steps.map((s, i) => (
             <Fragment key={i}>
               <Connector branch={s.when ?? "success"} onAdd={readOnly ? undefined : (k) => insertStep(i, k)} />
-              <div className={cn("relative", s.when === "failure" && "ml-10 before:absolute before:-left-6 before:top-0 before:bottom-0 before:w-0.5 before:rounded-full before:bg-warning/40")}>
+              <div className={[sx(paint.s13), s.when === "failure" && [sx(paint.s14), sx(paint.s81)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
                 <StepCard
                   step={s}
                   index={i}
@@ -187,8 +809,8 @@ export function FlowEditor({
           ))}
 
           {!readOnly && (
-            <div className="mt-3 flex flex-col items-center">
-              <span className="h-5 w-px bg-border" />
+            <div className={sx(paint.s15)}>
+              <span className={sx(paint.s16)} />
               <AddStep onPick={(k) => insertStep(flow.steps.length, k)}>
                 <Button size="sm" variant="outline">
                   <PlusIcon />
@@ -198,10 +820,10 @@ export function FlowEditor({
             </div>
           )}
 
-          <section className="mt-10 flex items-center gap-4 rounded-xl border bg-card/40 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <div className="text-sm">At most</div>
-              <div className="text-muted-foreground text-xs">Stops a flow that triggers itself, or a busy repo, from running away. Empty means {DEFAULT_MAX_RUNS_PER_HOUR}, the default.</div>
+          <section className={sx(paint.s17)}>
+            <div className={sx(paint.s18)}>
+              <div className={sx(paint.s19)}>At most</div>
+              <div className={sx(paint.s20)}>Stops a flow that triggers itself, or a busy repo, from running away. Empty means {DEFAULT_MAX_RUNS_PER_HOUR}, the default.</div>
             </div>
             <Input
               type="number"
@@ -211,9 +833,9 @@ export function FlowEditor({
               onChange={(e) => setFlow({ ...flow, max_runs_per_hour: Number(e.target.value) || undefined })}
               placeholder={`${DEFAULT_MAX_RUNS_PER_HOUR} (default)`}
               size="sm"
-              className="w-28 text-right tabular-nums"
+              measure="time" align="end" nums
             />
-            <span className="text-muted-foreground text-xs">runs an hour</span>
+            <span className={sx(paint.s21)}>runs an hour</span>
           </section>
         </div>
       </div>
@@ -255,40 +877,40 @@ function TriggerCard({
   };
 
   return (
-    <article className="rounded-xl border border-ring/25 bg-card shadow-xs/5">
-      <header className="flex items-center gap-2.5 border-b px-3.5 py-2.5">
-        <span className="inline-flex size-7 items-center justify-center rounded-lg bg-primary/12 text-primary">
-          <ZapIcon className="size-4" />
+    <article className={sx(paint.s22)}>
+      <header className={sx(paint.s23)}>
+        <span className={sx(paint.s24)}>
+          <ZapIcon className={sx(paint.s25)} />
         </span>
-        <h3 className="font-medium text-sm">{kind === "schedule" ? "When it runs" : kind === "github" ? "When this happens on GitHub" : "When this happens"}</h3>
+        <h3 className={sx(paint.s26)}>{kind === "schedule" ? "When it runs" : kind === "github" ? "When this happens on GitHub" : "When this happens"}</h3>
       </header>
-      <div className="grid grid-cols-2 gap-3 px-3.5 py-3">
-        <div className="col-span-2">
-          <span className="mb-1 block font-medium text-muted-foreground text-xs">Runs for</span>
+      <div className={sx(paint.s27)}>
+        <div className={sx(paint.s28)}>
+          <span className={sx(paint.s29)}>Runs for</span>
           <RunsFor value={where} options={scopes} disabled={readOnly} onChange={setWhere} />
-          <p className="mt-1.5 text-muted-foreground text-xs">{savedWhere(where.box, where.scope, readOnly ? "repo" : undefined)}</p>
+          <p className={sx(paint.s30)}>{savedWhere(where.box, where.scope, readOnly ? "repo" : undefined)}</p>
           {where.scope === "box" && w.location && (
-            <p className="mt-1 flex items-center gap-1.5 text-muted-foreground text-xs">
+            <p className={sx(paint.s31)}>
               Only events from {w.location}.
               {!readOnly && (
-                <button type="button" className="underline-offset-2 hover:underline" onClick={() => setW({ location: undefined })}>
+                <button type="button" className={[sx(paint.s32), sx(paint.s82)].filter(Boolean).join(" ")} onClick={() => setW({ location: undefined })}>
                   Any project
                 </button>
               )}
             </p>
           )}
         </div>
-        <div className="col-span-2 flex flex-col gap-2">
-          <span className="block font-medium text-muted-foreground text-xs">Starts</span>
+        <div className={sx(paint.s33)}>
+          <span className={sx(paint.s34)}>Starts</span>
           {!readOnly && (
             <PickOne<TriggerKind>
               label="What starts it"
               value={kind}
               onChange={setKind}
               options={[
-                { value: "event", label: "On an event", icon: <ZapIcon className="size-3.5" /> },
-                { value: "schedule", label: "On a schedule", icon: <ClockIcon className="size-3.5" /> },
-                { value: "github", label: "On GitHub", icon: <GitPullRequestIcon className="size-3.5" /> },
+                { value: "event", label: "On an event", icon: <ZapIcon className={sx(paint.s35)} /> },
+                { value: "schedule", label: "On a schedule", icon: <ClockIcon className={sx(paint.s36)} /> },
+                { value: "github", label: "On GitHub", icon: <GitPullRequestIcon className={sx(paint.s37)} /> },
               ]}
             />
           )}
@@ -302,7 +924,7 @@ function TriggerCard({
           )}
           {kind === "schedule" && <ScheduleFields flow={flow} setFlow={setFlow} readOnly={readOnly} />}
           {kind === "github" && (
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+            <div className={sx(paint.s38)}>
               <SimpleSelect
                 value={flow.trigger.github?.on ?? "review_comment"}
                 disabled={readOnly}
@@ -315,27 +937,27 @@ function TriggerCard({
                 onChange={(poll) => setFlow({ ...flow, trigger: { ...flow.trigger, github: { on: flow.trigger.github?.on ?? "review_comment", poll } } })}
                 options={["1m", "2m", "5m", "15m"].map((p) => ({ value: p, label: `Check every ${p.replace("m", " min")}` }))}
               />
-              <p className="col-span-2 text-muted-foreground text-xs">
-                The box checks each worktree's pull request with <code className="font-mono">gh</code>. Only what's new after the flow is turned on starts it.
+              <p className={sx(paint.s39)}>
+                The box checks each worktree's pull request with <code className={sx(paint.s40)}>gh</code>. Only what's new after the flow is turned on starts it.
               </p>
               {(flow.trigger.github?.on ?? "review_comment") !== "check_failed" && (flow.trigger.github?.on ?? "review_comment") !== "pr_merged" && (
-                <label className="col-span-2 block">
-                  <span className="mb-1 block font-medium text-muted-foreground text-xs">From</span>
+                <label className={sx(paint.s41)}>
+                  <span className={sx(paint.s42)}>From</span>
                   <Input
                     value={(w.author ?? []).join(", ")}
                     readOnly={readOnly}
                     onChange={(e) => setW({ author: e.target.value.split(/[\s,]+/).filter(Boolean) })}
                     placeholder="collaborators · or logins, or * for anyone"
-                    className="font-mono text-xs"
+                    mono text="xs"
                   />
-                  <span className="mt-1 block text-muted-foreground text-xs">Comments reach the agent's prompt, marked as someone else's words. Anyone can comment on a public repository, so only collaborators count unless you list people.</span>
+                  <span className={sx(paint.s43)}>Comments reach the agent's prompt, marked as someone else's words. Anyone can comment on a public repository, so only collaborators count unless you list people.</span>
                 </label>
               )}
             </div>
           )}
         </div>
-        <div className={cn(kind !== "event" && "hidden")}>
-          <span className="mb-1 block font-medium text-muted-foreground text-xs">From agent</span>
+        <div className={kind !== "event" ? sx(paint.s44) : undefined}>
+          <span className={sx(paint.s45)}>From agent</span>
           <SimpleSelect
             value={w.agent ?? ""}
             disabled={readOnly}
@@ -343,9 +965,9 @@ function TriggerCard({
             options={[{ value: "", label: "Any agent" }, ...(agents.length ? agents : [{ id: "claude", name: "Claude Code" }, { id: "codex", name: "Codex" }]).map((a) => ({ value: a.id, label: a.name }))]}
           />
         </div>
-        <label className={cn("block", kind !== "event" && "col-span-2")}>
-          <span className="mb-1 block font-medium text-muted-foreground text-xs">On branch</span>
-          <Input value={w.branch ?? ""} readOnly={readOnly} onChange={(e) => setW({ branch: e.target.value })} placeholder="Any · fix/* for a prefix" className="font-mono text-xs" />
+        <label className={[sx(paint.s46), kind !== "event" && sx(paint.s47)].filter(Boolean).join(" ")}>
+          <span className={sx(paint.s48)}>On branch</span>
+          <Input value={w.branch ?? ""} readOnly={readOnly} onChange={(e) => setW({ branch: e.target.value })} placeholder="Any · fix/* for a prefix" mono text="xs" />
         </label>
       </div>
     </article>
@@ -359,22 +981,22 @@ function ScheduleFields({ flow, setFlow, readOnly }: { flow: Flow; setFlow(f: Fl
   const set = (patch: Partial<Flow["trigger"]>) => setFlow({ ...flow, trigger: { ...flow.trigger, ...patch } });
   const preset = SCHEDULE_PRESETS.some((p) => p.value === expr) ? expr : "custom";
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+    <div className={sx(paint.s49)}>
       <SimpleSelect
         value={preset}
         disabled={readOnly}
         onChange={(v) => v !== "custom" && set({ schedule: v })}
         options={[...SCHEDULE_PRESETS, { value: "custom", label: "Custom…" }]}
       />
-      <Input value={expr} readOnly={readOnly} onChange={(e) => set({ schedule: e.target.value })} placeholder="0 2 * * *" className="font-mono text-xs" aria-label="Cron expression" />
-      <p className="col-span-2 flex items-center gap-1.5 text-muted-foreground text-xs">
-        <ClockIcon className="size-3.5" />
+      <Input value={expr} readOnly={readOnly} onChange={(e) => set({ schedule: e.target.value })} placeholder="0 2 * * *" mono text="xs" aria-label="Cron expression" />
+      <p className={sx(paint.s50)}>
+        <ClockIcon className={sx(paint.s51)} />
         {describeCron(expr)} · the box's local time
       </p>
-      <label className="col-span-2 flex items-center gap-2 text-sm">
+      <label className={sx(paint.s52)}>
         <Switch checked={!!flow.trigger.each_worktree} disabled={readOnly} onCheckedChange={(v) => set({ each_worktree: v || undefined })} />
         <span>Run once for each worktree</span>
-        <span className="text-muted-foreground text-xs">{flow.trigger.each_worktree ? "every worktree matching the branch below" : "otherwise once, in the repo's main checkout"}</span>
+        <span className={sx(paint.s53)}>{flow.trigger.each_worktree ? "every worktree matching the branch below" : "otherwise once, in the repo's main checkout"}</span>
       </label>
     </div>
   );
@@ -391,28 +1013,28 @@ function RunsFor({ value, options, disabled, onChange }: { value: { box: string;
         render={
           <button
             type="button"
-            className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm shadow-xs/5 outline-none hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-80 sm:h-8 dark:bg-input/32"
+            className={sx(paint.s54)}
           />
         }
       >
-        <ProjectLabel box={value.box} scope={value.scope} className="flex-1" />
-        {!disabled && <ChevronsUpDownIcon className="size-4 shrink-0 opacity-60" />}
+        <ProjectLabel box={value.box} scope={value.scope} className={sx(paint.s55)} />
+        {!disabled && <ChevronsUpDownIcon className={sx(paint.s56)} />}
       </MenuTrigger>
-      <MenuPopup align="start" className="max-h-96 min-w-(--anchor-width)">
+      <MenuPopup align="start" width={menuWidths.anchor}>
         {boxes.map((box, i) => (
           <MenuGroup key={box}>
             {i > 0 && <MenuSeparator />}
-            <MenuGroupLabel className="flex items-center gap-1.5">
-              <ServerIcon className="size-3" />
+            <MenuGroupLabel>
+              <ServerIcon className={sx(paint.s57)} />
               {box}
             </MenuGroupLabel>
             {options
               .filter((o) => o.box === box)
               .map((o) => (
-                <MenuItem key={o.scope} onClick={() => onChange(o)} className={cn(o.box === value.box && o.scope === value.scope && "bg-accent")}>
+                <MenuItem key={o.scope} onClick={() => onChange(o)} current={o.box === value.box && o.scope === value.scope}>
                   {o.scope === "box" ? (
-                    <span className="flex items-center gap-1.5">
-                      <LayersIcon className="size-3.5 text-muted-foreground" />
+                    <span className={sx(paint.s58)}>
+                      <LayersIcon className={sx(paint.s59)} />
                       Any project on {box}
                     </span>
                   ) : (
@@ -432,19 +1054,19 @@ function RunsFor({ value, options, disabled, onChange }: { value: { box: string;
 function Connector({ branch, onAdd }: { branch: string; onAdd?(k: StepKind): void }) {
   const amber = branch === "failure";
   return (
-    <div className="group relative flex h-10 items-center justify-center">
-      <span className={cn("absolute inset-y-0 left-1/2 w-px -translate-x-1/2", amber ? "bg-warning/50" : branch === "always" ? "border-l border-dashed border-muted-foreground/40 bg-transparent" : "bg-border")} />
+    <div className={[sx(paint.s60), "group"].filter(Boolean).join(" ")}>
+      <span className={[[sx(paint.n0), sx(paint.s83)].filter(Boolean).join(" "), amber ? sx(paint.n1) : branch === "always" ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")} />
       {branch !== "success" && (
-        <span className={cn("relative z-10 rounded-full border bg-background px-2 py-px text-[11px]", amber ? "border-warning/40 text-warning-foreground" : "text-muted-foreground")}>{amber ? "if it fails" : "always"}</span>
+        <span className={[sx(paint.s63), amber ? sx(paint.s64) : sx(paint.s65)].filter(Boolean).join(" ")}>{amber ? "if it fails" : "always"}</span>
       )}
       {onAdd && (
         <AddStep onPick={onAdd}>
           <button
             type="button"
             aria-label="Add a step here"
-            className={cn("absolute top-1/2 left-1/2 z-10 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-full border bg-background text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100", branch !== "success" && "left-[calc(50%+64px)]")}
+            className={[[sx(paint.s66), sx(paint.s84)].filter(Boolean).join(" "), branch !== "success" && sx(paint.s67)].filter(Boolean).join(" ")}
           >
-            <PlusIcon className="size-3" />
+            <PlusIcon className={sx(paint.s68)} />
           </button>
         </AddStep>
       )}
@@ -456,7 +1078,7 @@ function AddStep({ onPick, children }: { onPick(k: StepKind): void; children: Re
   return (
     <Menu>
       <MenuTrigger render={children} />
-      <MenuPopup align="center" className="min-w-64">
+      <MenuPopup align="center" width={menuWidths.w64}>
         <MenuGroup>
           <MenuGroupLabel>Add a step</MenuGroupLabel>
           {KIND_ORDER.map((k) => {
@@ -464,9 +1086,9 @@ function AddStep({ onPick, children }: { onPick(k: StepKind): void; children: Re
             return (
               <MenuItem key={k} onClick={() => onPick(k)}>
                 <m.Icon className={m.tone} />
-                <span className="flex flex-col">
+                <span className={sx(paint.s69)}>
                   <span>{m.label}</span>
-                  <span className="text-muted-foreground text-xs">{m.hint}</span>
+                  <span className={sx(paint.s70)}>{m.hint}</span>
                 </span>
               </MenuItem>
             );
@@ -511,14 +1133,14 @@ function TestRun({ box, scope, flow, dirty, onRun }: { box: string; scope: Scope
         <FlaskConicalIcon />
         Test run
       </MenuTrigger>
-      <MenuPopup align="end" className="max-h-96 min-w-64">
+      <MenuPopup align="end" width={menuWidths.w64}>
         <MenuGroup>
           <MenuGroupLabel>{dirty ? "Runs the saved version, for real, in" : "Runs it now, for real, in"}</MenuGroupLabel>
           {choices.length === 0 && <MenuItem disabled>No worktrees on {box}</MenuItem>}
           {choices.map(({ l, wt }) => (
             <MenuItem key={wt.path} onClick={() => void go(l, wt)}>
-              <span className="flex-1 truncate">{wt.main ? l.name : wt.name}</span>
-              <span className="text-muted-foreground text-xs">{loc ? wt.branch : l.name}</span>
+              <span className={sx(paint.s71)}>{wt.main ? l.name : wt.name}</span>
+              <span className={sx(paint.s72)}>{loc ? wt.branch : l.name}</span>
             </MenuItem>
           ))}
         </MenuGroup>
@@ -546,9 +1168,9 @@ function RunBanner({ run, onClear }: { run: FlowRun; onClear(): void }) {
         ? `Test run succeeded: step ${caught + 1} failed and the steps after it handled that, as designed. Results are on each step below.`
         : `Test run ${run.status}: ${ran} of ${run.steps.length} steps ran. Results are on each step below.`;
   return (
-    <div className={cn("mb-5 flex items-center gap-3 rounded-xl border px-4 py-3 text-sm", ok ? "border-success/30 bg-success/6" : "border-destructive/30 bg-destructive/6")}>
-      <FlaskConicalIcon className={cn("size-4 shrink-0", ok ? "text-success" : "text-destructive-foreground")} />
-      <span className="min-w-0 flex-1">
+    <div className={[sx(paint.s73), ok ? sx(paint.s74) : sx(paint.s75)].filter(Boolean).join(" ")}>
+      <FlaskConicalIcon className={[sx(paint.s76), ok ? sx(paint.s77) : sx(paint.s78)].filter(Boolean).join(" ")} />
+      <span className={sx(paint.s79)}>
         {summary}
       </span>
       <Button size="xs" variant="ghost" onClick={onClear}>

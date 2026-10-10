@@ -1,43 +1,47 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import { cn } from "@/lib/utils";
-import { mono, ShimmerLabel } from "./surfaces";
+
+import { mark, mono, pulse, riseIn, ShimmerLabel } from "./surfaces";
+import * as stylex from "@stylexjs/stylex";
+
+const styles = stylex.create({
+  row: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontSize: 14,
+    lineHeight: "20px",
+    color: "color-mix(in oklab, var(--foreground) 55%, transparent)",
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    flexShrink: 0,
+    borderRadius: 999,
+    backgroundColor: "light-dark(var(--color-blue-500), var(--color-blue-400))",
+  },
+  time: {
+    color: "color-mix(in oklab, var(--foreground) 30%, transparent)",
+    fontVariantNumeric: "tabular-nums",
+  },
+});
 
 export function ThinkingIndicator({
   label,
   elapsed,
-  className,
   ...props
-}: Omit<ComponentProps<"div">, "children" | "label" | "elapsed"> & {
+}: Omit<ComponentProps<"div">, "children" | "label" | "elapsed" | "className" | "style"> & {
   label: string;
   elapsed?: string;
 }) {
   return (
-    <div
-      data-slot="thinking-indicator"
-      className={cn(
-        "text-foreground/55 flex items-center gap-2.5 text-sm",
-        className,
-      )}
-
-      {...props}
-    >
-      <span
-        aria-hidden
-        className="size-1.5 shrink-0 animate-pulse rounded-full bg-blue-500 motion-reduce:animate-none dark:bg-blue-400"
-      />
-      <ShimmerLabel
-        key={label}
-        className="fade-in slide-in-from-bottom-1 animate-in relative inline-block leading-none duration-300"
-      >
-        {label}
-      </ShimmerLabel>
-      {elapsed !== undefined && (
-        <span className={cn(mono, "text-foreground/30 tabular-nums")}>
-          {elapsed}
-        </span>
-      )}
+    <div data-slot="thinking-indicator" {...mark(undefined, styles.row)} {...props}>
+      <span aria-hidden {...mark(undefined, styles.dot, pulse)} />
+      <span {...mark(undefined, riseIn)}>
+        <ShimmerLabel key={label}>{label}</ShimmerLabel>
+      </span>
+      {elapsed !== undefined && <span {...mark(undefined, mono, styles.time)}>{elapsed}</span>}
     </div>
   );
 }

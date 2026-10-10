@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import {
   memo,
   useState,
@@ -9,7 +10,6 @@ import {
   type PropsWithChildren,
 } from "react";
 import { createPortal } from "react-dom";
-import { cva, type VariantProps } from "class-variance-authority";
 import {
   CopyIcon,
   DownloadIcon,
@@ -24,8 +24,313 @@ import type {
   ImageMessagePart,
   ImageMessagePartComponent,
 } from "@assistant-ui/react";
-import { cn } from "@/lib/utils";
 import { hostOf, safeHref } from "../utils/href";
+import { fadeIn, pulse, spin } from "./surfaces";
+
+const paint = stylex.create({
+  s0: {
+    "borderColor": "var(--border)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+  },
+  s1: {
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+  },
+  s2: {
+    "maxWidth": "256px",
+  },
+  s3: {
+    "maxWidth": "384px",
+  },
+  s4: {
+    "maxWidth": "512px",
+  },
+  s5: {
+    "width": "100%",
+  },
+  s6: {
+    "position": "relative",
+  },
+  s7: {
+    "minHeight": "128px",
+  },
+  s8: {
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s9: {
+    "color": "var(--muted-foreground)",
+    "width": "32px",
+    "height": "32px",
+  },
+  s10: {
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+    "display": "flex",
+    "minHeight": "128px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "padding": "16px",
+  },
+  s11: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+  },
+  s12: {
+    "color": "var(--muted-foreground)",
+    "width": "32px",
+    "height": "32px",
+  },
+  s13: {
+    "display": "block",
+    "height": "auto",
+    "width": "100%",
+    "objectFit": "contain",
+  },
+  s14: {
+    "color": "var(--muted-foreground)",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s15: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "borderRadius": "var(--radius-sm)",
+  },
+  s16: {
+    "backgroundColor": "var(--muted)",
+    "display": "flex",
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-sm)",
+    "fontSize": "10px",
+    "fontWeight": 500,
+  },
+  s17: {
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s18: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+  s19: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s20: {
+    "color": "var(--muted-foreground)",
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s21: {
+    "cursor": "zoom-in",
+  },
+  s22: {
+    "position": "fixed",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "zIndex": 50,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "backgroundColor": "color-mix(in oklab, #000 80%, transparent)",
+    "transitionDuration": "200ms",
+  },
+  s23: {
+    "maxHeight": "90vh",
+    "maxWidth": "90vw",
+    "cursor": "zoom-out",
+    "objectFit": "contain",
+    "transitionDuration": "200ms",
+  },
+  s24: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": "color-mix(in oklab, var(--background) 80%, transparent)",
+    "position": "absolute",
+    "insetInlineEnd": "16px",
+    "top": "16px",
+    "cursor": "pointer",
+    "borderRadius": "var(--radius-md)",
+    "padding": "8px",
+  },
+  s25: {
+    "width": "20px",
+    "height": "20px",
+  },
+  s26: {
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+    "display": "flex",
+    "minHeight": "128px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "padding": "16px",
+  },
+  s27: {
+    "color": "var(--muted-foreground)",
+    "width": "32px",
+    "height": "32px",
+  },
+  s28: {
+    "position": "absolute",
+    "width": "1px",
+    "height": "1px",
+    "padding": 0,
+    "margin": "-1px",
+    "overflow": "hidden",
+    "clip": "rect(0,0,0,0)",
+    "whiteSpace": "nowrap",
+    "borderWidth": 0,
+  },
+  s29: {
+    "backgroundColor": "color-mix(in oklab, var(--muted) 50%, transparent)",
+    "display": "flex",
+    "minHeight": "128px",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "padding": "16px",
+    "textAlign": "center",
+  },
+  s30: {
+    "color": "var(--muted-foreground)",
+    "width": "32px",
+    "height": "32px",
+  },
+  s31: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "fontWeight": 500,
+  },
+  s32: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s33: {
+    "backgroundColor": {
+      ":hover": "var(--muted)",
+    },
+    "display": "inline-flex",
+    "width": "28px",
+    "height": "28px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "opacity": {
+      ":disabled": 0.5,
+    },
+  },
+  s34: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s35: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "padding": "4px",
+  },
+  s36: {
+    "backgroundColor": {
+      ":hover": "var(--muted)",
+    },
+    "display": "inline-flex",
+    "width": "28px",
+    "height": "28px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+  },
+  s37: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s38: {
+    "backgroundColor": {
+      ":hover": "var(--muted)",
+    },
+    "display": "inline-flex",
+    "width": "28px",
+    "height": "28px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+  },
+  s39: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s40: {
+    "position": "relative",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+  },
+  s41: { "aspectRatio": "1" },
+  s42: { "aspectRatio": "4 / 3" },
+  s43: { "aspectRatio": "16 / 9" },
+  s44: { "aspectRatio": "9 / 16" },
+  s45: {
+    "display": "block",
+    "height": "100%",
+    "width": "100%",
+  },
+  s46: { "objectFit": "cover" },
+  s47: { "objectFit": "contain" },
+  s48: { "visibility": "hidden" },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const extensionForMimeType = (mimeType?: string): string => {
   switch (mimeType) {
@@ -141,31 +446,35 @@ const copyImagePart = async (
   await navigator.clipboard.write([new ClipboardItem({ [mime]: blob })]);
 };
 
-const imageVariants = cva(
-  "aui-image-root relative overflow-hidden rounded-lg",
-  {
-    variants: {
-      variant: {
-        outline: "border-border border",
-        ghost: "",
-        muted: "bg-muted/50",
-      },
-      size: {
-        sm: "max-w-64",
-        default: "max-w-96",
-        lg: "max-w-[512px]",
-        full: "w-full",
-      },
-    },
-    defaultVariants: {
-      variant: "outline",
-      size: "default",
-    },
-  },
-);
+type ImageVariant = "outline" | "ghost" | "muted";
+type ImageSize = "sm" | "default" | "lg" | "full";
 
-export type ImageRootProps = React.ComponentProps<"div"> &
-  VariantProps<typeof imageVariants>;
+function imageRootClass(
+  variant: ImageVariant | null | undefined,
+  size: ImageSize | null | undefined,
+) {
+  return [
+    "aui-image-root",
+    sx(
+      paint.s40,
+      variant === "ghost" ? false : variant === "muted" ? paint.s1 : paint.s0,
+      size === "sm"
+        ? paint.s2
+        : size === "lg"
+          ? paint.s4
+          : size === "full"
+            ? paint.s5
+            : paint.s3,
+    ),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export type ImageRootProps = React.ComponentProps<"div"> & {
+  variant?: ImageVariant | null | undefined;
+  size?: ImageSize | null | undefined;
+};
 
 function ImageRoot({
   className,
@@ -179,7 +488,7 @@ function ImageRoot({
       data-slot="image-root"
       data-variant={variant}
       data-size={size}
-      className={cn(imageVariants({ variant, size, className }))}
+      className={[imageRootClass(variant, size), className].filter(Boolean).join(" ")}
       {...props}
     >
       {children}
@@ -211,16 +520,16 @@ function ImagePreview({
   const loaded = loadedSrc === src;
   const error = errorSrc === src;
   const fixedRatio = ratio !== "auto";
-  const ratioClassName =
+  const ratioStyle =
     ratio === "1:1"
-      ? "aspect-square"
+      ? paint.s41
       : ratio === "4:3"
-        ? "aspect-[4/3]"
+        ? paint.s42
         : ratio === "16:9"
-          ? "aspect-video"
+          ? paint.s43
           : ratio === "9:16"
-            ? "aspect-[9/16]"
-            : undefined;
+            ? paint.s44
+            : false;
 
   useEffect(() => {
     const image = imgRef.current;
@@ -232,45 +541,36 @@ function ImagePreview({
   return (
     <div
       data-slot="image-preview"
-      className={cn(
-        "relative",
-        fixedRatio ? ratioClassName : "min-h-32",
-        containerClassName,
-      )}
+      className={[sx(paint.s6, fixedRatio ? ratioStyle : paint.s7), containerClassName].filter(Boolean).join(" ")}
     >
       {!loaded && !error && (
         <div
           data-slot="image-preview-loading"
-          className="bg-muted/50 absolute inset-0 flex items-center justify-center"
+          className={sx(paint.s8)}
         >
-          <ImageIcon className="text-muted-foreground size-8 animate-pulse" />
+          <ImageIcon className={sx(paint.s9, pulse)} />
         </div>
       )}
       {error ? (
         <div
           data-slot="image-preview-error"
-          className={cn(
-            "bg-muted/50 flex min-h-32 items-center justify-center p-4",
-            fixedRatio && "absolute inset-0",
-          )}
+          className={[sx(paint.s10), fixedRatio && sx(paint.s11)].filter(Boolean).join(" ")}
         >
-          <ImageOffIcon className="text-muted-foreground size-8" />
+          <ImageOffIcon className={sx(paint.s12)} />
         </div>
       ) : (
         <img
           ref={imgRef}
           src={src}
           alt={alt}
-          className={cn(
-            fixedRatio
-              ? cn("block h-full w-full", {
-                  "object-cover": fit === "cover",
-                  "object-contain": fit === "contain",
-                })
-              : "block h-auto w-full object-contain",
-            !loaded && "invisible",
+          className={[
+            sx(
+              fixedRatio ? paint.s45 : paint.s13,
+              fixedRatio && (fit === "cover" ? paint.s46 : paint.s47),
+              !loaded && paint.s48,
+            ),
             className,
-          )}
+          ].filter(Boolean).join(" ")}
           onLoad={(e) => {
             if (typeof src === "string") setLoadedSrc(src);
             onLoad?.(e);
@@ -311,10 +611,7 @@ function ImageSource({
   return (
     <div
       data-slot="image-source"
-      className={cn(
-        "text-muted-foreground flex items-center gap-2 border-t px-2 py-1.5 text-xs",
-        className,
-      )}
+      className={[sx(paint.s14), className].filter(Boolean).join(" ")}
       {...props}
     >
       {showIcon ? (
@@ -322,14 +619,14 @@ function ImageSource({
           data-slot="image-source-icon"
           src={iconUrl}
           alt=""
-          className="size-4 shrink-0 rounded-sm"
+          className={sx(paint.s15)}
           onError={() => setFailedIconUrl(iconUrl)}
         />
       ) : (
         <span
           data-slot="image-source-icon-fallback"
           aria-hidden="true"
-          className="bg-muted flex size-4 shrink-0 items-center justify-center rounded-sm text-[10px] font-medium"
+          className={sx(paint.s16)}
         >
           {displayLabel.charAt(0).toUpperCase()}
         </span>
@@ -340,13 +637,13 @@ function ImageSource({
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="hover:text-foreground truncate"
+          className={sx(paint.s17)}
         >
           {displayLabel}
-          <span className="sr-only"> (opens in a new tab)</span>
+          <span className={sx(paint.s18)}> (opens in a new tab)</span>
         </a>
       ) : (
-        <span data-slot="image-source-label" className="truncate">
+        <span data-slot="image-source-label" className={sx(paint.s19)}>
           {displayLabel}
         </span>
       )}
@@ -364,10 +661,7 @@ function ImageFilename({
   return (
     <span
       data-slot="image-filename"
-      className={cn(
-        "text-muted-foreground block truncate px-2 py-1.5 text-xs",
-        className,
-      )}
+      className={[sx(paint.s20), className].filter(Boolean).join(" ")}
       {...props}
     >
       {children}
@@ -449,7 +743,7 @@ function ImageZoom({ src, alt = "Image preview", children }: ImageZoomProps) {
         }}
         role="button"
         tabIndex={0}
-        className="aui-image-zoom-trigger cursor-zoom-in"
+        className={[sx(paint.s21), "aui-image-zoom-trigger"].filter(Boolean).join(" ")}
         aria-label="Click to zoom image"
       >
         {children}
@@ -461,7 +755,7 @@ function ImageZoom({ src, alt = "Image preview", children }: ImageZoomProps) {
             data-slot="image-zoom-overlay"
             role="dialog"
             aria-modal="true"
-            className="aui-image-zoom-overlay fade-in animate-in fixed inset-0 z-50 flex items-center justify-center bg-black/80 duration-200"
+            className={["aui-image-zoom-overlay", sx(paint.s22, fadeIn)].filter(Boolean).join(" ")}
             onClick={handleClose}
             aria-label="Zoomed image"
           >
@@ -469,7 +763,7 @@ function ImageZoom({ src, alt = "Image preview", children }: ImageZoomProps) {
               data-slot="image-zoom-content"
               src={src}
               alt={alt}
-              className="aui-image-zoom-content fade-in zoom-in-95 animate-in max-h-[90vh] max-w-[90vw] cursor-zoom-out object-contain duration-200"
+              className={["aui-image-zoom-content", sx(paint.s23, fadeIn)].filter(Boolean).join(" ")}
               onClick={(e) => {
                 e.stopPropagation();
                 handleClose();
@@ -483,9 +777,9 @@ function ImageZoom({ src, alt = "Image preview", children }: ImageZoomProps) {
                 e.stopPropagation();
                 handleClose();
               }}
-              className="text-muted-foreground hover:text-foreground bg-background/80 absolute end-4 top-4 cursor-pointer rounded-md p-2"
+              className={sx(paint.s24)}
             >
-              <XIcon className="size-5" />
+              <XIcon className={sx(paint.s25)} />
             </button>
           </div>,
           document.body,
@@ -498,13 +792,10 @@ function ImageGenerating({ className }: { className?: string }) {
   return (
     <div
       data-slot="image-generating"
-      className={cn(
-        "bg-muted/50 flex min-h-32 items-center justify-center p-4",
-        className,
-      )}
+      className={[sx(paint.s26), className].filter(Boolean).join(" ")}
     >
-      <Loader2Icon className="text-muted-foreground size-8 animate-spin" />
-      <span className="sr-only">Generating image…</span>
+      <Loader2Icon className={sx(paint.s27, spin)} />
+      <span className={sx(paint.s28)}>Generating image…</span>
     </div>
   );
 }
@@ -519,14 +810,11 @@ function ImageContentFilterError({
   return (
     <div
       data-slot="image-content-filter-error"
-      className={cn(
-        "bg-muted/50 flex min-h-32 flex-col items-center justify-center gap-2 p-4 text-center",
-        className,
-      )}
+      className={[sx(paint.s29), className].filter(Boolean).join(" ")}
     >
-      <ShieldAlertIcon className="text-muted-foreground size-8" />
-      <p className="text-sm font-medium">Image could not be generated</p>
-      {reason && <p className="text-muted-foreground text-xs">{reason}</p>}
+      <ShieldAlertIcon className={sx(paint.s30)} />
+      <p className={sx(paint.s31)}>Image could not be generated</p>
+      {reason && <p className={sx(paint.s32)}>{reason}</p>}
     </div>
   );
 }
@@ -562,10 +850,10 @@ function RegenerateButton({
       disabled={isRegenerating}
       data-slot="image-regenerate"
       aria-label="Regenerate image"
-      className="hover:bg-muted inline-flex size-7 items-center justify-center rounded disabled:opacity-50"
+      className={sx(paint.s33)}
     >
       <RefreshCwIcon
-        className={cn("size-4", isRegenerating && "animate-spin")}
+        className={sx(paint.s34, isRegenerating && spin)}
       />
     </button>
   );
@@ -575,16 +863,16 @@ function ImageActions({ part, onRegenerate, className }: ImageActionsProps) {
   return (
     <div
       data-slot="image-actions"
-      className={cn("flex items-center gap-1 p-1", className)}
+      className={[sx(paint.s35), className].filter(Boolean).join(" ")}
     >
       <button
         type="button"
         onClick={() => downloadImagePart(part)}
         data-slot="image-download"
         aria-label="Download image"
-        className="hover:bg-muted inline-flex size-7 items-center justify-center rounded"
+        className={sx(paint.s36)}
       >
-        <DownloadIcon className="size-4" />
+        <DownloadIcon className={sx(paint.s37)} />
       </button>
       <button
         type="button"
@@ -593,9 +881,9 @@ function ImageActions({ part, onRegenerate, className }: ImageActionsProps) {
         }}
         data-slot="image-copy"
         aria-label="Copy image"
-        className="hover:bg-muted inline-flex size-7 items-center justify-center rounded"
+        className={sx(paint.s38)}
       >
-        <CopyIcon className="size-4" />
+        <CopyIcon className={sx(paint.s39)} />
       </button>
       {onRegenerate && <RegenerateButton onRegenerate={onRegenerate} />}
     </div>
@@ -663,5 +951,4 @@ export {
   ImageActions,
   ImageGenerating,
   ImageContentFilterError,
-  imageVariants,
 };

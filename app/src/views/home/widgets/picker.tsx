@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckIcon, PlugIcon, PlusIcon, SearchIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -9,12 +10,432 @@ import { errorMessage } from "@/lib/format";
 import { SIZE_ORDER, SIZES, type WidgetSize } from "@/lib/home-layout";
 import { builtinOn, setBuiltinOn, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { builtinPlugins, loadPlugins } from "@/plugins/host";
 
 import { WidgetBoundary, WidgetHeading } from "./card";
 import { GAP, HomeWidgetProvider, ROW } from "./env";
 import { CATEGORIES, type WidgetDef } from "./registry";
+import { color } from "@/styles/tokens.stylex";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "0px",
+  },
+  s1: {
+    "display": "flex",
+    "width": "340px",
+    "flexShrink": 0,
+    "flexDirection": "column",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+  },
+  s2: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "14px",
+    "paddingBottom": "10px",
+  },
+  s3: {
+    "marginLeft": "12px",
+    "marginRight": "12px",
+    "display": "flex",
+    "height": "32px",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "boxShadow": {
+      ":focus-within": "0 0 0 2px var(--ring)",
+    },
+  },
+  s4: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s5: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "transparent",
+    "outline": "none",
+    "color": {
+      "::placeholder": "var(--muted-foreground)",
+    },
+  },
+  s6: {
+    "marginTop": "8px",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflowY": "auto",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingBottom": "8px",
+  },
+  s7: {
+    "paddingBottom": "6px",
+  },
+  s8: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "4px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s9: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s10: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "24px",
+    "paddingBottom": "24px",
+    "textAlign": "center",
+    "color": "var(--muted-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s11: {
+    "display": "flex",
+    "minHeight": "0px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+  },
+  s12: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "overflow": "hidden",
+    "padding": "24px",
+  },
+  s13: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "12px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "backgroundColor": "var(--popover)",
+    "paddingLeft": "20px",
+    "paddingRight": "20px",
+    "paddingTop": "16px",
+    "paddingBottom": "16px",
+  },
+  s14: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "12px",
+  },
+  s15: {
+    "display": "flex",
+    "minWidth": "192px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s16: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s17: {
+    "borderRadius": "var(--radius-sm)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "fontWeight": 400,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s18: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s19: {
+    "display": "flex",
+    "alignItems": "center",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "padding": "2px",
+  },
+  s20: {
+    "height": "24px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s21: {
+    "backgroundColor": "var(--foreground)",
+    "color": "var(--background)",
+  },
+  s22: {
+    "color": "var(--muted-foreground)",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s23: {
+    "display": "grid",
+    "gridTemplateColumns": "64px 1fr",
+    "columnGap": "12px",
+    "rowGap": "4px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s24: {
+    "color": "var(--muted-foreground)",
+  },
+  s25: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "flex-start",
+    "gap": "10px",
+    "borderRadius": "var(--radius-lg)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "textAlign": "left",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s26: {
+    "backgroundColor": "var(--accent)",
+  },
+  s27: {
+    "marginTop": "2px",
+    "display": "flex",
+    "width": "28px",
+    "height": "28px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--background)",
+  },
+  s28: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s29: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s30: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s31: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+  },
+  s32: {
+    "marginLeft": "auto",
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "2px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s33: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s34: {
+    "overflow": "hidden",
+    "display": "-webkit-box",
+    "WebkitLineClamp": 2,
+    "WebkitBoxOrient": "vertical",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s35: {
+    "pointerEvents": "none",
+    "position": "relative",
+  },
+  s36: {
+    "position": "absolute",
+    "top": "0px",
+    "left": "0px",
+  },
+  s37: {
+    "width": "100%",
+    "height": "100%",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s38: {
+    "display": "flex",
+    "width": "100%",
+    "height": "100%",
+    "flexDirection": "column",
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--card)",
+    "color": "var(--card-foreground)",
+    "boxShadow": "0 4px 6px color-mix(in oklab, var(--foreground) 10%, transparent)",
+  },
+  s39: {
+    "position": "relative",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "paddingLeft": "4px",
+    "paddingRight": "4px",
+    "paddingBottom": "6px",
+  },
+  s40: {
+    "marginTop": "4px",
+    "borderTopWidth": 1,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "10px",
+  },
+  s41: {
+    "paddingBottom": "6px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s42: {
+    "display": "flex",
+    "alignItems": "flex-start",
+    "gap": "10px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+  },
+  s43: {
+    "marginTop": "2px",
+    "display": "flex",
+    "width": "28px",
+    "height": "28px",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 1,
+    "borderStyle": "dashed",
+    "borderColor": "var(--border)",
+  },
+  s44: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s45: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s46: {
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s47: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+
+  s48: {
+    "@media (max-width: 720px)": {
+      flexDirection: "column",
+    },
+  },
+  s49: {
+    "@media (max-width: 720px)": {
+      height: "50%",
+      width: "100%",
+      borderRightWidth: 0,
+      borderBottomWidth: 1,
+      borderBottomStyle: "solid",
+      borderBottomColor: color.border,
+    },
+  },
+  s50: {
+    containerType: "inline-size",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // "Add widget": every widget there is, Burf's by what they're about and
 // each plugin's under the plugin's name, with the one picked drawn live at
@@ -57,22 +478,22 @@ export function AddWidgetDialog({ open, onOpenChange, defs, have, onAdd }: { ope
   const on = have.includes(def.id);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup className="h-[min(620px,88vh)] max-w-[min(940px,calc(100vw-2rem))] overflow-hidden p-0" bottomStickOnMobile={false} data-testid="widget-picker">
-        <div className="flex h-full min-h-0 max-[720px]:flex-col">
-          <div className="flex w-[340px] shrink-0 flex-col border-r max-[720px]:h-1/2 max-[720px]:w-full max-[720px]:border-r-0 max-[720px]:border-b">
-            <div className="flex flex-col gap-0.5 px-4 pt-3.5 pb-2.5">
-              <DialogTitle className="font-semibold text-base">Add a widget</DialogTitle>
-              <DialogDescription className="text-muted-foreground text-xs">Pick one to see it with your data.</DialogDescription>
+      <DialogPopup bottomStickOnMobile={false} data-testid="widget-picker" frame="picker">
+        <div className={[sx(paint.s0), sx(paint.s48)].filter(Boolean).join(" ")}>
+          <div className={[sx(paint.s1), sx(paint.s49)].filter(Boolean).join(" ")}>
+            <div className={sx(paint.s2)}>
+              <DialogTitle size="base">Add a widget</DialogTitle>
+              <DialogDescription size="xs">Pick one to see it with your data.</DialogDescription>
             </div>
-            <label className="mx-3 flex h-8 items-center gap-2 rounded-lg border bg-background px-2 text-sm focus-within:ring-2 focus-within:ring-ring">
-              <SearchIcon className="size-3.5 text-muted-foreground" />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search widgets" aria-label="Search widgets" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
+            <label className={sx(paint.s3)}>
+              <SearchIcon className={sx(paint.s4)} />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search widgets" aria-label="Search widgets" className={sx(paint.s5)} />
             </label>
-            <div className="mt-2 min-h-0 flex-1 overflow-y-auto px-1.5 pb-2" role="listbox" aria-label="Widgets">
+            <div className={sx(paint.s6)} role="listbox" aria-label="Widgets">
               {groups.map((g) => (
-                <div key={g.label} role="group" aria-label={g.plugin ? `From the ${g.label} plugin` : g.label} className="pb-1.5">
-                  <p className="flex items-center gap-1.5 px-2 pt-1.5 pb-1 text-[11px] text-muted-foreground">
-                    {g.plugin && <PlugIcon className="size-3" />}
+                <div key={g.label} role="group" aria-label={g.plugin ? `From the ${g.label} plugin` : g.label} className={sx(paint.s7)}>
+                  <p className={sx(paint.s8)}>
+                    {g.plugin && <PlugIcon className={sx(paint.s9)} />}
                     {g.label}
                   </p>
                   {g.list.map((w) => (
@@ -80,25 +501,25 @@ export function AddWidgetDialog({ open, onOpenChange, defs, have, onAdd }: { ope
                   ))}
                 </div>
               ))}
-              {!groups.length && <p className="px-3 py-6 text-center text-muted-foreground text-sm">No widget matches “{q}”.</p>}
+              {!groups.length && <p className={sx(paint.s10)}>No widget matches “{q}”.</p>}
               {!q && <OffPlugins />}
             </div>
           </div>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-muted/40">
-            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-6">
+          <div className={sx(paint.s11)}>
+            <div className={sx(paint.s12)}>
               <Preview def={def} size={size} />
             </div>
-            <div className="flex flex-col gap-3 border-t bg-popover px-5 py-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex min-w-48 flex-1 flex-col">
-                  <span className="flex items-center gap-1.5 font-medium text-sm">
+            <div className={sx(paint.s13)}>
+              <div className={sx(paint.s14)}>
+                <div className={sx(paint.s15)}>
+                  <span className={sx(paint.s16)}>
                     {def.title}
-                    {def.plugin && <span className="rounded-sm border px-1 font-normal text-[11px] text-muted-foreground">{def.plugin.name} plugin</span>}
+                    {def.plugin && <span className={sx(paint.s17)}>{def.plugin.name} plugin</span>}
                   </span>
-                  <span className="text-muted-foreground text-xs">{def.description}</span>
+                  <span className={sx(paint.s18)}>{def.description}</span>
                 </div>
                 {def.sizes.length > 1 && (
-                  <div role="radiogroup" aria-label="Size" className="flex items-center rounded-lg border p-0.5">
+                  <div role="radiogroup" aria-label="Size" className={sx(paint.s19)}>
                     {SIZE_ORDER.filter((s) => def.sizes.includes(s)).map((s) => (
                       <button
                         key={s}
@@ -106,7 +527,7 @@ export function AddWidgetDialog({ open, onOpenChange, defs, have, onAdd }: { ope
                         role="radio"
                         aria-checked={s === size}
                         onClick={() => setSize(s)}
-                        className={cn("h-6 rounded-md px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring", s === size ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent")}
+                        className={[sx(paint.s20), s === size ? sx(paint.s21) : sx(paint.s22)].filter(Boolean).join(" ")}
                       >
                         {SIZES[s].label}
                       </button>
@@ -118,8 +539,8 @@ export function AddWidgetDialog({ open, onOpenChange, defs, have, onAdd }: { ope
                   {on ? "On Home" : "Add to Home"}
                 </Button>
               </div>
-              <dl className="grid grid-cols-[64px_1fr] gap-x-3 gap-y-1 text-xs">
-                <dt className="text-muted-foreground">Data</dt>
+              <dl className={sx(paint.s23)}>
+                <dt className={sx(paint.s24)}>Data</dt>
                 <dd>{def.source}</dd>
               </dl>
             </div>
@@ -148,21 +569,21 @@ function Option({ w, selected, on, onSelect, onAdd }: { w: WidgetDef; selected: 
       onFocus={onSelect}
       data-testid="widget-option"
       data-widget-id={w.id}
-      className={cn("flex w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring", selected && "bg-accent")}
+      className={[sx(paint.s25), selected && sx(paint.s26)].filter(Boolean).join(" ")}
     >
-      <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border bg-background">
-        <Icon className="size-3.5 text-muted-foreground" />
+      <span className={sx(paint.s27)}>
+        <Icon className={sx(paint.s28)} />
       </span>
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="flex items-center gap-1.5 text-sm">
-          <span className="truncate font-medium">{w.title}</span>
+      <span className={sx(paint.s29)}>
+        <span className={sx(paint.s30)}>
+          <span className={sx(paint.s31)}>{w.title}</span>
           {on && (
-            <span className="ml-auto flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
-              <CheckIcon className="size-3" /> On Home
+            <span className={sx(paint.s32)}>
+              <CheckIcon className={sx(paint.s33)} /> On Home
             </span>
           )}
         </span>
-        <span className="line-clamp-2 text-muted-foreground text-xs">{w.description}</span>
+        <span className={sx(paint.s34)}>{w.description}</span>
       </span>
     </button>
   );
@@ -190,15 +611,15 @@ function Preview({ def, size }: { def: WidgetDef; size: WidgetSize }) {
     </WidgetBoundary>
   );
   return (
-    <div ref={ref} style={{ width: W * scale, height: H * scale }} className="pointer-events-none relative" aria-label={`Preview of ${def.title}`} role="img" inert>
-      <div style={{ width: W, height: H, transform: `scale(${scale})`, transformOrigin: "0 0" }} className="absolute top-0 left-0">
+    <div ref={ref} style={{ width: W * scale, height: H * scale }} className={sx(paint.s35)} aria-label={`Preview of ${def.title}`} role="img" inert>
+      <div style={{ width: W, height: H, transform: `scale(${scale})`, transformOrigin: "0 0" }} className={sx(paint.s36)}>
         <HomeWidgetProvider size={size} cols={4} visible refresh={0} preview bare={def.bare}>
         {def.bare ? (
-          <div className="size-full overflow-hidden rounded-lg border">{def.wrap ? def.wrap(body) : body}</div>
+          <div className={sx(paint.s37)}>{def.wrap ? def.wrap(body) : body}</div>
         ) : (
-          <section className="flex size-full flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-md/5">
+          <section className={sx(paint.s38)}>
             <WidgetHeading def={def} />
-            <div className="@container relative min-h-0 flex-1 overflow-hidden px-1 pb-1.5">{def.wrap ? def.wrap(body) : body}</div>
+            <div className={[sx(paint.s39), sx(paint.s50)].filter(Boolean).join(" ")}>{def.wrap ? def.wrap(body) : body}</div>
           </section>
         )}
         </HomeWidgetProvider>
@@ -236,16 +657,16 @@ function OffPlugins() {
     }
   };
   return (
-    <div className="mt-1 border-t px-2 pt-2.5">
-      <p className="pb-1.5 text-[11px] text-muted-foreground">More with plugins that are off</p>
+    <div className={sx(paint.s40)}>
+      <p className={sx(paint.s41)}>More with plugins that are off</p>
       {off.map((p) => (
-        <div key={p.id} className="flex items-start gap-2.5 py-1.5">
-          <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-dashed">
-            <PlugIcon className="size-3.5 text-muted-foreground" />
+        <div key={p.id} className={sx(paint.s42)}>
+          <span className={sx(paint.s43)}>
+            <PlugIcon className={sx(paint.s44)} />
           </span>
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="text-sm">{p.homeWidgets!.join(", ")}</span>
-            <span className="text-muted-foreground text-xs">From {p.name}</span>
+          <span className={sx(paint.s45)}>
+            <span className={sx(paint.s46)}>{p.homeWidgets!.join(", ")}</span>
+            <span className={sx(paint.s47)}>From {p.name}</span>
           </span>
           <Button size="xs" variant="outline" disabled={busy === p.id} onClick={() => void turnOn(p)}>
             Turn on

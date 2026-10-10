@@ -9,14 +9,26 @@ import {
   ThumbsDownIcon,
   ThumbsUpIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ghostButton, iconSwap, iconSwapIn, iconSwapOut } from "./surfaces";
+import * as stylex from "@stylexjs/stylex";
+
+import { ghostButton, iconSwap, iconSwapIn, iconSwapOut, mark, spin } from "./surfaces";
+
+const styles = stylex.create({
+  row: { display: "flex", alignItems: "center", gap: 4 },
+  button: { width: 28, height: 28, display: "grid", placeItems: "center" },
+  copied: { color: "var(--color-emerald-500)" },
+  pressed: {
+    backgroundColor: "light-dark(color-mix(in oklab, var(--foreground) 6%, transparent), color-mix(in oklab, var(--foreground) 9%, transparent))",
+    color: "color-mix(in oklab, var(--foreground) 90%, transparent)",
+  },
+  icon: { width: 14, height: 14 },
+});
 
 export type Reaction = "up" | "down" | null;
 
 export interface MessageActionsProps extends Omit<
   ComponentProps<"div">,
-  "children"
+  "children" | "className" | "style"
 > {
   copied: boolean;
   reaction: Reaction;
@@ -35,89 +47,42 @@ export function MessageActions({
   onReactionChange,
   onRegenerate,
   onMore,
-  className,
   ...props
 }: MessageActionsProps) {
-  const buttonClassName = cn(ghostButton, "size-7");
-
   return (
-    <div
-      data-slot="message-actions"
-      className={cn("flex items-center gap-1", className)}
-
-      {...props}
-    >
+    <div data-slot="message-actions" {...mark(undefined, styles.row)} {...props}>
       <button
         type="button"
         aria-label={copied ? "Copied response" : "Copy response"}
         onClick={onCopy}
-        className={cn(
-          buttonClassName,
-          "grid place-items-center",
-          copied && "text-emerald-500",
-        )}
+        {...mark(undefined, ghostButton, styles.button, copied && styles.copied)}
       >
-        <CopyIcon
-          className={cn(
-            iconSwap,
-            "size-3.5",
-            copied ? iconSwapOut : iconSwapIn,
-          )}
-        />
-        <CheckIcon
-          className={cn(
-            iconSwap,
-            "size-3.5",
-            copied ? iconSwapIn : iconSwapOut,
-          )}
-        />
+        <CopyIcon {...mark(undefined, iconSwap, styles.icon, copied ? iconSwapOut : iconSwapIn)} />
+        <CheckIcon {...mark(undefined, iconSwap, styles.icon, copied ? iconSwapIn : iconSwapOut)} />
       </button>
       <button
         type="button"
         aria-label="Mark response helpful"
         aria-pressed={reaction === "up"}
         onClick={() => onReactionChange(reaction === "up" ? null : "up")}
-        className={cn(
-          buttonClassName,
-          reaction === "up" &&
-            "bg-foreground/[0.06] text-foreground/90 dark:bg-foreground/[0.09]",
-        )}
+        {...mark(undefined, ghostButton, styles.button, reaction === "up" && styles.pressed)}
       >
-        <ThumbsUpIcon className="size-3.5" />
+        <ThumbsUpIcon {...mark(undefined, styles.icon)} />
       </button>
       <button
         type="button"
         aria-label="Mark response unhelpful"
         aria-pressed={reaction === "down"}
         onClick={() => onReactionChange(reaction === "down" ? null : "down")}
-        className={cn(
-          buttonClassName,
-          reaction === "down" &&
-            "bg-foreground/[0.06] text-foreground/90 dark:bg-foreground/[0.09]",
-        )}
+        {...mark(undefined, ghostButton, styles.button, reaction === "down" && styles.pressed)}
       >
-        <ThumbsDownIcon className="size-3.5" />
+        <ThumbsDownIcon {...mark(undefined, styles.icon)} />
       </button>
-      <button
-        type="button"
-        aria-label="Regenerate response"
-        onClick={onRegenerate}
-        className={buttonClassName}
-      >
-        <RefreshCwIcon
-          className={cn(
-            "size-3.5",
-            regenerating && "animate-spin motion-reduce:animate-none",
-          )}
-        />
+      <button type="button" aria-label="Regenerate response" onClick={onRegenerate} {...mark(undefined, ghostButton, styles.button)}>
+        <RefreshCwIcon {...mark(undefined, styles.icon, regenerating && spin)} />
       </button>
-      <button
-        type="button"
-        aria-label="More response actions"
-        onClick={onMore}
-        className={buttonClassName}
-      >
-        <EllipsisIcon className="size-3.5" />
+      <button type="button" aria-label="More response actions" onClick={onMore} {...mark(undefined, ghostButton, styles.button)}>
+        <EllipsisIcon {...mark(undefined, styles.icon)} />
       </button>
     </div>
   );

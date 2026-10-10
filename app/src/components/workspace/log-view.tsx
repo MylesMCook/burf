@@ -1,9 +1,59 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
 
 import { boxApi } from "@/lib/api";
 import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 import { ErrorText } from "@/components/error-note";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+    "backgroundColor": "var(--background)",
+  },
+  s1: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "color": "var(--destructive)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s2: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "auto",
+    "whiteSpace": "pre-wrap",
+    "wordBreak": "break-all",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "color": "color-mix(in oklab, var(--foreground) 90%, transparent)",
+    "lineHeight": "1.45",
+    "userSelect": "text",
+  },
+  s3: {
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 interface Props {
   box: string;
@@ -49,17 +99,17 @@ export function LogView({ box, location, worktree, service, visible }: Props) {
   }, [text]);
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col bg-background">
-      {error && <ErrorText className="border-b px-3 py-1.5 text-destructive text-xs" text={error} />}
+    <div className={sx(paint.s0)}>
+      {error && <ErrorText className={sx(paint.s1)} text={error} />}
       <pre
         ref={scroller}
         onScroll={(e) => {
           const el = e.currentTarget;
           pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
         }}
-        className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all px-3 py-2 font-mono text-[12px] text-foreground/90 leading-[1.45] select-text"
+        className={sx(paint.s2)}
       >
-        {text || <span className="text-muted-foreground">Nothing logged yet.</span>}
+        {text || <span className={sx(paint.s3)}>Nothing logged yet.</span>}
       </pre>
     </div>
   );

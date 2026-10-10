@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { SearchIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -18,6 +19,113 @@ import { type BulkAction, useBulk } from "@/views/worktrees/use-bulk";
 import { openWorktree, type Row, useWorktrees } from "@/views/worktrees/use-worktrees";
 import { type Group, WorktreeTable } from "@/views/worktrees/worktree-table";
 import { BoxError } from "@/components/upgrade-box";
+
+const paint = stylex.create({
+  s0: {
+    "position": "relative",
+    "display": "flex",
+    "height": "100%",
+    "flexDirection": "column",
+  },
+  s1: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "8px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s2: {
+    "position": "relative",
+    "width": "224px",
+    "minWidth": "144px",
+    "flexShrink": 1,
+  },
+  s3: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "left": "10px",
+    "zIndex": 10,
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "width": "160px",
+    "minWidth": "112px",
+    "flexShrink": 1,
+  },
+  s5: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s6: {
+    "flexShrink": 0,
+  },
+  s7: {
+    "marginLeft": "auto",
+    "width": "176px",
+    "minWidth": "128px",
+    "flexShrink": 1,
+  },
+  s8: {
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "auto",
+    "paddingBottom": "96px",
+  },
+  s9: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s10: {
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "paddingTop": "16px",
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "8px",
+    },
+  },
+  s11: {
+    "height": "40px",
+  },
+
+  s12: {
+    containerType: "inline-size",
+    containerName: "toolbar",
+  },
+  s13: {
+    top: "50%",
+    translate: "0px -50%",
+  },
+  s14: {
+    "@container toolbar (max-width: 56rem)": {
+      display: "none",
+    },
+  },
+  s15: {
+    "@container toolbar (min-width: 56rem)": {
+      display: "none",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type Flag = "behind" | "changes" | "paused";
 type Sort = "recent" | "behind" | "changes" | "name";
@@ -165,46 +273,46 @@ export function WorktreesView() {
   const paused = rows.filter((r) => r.paused).length;
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div className={sx(paint.s0)}>
       <ViewHeader
         title="Worktrees"
         description={loaded ? [`${rows.length} on ${boxes.length} box${boxes.length === 1 ? "" : "es"}`, behind && `${behind} behind their base`, paused && `${paused} paused`].filter(Boolean).join(" · ") : undefined}
       />
 
       {/* One row of filters, search first; it stays one row down to 1100px. */}
-      <div className="@container/toolbar flex shrink-0 items-center gap-2 border-b px-6 py-2">
-        <div className="relative w-56 min-w-36 shrink">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input size="sm" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="[&_input]:pl-8" aria-label="Search worktrees" />
+      <div className={[sx(paint.s1), sx(paint.s12)].filter(Boolean).join(" ")}>
+        <div className={sx(paint.s2)}>
+          <SearchIcon className={[sx(paint.s3), sx(paint.s13)].filter(Boolean).join(" ")} />
+          <Input size="sm" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" inset="wide" aria-label="Search worktrees" />
         </div>
         <BoxFilter boxes={boxes} hidden={hiddenBoxes} onChange={hideBoxes} />
-        <div className="w-40 min-w-28 shrink">
-          <SimpleSelect aria-label="Project" size="sm" className="min-w-0" value={project} onChange={setProject} options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p, label: p }))]} />
+        <div className={sx(paint.s4)}>
+          <SimpleSelect aria-label="Project" size="sm" measure="grow" value={project} onChange={setProject} options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p, label: p }))]} />
         </div>
-        <div className="flex shrink-0 items-center gap-1" role="group" aria-label="Show only">
+        <div className={sx(paint.s5)} role="group" aria-label="Show only">
           <FilterChip pressed={flags.includes("behind")} onPressedChange={() => flip("behind")}>
             {/* One flex item, or the chip's gap doubles the space before "base". */}
             <span>
-              Behind<span className="@max-[56rem]/toolbar:hidden"> base</span>
+              Behind<span className={sx(paint.s14)}> base</span>
             </span>
           </FilterChip>
           <FilterChip pressed={flags.includes("changes")} onPressedChange={() => flip("changes")}>
-            <span className="@max-[56rem]/toolbar:hidden">Has changes</span>
-            <span className="@min-[56rem]/toolbar:hidden">Changed</span>
+            <span className={sx(paint.s14)}>Has changes</span>
+            <span className={sx(paint.s15)}>Changed</span>
           </FilterChip>
           <FilterChip pressed={flags.includes("paused")} onPressedChange={() => flip("paused")}>
             Paused
           </FilterChip>
         </div>
         {filtered && (
-          <Button size="xs" variant="ghost" className="shrink-0" onClick={clearFilters}>
+          <span className={sx(paint.s6)}><Button size="xs" variant="ghost"  onClick={clearFilters}>
             Clear filters
-          </Button>
+          </Button></span>
         )}
-        <div className="ml-auto w-44 min-w-32 shrink">
+        <div className={sx(paint.s7)}>
           <SimpleSelect
             size="sm"
-            className="min-w-0"
+            measure="grow"
             value={sort}
             onChange={(v) => {
               setSort(v as Sort);
@@ -215,20 +323,20 @@ export function WorktreesView() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto pb-24">
+      <div className={sx(paint.s8)}>
         {Object.entries(errors).map(([box, err]) => (
-          <div key={box} className="border-b px-6 py-2">
+          <div key={box} className={sx(paint.s9)}>
             <BoxError box={box} error={err} what="its worktrees" />
           </div>
         ))}
         {!loaded ? (
-          <div className="space-y-2 px-6 pt-4">
+          <div className={sx(paint.s10)}>
             {[0, 1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-10" />
+              <div className={sx(paint.s11)}><Skeleton key={i}  /></div>
             ))}
           </div>
         ) : flat.length === 0 ? (
-          <Empty className="mt-16">
+          <Empty space="16">
             <EmptyHeader>
               <EmptyMedia>
                 {/* Worktrees are berths: none yet is an empty one; none

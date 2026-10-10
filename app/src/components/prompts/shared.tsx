@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef } from "react";
 
 import { Tip } from "@/components/tip";
@@ -7,9 +8,114 @@ import { Textarea } from "@/components/ui/textarea";
 import { guessSessionName, sessionName, sessionPlace, worktreeOf } from "@/lib/derive";
 import { type PromptVariable, type SavedPrompt, segments, variableLabel } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { useRegistry } from "@/plugins/registry";
 import { describeAgent, startedAt } from "@/views/dashboard/names";
+
+const paint = stylex.create({
+  s0: {
+    "whiteSpace": "pre-wrap",
+    "overflowWrap": "break-word",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 40%, transparent)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+    "fontSize": "13px",
+    "lineHeight": "1.625",
+  },
+  s1: {
+    "borderRadius": "3px",
+    "paddingLeft": "2px",
+    "paddingRight": "2px",
+  },
+  s2: {
+    "backgroundColor": "color-mix(in oklab, var(--warning) 12%, transparent)",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "12px",
+    "color": "var(--warning-foreground)",
+  },
+  s3: {
+    "backgroundColor": "color-mix(in oklab, var(--primary) 10%, transparent)",
+    "color": "var(--foreground)",
+  },
+  s4: {
+    "display": "grid",
+    "gap": "12px",
+  },
+  s5: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+    "gap": "6px",
+  },
+  s6: {
+    "display": "flex",
+    "alignItems": "baseline",
+    "gap": "8px",
+    "fontWeight": 500,
+    "fontSize": "13px",
+  },
+  s7: {
+    "fontFamily": "var(--font-mono)",
+    "fontWeight": 400,
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s8: {
+    "display": "flex",
+    "width": "100%",
+    "minWidth": "0px",
+    "flexDirection": "column",
+    "gap": "2px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "left",
+    "outline": "none",
+  },
+  s9: {
+    "backgroundColor": "var(--accent)",
+  },
+  s10: {
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 50%, transparent)",
+    },
+  },
+  s11: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s12: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "13px",
+  },
+  s13: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The prompts plugin's library screen, when that plugin is on.
 export const LIBRARY_SCREEN = "prompt-library";
@@ -50,11 +156,11 @@ export function useTargetLabel(box: string, session: string) {
 // is marked, and what is still missing stands out.
 export function PromptPreview({ body, values, className }: { body: string; values: Record<string, string | undefined>; className?: string }) {
   return (
-    <div className={cn("whitespace-pre-wrap break-words rounded-lg border bg-muted/40 px-3 py-2.5 text-[13px] leading-relaxed", className)}>
+    <div className={[sx(paint.s0), className].filter(Boolean).join(" ")}>
       {segments(body, values).map((s, i) =>
         s.variable ? (
           <Tip key={i} label={s.missing ? `{{${s.variable}}} has no value yet` : `{{${s.variable}}}`}>
-            <span className={cn("rounded-[3px] px-0.5", s.missing ? "bg-warning/12 font-mono text-[12px] text-warning-foreground" : "bg-primary/10 text-foreground")}>{s.text}</span>
+            <span className={[sx(paint.s1), s.missing ? sx(paint.s2) : sx(paint.s3)].filter(Boolean).join(" ")}>{s.text}</span>
           </Tip>
         ) : (
           <span key={i}>{s.text}</span>
@@ -69,12 +175,12 @@ export function PromptPreview({ body, values, className }: { body: string; value
 export function VariableFields({ vars, values, onChange, autoFocus }: { vars: PromptVariable[]; values: Record<string, string>; onChange(name: string, value: string): void; autoFocus?: boolean }) {
   if (!vars.length) return null;
   return (
-    <div className="grid gap-3">
+    <div className={sx(paint.s4)}>
       {vars.map((v, i) => (
-        <label key={v.name} className="flex min-w-0 flex-col gap-1.5">
-          <span className="flex items-baseline gap-2 font-medium text-[13px]">
+        <label key={v.name} className={sx(paint.s5)}>
+          <span className={sx(paint.s6)}>
             {variableLabel(v)}
-            <span className="font-mono font-normal text-[11px] text-muted-foreground">{`{{${v.name}}}`}</span>
+            <span className={sx(paint.s7)}>{`{{${v.name}}}`}</span>
           </span>
           {v.multiline ? (
             <Textarea autoFocus={autoFocus && i === 0} rows={3} value={values[v.name] ?? ""} placeholder={v.default} onChange={(e) => onChange(v.name, e.target.value)} />
@@ -105,10 +211,10 @@ export function PromptRow({ p, active, onPick, onHover }: { p: SavedPrompt; acti
       aria-selected={active}
       onClick={onPick}
       onMouseMove={onHover}
-      className={cn("flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2.5 py-2 text-left outline-none", active ? "bg-accent" : "hover:bg-accent/50")}
+      className={[sx(paint.s8), active ? sx(paint.s9) : sx(paint.s10)].filter(Boolean).join(" ")}
     >
-      <span className="flex min-w-0 items-center gap-2">
-        <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{p.title}</span>
+      <span className={sx(paint.s11)}>
+        <span className={sx(paint.s12)}>{p.title}</span>
         {p.project && (
           <Badge size="sm" variant="info">
             project
@@ -120,7 +226,7 @@ export function PromptRow({ p, active, onPick, onHover }: { p: SavedPrompt; acti
           </Badge>
         ))}
       </span>
-      <span className="truncate text-muted-foreground text-xs">{p.body.replace(/\s+/g, " ")}</span>
+      <span className={sx(paint.s13)}>{p.body.replace(/\s+/g, " ")}</span>
     </button>
   );
 }

@@ -1,6 +1,264 @@
+import * as stylex from "@stylexjs/stylex";
 import { definePlugin, useStorage, type BerthEvent, type ScreenProps } from "@berth/plugin";
-import { Badge, BoxFilter, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Input, PickOne, ViewHeader, cn } from "@berth/plugin/ui";
+import { Badge, BoxFilter, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Input, PickOne, ViewHeader } from "@berth/plugin/ui";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+
+const paint = stylex.create({
+  s0: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s1: {
+    "color": "var(--warning)",
+  },
+  s2: {
+    "color": "var(--success)",
+  },
+  s3: {
+    "color": "var(--info)",
+  },
+  s4: {
+    "color": "var(--muted-foreground)",
+  },
+  s5: {
+    "color": "var(--info)",
+  },
+  s6: {
+    "color": "var(--muted-foreground)",
+  },
+  s7: {
+    "color": "var(--muted-foreground)",
+  },
+  s8: {
+    "color": "var(--success)",
+  },
+  s9: {
+    "color": "var(--destructive)",
+  },
+  s10: {
+    "color": "var(--muted-foreground)",
+  },
+  s11: {
+    "color": "var(--muted-foreground)",
+  },
+  s12: {
+    "color": "var(--info)",
+  },
+  s13: {
+    "color": "var(--muted-foreground)",
+  },
+  s14: {
+    "color": "var(--success)",
+  },
+  s15: {
+    "color": "var(--muted-foreground)",
+  },
+  s16: {
+    "color": "var(--destructive)",
+  },
+  s17: {
+    "color": "var(--success)",
+  },
+  s18: {
+    "color": "var(--warning)",
+  },
+  s19: {
+    "color": "var(--warning)",
+  },
+  s20: {
+    "color": "var(--muted-foreground)",
+  },
+  s21: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s22: {
+    "width": "208px",
+  },
+  s23: {
+    "marginBottom": "12px",
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s24: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "marginBottom": "8px",
+    "width": "20px",
+    "height": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s25: {
+    "overflow": "hidden",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+  },
+  s26: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "backgroundColor": "color-mix(in oklab, var(--muted) 60%, transparent)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s27: {
+    "height": "1px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "var(--border)",
+  },
+  s28: {
+    "height": "1px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "backgroundColor": "var(--border)",
+  },
+  s29: {
+    "display": "flex",
+    "minHeight": "var(--row-h)",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderBottomWidth": {
+      "default": 1,
+      ":last-child": 0,
+    },
+    "borderBottomStyle": {
+      "default": "solid",
+      ":last-child": "solid",
+    },
+    "borderBottomColor": {
+      "default": "var(--border)",
+      ":last-child": "var(--border)",
+    },
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s30: {
+    "borderTopWidth": 0,
+    "borderTopStyle": "solid",
+    "borderTopColor": "var(--border)",
+  },
+  s31: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+  },
+  s32: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  s33: {
+    "flexShrink": 0,
+  },
+  s34: {
+    "display": "flex",
+    "width": "56px",
+    "flexShrink": 0,
+    "justifyContent": "flex-end",
+  },
+  s35: {
+    "opacity": {
+      "default": 0,
+      ":focus-visible": 1,
+    },
+    ":is(.group:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s36: {
+    "width": "96px",
+    "flexShrink": 0,
+    "textAlign": "right",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  q37: {
+    "color": "var(--warning)",
+  },
+  q38: {
+    "color": "var(--success)",
+  },
+  q39: {
+    "color": "var(--info)",
+  },
+  q40: {
+    "color": "var(--muted-foreground)",
+  },
+  q41: {
+    "color": "var(--info)",
+  },
+  q42: {
+    "color": "var(--muted-foreground)",
+  },
+  q43: {
+    "color": "var(--muted-foreground)",
+  },
+  q44: {
+    "color": "var(--success)",
+  },
+  q45: {
+    "color": "var(--destructive)",
+  },
+  q46: {
+    "color": "var(--muted-foreground)",
+  },
+  q47: {
+    "color": "var(--muted-foreground)",
+  },
+  q48: {
+    "color": "var(--destructive)",
+  },
+  q49: {
+    "color": "var(--success)",
+  },
+  q50: {
+    "color": "var(--success)",
+  },
+  q51: {
+    "color": "var(--muted-foreground)",
+  },
+  q52: {
+    "color": "var(--destructive)",
+  },
+  q53: {
+    "color": "var(--success)",
+  },
+  q54: {
+    "color": "var(--warning)",
+  },
+  q55: {
+    "color": "var(--warning)",
+  },
+  q56: {
+    "color": "var(--muted-foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Activity: everything that happened on every box, as sentences, newest
 // first, with a line marking where you left off. It keeps the last 300
@@ -73,51 +331,51 @@ interface Line {
 
 function describe(e: BerthEvent, names: Names): Line {
   const d = e.data ?? {};
-  const w = <b className="font-medium text-foreground">{where(e, names) || "a worktree"}</b>;
+  const w = <b className={sx(paint.s0)}>{where(e, names) || "a worktree"}</b>;
   // Agent hooks name the agent in data; events relayed from them may only
   // carry it as their origin.
   const agent = agentName(str(d.agent) || (e.origin && AGENTS[e.origin] ? e.origin : ""));
   switch (e.type) {
     case "agent.waiting":
-      return { icon: "Hand", tone: "text-warning", text: <>{agent} needs you in {w}{d.reason ? ` (${str(d.reason)})` : ""}</> };
+      return { icon: "Hand", tone: sx(paint.q37), text: <>{agent} needs you in {w}{d.reason ? ` (${str(d.reason)})` : ""}</> };
     case "agent.finished":
-      return { icon: "CircleCheck", tone: "text-success", text: <>{agent} finished its turn in {w}</> };
+      return { icon: "CircleCheck", tone: sx(paint.q38), text: <>{agent} finished its turn in {w}</> };
     case "agent.started":
-      return { icon: "LoaderCircle", tone: "text-info", text: <>{agent} started working in {w}</> };
+      return { icon: "LoaderCircle", tone: sx(paint.q39), text: <>{agent} started working in {w}</> };
     case "agent.ready":
-      return { icon: "Circle", tone: "text-muted-foreground", text: <>{agent} is ready in {w}</> };
+      return { icon: "Circle", tone: sx(paint.q40), text: <>{agent} is ready in {w}</> };
     case "task.created":
-      return { icon: "Sparkles", tone: "text-info", text: <>New worktree {w}{d.agent ? <> with {agentName(str(d.agent))}</> : null}{d.from_session ? <> handed off from {str(d.from_session)}</> : null}</> };
+      return { icon: "Sparkles", tone: sx(paint.q41), text: <>New worktree {w}{d.agent ? <> with {agentName(str(d.agent))}</> : null}{d.from_session ? <> handed off from {str(d.from_session)}</> : null}</> };
     case "worktree.created":
-      return { icon: "GitBranchPlus", tone: "text-muted-foreground", text: <>Worktree {w} created{d.branch ? <> on {str(d.branch)}</> : null}</> };
+      return { icon: "GitBranchPlus", tone: sx(paint.q42), text: <>Worktree {w} created{d.branch ? <> on {str(d.branch)}</> : null}</> };
     case "worktree.removed":
-      return { icon: "Trash2", tone: "text-muted-foreground", text: <>Worktree {w} removed</> };
+      return { icon: "Trash2", tone: sx(paint.q43), text: <>Worktree {w} removed</> };
     case "worktree.setup.finished":
-      return { icon: "Wrench", tone: "text-success", text: <>Setup finished in {w}</> };
+      return { icon: "Wrench", tone: sx(paint.q44), text: <>Setup finished in {w}</> };
     case "worktree.setup.failed":
-      return { icon: "Wrench", tone: "text-destructive", text: <>Setup failed in {w}{e.error ? `: ${e.error}` : ""}</> };
+      return { icon: "Wrench", tone: sx(paint.q45), text: <>Setup failed in {w}{e.error ? `: ${e.error}` : ""}</> };
     case "session.started":
-      return { icon: "SquareTerminal", tone: "text-muted-foreground", text: <>Session {str(d.name)} started in {w}</> };
+      return { icon: "SquareTerminal", tone: sx(paint.q46), text: <>Session {str(d.name)} started in {w}</> };
     case "session.stopped":
-      return { icon: "SquareX", tone: "text-muted-foreground", text: <>Session {str(d.name)} stopped</> };
+      return { icon: "SquareX", tone: sx(paint.q47), text: <>Session {str(d.name)} stopped</> };
     case "flow.finished":
-      return { icon: "Workflow", tone: d.status === "failed" ? "text-destructive" : "text-success", text: <>Flow {str(d.flow)} {d.status === "failed" ? "failed" : "ran"}{where(e, names) ? <> for {w}</> : null}</> };
+      return { icon: "Workflow", tone: d.status === "failed" ? sx(paint.q48) : sx(paint.q49), text: <>Flow {str(d.flow)} {d.status === "failed" ? "failed" : "ran"}{where(e, names) ? <> for {w}</> : null}</> };
     case "notify":
-      return { icon: "Bell", tone: "text-info", text: <>{str(d.title)}{d.body ? <span className="text-muted-foreground"> — {str(d.body)}</span> : null}</> };
+      return { icon: "Bell", tone: sx(paint.s12), text: <>{str(d.title)}{d.body ? <span className={sx(paint.s13)}> — {str(d.body)}</span> : null}</> };
     case "service.started":
-      return { icon: "Play", tone: "text-success", text: <>{str(d.service)} started in {w}{d.port ? ` on :${str(d.port)}` : ""}</> };
+      return { icon: "Play", tone: sx(paint.q50), text: <>{str(d.service)} started in {w}{d.port ? ` on :${str(d.port)}` : ""}</> };
     case "service.stopped":
-      return { icon: "Square", tone: "text-muted-foreground", text: <>{str(d.service)} stopped in {w}</> };
+      return { icon: "Square", tone: sx(paint.q51), text: <>{str(d.service)} stopped in {w}</> };
     case "service.failed":
-      return { icon: "CircleAlert", tone: "text-destructive", text: <>{str(d.service)} failed to start in {w}</> };
+      return { icon: "CircleAlert", tone: sx(paint.q52), text: <>{str(d.service)} failed to start in {w}</> };
     case "box.connected":
-      return { icon: "Plug", tone: "text-success", text: <>Connected to {e.box}</> };
+      return { icon: "Plug", tone: sx(paint.q53), text: <>Connected to {e.box}</> };
     case "box.disconnected":
-      return { icon: "Unplug", tone: "text-warning", text: <>Lost {e.box}</> };
+      return { icon: "Unplug", tone: sx(paint.q54), text: <>Lost {e.box}</> };
     case "share.started":
-      return { icon: "Globe", tone: "text-warning", text: <>Port {str(d.port)} shared publicly at {str(d.url)}</> };
+      return { icon: "Globe", tone: sx(paint.q55), text: <>Port {str(d.port)} shared publicly at {str(d.url)}</> };
   }
-  return { icon: "Dot", tone: "text-muted-foreground", text: e.type };
+  return { icon: "Dot", tone: sx(paint.q56), text: e.type };
 }
 
 function clock(iso: string) {
@@ -168,10 +426,10 @@ function ActivityScreen({ berth }: ScreenProps) {
     <div>
       <ViewHeader
         title="Activity"
-        description={<>What agents, worktrees and flows did on every box{unseen > 0 ? <>, with <b className="font-medium text-foreground">{unseen} new</b> since you last looked</> : null}.</>}
-        actions={<Input className="w-52" size="sm" placeholder="Search…" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />}
+        description={<>What agents, worktrees and flows did on every box{unseen > 0 ? <>, with <b className={sx(paint.s21)}>{unseen} new</b> since you last looked</> : null}.</>}
+        actions={<Input className={sx(paint.s22)} size="sm" placeholder="Search…" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />}
       />
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className={sx(paint.s23)}>
         <PickOne
           label="Kind of event"
           value={kind}
@@ -184,19 +442,19 @@ function ActivityScreen({ berth }: ScreenProps) {
             { value: "boxes", label: "Boxes" },
           ]}
         />
-        <BoxFilter className="ml-auto" boxes={boxes} hidden={hiddenBoxes} onChange={setHiddenBoxes} />
+        <BoxFilter align="end" boxes={boxes} hidden={hiddenBoxes} onChange={setHiddenBoxes} />
       </div>
 
       {shown.length === 0 ? (
-        <Empty className="rounded-xl border py-16">
+        <Empty frame="panel" pad="room">
           <EmptyHeader>
-            <Icon name="History" className="mx-auto mb-2 size-5 text-muted-foreground" />
+            <Icon name="History" className={sx(paint.s24)} />
             <EmptyTitle>{all.length ? "Nothing matches" : "Nothing has happened yet"}</EmptyTitle>
             <EmptyDescription>{all.length ? "Try another filter." : "Agents finishing, worktrees appearing and flows running will show up here as they happen."}</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
-        <ol className="overflow-hidden rounded-xl border">
+        <ol className={sx(paint.s25)}>
           {shown.map((e, i) => {
             const line = describe(e, names);
             const divider = mark && i > 0 && shown[i - 1].time > mark && e.time <= mark;
@@ -204,28 +462,28 @@ function ActivityScreen({ berth }: ScreenProps) {
             return (
               <li key={`${e.time}-${i}`}>
                 {divider && (
-                  <div className="flex items-center gap-2 bg-muted/60 px-4 py-1 text-muted-foreground text-xs">
-                    <span className="h-px flex-1 bg-border" /> Since you were last here <span className="h-px flex-1 bg-border" />
+                  <div className={sx(paint.s26)}>
+                    <span className={sx(paint.s27)} /> Since you were last here <span className={sx(paint.s28)} />
                   </div>
                 )}
-                <div className={cn("group flex min-h-row items-center gap-3 border-b px-4 py-1 text-sm last:border-b-0", i === 0 && "border-t-0")}>
-                  <Icon name={line.icon} className={cn("size-4 shrink-0", line.tone)} />
-                  <span className="min-w-0 flex-1 truncate text-muted-foreground">{line.text}</span>
+                <div className={[[sx(paint.s29), "group"].filter(Boolean).join(" "), i === 0 && sx(paint.s30)].filter(Boolean).join(" ")}>
+                  <Icon name={line.icon} className={[sx(paint.s31), line.tone].filter(Boolean).join(" ")} />
+                  <span className={sx(paint.s32)}>{line.text}</span>
                   {e.box && (
-                    <Badge variant="outline" size="sm" className="shrink-0">
+                    <Badge variant="outline" size="sm" className={sx(paint.s33)}>
                       {e.box}
                     </Badge>
                   )}
                   {/* A slot every row has, so the box badges line up whether
                       or not the row can be opened. */}
-                  <span className="flex w-14 shrink-0 justify-end">
+                  <span className={sx(paint.s34)}>
                     {session && e.box && e.type !== "session.stopped" && (
-                      <Button size="xs" variant="ghost" className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100" onClick={() => berth.openTerminal(e.box!, session)}>
+                      <Button size="xs" variant="ghost" className={sx(paint.s35)} onClick={() => berth.openTerminal(e.box!, session)}>
                         Open
                       </Button>
                     )}
                   </span>
-                  <time className="w-24 shrink-0 text-right text-muted-foreground text-xs tabular-nums" dateTime={e.time}>
+                  <time className={sx(paint.s36)} dateTime={e.time}>
                     {clock(e.time)}
                   </time>
                 </div>

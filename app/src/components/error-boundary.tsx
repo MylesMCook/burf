@@ -1,8 +1,51 @@
+import * as stylex from "@stylexjs/stylex";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 import { Scene } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "minHeight": "0px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "overflowY": "auto",
+    "padding": "24px",
+  },
+  s1: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "justifyContent": "center",
+    "gap": "8px",
+  },
+  s2: {
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s3: {
+    "maxHeight": "256px",
+    "width": "100%",
+    "overflow": "auto",
+    "borderRadius": "var(--radius-md)",
+    "backgroundColor": "var(--muted)",
+    "padding": "12px",
+    "textAlign": "left",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+    "whiteSpace": "pre-wrap",
+    "userSelect": "text",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 type Props = {
   children: ReactNode;
@@ -39,8 +82,8 @@ export class ErrorBoundary extends Component<Props, State> {
     const { scope, onLeave, leaveLabel } = this.props;
     const detail = [error.stack || `${error.name}: ${error.message}`, stack && `Component stack:${stack}`].filter(Boolean).join("\n\n");
     return (
-      <div className="flex h-full min-h-0 items-center justify-center overflow-y-auto p-6">
-        <Empty className="max-w-xl">
+      <div className={sx(paint.s0)}>
+        <Empty measure="xl">
           <EmptyHeader>
             <EmptyMedia>
               <Scene name="storm" />
@@ -52,7 +95,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className={sx(paint.s1)}>
               {onLeave && (
                 <Button
                   onClick={() => {
@@ -70,10 +113,10 @@ export class ErrorBoundary extends Component<Props, State> {
                 Copy details
               </Button>
             </div>
-            <button type="button" className="text-muted-foreground text-xs hover:text-foreground" onClick={() => this.setState({ details: !details })}>
+            <button type="button" className={sx(paint.s2)} onClick={() => this.setState({ details: !details })}>
               {details ? "Hide details" : "Show details"}
             </button>
-            {details && <pre className="max-h-64 w-full overflow-auto rounded-md bg-muted p-3 text-left text-xs leading-relaxed whitespace-pre-wrap select-text">{detail}</pre>}
+            {details && <pre className={sx(paint.s3)}>{detail}</pre>}
           </EmptyContent>
         </Empty>
       </div>

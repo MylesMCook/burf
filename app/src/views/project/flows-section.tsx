@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ChevronRightIcon, PlusIcon, WorkflowIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -5,9 +6,125 @@ import { Button } from "@/components/ui/button";
 import { useEventLog } from "@/lib/events";
 import { flowsApi, isOverridden, overrides, type ScopedFlow } from "@/lib/flows";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { STEP_KINDS, summary } from "@/views/automations/flows/model";
 import { Section, SourceBadge } from "@/views/project/parts";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+    "textAlign": "left",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s1: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s2: {
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s3: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "10px",
+    "paddingBottom": "10px",
+    "textAlign": "left",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 40%, transparent)",
+    },
+  },
+  s4: {
+    "opacity": 0.6,
+  },
+  s5: {
+    "display": "flex",
+    "flexShrink": 0,
+  },
+  s6: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "borderWidth": 2,
+    "borderStyle": "solid",
+    "borderColor": "var(--card)",
+    "backgroundColor": "var(--muted)",
+    "color": "var(--muted-foreground)",
+  },
+  s7: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s8: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s9: {
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s10: {
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s11: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s12: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+
+  s13: {
+    ":not(#\\#) > :not(:last-child)": {
+      borderBottomColor: "color-mix(in oklab, var(--border) 70%, transparent)",
+    },
+  },
+  s14: {
+    ":not(#\\#) > :not(:first-child)": {
+      marginLeft: -4,
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // FlowsSection lists this repo's flows on this box; they open in the flow
 // editor, scoped to the repo.
@@ -42,31 +159,31 @@ export function FlowsSection({ box, location }: { box: string; location: string 
       }
     >
       {flows && shown.length === 0 ? (
-        <button type="button" onClick={() => open()} className="flex w-full items-center gap-2 px-4 py-3 text-left text-muted-foreground text-sm hover:text-foreground">
-          <WorkflowIcon className="size-4" />
+        <button type="button" onClick={() => open()} className={sx(paint.s0)}>
+          <WorkflowIcon className={sx(paint.s1)} />
           No flows for {location} yet. Make one.
         </button>
       ) : (
-        <div className="divide-y divide-border/70">
+        <div className={[sx(paint.s2), sx(paint.s13)].filter(Boolean).join(" ")}>
           {shown.map((f) => (
-            <button key={`${f.source}:${f.flow.id}`} type="button" onClick={() => open(f.flow.id)} className={cn("flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-accent/40", !f.flow.enabled && "opacity-60")}>
-              <span className="flex shrink-0 -space-x-1">
+            <button key={`${f.source}:${f.flow.id}`} type="button" onClick={() => open(f.flow.id)} className={[sx(paint.s3), !f.flow.enabled && sx(paint.s4)].filter(Boolean).join(" ")}>
+              <span className={[sx(paint.s5), sx(paint.s14)].filter(Boolean).join(" ")}>
                 {[...new Set(f.flow.steps.map((s) => s.kind))].slice(0, 3).map((k) => {
                   const m = STEP_KINDS[k];
                   return (
-                    <span key={k} className="inline-flex size-6 items-center justify-center rounded-md border-2 border-card bg-muted text-muted-foreground">
-                      <m.Icon className="size-3.5" />
+                    <span key={k} className={sx(paint.s6)}>
+                      <m.Icon className={sx(paint.s7)} />
                     </span>
                   );
                 })}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium text-sm">{f.flow.name}</span>
-                <span className="block truncate text-muted-foreground text-xs">{summary(f.flow)}</span>
+              <span className={sx(paint.s8)}>
+                <span className={sx(paint.s9)}>{f.flow.name}</span>
+                <span className={sx(paint.s10)}>{summary(f.flow)}</span>
               </span>
-              {!f.flow.enabled && <span className="text-muted-foreground text-xs">Off</span>}
+              {!f.flow.enabled && <span className={sx(paint.s11)}>Off</span>}
               <SourceBadge source={f.source === "local" ? (overrides(f, flows!) ? "override" : "box") : f.source === "box" ? "box" : f.source} box={box} />
-              <ChevronRightIcon className="size-3.5 text-muted-foreground" />
+              <ChevronRightIcon className={sx(paint.s12)} />
             </button>
           ))}
         </div>

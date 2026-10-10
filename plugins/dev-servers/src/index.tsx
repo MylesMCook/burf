@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { definePlugin, useBoxes, useCurrentWorktree, useEvent, type BerthPluginContext, type Location, type ScreenProps, type Service, type WorktreeService } from "@berth/plugin";
 import {
   Badge,
@@ -22,9 +23,200 @@ import {
   TooltipPopup,
   TooltipTrigger,
   ViewHeader,
-  cn,
 } from "@berth/plugin/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "4px",
+    "color": {
+      ":hover": "var(--foreground)",
+    },
+  },
+  s1: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s2: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "16px",
+    },
+  },
+  s3: {
+    "width": "224px",
+  },
+  s4: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s5: {
+    ":not(#\\#) > :not(:first-child)": {
+      "marginTop": "12px",
+    },
+  },
+  s6: {
+    "height": "96px",
+    "width": "100%",
+  },
+  s7: {
+    "height": "96px",
+    "width": "100%",
+  },
+  s8: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "marginBottom": "8px",
+    "width": "20px",
+    "height": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s9: {
+    "width": "14px",
+    "height": "14px",
+    "color": "var(--muted-foreground)",
+  },
+  s10: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s11: {
+    ":not(#\\#) > :not(:first-child)": {
+      "borderTopWidth": 1,
+      "borderTopStyle": "solid",
+      "borderTopColor": "var(--border)",
+    },
+  },
+  s12: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s13: {
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+    "backgroundColor": "var(--success)",
+  },
+  s14: {
+    "width": "56px",
+    "flexShrink": 0,
+    "fontFamily": "var(--font-mono)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s15: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s16: {
+    "marginRight": "8px",
+    "fontWeight": 500,
+  },
+  s17: {
+    "color": "var(--muted-foreground)",
+  },
+  s18: {
+    "marginLeft": "8px",
+    "fontFamily": "var(--font-mono)",
+    "color": "color-mix(in oklab, var(--muted-foreground) 70%, transparent)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s19: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s20: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s21: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s22: {
+    "minWidth": "208px",
+  },
+  s23: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "12px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s24: {
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+  },
+  s25: {
+    "backgroundColor": "var(--warning)",
+  },
+  s26: {
+    "width": "56px",
+    "flexShrink": 0,
+    "fontWeight": 500,
+  },
+  s27: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s28: {
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  n0: {
+    "width": "8px",
+    "height": "8px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+  },
+  n1: {
+    "backgroundColor": "var(--warning)",
+  },
+  n2: {
+    "backgroundColor": "var(--destructive)",
+  },
+  n3: {
+    "backgroundColor": "color-mix(in oklab, var(--muted-foreground) 30%, transparent)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // Dev servers: everything listening in a worktree, on every box, next to
 // the services each repository declares for its worktrees. Open one in a
@@ -128,8 +320,8 @@ function ServersStatus({ berth }: ScreenProps) {
   const { listening } = useServers(berth);
   if (!listening?.length) return null;
   return (
-    <button type="button" className="flex items-center gap-1 hover:text-foreground" onClick={() => berth.openScreen("servers")}>
-      <Icon name="Radio" className="size-3" />
+    <button type="button" className={sx(paint.s0)} onClick={() => berth.openScreen("servers")}>
+      <Icon name="Radio" className={sx(paint.s1)} />
       {listening.length} {listening.length === 1 ? "server" : "servers"}
     </button>
   );
@@ -157,16 +349,16 @@ function ServersScreen({ berth }: ScreenProps) {
   }, [listening, configured, query]);
 
   return (
-    <div className="space-y-4">
+    <div className={sx(paint.s2)}>
       <ViewHeader
         title="Dev servers"
         description="Everything listening in a worktree on every box, and the services each repository runs."
         actions={
           <>
-            <Input className="w-56" size="sm" placeholder="Filter by worktree, port…" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
+            <Input className={sx(paint.s3)} size="sm" placeholder="Filter by worktree, port…" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
             <Tooltip>
               <TooltipTrigger render={<Button size="icon-sm" variant="ghost" onClick={reload} aria-label="Refresh" />}>
-                <Icon name="RefreshCw" className="size-3.5" />
+                <Icon name="RefreshCw" className={sx(paint.s4)} />
               </TooltipTrigger>
               <TooltipPopup>Refresh</TooltipPopup>
             </Tooltip>
@@ -175,14 +367,14 @@ function ServersScreen({ berth }: ScreenProps) {
       />
 
       {!listening ? (
-        <div className="space-y-3">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
+        <div className={sx(paint.s5)}>
+          <Skeleton className={sx(paint.s6)} />
+          <Skeleton className={sx(paint.s7)} />
         </div>
       ) : groups.length === 0 ? (
-        <Empty className="py-16">
+        <Empty pad="room">
           <EmptyHeader>
-            <Icon name="Radio" className="mx-auto mb-2 size-5 text-muted-foreground" />
+            <Icon name="Radio" className={sx(paint.s8)} />
             <EmptyTitle>{query ? "Nothing matches" : "Nothing is listening"}</EmptyTitle>
             <EmptyDescription>
               {query ? "Try another worktree or port." : <>Start a dev server in a worktree, or declare one under <code>services</code> in the repository's .berth/config.json, and it shows up here.</>}
@@ -200,15 +392,15 @@ function WorktreeGroup({ group: g, berth, here, onChanged }: { group: Group; ber
   const listeningPorts = new Set(g.listening.map((l) => l.port));
   return (
     <Frame variant="card">
-      <FrameHeader className="flex-row items-center gap-2 py-2.5">
-        <Icon name="GitBranch" className="size-3.5 text-muted-foreground" />
-        <FrameTitle className="truncate">{g.worktree}</FrameTitle>
-        <span className="truncate text-muted-foreground text-xs">{g.main ? g.box : `${g.location} · ${g.box}`}</span>
+      <FrameHeader row gap={2} pad="snug">
+        <Icon name="GitBranch" className={sx(paint.s9)} />
+        <FrameTitle truncate>{g.worktree}</FrameTitle>
+        <span className={sx(paint.s10)}>{g.main ? g.box : `${g.location} · ${g.box}`}</span>
         {g.main && <Badge variant="outline" size="sm">main checkout</Badge>}
         {here && <Badge variant="secondary" size="sm">current worktree</Badge>}
       </FrameHeader>
-      <FramePanel className="p-0">
-        <ul className="divide-y">
+      <FramePanel pad="none">
+        <ul className={sx(paint.s11)}>
           {g.listening.map((l) => (
             <ServerRow key={`l${l.port}`} item={l} berth={berth} service={g.configured.find((c) => c.state === "running" && c.port === l.port)} onChanged={onChanged} />
           ))}
@@ -238,23 +430,23 @@ function ServerRow({ item: l, berth, service, onChanged }: { item: Listening; be
     onChanged();
   };
   return (
-    <li className="group flex items-center gap-3 px-4 py-2 text-sm">
-      <span className="size-2 shrink-0 rounded-full bg-success" aria-label="listening" />
-      <span className="w-14 shrink-0 font-mono tabular-nums">{l.port}</span>
-      <span className="min-w-0 flex-1 truncate">
-        {service && <span className="mr-2 font-medium">{service.name}</span>}
-        <span className="text-muted-foreground">{l.process ?? "listening"}</span>
-        <span className="ml-2 font-mono text-muted-foreground/70 text-xs">{l.url.replace(/^https?:\/\//, "")}</span>
+    <li className={[sx(paint.s12), "group"].filter(Boolean).join(" ")}>
+      <span className={sx(paint.s13)} aria-label="listening" />
+      <span className={sx(paint.s14)}>{l.port}</span>
+      <span className={sx(paint.s15)}>
+        {service && <span className={sx(paint.s16)}>{service.name}</span>}
+        <span className={sx(paint.s17)}>{l.process ?? "listening"}</span>
+        <span className={sx(paint.s18)}>{l.url.replace(/^https?:\/\//, "")}</span>
       </span>
-      {copied && <span className="text-muted-foreground text-xs">Copied</span>}
+      {copied && <span className={sx(paint.s19)}>Copied</span>}
       <Button size="xs" variant="outline" onClick={() => openInTab()}>
-        <Icon name="AppWindow" className="size-3.5" /> Open in tab
+        <Icon name="AppWindow" className={sx(paint.s20)} /> Open in tab
       </Button>
       <Menu>
         <MenuTrigger render={<Button size="icon-xs" variant="ghost" aria-label={`More for port ${l.port}`} />}>
-          <Icon name="Ellipsis" className="size-3.5" />
+          <Icon name="Ellipsis" className={sx(paint.s21)} />
         </MenuTrigger>
-        <MenuPopup align="end" className="min-w-52">
+        <MenuPopup align="end" className={sx(paint.s22)}>
           <MenuItem onClick={() => openInTab("row")}>
             <Icon name="PanelRight" /> Open beside the terminal
           </MenuItem>
@@ -300,13 +492,14 @@ function ConfiguredRow({ item: c, berth, onChanged }: { item: Configured; berth:
     }
   };
   return (
-    <li className="flex items-center gap-3 px-4 py-2 text-sm">
-      <span className={cn("size-2 shrink-0 rounded-full", running ? "bg-warning" : c.state === "failed" ? "bg-destructive" : "bg-muted-foreground/30")} aria-label={c.state} />
-      <span className="w-14 shrink-0 font-medium">{c.name}</span>
-      <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground text-xs" title={c.run}>
-        {c.run}
-      </span>
-      <span className="text-muted-foreground text-xs">{running ? "running, not listening yet" : c.state}</span>
+    <li className={sx(paint.s23)}>
+      <span className={[sx(paint.n0), running ? sx(paint.n1) : c.state === "failed" ? sx(paint.n2) : sx(paint.n3)].filter(Boolean).join(" ")} aria-label={c.state} />
+      <span className={sx(paint.s26)}>{c.name}</span>
+      <Tooltip>
+        <TooltipTrigger render={<span className={sx(paint.s27)}>{c.run}</span>} />
+        <TooltipPopup width="lg">{c.run}</TooltipPopup>
+      </Tooltip>
+      <span className={sx(paint.s28)}>{running ? "running, not listening yet" : c.state}</span>
       {running ? (
         <Button size="xs" variant="outline" loading={busy} onClick={() => void act("stop")}>
           Stop

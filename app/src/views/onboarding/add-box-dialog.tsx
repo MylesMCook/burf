@@ -22,7 +22,7 @@ export function AddBoxDialog() {
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
       {/* Anchored at the top: steps differ in height, and a centred dialog
           would move its title with each one. */}
-      <DialogPopup className="sm:max-w-xl" anchored>
+      <DialogPopup anchored width="xl">
         {open && (
           <AddBoxFlow
             variant="dialog"

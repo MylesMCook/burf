@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import { builtin } from "@/components/art/chat-backgrounds";
@@ -7,10 +8,80 @@ import { type ChatBackground as Bg, imageBlob } from "@/lib/chat-background";
 import { type Img, render, type RGB, type Source, type ThemeColours } from "@/lib/chat-background-render";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { scrollBehavior } from "@/lib/motion";
 
 import "@/components/conversation/chat-background.css";
+
+const paint = stylex.create({
+  s0: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "overflow": "hidden",
+  },
+  s1: {
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "width": "100%",
+    "height": "100%",
+    "transitionProperty": "opacity",
+    "transitionDuration": "300ms",
+  },
+  s2: {
+    "imageRendering": "pixelated",
+  },
+  s3: {
+    "opacity": 1,
+  },
+  s4: {
+    "opacity": 0,
+  },
+  s5: {
+    "position": "absolute",
+    "top": 0,
+    "bottom": 0,
+    "right": "24px",
+    "left": "24px",
+  },
+  s6: {
+    "position": "relative",
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "height": "100%",
+  },
+  s7: {
+    "position": "absolute",
+    "top": 0,
+    "bottom": 0,
+    "transitionProperty": "opacity",
+    "transitionDuration": "300ms",
+  },
+  s8: {
+    "opacity": 1,
+  },
+  s9: {
+    "opacity": 0,
+  },
+  q10: {
+    "right": {
+      "@container (min-width: 900px)": {
+        "default": "max(24px,var(--berth-loops-w,0px))",
+      },
+    },
+  },
+  q11: {
+    "maxWidth": "var(--berth-chat-w)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // ChatBackground is what is behind a conversation (Settings › Appearance ›
 // Chat background), and, when it needs one, a reading sheet that keeps the
@@ -32,8 +103,8 @@ function Layer({ bg }: { bg: Bg }) {
   const { drawn, sheet, pixelated } = useRendered(wrap, canvas, bg);
   const full = usePrefs((p) => p.chatWidth === "full");
   return (
-    <div ref={wrap} aria-hidden data-testid="chat-background" data-drawn={drawn || undefined} className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" style={{ "--chat-sheet": `${Math.round(sheet * 100)}%` } as CSSProperties}>
-      <canvas ref={canvas} className={cn("absolute inset-0 size-full transition-opacity duration-300", pixelated && "[image-rendering:pixelated]", drawn ? "opacity-100" : "opacity-0")} />
+    <div ref={wrap} aria-hidden data-testid="chat-background" data-drawn={drawn || undefined} className={[sx(paint.s0), "-z-10"].filter(Boolean).join(" ")} style={{ "--chat-sheet": `${Math.round(sheet * 100)}%` } as CSSProperties}>
+      <canvas ref={canvas} className={[sx(paint.s1), pixelated && sx(paint.s2), drawn ? sx(paint.s3) : sx(paint.s4)].filter(Boolean).join(" ")} />
       {/* The reading column stays clean: the plain page lies over the
           background behind the conversation and its composer, easing in
           from the column's edges, so the background lives in the margins.
@@ -41,9 +112,9 @@ function Layer({ bg }: { bg: Bg }) {
           when there is room for it, the chat's width. At Full the column
           is the pane, so the fade is wider and the edges keep a little. A
           picture shown as it is is loud, so its fade ends before the column. */}
-      <div className="absolute inset-y-0 right-6 left-6 @[900px]:right-[max(24px,var(--berth-loops-w,0px))]">
-        <div className="relative mx-auto h-full max-w-(--berth-chat-w)">
-          <div data-glass={bg.original || undefined} data-full={full || undefined} className={cn("cb-sheet absolute inset-y-0 transition-opacity duration-300", bg.original ? "-inset-x-24" : "-inset-x-6", drawn ? "opacity-100" : "opacity-0")} />
+      <div className={[sx(paint.s5), sx(paint.q10)].filter(Boolean).join(" ")}>
+        <div className={[sx(paint.s6), sx(paint.q11)].filter(Boolean).join(" ")}>
+          <div data-glass={bg.original || undefined} data-full={full || undefined} className={[[sx(paint.s7), "cb-sheet"].filter(Boolean).join(" "), bg.original ? "-inset-x-24" : "-inset-x-6", drawn ? sx(paint.s8) : sx(paint.s9)].filter(Boolean).join(" ")} />
         </div>
       </div>
     </div>

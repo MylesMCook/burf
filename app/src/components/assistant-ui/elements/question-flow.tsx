@@ -1,5 +1,6 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import {
   useId,
   useLayoutEffect,
@@ -7,9 +8,150 @@ import {
   useState,
   type ComponentProps,
 } from "react";
-import { cn } from "@/lib/utils";
 import { OptionList, type OptionListOption } from "./option-list";
 import { ghostButton, mono, paper } from "./surfaces";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "width": "100%",
+    "flexDirection": "column",
+    "borderRadius": "var(--radius-2xl)",
+    "padding": "8px",
+    "maxWidth": "384px",
+  },
+  s1: {
+    "gap": "12px",
+  },
+  s2: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s3: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s4: {
+    "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+    "fontSize": "13.5px",
+    "lineHeight": "20px",
+    "overflowWrap": "break-word",
+  },
+  s5: {
+    "gap": "20px",
+  },
+  s6: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "12px",
+  },
+  s7: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+  },
+  s8: {
+    "fontSize": "13.5px",
+    "lineHeight": "20px",
+    "fontWeight": 500,
+  },
+  s9: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s10: {
+    "maxWidth": "none",
+    "borderWidth": 0,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": {
+      "default": "transparent",
+    },
+    "padding": "0px",
+  },
+  s11: {
+    "gap": "12px",
+  },
+  s12: {
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "space-between",
+    "gap": "12px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+  },
+  s13: {
+    "color": "color-mix(in oklab, var(--foreground) 35%, transparent)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s14: {
+    "height": "28px",
+    "paddingLeft": "10px",
+    "paddingRight": "10px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+  },
+  s15: {
+    "cursor": "default",
+    "opacity": 0.4,
+  },
+  s16: {
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 8%, transparent)",
+    "marginLeft": "8px",
+    "marginRight": "8px",
+    "height": "3px",
+    "overflow": "hidden",
+    "borderRadius": "999px",
+  },
+  s17: {
+    "backgroundColor": "color-mix(in oklab, var(--foreground) 80%, transparent)",
+    "height": "100%",
+    "transitionProperty": "width",
+    "transitionDuration": "200ms",
+  },
+  s18: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+  },
+  s19: {
+    "fontSize": "13.5px",
+    "lineHeight": "20px",
+    "fontWeight": 500,
+  },
+  s20: {
+    "color": "color-mix(in oklab, var(--foreground) 45%, transparent)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s21: {
+    "maxWidth": "none",
+    "borderWidth": 0,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": {
+      "default": "transparent",
+    },
+    "padding": "0px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface QuestionFlowStep {
   id: string;
@@ -71,11 +213,7 @@ export function QuestionFlow({
       ?.focus();
   }, [currentStep?.id]);
 
-  const root = cn(
-    paper,
-    "flex w-full max-w-sm flex-col rounded-2xl p-2",
-    className,
-  );
+  const root = [sx(paper, paint.s0), className].filter(Boolean).join(" ");
 
   const completedChoice = choice ?? confirmedAnswers;
 
@@ -85,7 +223,7 @@ export function QuestionFlow({
         {...props}
         data-slot="question-flow"
         data-state="receipt"
-        className={cn(root, "gap-3")}
+        className={[root, sx(paint.s1)].filter(Boolean).join(" ")}
       >
         {steps.flatMap((step) => {
           const selected = completedChoice[step.id];
@@ -95,11 +233,11 @@ export function QuestionFlow({
             .map((option) => option.label)
             .join(", ");
           return (
-            <div key={step.id} className="flex flex-col gap-0.5 px-2 py-1">
-              <span className="text-foreground/45 text-xs leading-4">
+            <div key={step.id} className={sx(paint.s2)}>
+              <span className={sx(paint.s3)}>
                 {step.question}
               </span>
-              <span className="text-foreground/80 text-[13.5px] leading-5 break-words">
+              <span className={sx(paint.s4)}>
                 {labels}
               </span>
             </div>
@@ -115,21 +253,21 @@ export function QuestionFlow({
         {...props}
         data-slot="question-flow"
         data-state="open"
-        className={cn(root, "gap-5")}
+        className={[root, sx(paint.s5)].filter(Boolean).join(" ")}
       >
         {steps.map((step) => {
           const questionId = `${questionPrefix}-${step.id}`;
           return (
-            <div key={step.id} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-0.5 px-2 pt-1">
+            <div key={step.id} className={sx(paint.s6)}>
+              <div className={sx(paint.s7)}>
                 <p
                   id={questionId}
-                  className="text-[13.5px] leading-5 font-medium"
+                  className={sx(paint.s8)}
                 >
                   {step.question}
                 </p>
                 {step.description ? (
-                  <p className="text-foreground/45 text-xs leading-4">
+                  <p className={sx(paint.s9)}>
                     {step.description}
                   </p>
                 ) : null}
@@ -137,7 +275,7 @@ export function QuestionFlow({
               <OptionList
                 aria-labelledby={questionId}
                 options={step.options}
-                className="max-w-none border-0 bg-transparent p-0 dark:bg-transparent"
+                bare
               />
             </div>
           );
@@ -195,10 +333,10 @@ export function QuestionFlow({
       {...props}
       data-slot="question-flow"
       data-state="open"
-      className={cn(root, "gap-3")}
+      className={[root, sx(paint.s11)].filter(Boolean).join(" ")}
     >
-      <div className="flex items-center justify-between gap-3 px-2 pt-1">
-        <span className={cn(mono, "text-foreground/35 tabular-nums")}>
+      <div className={sx(paint.s12)}>
+        <span className={sx(mono, paint.s13)}>
           {currentIndex + 1} of {steps.length}
         </span>
         {currentIndex > 0 ? (
@@ -206,11 +344,7 @@ export function QuestionFlow({
             type="button"
             disabled={isCompleting}
             onClick={() => setStepIndex(currentIndex - 1)}
-            className={cn(
-              ghostButton,
-              "h-7 px-2.5 text-xs font-medium",
-              isCompleting && "cursor-default opacity-40",
-            )}
+            className={sx(ghostButton, paint.s14, isCompleting && paint.s15)}
           >
             Back
           </button>
@@ -222,19 +356,19 @@ export function QuestionFlow({
         aria-valuemin={1}
         aria-valuemax={steps.length}
         aria-valuetext={`Question ${currentIndex + 1} of ${steps.length}`}
-        className="bg-foreground/[0.08] mx-2 h-[3px] overflow-hidden rounded-full"
+        className={sx(paint.s16)}
       >
         <div
           style={{ width: `${((currentIndex + 1) / steps.length) * 100}%` }}
-          className="bg-foreground/80 h-full transition-[width] duration-200 motion-reduce:transition-none"
+          className={sx(paint.s17)}
         />
       </div>
-      <div className="flex flex-col gap-0.5 px-2">
-        <p id={questionId} className="text-[13.5px] leading-5 font-medium">
+      <div className={sx(paint.s18)}>
+        <p id={questionId} className={sx(paint.s19)}>
           {currentStep.question}
         </p>
         {currentStep.description ? (
-          <p className="text-foreground/45 text-xs leading-4">
+          <p className={sx(paint.s20)}>
             {currentStep.description}
           </p>
         ) : null}
@@ -250,7 +384,7 @@ export function QuestionFlow({
           maxSelections={currentStep.maxSelections}
           onConfirm={confirm}
           confirmLabel={finalStep ? completeLabel : "Next"}
-          className="max-w-none border-0 bg-transparent p-0 dark:bg-transparent"
+          bare
         />
       </div>
     </div>

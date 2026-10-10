@@ -1,7 +1,58 @@
+import * as stylex from "@stylexjs/stylex";
 import { PaperclipIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "pointerEvents": "none",
+    "position": "fixed",
+    "bottom": "calc(var(--berth-status-h,26px)+20px)",
+    "zIndex": 80,
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "8px",
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "var(--border)",
+    "backgroundColor": "var(--popover)",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "paddingInlineStart": "12px",
+    "paddingInlineEnd": "16px",
+    "color": "var(--popover-foreground)",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "boxShadow": "0 20px 25px color-mix(in oklab, var(--foreground) 16%, transparent)",
+  },
+  s1: {
+    "visibility": "hidden",
+    "opacity": 0,
+    "transitionDuration": "150ms",
+    "transitionTimingFunction": "cubic-bezier(0, 0, 0.2, 1)",
+  },
+  s2: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+
+  s3: {
+    left: "50%",
+    translate: "-50%",
+  },
+  s4: {
+    transitionProperty: "opacity, translate, visibility",
+    visibility: { "[data-shown]": "visible" },
+    opacity: { "[data-shown]": 1 },
+    translate: { default: "0px 4px", "[data-shown]": "0px 0px" },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // FileDropGuard keeps a file dropped where nothing takes it from replacing
 // the app. The window gets the browser's own drag and drop (tauri.conf's
@@ -67,12 +118,9 @@ export function FileDropGuard() {
       aria-live="polite"
       data-testid="file-drop-hint"
       data-shown={refused || undefined}
-      className={cn(
-        "pointer-events-none fixed bottom-[calc(var(--berth-status-h,26px)+20px)] left-1/2 z-80 flex -translate-x-1/2 items-center gap-2 rounded-full border bg-popover py-2 ps-3 pe-4 text-popover-foreground text-sm shadow-xl/20",
-        "invisible translate-y-1 opacity-0 transition-[opacity,translate,visibility] duration-150 ease-out data-shown:visible data-shown:translate-y-0 data-shown:opacity-100",
-      )}
+      className={[[sx(paint.s0), sx(paint.s3)].filter(Boolean).join(" "), [sx(paint.s1), sx(paint.s4)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}
     >
-      <PaperclipIcon className="size-4 shrink-0 text-muted-foreground" />
+      <PaperclipIcon className={sx(paint.s2)} />
       <span>Drop on a message box or a terminal to attach</span>
     </div>
   );

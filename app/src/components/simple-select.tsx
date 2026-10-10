@@ -13,7 +13,7 @@ export function SimpleSelect({
   placeholder,
   disabled,
   size,
-  className,
+  measure = "fill",
   "aria-label": label,
   "aria-labelledby": labelledBy,
   "aria-describedby": describedBy,
@@ -23,8 +23,8 @@ export function SimpleSelect({
   onChange(v: string): void;
   placeholder?: string;
   disabled?: boolean;
-  size?: "sm" | "default" | "lg";
-  className?: string;
+  size?: "xs" | "sm" | "default" | "lg";
+  measure?: "fill" | "grow" | "32" | "40" | "56";
   // A select with no visible label names itself (JSX lets an aria-* prop
   // through untyped, so it is listed here to be passed on).
   "aria-label"?: string;
@@ -34,7 +34,7 @@ export function SimpleSelect({
   const selected = options.find((o) => o.value === value) ?? null;
   return (
     <Select items={options} value={selected} onValueChange={(o: Option | null) => onChange(o?.value ?? "")} disabled={disabled}>
-      <SelectTrigger size={size} className={className} aria-label={label} aria-labelledby={labelledBy} aria-describedby={describedBy}>
+      <SelectTrigger size={size} measure={measure} aria-label={label} aria-labelledby={labelledBy} aria-describedby={describedBy}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectPopup>

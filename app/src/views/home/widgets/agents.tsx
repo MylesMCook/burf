@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { CornerDownLeftIcon, GitBranchIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -11,13 +12,326 @@ import { parseScreen } from "@/lib/screen-status";
 import { permissionChoices } from "@/lib/screen";
 import { useStore } from "@/lib/store";
 import { useAsk } from "@/lib/transcript-feed";
-import { cn } from "@/lib/utils";
 import { focusSession, homeBox, selectWorktree, useWorkspaces, type WorktreeRef } from "@/lib/workspaces";
 import { useReview } from "@/views/review/review-store";
 
 import { fitRows, useHomeWidget } from "./env";
 import { DiffStat, More, shortAgo, WidgetEmpty, WidgetRow, WidgetSkeleton } from "./parts";
 import { placeLabel, worktreeLabel } from "@/lib/worktree-names";
+
+const paint = stylex.create({
+  s0: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "4px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s1: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s2: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexDirection": "column",
+    "gap": "4px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "backgroundColor": {
+      ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
+    },
+  },
+  s3: {
+    "display": "flex",
+    "width": "100%",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "10px",
+    "borderRadius": "var(--radius-sm)",
+    "textAlign": "left",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "outline": "none",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s4: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+  },
+  s5: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s6: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "24px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s8: {
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s9: {
+    "flexShrink": 0,
+    "fontSize": "11px",
+  },
+  s10: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s11: {
+    "height": "20px",
+    "borderRadius": "5px",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontSize": "11px",
+  },
+  s12: {
+    "height": "20px",
+    "borderRadius": "5px",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontSize": "11px",
+  },
+  s13: {
+    "height": "20px",
+    "flexShrink": 0,
+    "borderRadius": "5px",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "fontSize": "11px",
+  },
+  s14: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s15: {
+    "display": "flex",
+    "flexDirection": "column",
+    "gap": "2px",
+  },
+  s16: {
+    "display": "flex",
+    "width": "100%",
+    "minWidth": "0px",
+    "flexDirection": "column",
+    "gap": "2px",
+    "borderRadius": "var(--radius-md)",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
+    "paddingTop": "6px",
+    "paddingBottom": "6px",
+    "textAlign": "left",
+    "outline": "none",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+      ":focus-visible": "var(--accent)",
+    },
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s17: {
+    "display": "flex",
+    "width": "100%",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "10px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s18: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+  },
+  s19: {
+    "width": "12px",
+    "height": "12px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s20: {
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s21: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "24px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s22: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+  },
+  s23: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s24: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s25: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s26: {
+    "minWidth": "0px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s27: {
+    "width": "32px",
+    "flexShrink": 0,
+    "textAlign": "right",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s28: {
+    "display": "flex",
+    "flexDirection": "column",
+  },
+  s29: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+    "color": "var(--muted-foreground)",
+  },
+  s30: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s31: {
+    "display": "flex",
+    "flexShrink": 0,
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s32: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s33: {
+    "width": "12px",
+    "height": "12px",
+  },
+  s34: {
+    "flexShrink": 0,
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+  },
+  s35: {
+    "width": "28px",
+    "flexShrink": 0,
+    "textAlign": "right",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontVariantNumeric": "tabular-nums",
+  },
+
+  s36: {
+    "@container (max-width: 300px)": {
+      display: "none",
+    },
+  },
+  s37: {
+    "@container (max-width: 280px)": {
+      display: "none",
+    },
+  },
+  s38: {
+    "@container (max-width: 340px)": {
+      display: "none",
+    },
+  },
+  s39: {
+    "@container (max-width: 260px)": {
+      display: "none",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // The agents' widgets: what needs you (answered in place where it can be),
 // what is working and on which step, what just finished, and where you and
@@ -88,7 +402,7 @@ export const useFinishedCount = () => ({ n: byState(useAgentRows(), "finished").
 
 function OfflineNote({ boxes }: { boxes: string[] }) {
   if (!boxes.length) return null;
-  return <p className="truncate px-2 pt-1 text-[11px] text-muted-foreground">{boxes.length === 1 ? `${boxes[0]} is offline: its agents aren't listed` : `${boxes.length} boxes offline: their agents aren't listed`}</p>;
+  return <p className={sx(paint.s0)}>{boxes.length === 1 ? `${boxes[0]} is offline: its agents aren't listed` : `${boxes.length} boxes offline: their agents aren't listed`}</p>;
 }
 
 // ---------- Needs you ----------
@@ -106,7 +420,7 @@ export function NeedsYouWidget() {
   if (!rows.length) return offline.length ? <OfflineNote boxes={offline} /> : null;
   const shown = rows.slice(0, fitRows(height, 54));
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className={sx(paint.s1)}>
       {shown.map((r) => (
         <WaitingRow key={r.key} r={r} />
       ))}
@@ -143,30 +457,30 @@ function WaitingRow({ r }: { r: AgentRow }) {
   const open = () => void focusSession(r.box, s.name);
 
   return (
-    <div className="group/row flex min-w-0 flex-col gap-1 rounded-md px-2 py-1.5 hover:bg-accent/60">
-      <button type="button" onClick={open} className="flex w-full min-w-0 items-center gap-2.5 rounded-sm text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <div className={[sx(paint.s2), "group/row"].filter(Boolean).join(" ")}>
+      <button type="button" onClick={open} className={sx(paint.s3)}>
         <StateGlyph state="waiting" />
-        <span className="min-w-0 flex-1 truncate font-medium">{r.title}</span>
-        <span className="shrink-0 text-muted-foreground text-xs tabular-nums">{shortAgo(r.since)}</span>
+        <span className={sx(paint.s4)}>{r.title}</span>
+        <span className={sx(paint.s5)}>{shortAgo(r.since)}</span>
       </button>
-      <span className="flex min-w-0 items-center gap-2 pl-6 text-muted-foreground text-xs">
-        <span className={cn("min-w-0 flex-1 truncate", tool && !question && "font-mono text-[11px]")}>{detail}</span>
+      <span className={sx(paint.s6)}>
+        <span className={[sx(paint.s7), tool && !question && sx(paint.s8)].filter(Boolean).join(" ")}>{detail}</span>
         {answered ? (
-          <span className="shrink-0 text-[11px]">{answered === "Deny" ? "Denied" : "Allowed"} · resuming</span>
+          <span className={sx(paint.s9)}>{answered === "Deny" ? "Denied" : "Allowed"} · resuming</span>
         ) : allow && deny ? (
-          <span className="flex shrink-0 items-center gap-1">
-            <Button size="xs" variant="outline" className="h-5 rounded-[5px] px-1.5 text-[11px]" onClick={() => answer(deny.key, "Deny")} aria-label={`Deny: ${r.title}`}>
+          <span className={sx(paint.s10)}>
+            <span className={sx(paint.s11)}><Button size="xs" variant="outline"  onClick={() => answer(deny.key, "Deny")} aria-label={`Deny: ${r.title}`}>
               Deny
-            </Button>
-            <Button size="xs" className="h-5 rounded-[5px] px-1.5 text-[11px]" onClick={() => answer(allow.key, "Allow")} aria-label={`Allow once: ${r.title}`}>
+            </Button></span>
+            <span className={sx(paint.s12)}><Button size="xs"  onClick={() => answer(allow.key, "Allow")} aria-label={`Allow once: ${r.title}`}>
               Allow once
-            </Button>
+            </Button></span>
           </span>
         ) : (
-          <Button size="xs" variant="outline" className="h-5 shrink-0 rounded-[5px] px-1.5 text-[11px]" onClick={open} aria-label={`Answer: ${r.title}`}>
+          <span className={sx(paint.s13)}><Button size="xs" variant="outline"  onClick={open} aria-label={`Answer: ${r.title}`}>
             Answer
-            <CornerDownLeftIcon className="size-3" />
-          </Button>
+            <CornerDownLeftIcon className={sx(paint.s14)} />
+          </Button></span>
         )}
       </span>
     </div>
@@ -184,7 +498,7 @@ export function WorkingWidget() {
   if (!rows.length) return offline.length ? <OfflineNote boxes={offline} /> : null;
   const shown = rows.slice(0, fitRows(height, 48));
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className={sx(paint.s15)}>
       {shown.map((r) => (
         <WorkingRow key={r.key} r={r} />
       ))}
@@ -242,17 +556,17 @@ function WorkingRow({ r }: { r: AgentRow }) {
     <button
       type="button"
       onClick={() => void focusSession(r.box, r.session.name)}
-      className="flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+      className={sx(paint.s16)}
     >
-      <span className="flex w-full min-w-0 items-center gap-2.5 text-sm">
+      <span className={sx(paint.s17)}>
         <StateGlyph state="running" />
-        <span className="min-w-0 flex-1 truncate font-medium">{r.title}</span>
-        <AgentIcon agent={r.agent} className="size-3 shrink-0 text-muted-foreground" />
-        <span className="shrink-0 text-muted-foreground text-xs tabular-nums">{step?.elapsed ?? shortAgo(r.since)}</span>
+        <span className={sx(paint.s18)}>{r.title}</span>
+        <AgentIcon agent={r.agent} className={sx(paint.s19)} />
+        <span className={sx(paint.s20)}>{step?.elapsed ?? shortAgo(r.since)}</span>
       </span>
-      <span className="flex min-w-0 items-center gap-1.5 pl-6 text-muted-foreground text-xs">
-        <span className="min-w-0 truncate font-mono text-[11px]">{step?.now ?? `${agentLabel(r.agent)} · ${r.where}`}</span>
-        {step?.sub && <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground @max-[300px]:hidden">· {step.sub}</span>}
+      <span className={sx(paint.s21)}>
+        <span className={sx(paint.s22)}>{step?.now ?? `${agentLabel(r.agent)} · ${r.where}`}</span>
+        {step?.sub && <span className={[sx(paint.s23), sx(paint.s36)].filter(Boolean).join(" ")}>· {step.sub}</span>}
       </span>
     </button>
   );
@@ -269,15 +583,15 @@ export function FinishedWidget() {
   if (!rows.length) return null;
   const shown = rows.slice(0, rows.length > lines ? fitRows(height, 36) : lines);
   return (
-    <div className="flex flex-col">
+    <div className={sx(paint.s24)}>
       {shown.map((r) => {
         const e = r.worktree && entries.find((x) => x.box === r.box && x.path === r.worktree!.path);
         return (
           <WidgetRow key={r.key} onClick={() => void focusSession(r.box, r.session.name)}>
             <StateGlyph state="finished" />
-            <span className="min-w-0 flex-1 truncate">{r.title}</span>
-            {e && (e.added || e.removed) ? <DiffStat add={e.added} del={e.removed} className="@max-[280px]:hidden" /> : <span className="min-w-0 truncate text-muted-foreground text-xs @max-[340px]:hidden">{r.where}</span>}
-            <span className="w-8 shrink-0 text-right text-muted-foreground text-xs tabular-nums">{shortAgo(r.since)}</span>
+            <span className={sx(paint.s25)}>{r.title}</span>
+            {e && (e.added || e.removed) ? <DiffStat add={e.added} del={e.removed} className={sx(paint.s37)} /> : <span className={[sx(paint.s26), sx(paint.s38)].filter(Boolean).join(" ")}>{r.where}</span>}
+            <span className={sx(paint.s27)}>{shortAgo(r.since)}</span>
           </WidgetRow>
         );
       })}
@@ -330,20 +644,20 @@ export function AreasWidget() {
       <WidgetEmpty scene="first-crate" title="No projects yet" hint="Add a repository on a box to start work in it." action="Add a project" onAction={() => useStore.getState().openAddProject()} />
     );
   return (
-    <div className="flex flex-col">
+    <div className={sx(paint.s28)}>
       {areas.slice(0, lines).map((a) => {
         const waiting = a.agents.filter((r) => r.state === "waiting").length;
         const running = a.agents.filter((r) => r.state === "running").length;
         return (
           <WidgetRow key={`${a.ref.box}:${a.ref.path}`} onClick={() => selectWorktree(a.ref)}>
-            <GitBranchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate">{a.label}</span>
-            <span className="flex shrink-0 items-center gap-1">
-              {waiting > 0 && <StateGlyph state="waiting" className="size-3" />}
-              {running > 0 && <StateGlyph state="running" className="size-3" />}
+            <GitBranchIcon className={sx(paint.s29)} />
+            <span className={sx(paint.s30)}>{a.label}</span>
+            <span className={sx(paint.s31)}>
+              {waiting > 0 && <StateGlyph state="waiting" className={sx(paint.s32)} />}
+              {running > 0 && <StateGlyph state="running" className={sx(paint.s33)} />}
             </span>
-            {span.c > 1 && <span className="shrink-0 font-mono text-[11px] text-muted-foreground @max-[260px]:hidden">{a.ref.box}</span>}
-            <span className="w-7 shrink-0 text-right text-muted-foreground text-xs tabular-nums">{shortAgo(a.at)}</span>
+            {span.c > 1 && <span className={[sx(paint.s34), sx(paint.s39)].filter(Boolean).join(" ")}>{a.ref.box}</span>}
+            <span className={sx(paint.s35)}>{shortAgo(a.at)}</span>
           </WidgetRow>
         );
       })}

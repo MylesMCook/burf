@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { definePlugin, useProjects, type BerthPluginContext, type SavedPrompt, type ScreenProps } from "@berth/plugin";
 import {
   AlertDialog,
@@ -27,6 +28,187 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 
 import { EditSheet } from "./edit-sheet";
 
+const paint = stylex.create({
+  s0: {
+    "borderRadius": "3px",
+    "backgroundColor": "color-mix(in oklab, var(--info) 10%, transparent)",
+    "paddingLeft": "2px",
+    "paddingRight": "2px",
+    "fontFamily": "var(--font-mono)",
+    "fontSize": "0.95em",
+    "color": "var(--info-foreground)",
+  },
+  s1: {
+    "fontWeight": 500,
+    "color": "var(--foreground)",
+  },
+  s2: {
+    "marginBottom": "16px",
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+  },
+  s3: {
+    "width": "256px",
+  },
+  s4: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "4px",
+  },
+  s5: {
+    "marginLeft": "auto",
+    "color": "var(--muted-foreground)",
+  },
+  s6: {
+    "marginBottom": "16px",
+    "borderRadius": "var(--radius-lg)",
+    "borderWidth": 1,
+    "borderStyle": "dashed",
+    "borderColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+  },
+  s7: {
+    "marginLeft": "auto",
+    "marginRight": "auto",
+    "marginBottom": "8px",
+    "width": "20px",
+    "height": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s8: {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(auto-fill,minmax(280px,1fr))",
+    "gap": "12px",
+  },
+  s9: {
+    "display": "flex",
+    "minWidth": "0px",
+    "cursor": "pointer",
+    "flexDirection": "column",
+    "borderRadius": "var(--radius-xl)",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": {
+      "default": "var(--border)",
+      ":hover": "color-mix(in oklab, var(--ring) 40%, transparent)",
+    },
+    "backgroundColor": "var(--card)",
+    "padding": "14px",
+    "outline": "none",
+    "transitionProperty": "color, background-color, border-color",
+    "transitionDuration": "150ms",
+    "boxShadow": {
+      ":focus-visible": "0 0 0 2px var(--ring)",
+    },
+  },
+  s10: {
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "flex-start",
+    "gap": "8px",
+  },
+  s11: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+  },
+  s12: {
+    "marginTop": "calc(4px * -1)",
+    "marginBottom": "calc(4px * -1)",
+    "marginInlineEnd": "calc(4px * -1)",
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "opacity": {
+      "default": 0,
+      ":focus-visible": 1,
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+    ":is(.group:hover &)": {
+      "opacity": 1,
+    },
+  },
+  s13: {
+    "width": "14px",
+    "height": "14px",
+  },
+  s14: {
+    "minWidth": "176px",
+  },
+  s15: {
+    "marginTop": "6px",
+    "overflow": "hidden",
+    "display": "-webkit-box",
+    "WebkitLineClamp": 4,
+    "WebkitBoxOrient": "vertical",
+    "whiteSpace": "pre-line",
+    "overflowWrap": "break-word",
+    "color": "var(--muted-foreground)",
+    "fontSize": "12px",
+    "lineHeight": "1.625",
+  },
+  s16: {
+    "marginTop": "auto",
+    "display": "flex",
+    "minWidth": "0px",
+    "alignItems": "center",
+    "gap": "4px",
+    "paddingTop": "12px",
+  },
+  s17: {
+    "maxWidth": "128px",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s18: {
+    "marginLeft": "4px",
+    "fontSize": "11px",
+    "color": "var(--muted-foreground)",
+    "fontVariantNumeric": "tabular-nums",
+  },
+  s19: {
+    "marginLeft": "auto",
+  },
+  s20: {
+    "height": "24px",
+    "fontSize": "11px",
+  },
+  q21: {
+    "opacity": {
+      "[data-popup-open]": 1,
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
+
 // The prompt library: saved prompts for agents, kept on this laptop. The
 // app owns sending (its picker, ⌘K, panes' menus, broadcast); this is where
 // you write, find and tidy them.
@@ -51,7 +233,7 @@ export function Marked({ text }: { text: string }) {
     <>
       {parts.map((p, i) =>
         i % 2 ? (
-          <span key={i} className="rounded-[3px] bg-info/10 px-0.5 font-mono text-[0.95em] text-info-foreground">
+          <span key={i} className={sx(paint.s0)}>
             {p}
           </span>
         ) : (
@@ -107,7 +289,7 @@ function Library({ berth }: ScreenProps) {
     <div>
       <ViewHeader
         title="Prompts"
-        description={<>Prompts you send agents again and again. Send one from <b className="font-medium text-foreground">⌘K</b> or a pane's menu, or to several agents at once.</>}
+        description={<>Prompts you send agents again and again. Send one from <b className={sx(paint.s1)}>⌘K</b> or a pane's menu, or to several agents at once.</>}
         actions={
           <>
             <Button size="sm" variant="outline" onClick={() => berth.prompts.openBroadcast()}>
@@ -122,9 +304,9 @@ function Library({ berth }: ScreenProps) {
         }
       />
       <div>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <Input className="w-64" size="sm" placeholder="Search prompts…" aria-label="Search prompts" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
-          <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Tags">
+        <div className={sx(paint.s2)}>
+          <Input className={sx(paint.s3)} size="sm" placeholder="Search prompts…" aria-label="Search prompts" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
+          <div className={sx(paint.s4)} role="group" aria-label="Tags">
             {tags.map((t) => (
               <FilterChip key={t} pressed={picked.includes(t)} onPressedChange={(on: boolean) => setPicked((ps) => (on ? [...ps, t] : ps.filter((x) => x !== t)))}>
                 {t}
@@ -132,28 +314,28 @@ function Library({ berth }: ScreenProps) {
             ))}
           </div>
           {missingStarters.length > 0 && !starters && (
-            <Button size="xs" variant="ghost" className="ml-auto text-muted-foreground" onClick={() => void save([...prompts, ...missingStarters])}>
+            <Button size="xs" variant="ghost" className={sx(paint.s5)} onClick={() => void save([...prompts, ...missingStarters])}>
               Add the starter prompts back ({missingStarters.length})
             </Button>
           )}
         </div>
 
         {starters && (
-          <p className="mb-4 rounded-lg border border-dashed px-3 py-2 text-muted-foreground text-xs">
+          <p className={sx(paint.s6)}>
             These are starters to get going. Edit them, delete them, or add your own; the library is kept on this laptop, for every window.
           </p>
         )}
 
         {shown.length === 0 ? (
-          <Empty className="rounded-xl border py-16">
+          <Empty frame="panel" pad="room">
             <EmptyHeader>
-              <Icon name="BookMarked" className="mx-auto mb-2 size-5 text-muted-foreground" />
+              <Icon name="BookMarked" className={sx(paint.s7)} />
               <EmptyTitle>{prompts.length ? "Nothing matches" : "No saved prompts"}</EmptyTitle>
               <EmptyDescription>{prompts.length ? "Try another search or tag." : "Save the prompts you keep typing, with {{variables}} for what changes."}</EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+          <div className={sx(paint.s8)}>
             {shown.map((p) => (
               <article
                 key={p.id}
@@ -161,18 +343,18 @@ function Library({ berth }: ScreenProps) {
                 tabIndex={0}
                 onClick={() => setEditing(p)}
                 onKeyDown={(e: React.KeyboardEvent) => e.key === "Enter" && e.target === e.currentTarget && setEditing(p)}
-                className="group flex min-w-0 cursor-pointer flex-col rounded-xl border bg-card p-3.5 outline-none transition-colors hover:border-ring/40 focus-visible:ring-2 focus-visible:ring-ring"
+                className={[sx(paint.s9), "group"].filter(Boolean).join(" ")}
               >
-                <div className="flex min-w-0 items-start gap-2">
-                  <h3 className="min-w-0 flex-1 truncate font-medium text-sm">{p.title}</h3>
+                <div className={sx(paint.s10)}>
+                  <h3 className={sx(paint.s11)}>{p.title}</h3>
                   <span onClick={(e: React.MouseEvent) => e.stopPropagation()} onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}>
                     <Menu>
                       <MenuTrigger
-                        render={<button type="button" aria-label={`More for ${p.title}`} className="-my-1 -me-1 inline-flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-popup-open:opacity-100" />}
+                        render={<button type="button" aria-label={`More for ${p.title}`} className={[sx(paint.s12), sx(paint.q21)].filter(Boolean).join(" ")} />}
                       >
-                        <Icon name="Ellipsis" className="size-3.5" />
+                        <Icon name="Ellipsis" className={sx(paint.s13)} />
                       </MenuTrigger>
-                      <MenuPopup align="end" className="min-w-44">
+                      <MenuPopup align="end" className={sx(paint.s14)}>
                         <MenuItem onClick={() => berth.prompts.openPicker({ promptId: p.id })}>
                           <Icon name="Send" />
                           Send to an agent…
@@ -198,12 +380,12 @@ function Library({ berth }: ScreenProps) {
                     </Menu>
                   </span>
                 </div>
-                <p className="mt-1.5 line-clamp-4 whitespace-pre-line break-words text-muted-foreground text-xs leading-relaxed">
+                <p className={sx(paint.s15)}>
                   <Marked text={p.body} />
                 </p>
-                <footer className="mt-auto flex min-w-0 items-center gap-1 pt-3">
+                <footer className={sx(paint.s16)}>
                   {p.project && (
-                    <Badge size="sm" variant="info" className="max-w-32 truncate" title={`Only offered in ${projectName(p.project)}`}>
+                    <Badge size="sm" variant="info" className={sx(paint.s17)} title={`Only offered in ${projectName(p.project)}`}>
                       {projectName(p.project)}
                     </Badge>
                   )}
@@ -212,9 +394,9 @@ function Library({ berth }: ScreenProps) {
                       {t}
                     </Badge>
                   ))}
-                  {!!p.uses && <span className="ml-1 text-[11px] text-muted-foreground tabular-nums">{p.uses === 1 ? "used once" : `used ${p.uses}×`}</span>}
-                  <span className="ml-auto" onClick={(e: React.MouseEvent) => e.stopPropagation()} onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}>
-                    <Button size="xs" variant="ghost" className="h-6 text-[11px]" onClick={() => berth.prompts.openPicker({ promptId: p.id })}>
+                  {!!p.uses && <span className={sx(paint.s18)}>{p.uses === 1 ? "used once" : `used ${p.uses}×`}</span>}
+                  <span className={sx(paint.s19)} onClick={(e: React.MouseEvent) => e.stopPropagation()} onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}>
+                    <Button size="xs" variant="ghost" className={sx(paint.s20)} onClick={() => berth.prompts.openPicker({ promptId: p.id })}>
                       Send…
                     </Button>
                   </span>

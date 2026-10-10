@@ -1,5 +1,26 @@
+import * as stylex from "@stylexjs/stylex";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "width": "6px",
+    "height": "6px",
+    "flexShrink": 0,
+    "borderRadius": "999px",
+    "borderWidth": 1,
+    "borderStyle": "solid",
+    "borderColor": "currentColor",
+    "opacity": 0.7,
+  },
+  q1: {
+    ":is([data-pressed] &)": {
+      "backgroundColor": "currentColor",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 // BoxFilter chooses which boxes a page covers. Pressed means shown: every
 // box starts pressed, turning one off hides what is on it, and the last
@@ -16,22 +37,23 @@ export function BoxFilter({
   hidden,
   onChange,
   label = "Boxes to show",
-  className,
+  align,
 }: {
   boxes: string[];
   hidden: string[];
   onChange(hidden: string[]): void;
   label?: string;
-  className?: string;
+  align?: "end";
 }) {
   if (boxes.length < 2) return null;
   const shown = boxes.filter((b) => !hidden.includes(b));
   return (
     <ToggleGroup
+      align={align}
       multiple
+      shrink
       size="sm"
       variant="outline"
-      className={cn("shrink-0", className)}
       // A stored filter can hide every box there is now; show them all then.
       value={shown.length ? shown : boxes}
       onValueChange={(v) => {
@@ -45,10 +67,10 @@ export function BoxFilter({
         <ToggleGroupItem
           key={b}
           value={b}
-          className="group/box h-7 gap-1.5 px-2.5 font-normal text-muted-foreground text-xs sm:text-xs data-pressed:bg-background data-pressed:text-foreground data-pressed:shadow-xs dark:data-pressed:bg-input"
+          tone="choice"
         >
           {/* Filled when shown, hollow when hidden: the state reads without colour. */}
-          <span className="size-1.5 shrink-0 rounded-full border border-current opacity-70 group-data-pressed/box:bg-current" aria-hidden />
+          <span className={[sx(paint.s0), sx(paint.q1)].filter(Boolean).join(" ")} aria-hidden />
           {b}
         </ToggleGroupItem>
       ))}

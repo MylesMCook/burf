@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowLeftIcon, FolderIcon, GitForkIcon, MessageSquareIcon, PlusIcon, RotateCwIcon, TerminalIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chat } from "@/components/chat/chat";
@@ -11,10 +12,341 @@ import { errorMessage } from "@/lib/format";
 import { localAgentName, localApi, type LocalComputer, type LocalConversation, type LocalHistoryPage, type LocalSession } from "@/lib/local-computer";
 import { useStore } from "@/lib/store";
 import { savedChatMessages } from "@/lib/saved-chat";
-import { cn } from "@/lib/utils";
 import { ViewHeader } from "@/views/view-header";
 import { LocalTerminal } from "@/views/local-terminal";
 import { LocalChat } from "@/views/local-chat";
+
+const paint = stylex.create({
+  s0: {
+    "display": "flex",
+    "height": "100%",
+    "minWidth": "0px",
+    "flexDirection": "column",
+  },
+  s1: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s2: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "color": "var(--destructive)",
+  },
+  s3: {
+    "padding": "24px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s4: {
+    "display": "flex",
+    "minHeight": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s5: {
+    "width": "100%",
+    "flexShrink": 0,
+    "overflowY": "auto",
+    "borderRightWidth": 1,
+    "borderRightStyle": "solid",
+    "borderRightColor": "var(--border)",
+  },
+  s6: {
+    "display": "none",
+  },
+  s7: {
+    "padding": "12px",
+  },
+  s8: {
+    "paddingBottom": "12px",
+  },
+  s9: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+  },
+  s10: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "left",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s11: {
+    "backgroundColor": "var(--accent)",
+  },
+  s12: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+  },
+  s13: {
+    "width": "16px",
+    "height": "16px",
+    "flexShrink": 0,
+  },
+  s14: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+  },
+  s15: {
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s16: {
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "color": "var(--muted-foreground)",
+  },
+  s17: {
+    "color": "var(--muted-foreground)",
+  },
+  s18: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "fontWeight": 500,
+    "color": "var(--muted-foreground)",
+  },
+  s19: {
+    "paddingBottom": "12px",
+  },
+  s20: {
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "6px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s21: {
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s22: {
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s23: {
+    "display": "flex",
+    "width": "100%",
+    "alignItems": "flex-start",
+    "gap": "8px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "textAlign": "left",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s24: {
+    "backgroundColor": "var(--accent)",
+  },
+  s25: {
+    "marginTop": "2px",
+    "width": "14px",
+    "height": "14px",
+    "flexShrink": 0,
+  },
+  s26: {
+    "minWidth": "0px",
+  },
+  s27: {
+    "display": "block",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+  },
+  s28: {
+    "display": "block",
+    "color": "var(--muted-foreground)",
+  },
+  s29: {
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "16px",
+    "paddingBottom": "16px",
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s30: {
+    "display": "flex",
+    "minHeight": "0px",
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "flexDirection": "column",
+  },
+  s31: {
+    "display": "none",
+  },
+  s32: {
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "paddingTop": "4px",
+    "paddingBottom": "4px",
+  },
+  s33: {
+    "margin": "auto",
+    "paddingLeft": "24px",
+    "paddingRight": "24px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "color": "var(--muted-foreground)",
+  },
+  s34: {
+    "display": "flex",
+    "minWidth": "0px",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "12px",
+    "borderBottomWidth": 1,
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "var(--border)",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "12px",
+    "paddingBottom": "12px",
+  },
+  s35: {
+    "minWidth": "0px",
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "flexBasis": "0%",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "whiteSpace": "nowrap",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "fontWeight": 500,
+  },
+  s36: {
+    "flexShrink": 0,
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s37: {
+    "display": "flex",
+    "flexWrap": "wrap",
+    "alignItems": "center",
+    "gap": "8px",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+  },
+  s38: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s39: {
+    "width": "16px",
+    "height": "16px",
+  },
+  s40: {
+    "fontSize": "12px",
+    "lineHeight": "16px",
+    "color": "var(--muted-foreground)",
+  },
+  s41: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "color": "var(--destructive)",
+  },
+  s42: {
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "color": "var(--destructive)",
+  },
+
+  s43: {
+    containerType: "inline-size",
+    containerName: "local",
+  },
+  s44: {
+    "@container local (min-width: 600px)": {
+      width: 256,
+    },
+    "@container local (min-width: 900px)": {
+      width: 288,
+    },
+  },
+  s45: {
+    "@container local (min-width: 600px)": {
+      display: "block",
+    },
+  },
+  s46: {
+    "@container local (min-width: 600px)": {
+      display: "flex",
+    },
+  },
+  s47: {
+    "@container local (min-width: 600px)": {
+      display: "none",
+    },
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const EMPTY: LocalHistoryPage["items"] = [];
 
@@ -71,38 +403,38 @@ export function LocalComputerView() {
     select({ kind: "session", session: opened });
   }, [opened, changeSession]);
 
-  return <div className="@container/local flex h-full min-w-0 flex-col">
+  return <div className={[sx(paint.s0), sx(paint.s43)].filter(Boolean).join(" ")}>
     <ViewHeader title={local?.name || "This computer"} description="This computer" actions={<>
-      <Tip label="Refresh local conversations"><Button size="icon-sm" variant="ghost" aria-label="Refresh local conversations" disabled={loading} onClick={() => void refresh()}><RotateCwIcon className={cn("size-4", loading && "animate-spin")} /></Button></Tip>
+      <Tip label="Refresh local conversations"><Button size="icon-sm" variant="ghost" aria-label="Refresh local conversations" disabled={loading} onClick={() => void refresh()}><RotateCwIcon className={[sx(paint.s1), loading && "burf-spin"].filter(Boolean).join(" ")} /></Button></Tip>
       <Button size="sm" disabled={!local?.supported} onClick={() => { select(undefined); openComposer({ place: { kind: "local" } }); }}><PlusIcon />New agent</Button>
     </>} />
-    {error && <div role="alert" className="border-b px-4 py-2 text-sm text-destructive">{error}</div>}
-    {local && !local.supported ? <p className="p-6 text-sm text-muted-foreground">Local agents are unavailable on this computer.</p> : <div className="flex min-h-0 flex-1">
-      <aside aria-label="Local conversations" className={cn("w-full shrink-0 overflow-y-auto border-r @min-[600px]/local:w-64 @min-[900px]/local:w-72", selection && "hidden @min-[600px]/local:block")}>
-        <div className="p-3"><Input aria-label="Search local conversations" placeholder="Search conversations" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-        {!!local?.sessions?.length && <section className="pb-3">
-          <h2 className="px-3 py-1 text-xs font-medium text-muted-foreground">Started in Burf</h2>
-          {local.sessions.map((s) => <button key={s.id} type="button" onClick={() => select({ kind: "session", session: s })} className={cn("flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-accent", selection?.kind === "session" && selection.session.id === s.id && "bg-accent")}>
-            {s.mode === "chat" ? <MessageSquareIcon className="size-4 shrink-0" /> : <TerminalIcon className="size-4 shrink-0" />}<span className="min-w-0 flex-1"><span className="block truncate">{localAgentName(s.agent)}</span><span className="block truncate text-muted-foreground" title={s.cwd}>{s.cwd}</span></span><span className="text-muted-foreground">{s.state}</span>
-          </button>)}
+    {error && <div role="alert" className={sx(paint.s2)}>{error}</div>}
+    {local && !local.supported ? <p className={sx(paint.s3)}>Local agents are unavailable on this computer.</p> : <div className={sx(paint.s4)}>
+      <aside aria-label="Local conversations" className={[[sx(paint.s5), sx(paint.s44)].filter(Boolean).join(" "), selection && [sx(paint.s6), sx(paint.s45)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
+        <div className={sx(paint.s7)}><Input aria-label="Search local conversations" placeholder="Search conversations" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+        {!!local?.sessions?.length && <section className={sx(paint.s8)}>
+          <h2 className={sx(paint.s9)}>Started in Burf</h2>
+          {local.sessions.map((s) => <Tip key={s.id} label={s.cwd} width="lg"><button type="button" onClick={() => select({ kind: "session", session: s })} className={[sx(paint.s10), selection?.kind === "session" && selection.session.id === s.id && sx(paint.s11)].filter(Boolean).join(" ")}>
+            {s.mode === "chat" ? <MessageSquareIcon className={sx(paint.s12)} /> : <TerminalIcon className={sx(paint.s13)} />}<span className={sx(paint.s14)}><span className={sx(paint.s15)}>{localAgentName(s.agent)}</span><span className={sx(paint.s16)}>{s.cwd}</span></span><span className={sx(paint.s17)}>{s.state}</span>
+          </button></Tip>)}
         </section>}
-        <h2 className="px-3 py-1 text-xs font-medium text-muted-foreground">Existing conversations</h2>
-        {projects.map(([cwd, chats]) => <section key={cwd} className="pb-3">
-          <h3 className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground"><FolderIcon className="size-3.5 shrink-0" /><span className="truncate" title={cwd}>{cwd || "Unknown project"}</span></h3>
-          {chats.map((c) => <button type="button" key={c.id} onClick={() => select({ kind: "history", conversation: c })} className={cn("flex w-full items-start gap-2 px-3 py-2 text-left text-xs hover:bg-accent", selection?.kind === "history" && selection.conversation.id === c.id && "bg-accent")}>
-            <MessageSquareIcon className="mt-0.5 size-3.5 shrink-0" /><span className="min-w-0"><span className="block truncate">{c.title || "Untitled conversation"}</span><span className="block text-muted-foreground">{localAgentName(c.source)} <time dateTime={c.updated_at}>{new Date(c.updated_at).toLocaleDateString()}</time></span></span>
+        <h2 className={sx(paint.s18)}>Existing conversations</h2>
+        {projects.map(([cwd, chats]) => <section key={cwd} className={sx(paint.s19)}>
+          <h3 className={sx(paint.s20)}><FolderIcon className={sx(paint.s21)} /><Tip label={cwd || undefined} width="lg"><span className={sx(paint.s22)}>{cwd || "Unknown project"}</span></Tip></h3>
+          {chats.map((c) => <button type="button" key={c.id} onClick={() => select({ kind: "history", conversation: c })} className={[sx(paint.s23), selection?.kind === "history" && selection.conversation.id === c.id && sx(paint.s24)].filter(Boolean).join(" ")}>
+            <MessageSquareIcon className={sx(paint.s25)} /><span className={sx(paint.s26)}><span className={sx(paint.s27)}>{c.title || "Untitled conversation"}</span><span className={sx(paint.s28)}>{localAgentName(c.source)} <time dateTime={c.updated_at}>{new Date(c.updated_at).toLocaleDateString()}</time></span></span>
           </button>)}
         </section>)}
-        {!loading && !projects.length && <p className="px-3 py-4 text-xs text-muted-foreground">{search ? "No matching conversations." : "No local conversations found."}</p>}
+        {!loading && !projects.length && <p className={sx(paint.s29)}>{search ? "No matching conversations." : "No local conversations found."}</p>}
       </aside>
-      <section className={cn("flex min-h-0 min-w-0 flex-1 flex-col", !selection && "hidden @min-[600px]/local:flex")}>
-        {selection && <div className="border-b px-3 py-1 @min-[600px]/local:hidden"><Button size="sm" variant="ghost" onClick={() => select(undefined)}><ArrowLeftIcon />Conversations</Button></div>}
+      <section className={[sx(paint.s30), !selection && [sx(paint.s31), sx(paint.s46)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
+        {selection && <div className={[sx(paint.s32), sx(paint.s47)].filter(Boolean).join(" ")}><Button size="sm" variant="ghost" onClick={() => select(undefined)}><ArrowLeftIcon />Conversations</Button></div>}
         {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={conversations.find((c) => c.id === selection.conversation.id) ?? selection.conversation} canFork={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_fork} onStart={(session, conversationID) => {
           changeSession(session);
           select((current) => current?.kind === "history" && current.conversation.id === conversationID ? { kind: "session", session } : current);
         }} />}
         {selection?.kind === "session" && (selection.session.mode === "chat" ? <LocalChat key={selection.session.id} client={client} session={selection.session} onChange={changeSession} /> : <LocalTerminal key={selection.session.id} client={client} session={selection.session} onChange={changeSession} />)}
-        {!selection && <div className="m-auto px-6 text-sm text-muted-foreground">Select a conversation or start an agent.</div>}
+        {!selection && <div className={sx(paint.s33)}>Select a conversation or start an agent.</div>}
       </section>
     </div>}
   </div>;
@@ -152,8 +484,8 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
     };
   }, [conversation, messages, loading, page, before, load]);
   return <>
-    <div className="flex min-w-0 flex-wrap items-center gap-3 border-b px-4 py-3"><h2 className="min-w-0 flex-1 truncate text-sm font-medium" title={conversation.title}>{conversation.title}</h2><span className="shrink-0 text-xs text-muted-foreground">Read-only</span></div>
-    <div className="flex flex-wrap items-center gap-2 px-4 py-2">
+    <div className={sx(paint.s34)}><Tip label={conversation.title || undefined} width="lg"><h2 className={sx(paint.s35)}>{conversation.title}</h2></Tip><span className={sx(paint.s36)}>Read-only</span></div>
+    <div className={sx(paint.s37)}>
       <Tip label={canFork ? "Continue as a new chat; the original stays unchanged" : "Installed CLI does not support continuing a copy"}>
         <Button size="sm" variant="outline" disabled={!canContinue || starting} aria-describedby={continueReason ? "local-continue-reason" : undefined} onClick={async () => {
           if (!canContinue || startingRef.current) return;
@@ -169,12 +501,12 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
           finally { startingRef.current = false; setStarting(false); }
         }}><GitForkIcon />{starting ? "Starting..." : "Continue in Burf"}</Button>
       </Tip>
-      {continueReason && <p id="local-continue-reason" role="status" className="text-xs text-muted-foreground">{continueReason}</p>}
-      <Tip label="Refresh conversation"><Button size="icon-sm" variant="ghost" aria-label="Refresh conversation" disabled={loading} onClick={() => void load()}><RotateCwIcon className="size-4" /></Button></Tip>
-      {loading && <span role="status" className="text-xs text-muted-foreground">Loading conversation...</span>}
+      {continueReason && <p id="local-continue-reason" role="status" className={sx(paint.s38)}>{continueReason}</p>}
+      <Tip label="Refresh conversation"><Button size="icon-sm" variant="ghost" aria-label="Refresh conversation" disabled={loading} onClick={() => void load()}><RotateCwIcon className={sx(paint.s39)} /></Button></Tip>
+      {loading && <span role="status" className={sx(paint.s40)}>Loading conversation...</span>}
     </div>
-    {error && <p role="alert" className="px-4 py-2 text-sm text-destructive">{error}</p>}
-    {startError && <p role="alert" className="px-4 py-2 text-sm text-destructive">{startError}</p>}
+    {error && <p role="alert" className={sx(paint.s41)}>{error}</p>}
+    {startError && <p role="alert" className={sx(paint.s42)}>{startError}</p>}
     <Chat transport={transport} />
   </>;
 }

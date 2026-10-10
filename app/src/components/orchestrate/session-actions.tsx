@@ -1,12 +1,37 @@
+import * as stylex from "@stylexjs/stylex";
 import { ArrowRightLeftIcon, BookMarkedIcon, EllipsisIcon, GitCompareArrowsIcon, RepeatIcon, ScanEyeIcon, SendIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Tip } from "@/components/tip";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { openAttempts } from "@/lib/composer";
 import { openPromptPicker } from "@/lib/prompts";
 import { type OrchestrateDraft, useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
+
+const paint = stylex.create({
+  s0: {
+    "display": "inline-flex",
+    "width": "24px",
+    "height": "24px",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "borderRadius": "var(--radius-md)",
+    "color": {
+      "default": "var(--muted-foreground)",
+      ":hover": "var(--foreground)",
+    },
+    "backgroundColor": {
+      ":hover": "var(--accent)",
+    },
+  },
+  s1: {
+    "width": "14px",
+    "height": "14px",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 const actions: { kind: OrchestrateDraft["kind"]; label: string; Icon: typeof SendIcon }[] = [
   { kind: "send", label: "Send prompt…", Icon: SendIcon },
@@ -73,16 +98,16 @@ export function SessionActions({ box, session, className, children }: { box: str
             <button
               type="button"
               aria-label={`Orchestrate ${session}`}
-              className={cn("inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground", className)}
+              className={[sx(paint.s0), className].filter(Boolean).join(" ")}
               // Inside a clickable card, opening the menu must not open the card.
               onClick={(e) => e.stopPropagation()}
             />
           }
         >
-          <EllipsisIcon className="size-3.5" />
+          <EllipsisIcon className={sx(paint.s1)} />
         </MenuTrigger>
       </Tip>
-      <MenuPopup align="end" className="min-w-48">
+      <MenuPopup align="end" width={menuWidths.w48}>
         <SessionActionItems box={box} session={session} />
         {children}
       </MenuPopup>

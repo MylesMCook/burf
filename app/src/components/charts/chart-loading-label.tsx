@@ -1,13 +1,38 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import { motion } from "motion/react";
-import { cn } from "@/lib/utils";
 import { ShimmeringText } from "./shimmering-text";
 import {
   LINE_LOADING_PULSE_EASE,
   LOADING_LABEL_EXIT_S,
   LOADING_LABEL_EXIT_Y_PX,
 } from "./line-loading-timing";
+
+const paint = stylex.create({
+  s0: {
+    "pointerEvents": "none",
+    "position": "absolute",
+    "top": 0,
+    "right": 0,
+    "bottom": 0,
+    "left": 0,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+  },
+  s1: {
+    "fontWeight": 500,
+    "fontSize": "14px",
+    "lineHeight": "20px",
+    "letterSpacing": "0.025em",
+    "-Color": "var(--muted-foreground)",
+    "-ShimmeringColor": "var(--foreground)",
+  },
+});
+function sx(...parts: readonly (false | null | undefined | object)[]): string {
+  return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
+}
 
 export interface ChartLoadingLabelProps {
   /** Label shown centered over the chart. */
@@ -34,10 +59,7 @@ export function ChartLoadingLabel({
         filter: exiting ? "blur(2px)" : "blur(0px)",
       }}
       aria-live="polite"
-      className={cn(
-        "pointer-events-none absolute inset-0 flex items-center justify-center",
-        className
-      )}
+      className={[sx(paint.s0), className].filter(Boolean).join(" ")}
       initial={false}
       role="status"
       transition={{
@@ -46,7 +68,7 @@ export function ChartLoadingLabel({
       }}
     >
       <ShimmeringText
-        className="font-medium text-sm tracking-wide [--color:var(--muted-foreground)] [--shimmering-color:var(--foreground)]"
+        className={sx(paint.s1)}
         text={text}
       />
     </motion.div>
