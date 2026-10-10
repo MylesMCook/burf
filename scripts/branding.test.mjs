@@ -83,7 +83,7 @@ test('production PNGs retain transparency, palette, aspect ratio and the b count
 });
 
 test('Windows ICO contains transparent native-resolution frames', async () => {
-  const b = await readFile(join(root, 'app/src-tauri/icons/icon.ico'));
+  const b = await readFile(join(brand, 'exports/burf-app-icon.ico'));
   assert.equal(b.readUInt16LE(0), 0);
   assert.equal(b.readUInt16LE(2), 1);
   const sizes = [];
@@ -93,18 +93,19 @@ test('Windows ICO contains transparent native-resolution frames', async () => {
     const offset = b.readUInt32LE(pos + 12);
     const length = b.readUInt32LE(pos + 8);
     assert.ok(offset + length <= b.length);
-    const p = await pixels(b.subarray(offset, offset + length));
+    const frame = b.subarray(offset, offset + length);
+    assert.deepEqual(frame, await readFile(join(brand, `exports/burf-app-icon-${width}.png`)));
+    const p = await pixels(frame);
     assert.equal(p.width, width);
     assert.equal(p.height, width);
     assert.deepEqual(p.corners, [0, 0, 0, 0]);
     sizes.push(width);
   }
   assert.deepEqual(sizes, [16, 24, 32, 48, 64, 256]);
-  assert.deepEqual(b, await readFile(join(brand, 'exports/burf-app-icon.ico')));
 });
 
 test('macOS ICNS includes its full-resolution transparent master', async () => {
-  const b = await readFile(join(root, 'app/src-tauri/icons/icon.icns'));
+  const b = await readFile(join(brand, 'exports/burf-app-icon.icns'));
   assert.equal(b.toString('ascii', 0, 4), 'icns');
   assert.equal(b.readUInt32BE(4), b.length);
   const chunks = new Map();
@@ -120,5 +121,5 @@ test('macOS ICNS includes its full-resolution transparent master', async () => {
   assert.equal(p.height, 1024);
   assert.deepEqual(p.corners, [0, 0, 0, 0]);
   assert.ok(p.colors.includes('228,137,94'));
-  assert.deepEqual(b, await readFile(join(brand, 'exports/burf-app-icon.icns')));
+  assert.deepEqual(chunks.get('ic10'), await readFile(join(brand, 'exports/burf-app-icon-1024.png')));
 });

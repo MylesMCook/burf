@@ -1,13 +1,25 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { patchInstaller } from "./windows-installer-template.mjs";
+import { renderInstaller } from "./windows-installer-template.mjs";
 
-test("a higher-version NSIS install enters overinstall before maintenance can uninstall", () => {
-  const marker = '  nsis_tauri_utils::SemverCompare "${VERSION}" $R0\n  Pop $R0\n';
-  const fixture = "Function PageReinstall\n" + marker + "  ; Reinstalling the same version\nFunctionEnd\n";
-  const patched = patchInstaller(fixture);
-  assert.ok(patched.indexOf("StrCpy $UpdateMode 1") < patched.indexOf("; Reinstalling the same version"));
-  assert.match(patched, /\$WixMode <> 1\n  \$\{AndIf\} \$R0 = 1\n    StrCpy \$UpdateMode 1\n    Abort/);
-  assert.throws(() => patchInstaller("upstream changed"));
-  assert.throws(() => patchInstaller(fixture + marker));
+const template = await readFile(new URL("./windows/installer.nsi", import.meta.url), "utf8");
+const options = { stage: "C:\\Burf's & $Literal Tools\\stage", output: "C:\\out\\setup.exe", version: "1.2.3", architecture: "amd64", icon: "C:\\icon.ico", hooks: "C:\\hooks.nsh" };
+
+test("an upgrade replaces files without invoking the previous uninstaller", () => {
+  const rendered = renderInstaller(template, options);
+  assert.ok(rendered.indexOf("!insertmacro NSIS_HOOK_PREINSTALL") < rendered.indexOf('!insertmacro InstallFile "Burf.exe"'));
+  assert.ok(rendered.indexOf("!insertmacro NSIS_HOOK_POSTINSTALL") < rendered.indexOf('"DisplayVersion" "${VERSION}"'));
+  assert.ok(!rendered.includes("PageReinstall"));
+  assert.ok(!rendered.includes("ExecWait"));
+  assert.ok(!/@[A-Z]+@/.test(rendered));
+});
+
+test("installer paths are literals and incomplete templates or invalid versions fail", () => {
+  assert.ok(renderInstaller(template, options).includes("C:\\Burf's & $$Literal Tools\\stage"));
+  assert.ok(renderInstaller(template, { ...options, stage: 'C:\\quote"' }).includes('C:\\quote$\\"'));
+  assert.throws(() => renderInstaller("upstream changed", options));
+  assert.throws(() => renderInstaller(template, { ...options, version: "1.2.3\n!system bad" }));
+  assert.throws(() => renderInstaller(template, { ...options, stage: "C:\\bad\n!system bad" }));
+  assert.throws(() => renderInstaller(template, { ...options, architecture: "x86" }));
 });

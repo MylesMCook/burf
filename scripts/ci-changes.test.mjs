@@ -15,7 +15,7 @@ test("a change to Go runs the race suite and the native Windows tests, not the b
 });
 
 test("a change to the native shell builds both desktops and leaves the page's suites alone", () => {
-  assert.deepEqual(picked("app/src-tauri/src/lib.rs"), ["desktop", "windows"]);
+  assert.deepEqual(picked("app/native/desktop/service.go"), ["desktop", "windows"]);
 });
 
 test("the page's dependencies reach every build of it", () => {

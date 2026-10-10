@@ -7,6 +7,8 @@
 /app/native/assets/
 /app/native/shortcuts.json
 /app/native/bin/
+/app/native/*.syso
+/app/native/desktop/cli-path.ps1
 .e2e/
 /app/src-tauri/gen/
 /packages/*/node_modules/

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -27,7 +28,35 @@ func Snapshot(dir string) (fs.FS, error) {
 		return nil, err
 	}
 	defer root.Close()
-	return snapshotFS(root.FS())
+	return snapshotFS(diskAssets{root})
+}
+
+type diskAssets struct{ root *os.Root }
+
+func (d diskAssets) Open(name string) (fs.File, error) {
+	// Reject links in each component, including directories. Check the opened
+	// identity again so a replacement cannot turn a regular entry into a link.
+	parts := strings.Split(name, "/")
+	for i := range parts {
+		info, err := d.root.Lstat(strings.Join(parts[:i+1], "/"))
+		if err != nil {
+			return nil, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil, errors.New("interface contains a link")
+		}
+	}
+	f, err := openDiskAsset(d.root, name)
+	if err != nil {
+		return nil, err
+	}
+	info, err := f.Stat()
+	current, statErr := d.root.Lstat(name)
+	if err != nil || statErr != nil || (!info.IsDir() && !info.Mode().IsRegular()) || current.Mode()&os.ModeSymlink != 0 || !os.SameFile(info, current) {
+		_ = f.Close()
+		return nil, errors.New("interface entry changed or is not regular")
+	}
+	return f, nil
 }
 
 func snapshotFS(source fs.FS) (fs.FS, error) {

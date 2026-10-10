@@ -10,6 +10,7 @@
 
 static const NSUInteger BurfMaxURLBytes = 64 * 1024;
 static const NSUInteger BurfMaxDiagnosticBytes = 4 * 1024 * 1024;
+static const NSUInteger BurfMaxPopups = 16;
 static NSString *const BurfDrain = @"(function(){try{var d=window.__berthDevtools;var s=d&&typeof d.drain==='function'?d.drain():'';return typeof s==='string'?s:'';}catch(e){return '';}})()";
 
 int burf_mac_browser_is_main_thread(void) {
@@ -32,9 +33,22 @@ static BOOL BurfInertFrameURL(NSURL *url) {
         || [url.absoluteString isEqualToString:@"about:srcdoc"];
 }
 
-@interface BurfBrowserPane : NSObject <WKNavigationDelegate, WKUIDelegate>
+static BOOL BurfBlankPopupURL(NSURL *url) {
+    return url == nil || url.absoluteString.length == 0
+        || [url.absoluteString isEqualToString:@"about:blank"];
+}
+
+static BOOL BurfNavigationURL(NSURL *url, BOOL mainFrame, BOOL popup) {
+    return BurfHTTPURL(url) || (!mainFrame && BurfInertFrameURL(url))
+        || (popup && BurfBlankPopupURL(url));
+}
+
+@interface BurfBrowserPane : NSObject <WKNavigationDelegate, WKUIDelegate, NSWindowDelegate>
 @property(nonatomic, strong) WKWebView *webview;
 @property(nonatomic, weak) NSView *parent;
+@property(nonatomic, weak) BurfBrowserPane *owner;
+@property(nonatomic, strong) NSMutableArray<BurfBrowserPane *> *popups;
+@property(nonatomic, strong) NSWindow *popupWindow;
 @property(nonatomic, strong) NSView *inspectorAttachment;
 @property(nonatomic, strong) NSTimer *timer;
 @property(nonatomic, strong) id resizeObserver;
@@ -44,15 +58,28 @@ static BOOL BurfInertFrameURL(NSURL *url) {
 @property(nonatomic) BOOL consolePending;
 @property(nonatomic) NSRect logicalBounds;
 - (void)place;
+- (void)startPolling;
+- (BurfBrowserPane *)eventRoot;
+- (NSUInteger)popupCount;
 - (void)poll;
 - (void)close;
 - (void)emit:(int)kind data:(NSString *)data state:(NSString *)state;
 @end
 
 @implementation BurfBrowserPane
+- (instancetype)init {
+    self = [super init];
+    if (self != nil) self.popups = [[NSMutableArray alloc] init];
+    return self;
+}
+
 - (void)place {
     NSView *parent = self.parent;
     if (self.closed || parent == nil) return;
+    if (self.popupWindow != nil) {
+        self.webview.frame = parent.bounds;
+        return;
+    }
     NSRect bounds = parent.bounds;
     NSRect logical = self.logicalBounds;
     CGFloat width = MAX(1.0, logical.size.width);
@@ -64,11 +91,31 @@ static BOOL BurfInertFrameURL(NSURL *url) {
     self.webview.frame = NSMakeRect(NSMinX(bounds) + logical.origin.x, y, width, height);
 }
 
+- (void)startPolling {
+    __weak BurfBrowserPane *weakPane = self;
+    self.timer = [NSTimer timerWithTimeInterval:0.5 repeats:YES block:^(NSTimer *timer) { [weakPane poll]; }];
+    [NSRunLoop.mainRunLoop addTimer:self.timer forMode:NSRunLoopCommonModes];
+}
+
+- (BurfBrowserPane *)eventRoot {
+    BurfBrowserPane *root = self;
+    while (root != nil && !root.closed && root.owner != nil) root = root.owner;
+    return root.closed ? nil : root;
+}
+
+- (NSUInteger)popupCount {
+    NSUInteger count = self.popups.count;
+    for (BurfBrowserPane *popup in self.popups) count += [popup popupCount];
+    return count;
+}
+
 - (void)emit:(int)kind data:(NSString *)data state:(NSString *)state {
-    if (self.closed || self.handle == 0 || data == nil) return;
+    if (self.closed || data == nil || (kind == 0 && self.owner != nil)) return;
+    BurfBrowserPane *root = [self eventRoot];
+    if (root == nil || root.handle == 0) return;
     NSUInteger limit = kind == 2 ? BurfMaxDiagnosticBytes : BurfMaxURLBytes;
     if ([data lengthOfBytesUsingEncoding:NSUTF8StringEncoding] > limit) return;
-    burfMacBrowserEvent(self.handle, kind, (char *)data.UTF8String, (char *)(state ?: @"").UTF8String);
+    burfMacBrowserEvent(root.handle, kind, (char *)data.UTF8String, (char *)(state ?: @"").UTF8String);
 }
 
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)action
@@ -81,20 +128,20 @@ static BOOL BurfInertFrameURL(NSURL *url) {
         decisionHandler(WKNavigationActionPolicyCancel);
         return;
     }
-    BOOL inertFrame = action.targetFrame != nil && !action.targetFrame.mainFrame && BurfInertFrameURL(url);
-    if (self.closed || (!BurfHTTPURL(url) && !inertFrame)) {
+    BOOL mainFrame = action.targetFrame == nil || action.targetFrame.mainFrame;
+    BOOL newPopup = action.targetFrame == nil && BurfBlankPopupURL(url);
+    if (self.closed || (!newPopup && !BurfNavigationURL(url, mainFrame, self.popupWindow != nil))) {
         decisionHandler(WKNavigationActionPolicyCancel);
         return;
     }
-    [self emit:0 data:url.absoluteString state:@"started"];
+    if (action.targetFrame.mainFrame) [self emit:0 data:url.absoluteString state:@"started"];
     decisionHandler(WKNavigationActionPolicyAllow);
 }
 
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationResponse:(WKNavigationResponse *)response
         decisionHandler:(void (^)(WKNavigationResponsePolicy))decisionHandler {
     // Redirects receive the same URL policy as explicit commands and links.
-    decisionHandler(!self.closed && (BurfHTTPURL(response.response.URL)
-        || (!response.forMainFrame && BurfInertFrameURL(response.response.URL)))
+    decisionHandler(!self.closed && BurfNavigationURL(response.response.URL, response.forMainFrame, self.popupWindow != nil)
         ? WKNavigationResponsePolicyAllow : WKNavigationResponsePolicyCancel);
 }
 
@@ -108,17 +155,69 @@ static BOOL BurfInertFrameURL(NSURL *url) {
 
 - (WKWebView *)webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration
         forNavigationAction:(WKNavigationAction *)action windowFeatures:(WKWindowFeatures *)features {
-    // A target=_blank link remains inside its browser pane. The supplied
-    // configuration is deliberately not used to create another native view.
-    if (!self.closed && action.targetFrame == nil && BurfHTTPURL(action.request.URL)) {
-        [webView loadRequest:action.request];
+    BurfBrowserPane *root = [self eventRoot];
+    if (root == nil || self.closed || action.targetFrame != nil || [root popupCount] >= BurfMaxPopups
+        || (!BurfHTTPURL(action.request.URL) && !BurfBlankPopupURL(action.request.URL))) return nil;
+
+    NSScreen *screen = self.webview.window.screen ?: NSScreen.mainScreen;
+    NSRect available = screen != nil ? screen.visibleFrame : NSMakeRect(0, 0, 1280, 800);
+    CGFloat width = features.width != nil ? features.width.doubleValue : 800;
+    CGFloat height = features.height != nil ? features.height.doubleValue : 600;
+    if (!isfinite(width)) width = 800;
+    if (!isfinite(height)) height = 600;
+    width = MIN(MAX(200, width), available.size.width);
+    height = MIN(MAX(160, height), MAX(160, available.size.height - 40));
+    NSRect frame = NSMakeRect(NSMidX(available) - width / 2, NSMidY(available) - height / 2, width, height);
+    NSWindowStyleMask style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
+    if (features.allowsResizing == nil || features.allowsResizing.boolValue) style |= NSWindowStyleMaskResizable;
+
+    BurfBrowserPane *popup = [[BurfBrowserPane alloc] init];
+    popup.owner = self;
+    popup.lastURL = @"";
+    popup.popupWindow = [[NSWindow alloc] initWithContentRect:frame styleMask:style backing:NSBackingStoreBuffered defer:NO];
+    popup.popupWindow.releasedWhenClosed = NO;
+    popup.popupWindow.title = @"Browser";
+    popup.popupWindow.delegate = popup;
+    popup.parent = popup.popupWindow.contentView;
+    // WebKit requires its supplied configuration and loads the request itself.
+    // It is a copy of this raw view's configuration, preserving the opener and
+    // storage without introducing any trusted Wails handlers or runtime.
+    popup.webview = [[WKWebView alloc] initWithFrame:popup.parent.bounds configuration:configuration];
+    if (popup.webview == nil) {
+        [popup close];
+        return nil;
     }
-    return nil;
+    if (@available(macOS 13.3, *)) popup.webview.inspectable = YES;
+    popup.webview.navigationDelegate = popup;
+    popup.webview.UIDelegate = popup;
+    popup.webview.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [popup.parent addSubview:popup.webview];
+    [self.popups addObject:popup];
+    [popup startPolling];
+    [popup.popupWindow makeKeyAndOrderFront:nil];
+    return popup.webview;
+}
+
+- (void)webViewDidClose:(WKWebView *)webView {
+    if (self.popupWindow != nil) [self close];
+}
+
+- (BOOL)windowShouldClose:(NSWindow *)sender {
+    [self close];
+    return NO;
+}
+
+- (void)windowWillClose:(NSNotification *)notification {
+    [self close];
 }
 
 - (void)poll {
     if (self.closed) return;
     NSString *url = self.webview.URL.absoluteString ?: @"";
+    if (self.popupWindow != nil) {
+        NSString *title = self.webview.title;
+        self.popupWindow.title = title.length > 0 && title.length <= 1024 ? title : @"Browser";
+    }
     if (![url isEqualToString:self.lastURL]) {
         if (self.lastURL.length > 0 && BurfHTTPURL(self.webview.URL)) {
             [self emit:0 data:url state:@"moved"];
@@ -140,8 +239,12 @@ static BOOL BurfInertFrameURL(NSURL *url) {
 
 - (void)close {
     if (self.closed) return;
+    __attribute__((objc_precise_lifetime)) BurfBrowserPane *keepAlive = self;
+    (void)keepAlive;
     self.closed = YES;
     self.handle = 0;
+    for (BurfBrowserPane *popup in self.popups.copy) [popup close];
+    [self.popups removeAllObjects];
     [self.timer invalidate];
     self.timer = nil;
     if (self.resizeObserver != nil) {
@@ -161,11 +264,17 @@ static BOOL BurfInertFrameURL(NSURL *url) {
     self.webview.navigationDelegate = nil;
     self.webview.UIDelegate = nil;
     [self.webview stopLoading];
-    [self.webview.configuration.userContentController removeAllUserScripts];
+    // Popup configurations may share the raw parent's content controller.
+    // Closing one must not remove diagnostics from the opener's next document.
     [self.webview removeFromSuperview];
     self.inspectorAttachment = nil;
     self.webview = nil;
     self.parent = nil;
+    self.popupWindow.delegate = nil;
+    [self.popupWindow close];
+    self.popupWindow = nil;
+    [self.owner.popups removeObjectIdenticalTo:self];
+    self.owner = nil;
 }
 @end
 
@@ -254,8 +363,7 @@ void *burf_mac_browser_open(void *parent, uintptr_t handle, const char *rawURL,
         __weak BurfBrowserPane *weakPane = pane;
         pane.resizeObserver = [NSNotificationCenter.defaultCenter addObserverForName:NSWindowDidResizeNotification
             object:window queue:nil usingBlock:^(NSNotification *notification) { [weakPane place]; }];
-        pane.timer = [NSTimer timerWithTimeInterval:0.5 repeats:YES block:^(NSTimer *timer) { [weakPane poll]; }];
-        [NSRunLoop.mainRunLoop addTimer:pane.timer forMode:NSRunLoopCommonModes];
+        [pane startPolling];
         [pane.webview loadRequest:[NSURLRequest requestWithURL:url]];
         return (__bridge_retained void *)pane;
     }

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
-// The manifest describes the original bytes, before Tauri adds its CSP hashes.
+// The manifest describes the original bytes, before the native shell adds CSP hashes.
 // It guards copying damage, not an attacker who can write this person's files.
 export async function makeManifest(dist, commit) {
   const shell = (await readFile(join(root, "internal/uicontract/shell.txt"), "utf8")).trim();

@@ -35,16 +35,17 @@ type Service struct {
 	app    *application.App
 	main   *application.WebviewWindow
 
-	browserMu  sync.Mutex
-	browsers   *nativebrowser.Manager
-	closed     bool
-	notifier   *notifications.NotificationService
-	notifyErr  error
-	linksMu    sync.Mutex
-	links      []string
-	cliMu      sync.Mutex
-	relaunchMu sync.Mutex
-	relaunch   string
+	browserMu     sync.Mutex
+	browserInitMu sync.Mutex
+	browsers      *nativebrowser.Manager
+	closed        bool
+	notifier      *notifications.NotificationService
+	notifyErr     error
+	linksMu       sync.Mutex
+	links         []string
+	cliMu         sync.Mutex
+	relaunchMu    sync.Mutex
+	relaunch      string
 }
 
 func New(config Config) *Service { return &Service{config: config} }
@@ -86,14 +87,19 @@ func (s *Service) caller(ctx context.Context) error {
 }
 
 func (s *Service) browser() (*nativebrowser.Manager, error) {
+	s.browserInitMu.Lock()
+	defer s.browserInitMu.Unlock()
 	s.browserMu.Lock()
-	defer s.browserMu.Unlock()
 	if s.closed {
+		s.browserMu.Unlock()
 		return nil, errors.New("Burf is closing")
 	}
 	if s.browsers != nil {
-		return s.browsers, nil
+		manager := s.browsers
+		s.browserMu.Unlock()
+		return manager, nil
 	}
+	s.browserMu.Unlock()
 	manager, err := nativebrowser.New(nativebrowser.Config{
 		Parent:         s.main.NativeWindow(),
 		ProfileDir:     filepath.Join(s.config.StateHome, "client", "browser"),
@@ -104,7 +110,14 @@ func (s *Service) browser() (*nativebrowser.Manager, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.browserMu.Lock()
+	if s.closed {
+		s.browserMu.Unlock()
+		_ = manager.Shutdown()
+		return nil, errors.New("Burf is closing")
+	}
 	s.browsers = manager
+	s.browserMu.Unlock()
 	return manager, nil
 }
 

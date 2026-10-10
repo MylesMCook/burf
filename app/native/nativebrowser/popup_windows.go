@@ -63,7 +63,7 @@ func (v *windowsView) openPopup(args *webviewObject) {
 		return
 	}
 	raw, err := args.text(3, maxBrowserMessage)
-	if err != nil || checkURL(raw) != nil {
+	if err != nil || (raw != "about:blank" && raw != "" && checkURL(raw) != nil) {
 		return
 	}
 	popups := 0

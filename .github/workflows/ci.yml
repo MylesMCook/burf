@@ -132,7 +132,9 @@ jobs:
       - run: node --experimental-strip-types --test src/lib/platform.test.ts
         working-directory: app
       - run: node --test scripts/windows-installer-template.test.mjs scripts/windows-packaging.test.mjs
-      - run: cargo test --locked --manifest-path app/src-tauri/Cargo.toml --lib
+      - run: node scripts/native-prepare.mjs bindings
+      - run: go test ./...
+        working-directory: app/native
       # No signing key enters this job. PR installers are unsigned test artifacts.
       - run: ./scripts/windows-build.ps1 -Version 0.0.0
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -337,18 +339,14 @@ jobs:
       # take Playwright's default port: each takes a free one of its own.
       - name: Pick a free port for the e2e server
         run: |
-          echo "E2E_PORT=$(python3 -c '
-          import random, socket
-          ports = list(range(1421, 1440)); random.shuffle(ports)
-          for p in ports:
-              s = socket.socket()
-              try:
-                  s.bind(("127.0.0.1", p)); print(p); break
-              except OSError:
-                  pass
-              finally:
-                  s.close()
-          ')" >> "$GITHUB_ENV"
+          node --input-type=module <<'JS' >> "$GITHUB_ENV"
+          import { createServer } from 'node:net';
+          for (const port of Array.from({length:19},(_,i)=>1421+i).sort(()=>Math.random()-.5)) {
+            const server=createServer();
+            const free=await new Promise(resolve=>{server.once('error',()=>resolve(false));server.listen(port,'127.0.0.1',()=>resolve(true));});
+            if (free) { await new Promise(resolve=>server.close(resolve)); console.log(`E2E_PORT=${port}`); break; }
+          }
+          JS
       - run: pnpm exec playwright test --shard=${{ matrix.shard }}/3
         env:
           # omarchy has 16 cores; a hosted runner has 4.
@@ -361,17 +359,15 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  # The Linux desktop app (an alpha) builds, bundles and passes its Rust
-  # tests, so a change that breaks it shows here rather than at a release.
-  # A debug build with no updater signature; signed Burf Linux releases
-  # remain deferred. Cached, it takes a few minutes,
-  # beside the app job's longer e2e suite.
-  linux-app:
+  # Native Go/Wails checks run after a merge; PRs keep the quick-check budget.
+  # Linux boxes continue to use the Go daemon. Native Browser panes currently
+  # have macOS and Windows adapters, so no Linux desktop bundle is advertised.
+  macos-app:
     needs: changes
     # After a merge only: a pull request's run is the quick checks.
     if: needs.changes.outputs.desktop == 'true' && github.event_name != 'pull_request'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -384,39 +380,20 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: app/pnpm-lock.yaml
-      - name: Install the system libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          workspaces: app/src-tauri
+          go-version-file: go.mod
       - run: pnpm install --frozen-lockfile
         working-directory: app
-      - name: Rust tests
-        working-directory: app/src-tauri
-        run: cargo test --locked
-      # The release build's own code (cfg(not(debug_assertions))) compiles.
-      - name: Check the release configuration
-        working-directory: app/src-tauri
-        run: cargo check --locked --release
-      - name: Build the AppImage and the .deb
-        working-directory: app
-        env:
-          APPIMAGE_EXTRACT_AND_RUN: "1"
-        run: pnpm tauri build --config src-tauri/tauri.linux.conf.json --debug --bundles deb,appimage
-      - name: Check the bundles
-        run: |
-          set -euo pipefail
-          deb="$(ls app/src-tauri/target/debug/bundle/deb/*.deb)"
-          appimage="$(ls app/src-tauri/target/debug/bundle/appimage/*.AppImage)"
-          # Extracted first: grep -q on a pipe would cut dpkg-deb off (pipefail).
-          dpkg-deb -x "$deb" "$RUNNER_TEMP/deb"
-          test -x "$RUNNER_TEMP/deb/usr/bin/burf-app"
-          grep -q '^MimeType=.*x-scheme-handler/berth' "$RUNNER_TEMP"/deb/usr/share/applications/*.desktop
-          grep -q '^Exec=burf-app %u$' "$RUNNER_TEMP"/deb/usr/share/applications/*.desktop
-          file "$appimage" | grep -q 'ELF 64-bit'
-          ls -la "$deb" "$appimage"
+      - run: node scripts/native-prepare.mjs bindings
+      - run: go test ./...
+        working-directory: app/native
+      - run: make app-build APP_GOOS=darwin
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: macos-local-build
+          path: dist/native/darwin-*/Burf.app
+          retention-days: 7
 
   docs-site:
     needs: changes

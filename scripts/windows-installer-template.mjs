@@ -1,45 +1,31 @@
-import { createHash } from "node:crypto";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { createRequire } from "node:module";
+// A project-owned NSIS installer. No downloaded bundler template or helper DLL.
+import { readFile, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const CLI_VERSION = "2.12.1";
-const TEMPLATE_SHA256 = "dabed59013b1d78b879a1a85bc7f2eed2993b33a9a90cdabe5946de3d3950597";
-const SOURCE = `https://raw.githubusercontent.com/tauri-apps/tauri/tauri-cli-v${CLI_VERSION}/crates/tauri-bundler/src/bundle/windows/nsis/installer.nsi`;
-const MARKER = '  nsis_tauri_utils::SemverCompare "${VERSION}" $R0\n  Pop $R0\n';
-const OVERINSTALL = `  ; Burf upgrades preserve the installed task, PATH consent and rollback files.
-  ; Skip the maintenance page so its uninstall-before-install choice cannot run.
-  \${If} $WixMode <> 1
-  \${AndIf} $R0 = 1
-    StrCpy $UpdateMode 1
-    Abort
-  \${EndIf}
-`;
-
-export function patchInstaller(source) {
-  if (source.split(MARKER).length !== 2) throw new Error("The locked NSIS template's version comparison changed.");
-  return source.replace(MARKER, MARKER + OVERINSTALL);
-}
-
-export async function prepareInstaller() {
-  const require = createRequire(new URL("../app/package.json", import.meta.url));
-  const installed = require("@tauri-apps/cli/package.json").version;
-  if (installed !== CLI_VERSION) throw new Error(`Windows packaging supports the locked Tauri CLI ${CLI_VERSION}, found ${installed}. Review its template before updating the pinned source.`);
-  const directory = new URL("../app/src-tauri/binaries/", import.meta.url);
-  const cache = new URL(`nsis-${CLI_VERSION}.upstream.nsi`, directory);
-  let source;
-  try { source = await readFile(cache, "utf8"); } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-    const response = await fetch(SOURCE, { signal: AbortSignal.timeout(30_000) });
-    if (!response.ok) throw new Error(`Could not obtain the locked NSIS template: HTTP ${response.status}`);
-    source = await response.text();
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const quote = (value) => {
+  if (/[\r\n\0]/.test(value)) throw new Error("NSIS paths cannot contain control characters.");
+  return value.replaceAll("$", () => "$$").replaceAll('"', () => '$\\"');
+};
+export function renderInstaller(template, { stage, output, version, architecture, icon, hooks }) {
+  if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error("Installer version must be X.Y.Z.");
+  if (!["amd64", "arm64"].includes(architecture)) throw new Error("Installer architecture must be amd64 or arm64.");
+  const values = { STAGE: stage, OUTPUT: output, VERSION: version, ARCH: architecture, ICON: icon, HOOKS: hooks };
+  for (const [key, value] of Object.entries(values)) {
+    const marker = `@${key}@`;
+    if (!template.includes(marker)) throw new Error(`Installer template is missing ${marker}.`);
+    template = template.replaceAll(marker, () => quote(value));
   }
-  if (createHash("sha256").update(source).digest("hex") !== TEMPLATE_SHA256) throw new Error("The locked NSIS template does not match its pinned SHA256.");
-  await mkdir(directory, { recursive: true });
-  await writeFile(cache, source);
-  const output = new URL("windows-installer.nsi", directory);
-  await writeFile(output, patchInstaller(source));
-  return fileURLToPath(output);
+  if (/@[A-Z]+@/.test(template)) throw new Error("Installer template has an unresolved field.");
+  return template;
 }
-
-if (process.argv[1] === fileURLToPath(import.meta.url)) console.log(await prepareInstaller());
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const [stage, output, version, architecture, destination] = process.argv.slice(2);
+  const template = await readFile(resolve(root, "scripts/windows/installer.nsi"), "utf8");
+  await writeFile(destination, renderInstaller(template, {
+    stage: resolve(stage), output: resolve(output), version, architecture,
+    icon: resolve(root, "design/branding/exports/burf-app-icon.ico"),
+    hooks: resolve(root, "scripts/windows/hooks.nsh"),
+  }));
+}

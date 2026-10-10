@@ -1,10 +1,8 @@
-// Render the unmodified SVG masters, then package the app icon with Tauri.
-import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+// Render the unmodified SVG masters and package their exact PNG icon frames.
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = join(root, 'design/branding');
@@ -50,34 +48,23 @@ try {
   await browser.close();
 }
 
-const temporary = await mkdtemp(join(tmpdir(), 'burf-icons-'));
-try {
-  execFileSync(process.execPath, [join(root, 'app/node_modules/@tauri-apps/cli/tauri.js'), 'icon', join(out, 'burf-app-icon-1024.png'), '--output', temporary], { stdio: 'inherit' });
-  // Tauri emits ICNS representations in hash-map order. Sort only the chunks
-  // so repeated exports are identical without changing their image payloads.
-  const icns = await readFile(join(temporary, 'icon.icns'));
-  const chunks = [];
-  for (let pos = 8; pos < icns.length;) {
-    const size = icns.readUInt32BE(pos + 4);
-    if (size < 8 || pos + size > icns.length) throw new Error('Invalid ICNS chunk');
-    chunks.push(icns.subarray(pos, pos + size));
-    pos += size;
-  }
-  chunks.sort((a, b) => Buffer.compare(a.subarray(0, 4), b.subarray(0, 4)));
-  await writeFile(join(temporary, 'icon.icns'), Buffer.concat([icns.subarray(0, 8), ...chunks]));
-  // Desktop only. Tauri also emits mobile assets, which this repo doesn't use.
-  for (const file of await readdir(temporary, { withFileTypes: true })) {
-    if (file.isFile() && /\.(png|ico|icns)$/.test(file.name)) {
-      await copy(join(temporary, file.name), join(root, 'app/src-tauri/icons', file.name));
-    }
-  }
-  for (const ext of ['ico', 'icns']) await copy(join(temporary, `icon.${ext}`), join(out, `burf-app-icon.${ext}`));
-} finally {
-  await rm(temporary, { recursive: true, force: true });
+// Modern macOS ICNS representations contain PNGs. Each one is rendered from
+// the vector at its own resolution; packaging never resamples the artwork.
+const representations = { ic07: 128, ic08: 256, ic09: 512, ic10: 1024, ic11: 32, ic12: 64, ic13: 256, ic14: 512, icp4: 16, icp5: 32, icp6: 64 };
+const chunks = [];
+for (const tag of Object.keys(representations).sort()) {
+  const png = await readFile(join(out, `burf-app-icon-${representations[tag]}.png`));
+  const header = Buffer.alloc(8);
+  header.write(tag, 0, 4, 'ascii');
+  header.writeUInt32BE(png.length + 8, 4);
+  chunks.push(Buffer.concat([header, png]));
 }
+const icnsHeader = Buffer.alloc(8);
+icnsHeader.write('icns', 0, 4, 'ascii');
+icnsHeader.writeUInt32BE(8 + chunks.reduce((sum, chunk) => sum + chunk.length, 0), 4);
+await writeFile(join(out, 'burf-app-icon.icns'), Buffer.concat([icnsHeader, ...chunks]));
 
-// Store exact vector-rendered PNGs in ICO's standard directory. Tauri's
-// downsampling of a large bitmap bleeds alpha into the 16px frame's corners.
+// Store exact vector-rendered PNGs in ICO's standard directory.
 const sizes = [16, 24, 32, 48, 64, 256];
 const frames = await Promise.all(sizes.map((size) => readFile(join(out, `burf-app-icon-${size}.png`))));
 const directory = Buffer.alloc(6 + 16 * frames.length);
@@ -94,10 +81,6 @@ for (const [i, frame] of frames.entries()) {
   offset += frame.length;
 }
 await writeFile(join(out, 'burf-app-icon.ico'), Buffer.concat([directory, ...frames]));
-await copy(join(out, 'burf-app-icon.ico'), join(root, 'app/src-tauri/icons/icon.ico'));
-for (const [name, size] of [['32x32', 32], ['64x64', 64], ['128x128', 128], ['128x128@2x', 256], ['icon', 512]]) {
-  await copy(join(out, `burf-app-icon-${size}.png`), join(root, `app/src-tauri/icons/${name}.png`));
-}
 
 for (const destination of ['app/public/favicon.svg', 'site/assets/favicon.svg', 'site/demo/favicon.svg', 'docs-site/app/icon.svg']) {
   await copy(join(source, 'burf-app-icon.svg'), join(root, destination));

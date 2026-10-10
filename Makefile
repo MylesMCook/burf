@@ -40,83 +40,35 @@ test:
 clean:
 	rm -rf $(BIN) $(DIST)
 
-# The desktop app bundles burf as a Tauri sidecar, burf-cli (named for the
-# target triple; "Burf" is the app's own executable), the Linux daemons as
-# resources for `add ssh`, and a berthd for the Mac itself as the resource
-# berthd, which Use this Mac installs (internal/agent/localbox.go).
-# tauri.bundle.conf.json adds them to release builds only, so `pnpm tauri dev`
-# and `cargo check` work without them; in dev the app starts the agent from
-# bin/burf, and Use this Mac finds bin/berthd beside it.
-#
-# make app-build builds Burf.app and a dmg on Mac, or the Linux alpha
-# AppImage and .deb with tauri.linux.conf.json. Mac releases build
-# APP_TARGET=universal-apple-darwin, one app for Apple silicon and Intel, with
-# burf-cli and berthd made universal by lipo (scripts/mac-release.sh). The
-# Mac berthd runs as its own process outside the app, so with
-# APPLE_SIGNING_IDENTITY set it is signed here, with the hardened runtime and
-# a timestamp, before Tauri seals it into the app. With VERSION set
-# the app carries that version (the in-app updater compares it); with
-# TAURI_SIGNING_PRIVATE_KEY set it also writes the signed updater archive
-# (tauri.updater.conf.json); with APPLE_SIGNING_IDENTITY set it signs.
-TRIPLE := $(shell rustc -vV 2>/dev/null | sed -n 's/^host: //p')
-APP_TARGET ?= $(TRIPLE)
-SIDECAR := app/src-tauri/binaries
-APP_VERSION := $(if $(filter dev,$(VERSION)),,$(patsubst v%,%,$(VERSION)))
-APP_GOARCH := $(if $(findstring aarch64,$(APP_TARGET)),arm64,$(if $(findstring x86_64,$(APP_TARGET)),amd64))
-APP_GOOS := $(if $(findstring windows,$(APP_TARGET)),windows,$(if $(findstring apple-darwin,$(APP_TARGET)),darwin,$(if $(findstring linux,$(APP_TARGET)),linux)))
-APP_EXE := $(if $(filter windows,$(APP_GOOS)),.exe,)
-# Linux sidecars are static, so bundles work across libc implementations.
-APP_GOENV := $(if $(filter linux,$(APP_GOOS)),CGO_ENABLED=0) $(if $(APP_GOOS),GOOS=$(APP_GOOS)) $(if $(APP_GOARCH),GOARCH=$(APP_GOARCH))
+# Native shells are Go/Wails. The frontend still uses its locked pnpm toolchain.
+# Outputs are staged under dist/native; nothing here installs or launches them.
+# APP_TARGET retains the old universal release spelling for existing callers.
+APP_GOOS ?= $(shell $(GO) env GOOS)
+APP_GOARCH ?= $(if $(filter universal-apple-darwin,$(APP_TARGET)),universal,$(shell $(GO) env GOARCH))
+APP_EXE := $(if $(filter windows,$(shell $(GO) env GOOS)),.exe,)
 
-.PHONY: app-binaries app-dev app-build
-app-binaries: daemons
-	mkdir -p $(SIDECAR)
-ifeq ($(APP_TARGET),universal-apple-darwin)
-	GOOS=darwin GOARCH=arm64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/burf-cli-aarch64-apple-darwin ./cmd/burf
-	GOOS=darwin GOARCH=amd64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/burf-cli-x86_64-apple-darwin ./cmd/burf
-	lipo -create -output $(SIDECAR)/burf-cli-universal-apple-darwin $(SIDECAR)/burf-cli-aarch64-apple-darwin $(SIDECAR)/burf-cli-x86_64-apple-darwin
-	GOOS=darwin GOARCH=arm64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-darwin-arm64 ./cmd/burfd
-	GOOS=darwin GOARCH=amd64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-darwin-amd64 ./cmd/burfd
-	lipo -create -output $(SIDECAR)/berthd-local $(SIDECAR)/berthd-darwin-arm64 $(SIDECAR)/berthd-darwin-amd64
-else
-	$(APP_GOENV) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/burf-cli-$(APP_TARGET)$(APP_EXE) ./cmd/burf
-ifeq ($(APP_GOOS),windows)
-	cp $(SIDECAR)/burf-cli-$(APP_TARGET).exe $(SIDECAR)/burf-windows-amd64.exe
-	cp $(SIDECAR)/burf-cli-$(APP_TARGET).exe $(SIDECAR)/berth-cli-$(APP_TARGET).exe
-	cp $(SIDECAR)/burf-cli-$(APP_TARGET).exe $(SIDECAR)/burf-windows-legacy.exe
-else
-	$(APP_GOENV) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-local ./cmd/burfd
-endif
-endif
-ifeq ($(APP_GOOS),darwin)
-	if [ -n "$$APPLE_SIGNING_IDENTITY" ]; then \
-		codesign --force --options runtime --timestamp --identifier dev.berth.berthd \
-			--sign "$$APPLE_SIGNING_IDENTITY" $(SIDECAR)/berthd-local; \
-	fi
-endif
-	cp $(BIN)/berthd-linux-amd64 $(BIN)/berthd-linux-arm64 $(SIDECAR)/
-	@# The app carries Burf's tmux for Linux boxes; a release must have it.
-	scripts/build-tmux.sh $(BIN)
-	cp $(BIN)/tmux-linux-amd64 $(BIN)/tmux-linux-arm64 $(SIDECAR)/
+.PHONY: app-binaries app-dev app-build app-bindings app-build-windows
+app-binaries:
+	GO=$(GO) scripts/native-build.sh $(APP_GOOS) $(APP_GOARCH) $(VERSION) --sidecars-only
 
-app-dev: all
-	cd app && pnpm tauri dev
+app-bindings:
+	node scripts/native-prepare.mjs bindings
+	node scripts/wails-cli.mjs generate bindings -ts -names -d ../bindings .
+
+# Edit-to-see stays in Vite; native shell compilation is an explicit build.
+app-dev:
+	cd app && pnpm dev
 
 ifeq ($(APP_GOOS),windows)
 app-build:
-	powershell.exe -NoProfile -File scripts/windows-build.ps1 $(if $(APP_VERSION),-Version $(APP_VERSION)) $(if $(TAURI_SIGNING_PRIVATE_KEY),-Release)
+	powershell.exe -NoProfile -File scripts/windows-build.ps1 -Version $(VERSION) -Architecture $(APP_GOARCH)
 else
-app-build: app-binaries
-	cd app && pnpm tauri build --config src-tauri/tauri.bundle.conf.json \
-		$(if $(filter linux,$(APP_GOOS)),--config src-tauri/tauri.linux.conf.json) \
-		$(if $(APP_VERSION),--config '{"version":"$(APP_VERSION)"}') \
-		$(if $(filter $(TRIPLE),$(APP_TARGET)),,--target $(APP_TARGET)) \
-		$$([ -z "$$TAURI_SIGNING_PRIVATE_KEY" ] || echo --config src-tauri/tauri.updater.conf.json)
+app-build:
+	GO=$(GO) scripts/native-build.sh $(APP_GOOS) $(APP_GOARCH) $(VERSION)
 endif
 
-.PHONY: app-build-windows
 app-build-windows:
-	powershell.exe -NoProfile -File scripts/windows-build.ps1 $(if $(APP_VERSION),-Version $(APP_VERSION))
+	powershell.exe -NoProfile -File scripts/windows-build.ps1 -Version $(VERSION) -Architecture $(if $(filter arm64,$(APP_GOARCH)),arm64,amd64)
 
 # release builds the archives a GitHub release carries, and checksums.txt,
 # into dist/: berthd and berth for linux and darwin, amd64 and arm64. The
@@ -128,9 +80,7 @@ DIST := dist
 release:
 	GO=$(GO) scripts/build-release.sh $(STAMP)
 
-# publish releases VERSION from this Mac: the signed, notarized app, its
-# updater archive and the latest.json feed installed apps update from; the
-# tag it pushes has CI add the CLI and daemons. See scripts/publish.sh.
+# Publishing remains an explicit command. The updater stays disabled.
 .PHONY: publish
 publish:
 	VERSION=$(VERSION) NOTES="$(NOTES)" scripts/publish.sh
