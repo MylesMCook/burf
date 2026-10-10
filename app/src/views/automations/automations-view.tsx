@@ -128,9 +128,9 @@ export function AutomationsView() {
           )
         }
       />
-      <Tabs value={tab} onValueChange={(v) => pickTab(v as Tab)} className="flex min-h-0 flex-1 flex-col">
+      <Tabs value={tab} onValueChange={(v) => pickTab(v as Tab)} fill>
         <div className="shrink-0 border-b px-6">
-          <TabsList variant="underline" className="-mb-px">
+          <TabsList variant="underline" bleed>
             <TabsTab value="flows" data-focus-home="">
               Flows
             </TabsTab>

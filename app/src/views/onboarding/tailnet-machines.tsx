@@ -61,7 +61,7 @@ export function TailnetMachines({
         </Button></span>
       </div>
       {sources.length > 1 && (
-        <Tabs value={source.key} onValueChange={(v) => !running && onActive(String(v))} className="mb-2">
+        <Tabs value={source.key} onValueChange={(v) => !running && onActive(String(v))} space="below">
           <TabsList size="sm">
             {sources.map((s) => (
               <TabsTab key={s.key} value={s.key} disabled={running && s.key !== source.key}>
