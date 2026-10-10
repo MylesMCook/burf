@@ -159,16 +159,16 @@ export function NewTabMenu() {
       </Tip>
       <PopoverPopup aria-label="New tab" align="start" sideOffset={2} flush width="88">
         <Command items={groups} value={query} onValueChange={setQuery} itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""} ${(i as Item).search ?? ""}`}>
-          <CommandInput aria-label="Search open tabs, history and URLs" placeholder="Search open tabs, history and URLs…" className="text-sm" />
-          <CommandSeparator className="my-0" />
+          <CommandInput aria-label="Search open tabs, history and URLs" placeholder="Search open tabs, history and URLs…" text="sm" />
+          <CommandSeparator space="none" />
           <CommandEmpty>Nothing matches. Type a port or a URL to open it.</CommandEmpty>
-          <CommandList className="max-h-96">
+          <CommandList cap="96">
             {(group: Group) => (
               <CommandGroup key={group.value} items={group.items}>
                 {group.label && <CommandGroupLabel>{group.label}</CommandGroupLabel>}
                 <CommandCollection>
                   {(item: Item) => (
-                    <CommandItem key={item.value} value={item} onClick={() => item.run()} className="gap-2.5 text-sm [&_svg]:size-4 [&_svg]:text-muted-foreground">
+                    <CommandItem key={item.value} value={item} onClick={() => item.run()} gap={2.5} text="sm" icons>
                       {item.icon}
                       <span className="truncate">{item.label}</span>
                       {item.detail && <span className="ml-auto max-w-40 truncate text-muted-foreground text-xs">{item.detail}</span>}

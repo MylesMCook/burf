@@ -239,7 +239,7 @@ export function WorktreePicker() {
                       <CommandItem
                         key={item.value}
                         value={item}
-                        className="gap-2"
+                        gap={2}
                         onClick={(e) => {
                           if (e.altKey) diffsNext = true;
                           item.run();
@@ -256,7 +256,7 @@ export function WorktreePicker() {
               )}
             </CommandList>
           </CommandPanel>
-          <CommandFooter className="text-[11px] text-muted-foreground">
+          <CommandFooter>
             {picked ? (
               <button type="button" className="flex items-center gap-1 hover:text-foreground" onClick={() => useWorktreePicker.setState({ picked: undefined })}>
                 <ArrowLeftIcon className="size-3" />

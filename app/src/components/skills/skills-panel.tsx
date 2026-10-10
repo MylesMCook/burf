@@ -24,7 +24,7 @@ const agentNames: Record<SkillAgent, string> = {
 // location, inside that repository, and installs, updates or removes them.
 // hideTitle drops the panel's own title where the page around it already
 // names it, as Settings → Agents does.
-export function SkillsPanel({ box, location, className, hideTitle }: { box: string; location?: string; className?: string; hideTitle?: boolean }) {
+export function SkillsPanel({ box, location, hideTitle }: { box: string; location?: string; hideTitle?: boolean }) {
   const client = useStore((s) => s.client);
   const [report, setReport] = useState<SkillsReport>();
   const [error, setError] = useState<string>();
@@ -73,15 +73,15 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
   const dirs = target === "project" ? report?.project_dirs : report?.user_dirs;
 
   return (
-    <Card className={cn("overflow-hidden", className)}>
-      <CardFrameHeader className="px-4 py-3">
+    <Card clip>
+      <CardFrameHeader pad="tight">
         {!hideTitle && (
-          <CardFrameTitle className="flex items-center gap-2">
+          <CardFrameTitle row>
             <BookOpenIcon className="size-3.5 text-muted-foreground" />
             {location ? "Skills in this project" : `Skills on ${box}`}
           </CardFrameTitle>
         )}
-        <CardFrameDescription className="text-xs">
+        <CardFrameDescription size="xs">
           {location ? "Only agents working in this repository learn them." : "Every agent the box's user runs learns them."} They teach Claude Code and Codex to use Burf.
         </CardFrameDescription>
         <CardFrameAction>
@@ -137,7 +137,7 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
         ))}
       </div>
 
-      <CardFrameFooter className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2.5">
+      <CardFrameFooter bar>
         <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground" title={dirs ? `${dirs.claude}\n${dirs.codex}` : undefined}>
           {dirs ? `${shortDir(dirs.claude)} · ${shortDir(dirs.codex)}` : " "}
         </span>

@@ -489,17 +489,13 @@ export type ModelSelectorListProps = ComponentPropsWithoutRef<
 >;
 
 function ModelSelectorList({
-  className,
   children,
   ...props
 }: ModelSelectorListProps) {
   return (
     <CommandList
       data-slot="model-selector-list"
-      className={cn(
-        "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-        className,
-      )}
+      hideBar
       {...props}
     >
       {children ?? (
@@ -551,7 +547,6 @@ export type ModelSelectorItemProps = Omit<
 
 function ModelSelectorItem({
   model,
-  className,
   children,
   onClick,
   ...props
@@ -569,10 +564,7 @@ function ModelSelectorItem({
         setOpen(false);
         onClick?.(event);
       }}
-      className={cn(
-        "relative items-start gap-2 rounded-lg py-2 ps-3 pe-9 [&_svg:not([class*='size-'])]:size-3.5",
-        className,
-      )}
+      look="model"
       {...props}
     >
       {children ?? (

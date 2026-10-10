@@ -81,6 +81,7 @@ const styles = stylex.create({
   },
   mono: { fontFamily: font.mono },
   xs: { fontSize: 12 },
+  textSm: { fontSize: 14 },
   time: { width: 112 },
   cap56: { maxWidth: 224 },
   cap72: { maxWidth: 288 },
@@ -122,6 +123,20 @@ const styles = stylex.create({
     lineHeight: "28px",
     fontSize: 14,
   },
+  command: {
+    borderColor: "transparent",
+    backgroundColor: "transparent",
+    boxShadow: {
+      default: "none",
+      ":has(:focus-visible)": "none",
+      ':has([aria-invalid="true"])': "none",
+      ':has(:focus-visible):has([aria-invalid="true"])': "none",
+    },
+  },
+  lead: { paddingLeft: { default: 33, [sm]: 31 } },
+  leadSm: { paddingLeft: { default: 29, [sm]: 27 } },
+  trail: { paddingRight: 28 },
+  trailSm: { paddingRight: 26 },
 });
 
 export type InputMeasure = "fill" | "time" | "slot" | "cap56" | "cap72";
@@ -135,7 +150,7 @@ export type InputProps = Omit<
   unstyled?: boolean;
   nativeInput?: boolean;
   mono?: boolean;
-  text?: "default" | "xs";
+  text?: "default" | "sm" | "xs";
   measure?: InputMeasure;
   inset?: InputInset;
   /** Thread rename row: a short field with room for the confirm control. */
@@ -144,6 +159,11 @@ export type InputProps = Omit<
   nums?: boolean;
   /** Unstyled field that is still a search line or a flow title. */
   plain?: "line" | "title";
+  /** Command field: no border, fill, or focus ring. */
+  chrome?: "command";
+  /** Room for a leading or trailing icon button. */
+  lead?: "icon" | "sm";
+  trail?: "icon" | "sm";
 };
 
 export function Input({
@@ -158,13 +178,18 @@ export function Input({
   align = "start",
   nums = false,
   plain,
+  chrome,
+  lead,
+  trail,
   ...props
 }: InputProps): React.ReactElement {
   const shell = stylex.props(
     unstyled ? styles.bare : styles.shell,
+    chrome === "command" && styles.command,
     plain === "line" && styles.line,
     plain === "title" && styles.title,
     mono && styles.mono,
+    text === "sm" && styles.textSm,
     text === "xs" && styles.xs,
     measure === "time" && styles.time,
     measure === "slot" && styles.slot,
@@ -181,6 +206,7 @@ export function Input({
     size === "lg" && styles.fieldLg,
     props.type === "search" && styles.search,
     mono && styles.mono,
+    text === "sm" && styles.textSm,
     text === "xs" && styles.xs,
     inset === "field" && styles.insetField,
     inset === "wide" && styles.insetWide,
@@ -188,6 +214,10 @@ export function Input({
     align === "end" && styles.end,
     nums && styles.nums,
     plain === "title" && styles.title,
+    lead === "icon" && styles.lead,
+    lead === "sm" && styles.leadSm,
+    trail === "icon" && styles.trail,
+    trail === "sm" && styles.trailSm,
   );
   const fieldProps = {
     className: field.className,

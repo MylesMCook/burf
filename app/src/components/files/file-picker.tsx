@@ -176,7 +176,7 @@ function Picker() {
   const preview = wide && !!ws && !!ref;
 
   return (
-    <CommandDialogPopup className={cn(preview ? "h-[min(36rem,82vh)] max-h-[min(36rem,82vh)] max-w-5xl" : "max-h-[min(32rem,80vh)] max-w-2xl")} data-testid="file-picker" aria-label="Go to file">
+    <CommandDialogPopup size={preview ? "preview" : "files"} data-testid="file-picker" aria-label="Go to file">
       <div className="flex h-14 shrink-0 items-center gap-2.5 px-5">
         <SearchIcon className="size-4 shrink-0 text-muted-foreground opacity-80" />
         <input
@@ -197,13 +197,13 @@ function Picker() {
         {searching && <Spinner  size="md" muted/>}
         {ref && <span className="shrink-0 rounded-md border bg-muted/60 px-1.5 py-px font-mono text-[11px] text-muted-foreground">{ref.box}</span>}
       </div>
-      <CommandPanel className={cn("flex min-h-0", preview && "flex-1")}>
+      <CommandPanel grow={preview}>
         <div className={cn("flex min-h-0 min-w-0 flex-col", preview ? "w-[24rem] shrink-0 border-r" : "flex-1")}>
           <Results groups={groups} at={at} setAt={setAt} choose={choose} listRef={list} empty={!ws ? "Open a worktree first: ⌘P finds files in the one in front." : error ? error : q ? (searching ? "" : "No file matches.") : touched ? "Type a file's name." : ""} />
         </div>
         {preview && <div className="min-w-0 flex-1">{current ? <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner  size="lg" muted/></div>}><Preview ws={ws!} path={current.path} /></Suspense> : <div className="h-full" />}</div>}
       </CommandPanel>
-      <CommandFooter className="justify-start gap-4 text-[11px]">
+      <CommandFooter align="start" gap={4}>
         <span className="flex items-center gap-1">
           <Kbd>↵</Kbd> open
         </span>

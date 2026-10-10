@@ -391,7 +391,7 @@ export function CommandPalette() {
                   <CommandGroupLabel>{group.value}</CommandGroupLabel>
                   <CommandCollection>
                     {(item: Item) => (
-                      <CommandItem key={item.value} value={item} className="gap-2" onClick={() => item.run()}>
+                      <CommandItem key={item.value} value={item} gap={2} onClick={() => item.run()}>
                         {item.icon}
                         <span className="truncate">{item.label}</span>
                         {item.detail && <span className="ml-auto min-w-0 shrink truncate text-muted-foreground text-xs">{item.detail}</span>}
@@ -404,7 +404,7 @@ export function CommandPalette() {
               )}
             </CommandList>
           </CommandPanel>
-          <CommandFooter className="text-[11px] text-muted-foreground">
+          <CommandFooter>
             <span className="flex items-center gap-1">
               <Kbd>↑</Kbd>
               <Kbd>↓</Kbd> to move, <Kbd>↵</Kbd> to open

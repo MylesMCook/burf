@@ -87,7 +87,7 @@ export function BoxPicker() {
                   <CommandGroupLabel>Boxes</CommandGroupLabel>
                   <CommandCollection>
                     {(item: Item) => (
-                      <CommandItem key={item.box} value={item} disabled={!!item.blocked} data-box={item.box} className="gap-2" onClick={() => pick(item.box)}>
+                      <CommandItem key={item.box} value={item} disabled={!!item.blocked} data-box={item.box} gap={2} onClick={() => pick(item.box)}>
                         <BoxDot box={item.box} />
                         <span className="truncate font-medium">{item.box}</span>
                         {item.last && <span className="shrink-0 rounded bg-accent px-1 py-px text-[10px] text-muted-foreground">last used</span>}
@@ -99,7 +99,7 @@ export function BoxPicker() {
               )}
             </CommandList>
           </CommandPanel>
-          <CommandFooter className="text-[11px] text-muted-foreground">
+          <CommandFooter>
             <span className="flex items-center gap-1">
               <Kbd>↵</Kbd> open a terminal in its home
             </span>
