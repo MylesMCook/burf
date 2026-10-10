@@ -350,7 +350,7 @@ func Run(ctx context.Context, cfg Config) error {
 	defer func() {
 		// Joining initialization prevents a late HTTP request starting a process
 		// after shutdown has already closed the manager.
-		if runtime.GOOS == "windows" {
+		if localClientSupported() {
 			a.initLocalClient()
 		}
 		if a.localClient.manager != nil {

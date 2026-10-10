@@ -95,11 +95,6 @@ const paint = stylex.create({
     "paddingLeft": "16px",
     "outline": "none",
   },
-  s8: {
-    "gap": "4px",
-    "paddingLeft": "6px",
-    "paddingRight": "6px",
-  },
   s9: {
     "width": "12px",
     "height": "12px",
@@ -221,7 +216,7 @@ const paint = stylex.create({
     "borderTopColor": "var(--border)",
     "paddingLeft": "16px",
     "paddingRight": "16px",
-    "fontSize": "11px",
+    "fontSize": "12px",
     "color": {
       "default": "light-dark(var(--destructive-foreground), var(--destructive))",
     },
@@ -243,7 +238,7 @@ const paint = stylex.create({
     "paddingLeft": "10px",
     "paddingRight": "10px",
     "fontWeight": 500,
-    "fontSize": "11px",
+    "fontSize": "12px",
     "color": "var(--muted-foreground)",
   },
   s26: {
@@ -272,7 +267,7 @@ const paint = stylex.create({
   },
   s30: {
     "flexShrink": 0,
-    "fontSize": "11px",
+    "fontSize": "12px",
     "color": "var(--muted-foreground)",
     "fontVariantNumeric": "tabular-nums",
     ":is(.group\\/row:focus-within &)": {
@@ -299,13 +294,9 @@ const paint = stylex.create({
       ":focus-visible": "0 0 0 2px color-mix(in oklab, var(--ring) 60%, transparent)",
     },
   },
-  s32: {
-    "paddingTop": "4px",
-    "paddingBottom": "4px",
-  },
   s33: {
-    "paddingTop": "6px",
-    "paddingBottom": "6px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
   },
   s34: {
     "display": "flex",
@@ -335,50 +326,6 @@ const paint = stylex.create({
       "height": "16px",
     },
   },
-  s39: {
-    "opacity": 0.6,
-    ":not(#\\#) svg": {
-      "width": "14px",
-      "height": "14px",
-    },
-  },
-  s40: {
-    "display": "flex",
-    "height": "20px",
-    "minWidth": "0px",
-    "flexGrow": 1,
-    "flexShrink": 1,
-    "flexBasis": "0%",
-    "alignItems": "center",
-    "gap": "6px",
-  },
-  s41: {
-    "minWidth": "0px",
-    "flexShrink": 1,
-    "overflow": "hidden",
-    "textOverflow": "ellipsis",
-    "whiteSpace": "nowrap",
-    "color": "var(--muted-foreground)",
-    "fontSize": "12px",
-    "lineHeight": "16px",
-  },
-  s42: {
-    "flexShrink": 0,
-    "fontSize": "11px",
-    "color": "var(--muted-foreground)",
-    "fontVariantNumeric": "tabular-nums",
-  },
-  s43: {
-    "minWidth": "0px",
-    "flexGrow": 1,
-    "flexShrink": 1,
-    "flexBasis": "0%",
-    "overflow": "hidden",
-    "textOverflow": "ellipsis",
-    "whiteSpace": "nowrap",
-    "fontSize": "11px",
-    "color": "var(--muted-foreground)",
-  },
   s44: {
     "minWidth": "0px",
     "flexGrow": 1,
@@ -396,7 +343,7 @@ const paint = stylex.create({
     "overflow": "hidden",
     "textOverflow": "ellipsis",
     "whiteSpace": "nowrap",
-    "fontSize": "13px",
+    "fontSize": "14px",
   },
   s47: {
     "color": "color-mix(in oklab, var(--foreground) 80%, transparent)",
@@ -407,7 +354,7 @@ const paint = stylex.create({
   },
   s49: {
     "flexShrink": 0,
-    "fontSize": "11px",
+    "fontSize": "12px",
     "color": "var(--muted-foreground)",
     "fontVariantNumeric": "tabular-nums",
   },
@@ -461,8 +408,8 @@ const paint = stylex.create({
     "borderRadius": "var(--radius-md)",
     "paddingLeft": "6px",
     "paddingRight": "6px",
-    "paddingTop": "6px",
-    "paddingBottom": "6px",
+    "paddingTop": "8px",
+    "paddingBottom": "8px",
     "outline": "none",
     "backgroundColor": {
       ":hover": "color-mix(in oklab, var(--accent) 60%, transparent)",
@@ -516,7 +463,7 @@ const paint = stylex.create({
     "textOverflow": "ellipsis",
     "whiteSpace": "nowrap",
     "fontWeight": 500,
-    "fontSize": "13px",
+    "fontSize": "14px",
     "color": "var(--foreground)",
   },
   s61: {
@@ -526,7 +473,7 @@ const paint = stylex.create({
   },
   s62: {
     "flexShrink": 0,
-    "fontSize": "11px",
+    "fontSize": "12px",
     "color": "var(--muted-foreground)",
     "fontVariantNumeric": "tabular-nums",
   },
@@ -935,7 +882,7 @@ export function NotificationCenter() {
           {notes.length > 0 && (
             <Menu>
               <MenuTrigger
-                render={<span className={sx(paint.s8)}><Button size="xs" variant="ghost" data-filter="" aria-label={`Show: ${current.label}`} muted /></span>}
+                render={<Button size="xs" variant="ghost" data-filter="" aria-label={`Show: ${current.label}`} muted />}
               >
                 {current.label}
                 <ChevronDownIcon className={sx(paint.s9)} />
@@ -1031,9 +978,9 @@ export function NotificationCenter() {
         ) : (
           <ScrollArea
             cap
-            grow
+            contentSize="container"
             scrollFade
-            style={{ "--list-max": `calc(100dvh - ${chrome}px)` } as React.CSSProperties}
+            style={{ height: "auto", "--list-max": `calc(100dvh - ${chrome}px)` } as React.CSSProperties}
           >
             <div ref={list} className={sx(paint.s19)}>
               {needs.length + live.length > 0 ? (
@@ -1158,55 +1105,45 @@ function Row({
       tabIndex={tabStop ? 0 : -1}
       onFocus={(e) => e.target === e.currentTarget && onFocus(n.id)}
       onClick={() => activate(n)}
-      className={[[sx(paint.s31), "group/row"].filter(Boolean).join(" "), folded ? sx(paint.s32) : sx(paint.s33)].filter(Boolean).join(" ")}
+      className={[sx(paint.s31, paint.s33), "group/row"].filter(Boolean).join(" ")}
     >
       {/* Unread: a dot in its own column, so titles stay aligned. */}
       <span className={sx(paint.s34)} aria-hidden>
         {!n.read && !n.resolved && <span className={[sx(paint.s35), needs ? sx(paint.s36) : sx(paint.s37)].filter(Boolean).join(" ")} />}
       </span>
       <Tip label={folded ? `${info.label} · ${status}` : info.label} side="left" delay={600}>
-        <span className={[sx(paint.s38), tone, folded && sx(paint.s39)].filter(Boolean).join(" ")}>
+        <span className={[sx(paint.s38), tone].filter(Boolean).join(" ")}>
           <Icon />
         </span>
       </Tip>
-      {folded ? (
-        <div className={sx(paint.s40)}>
-          <span className={sx(paint.s41)}>{shownNoteTitle(n.title, n.resolved)}</span>
-          {item.count > 1 && <span className={sx(paint.s42)}>×{item.count}</span>}
-          <span className={sx(paint.s43)}>{line}</span>
+      <div className={sx(paint.s44)}>
+        <div className={sx(paint.s45)}>
+          <span className={sx(paint.s46, n.read || folded ? paint.s47 : paint.s48)}>{shownNoteTitle(n.title, n.resolved)}</span>
+          {item.count > 1 && <span className={sx(paint.s49)}>×{item.count}</span>}
+          <span className={sx(paint.s50)} />
           {time}
           {cluster}
         </div>
-      ) : (
-        <div className={sx(paint.s44)}>
-          <div className={sx(paint.s45)}>
-            <span className={[sx(paint.s46), n.read ? sx(paint.s47) : sx(paint.s48)].filter(Boolean).join(" ")}>{shownNoteTitle(n.title, n.resolved)}</span>
-            {item.count > 1 && <span className={sx(paint.s49)}>×{item.count}</span>}
-            <span className={sx(paint.s50)} />
-            {time}
-            {cluster}
+        {(line || label) && (
+          <div className={sx(paint.s51)}>
+            <Tip label={line || undefined} width="lg">
+              <span className={sx(paint.s52)}>{line}</span>
+            </Tip>
+            {label && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openNote(n.id);
+                }}
+                className={[sx(paint.s53), sx(paint.s70)].filter(Boolean).join(" ")}
+              >
+                {label}
+              </button>
+            )}
           </div>
-          {(line || label) && (
-            <div className={sx(paint.s51)}>
-              <Tip label={line || undefined} width="lg">
-                <span className={sx(paint.s52)}>{line}</span>
-              </Tip>
-              {label && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openNote(n.id);
-                  }}
-                  className={[sx(paint.s53), sx(paint.s70)].filter(Boolean).join(" ")}
-                >
-                  {label}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </li>
   );
 }

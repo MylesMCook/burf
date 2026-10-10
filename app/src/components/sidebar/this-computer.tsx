@@ -8,9 +8,8 @@ import { SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/comp
 import { localAgentName, localApi, publishLocalThreads, useLocalComputer, useLocalThreadList, type LocalConversation, type LocalSession } from "@/lib/local-computer";
 import { useLocalBox } from "@/lib/local-box";
 import { useStore } from "@/lib/store";
-import { thisComputerName } from "@/lib/this-computer";
+import { thisComputerName, thisComputerTarget } from "@/lib/this-computer";
 import { color, radius } from "@/styles/tokens.stylex";
-import { openAddBox } from "@/views/onboarding/add-box-dialog";
 
 const styles = stylex.create({
   local: {
@@ -42,14 +41,11 @@ function useComputerName() {
 }
 
 function openComputer(supported: boolean | undefined, box: string | undefined) {
-  if (supported) useStore.getState().setView({ kind: "local" });
-  else if (box) useStore.getState().setView({ kind: "worktrees", box });
-  else openAddBox();
+  useStore.getState().setView(thisComputerTarget(supported, box));
 }
 
 // This computer, in the one sidebar. Chats that belong to this machine sit
-// under the row. A Mac still gets the row from its hostname when native
-// sessions are not available; it does not invent chats.
+// under the row. Older clients can still name it from their local box.
 export function ThisComputerRow() {
   const { local, box, name } = useComputerName();
   const client = useStore((s) => s.client);

@@ -1285,6 +1285,7 @@ const ComposerAction: FC = () => {
       s.composer.submission !== undefined &&
       !(s.thread.isRunning && s.thread.capabilities.cancel),
   );
+  const queueDraft = useAuiState((s) => s.thread.isRunning && s.thread.capabilities.queue && s.composer.text.trim().length > 0);
 
   return (
     <div className={[sx(paint.s51), "aui-composer-action-wrapper"].filter(Boolean).join(" ")}>
@@ -1333,14 +1334,14 @@ const ComposerAction: FC = () => {
         </AuiIf>
         <AuiIf
           condition={(s) =>
-            !s.composer.canCancel ||
+            !s.composer.canCancel || queueDraft ||
             (s.thread.voice !== undefined &&
               s.composer.submission === undefined)
           }
         >
           <ComposerPrimitive.Send asChild>
             <TooltipIconButton
-              tooltip="Send message"
+              tooltip={queueDraft ? "Queue message" : "Send message"}
               side="bottom"
               type="button"
               variant="default"
@@ -1349,7 +1350,7 @@ const ComposerAction: FC = () => {
               box={7}
               round
               shape="pill"
-              aria-label="Send message"
+              aria-label={queueDraft ? "Queue message" : "Send message"}
             >
               <ArrowUpIcon className={[sx(paint.s56), "aui-composer-send-icon"].filter(Boolean).join(" ")} />
             </TooltipIconButton>

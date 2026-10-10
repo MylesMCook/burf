@@ -214,9 +214,10 @@ const paint = stylex.create({
     "minWidth": "0px",
     "alignItems": "center",
     "gap": "4px",
-    "paddingLeft": "4px",
-    "paddingRight": "4px",
-    "paddingTop": "4px",
+    "paddingLeft": "6px",
+    "paddingRight": "6px",
+    "paddingTop": "2px",
+    "paddingBottom": "2px",
   },
   s22: {
     "display": "flex",
@@ -234,21 +235,20 @@ const paint = stylex.create({
       "default": "var(--muted-foreground)",
       ":hover": "var(--foreground)",
     },
-    "fontSize": "12px",
-    "lineHeight": "16px",
-    "outline": "none",
+    "fontSize": "13px",
+    "lineHeight": "18px",
+    "outlineWidth": 2,
+    "outlineStyle": "solid",
+    "outlineColor": { "default": "transparent", ":focus-visible": "var(--ring)" },
+    "outlineOffset": 2,
     "backgroundColor": {
       ":hover": "var(--accent)",
-    },
-    "boxShadow": {
-      ":focus-visible": "0 0 0 2px var(--ring)",
     },
   },
   s23: {
     "minWidth": "0px",
-    "overflow": "hidden",
-    "textOverflow": "ellipsis",
-    "whiteSpace": "nowrap",
+    "whiteSpace": "normal",
+    "overflowWrap": "anywhere",
   },
   s24: {
     "width": "14px",
@@ -433,33 +433,31 @@ const paint = stylex.create({
     "marginLeft": "auto",
   },
   s55: {
-    "marginTop": "calc(2px * -1)",
-    "marginBottom": "2px",
     "display": "flex",
-    "height": "32px",
     "minWidth": "0px",
     "alignItems": "center",
     "gap": "2px",
-    "paddingLeft": "2px",
-    "paddingRight": "2px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
   },
   s56: {
     "fieldSizing": "content",
     "display": "block",
-    "maxHeight": "240px",
-    "minHeight": "76px",
+    "maxHeight": "200px",
+    "minHeight": "84px",
     "width": "100%",
     "resize": "none",
     "borderRadius": "inherit",
     "backgroundColor": "transparent",
-    "paddingLeft": "14px",
-    "paddingRight": "14px",
-    "paddingTop": "12px",
-    "paddingBottom": "12px",
-    "fontSize": "0.875rem",
+    "paddingLeft": "16px",
+    "paddingRight": "16px",
+    "paddingTop": "14px",
+    "paddingBottom": "14px",
+    "fontSize": "14px",
+    "lineHeight": "22px",
     "outline": "none",
     "color": {
-      "::placeholder": "color-mix(in oklab, var(--muted-foreground) 72%, transparent)",
+      "::placeholder": "var(--muted-foreground)",
     },
   },
   s57: {
@@ -566,6 +564,17 @@ const paint = stylex.create({
   q74: {
     "maxWidth": "20rem",
   },
+  shell: {
+    width: "100%",
+    minWidth: 0,
+    ":not(#\\#) > [data-slot=frame]": {
+      borderRadius: "var(--radius-2xl)",
+      boxShadow: "none",
+    },
+    ":not(#\\#) > [data-slot=frame]:has(textarea:focus-visible)": {
+      borderColor: "var(--ring)",
+    },
+  },
 });
 function sx(...parts: readonly (false | null | undefined | object)[]): string {
   return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
@@ -582,6 +591,8 @@ export type { AgentPick } from "@/lib/composer";
 
 export interface TaskComposerProps {
   draft?: ComposerDraft;
+  // A local view already resolved this client's status before showing entry.
+  localComputer?: LocalComputer;
   placeholder?: string;
   autoFocus?: boolean;
   // Work in this worktree, already open: no project, box or where pickers.
@@ -623,7 +634,8 @@ export function defaultCheck(box: string, loc: string): string {
 
 export function TaskComposer(props: TaskComposerProps) {
   const draft = props.draft ?? EMPTY;
-  const local = useLocalComputer(!props.fixed && !props.to && !draft.from);
+  const detectedLocal = useLocalComputer(!props.localComputer && !props.fixed && !props.to && !draft.from);
+  const local = props.localComputer ?? detectedLocal;
   const [place, setPlace] = useState(draft.place);
   const [mode, setMode] = useState<"start" | "send">(draft.mode ?? "start");
   // What to do is kept across the two modes.
@@ -666,7 +678,7 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
   const folderTouched = useRef(false);
   const [typingFolder, setTypingFolder] = useState(false);
   const [agentChoice, setAgent] = useState<string>(draft.agents?.[0]?.agent ?? "");
-  const available = local.agents.filter((a) => a.available);
+  const available = local.agents.filter((a) => a.available && (a.can_chat || a.can_terminal !== false));
   const agent = available.find((a) => a.id === agentChoice) ?? available.find((a) => a.id === "codex" && a.can_chat) ?? available[0];
   const structured = !!agent?.can_chat;
   const presets: PickerPreset[] = available.map((a) => ({ id: a.id, name: localAgentName(a.id), command: a.id }));
@@ -1240,9 +1252,11 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
                 </span>
               </span>
             )}
-            <span className={sx(paint.s19)} />
-            {(!collapsible || expanded) && !noAgent && <SavedPrompts onPick={(_, body) => setText(text.trim() ? `${text.trimEnd()}\n\n${body}` : body)} />}
-            {(!collapsible || expanded) && hasOptions && <OptionsToggle open={optionsOpen} onOpen={setOptionsOpen} />}
+            {!collapsible && <>
+              <span className={sx(paint.s19)} />
+              {!noAgent && <SavedPrompts onPick={(_, body) => setText(text.trim() ? `${text.trimEnd()}\n\n${body}` : body)} />}
+              {hasOptions && <OptionsToggle open={optionsOpen} onOpen={setOptionsOpen} />}
+            </>}
           </>
         )
       }
@@ -1279,7 +1293,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           {/* Says the line opens: it reads as plain words otherwise. */}
           <ChevronDownIcon aria-hidden className={[sx(paint.s24), expanded && sx(paint.s25)].filter(Boolean).join(" ")} />
         </button>
-        {!expanded && <span className={sx(paint.s26)}><SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
+        {!expanded && <span className={sx(paint.s26)}><SendButton label={action} labelled={!dialog} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
       </div>}
       options={!collapsible && options}
       notice={
@@ -1382,8 +1396,12 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
               permissions={hasFullAccess(box) ? Object.keys(chatPermissions) : BASE_PERMISSIONS}
               onPermission={(p) => { saveChatPermission(p); setPermission(p); }}
             />
+            {collapsible && <>
+              {!noAgent && <SavedPrompts onPick={(_, body) => setText(text.trim() ? `${text.trimEnd()}\n\n${body}` : body)} />}
+              {hasOptions && <OptionsToggle open={optionsOpen} onOpen={setOptionsOpen} />}
+            </>}
             <span className={sx(paint.s41)}>
-              <SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} />
+              <SendButton label={action} labelled={collapsible && !dialog} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} />
             </span>
           </div>
           </div>
@@ -1688,14 +1706,16 @@ function ToBody({ to, onSend, onFail, autoFocus }: TaskComposerProps & { to: Non
 // frame joins; while one is held over it, the frame is outlined.
 function Shell({ head, editor, summary, options, notice, footer, drop }: { head?: React.ReactNode; editor: React.ReactNode; summary?: React.ReactNode; options?: React.ReactNode; notice?: React.ReactNode; footer: React.ReactNode; drop?: Attachments }) {
   return (
-    <Frame data-testid="task-composer" data-dragging={drop?.dragging || undefined} {...drop?.dropProps} width="full" lift dragging={!!drop?.dragging}>
+    <div className={sx(paint.shell)}>
+    <Frame variant="card" data-testid="task-composer" data-dragging={drop?.dragging || undefined} {...drop?.dropProps} width="full" dragging={!!drop?.dragging}>
       {head && <div className={sx(paint.s55)}>{head}</div>}
-      <FramePanel pad="none" focus>{editor}</FramePanel>
+      <FramePanel pad="none">{editor}</FramePanel>
       {summary}
       {options && <FramePanel pad="compact" stack gap={4} scroll>{options}</FramePanel>}
       {notice}
       <FrameFooter bar>{footer}</FrameFooter>
     </Frame>
+    </div>
   );
 }
 
@@ -1728,7 +1748,7 @@ function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, p
   );
 }
 
-function SendButton({ label, icon, dialog, blocker, busy, onClick }: { label: string; icon?: React.ReactNode; dialog?: boolean; blocker?: string; busy?: boolean; onClick(): void }) {
+function SendButton({ label, icon, dialog, labelled, blocker, busy, onClick }: { label: string; icon?: React.ReactNode; dialog?: boolean; labelled?: boolean; blocker?: string; busy?: boolean; onClick(): void }) {
   const tip = blocker ?? (
     <span className={sx(paint.s58)}>
       {label} <Kbd>⏎</Kbd>
@@ -1751,8 +1771,9 @@ function SendButton({ label, icon, dialog, blocker, busy, onClick }: { label: st
   return (
     <Tip label={tip}>
       <span className={sx(paint.s61)}>
-        <Button size="icon-sm" aria-label={blocker ? `${label}: ${blocker}` : label} disabled={!!blocker} loading={busy} onClick={onClick}>
+        <Button size={labelled ? "sm" : "icon-sm"} aria-label={blocker ? `${label}: ${blocker}` : label} disabled={!!blocker} loading={busy} onClick={onClick}>
           <ArrowUpIcon />
+          {labelled && label}
         </Button>
       </span>
     </Tip>

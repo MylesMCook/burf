@@ -5,12 +5,12 @@ const cwd = "C:\\Projects\\shop";
 const conversation = { id: "history-1", source: "codex" as const, title: "Checkout history", cwd, updated_at: "2026-01-01T12:00:00Z", read_only: true as const, can_continue: true };
 const session: { id: string; agent: "claude" | "codex"; cwd: string; state: "starting" | "running" | "idle" | "waiting" | "exited"; started_at: string; mode?: "chat" } = { id: "owned-1", agent: "claude", cwd, state: "running", started_at: "2026-01-01T12:00:00Z" };
 
-async function localFixture(app: App, options: { structuredContinue?: boolean; supported?: boolean; available?: boolean; canFork?: boolean; continueReason?: string; failStart?: boolean; noBoxes?: boolean; mobile?: boolean; failHistory?: boolean; outputFailOnce?: boolean; inputFailOnce?: boolean; source?: "claude" | "codex"; forkGate?: Promise<void>; forkResponseFailOnce?: boolean; forkError?: { status: number; message: string }; agents?: { id: "claude" | "codex"; available: boolean; can_chat?: boolean; can_fork?: boolean }[]; conversations?: (typeof conversation)[]; sessions?: (typeof session)[]; startGate?: Promise<void>; failMessage?: boolean } = {}) {
+async function localFixture(app: App, options: { name?: string; home?: string; structuredContinue?: boolean; supported?: boolean; available?: boolean; canFork?: boolean; continueReason?: string; failStart?: boolean; noBoxes?: boolean; mobile?: boolean; failHistory?: boolean; outputUnavailable?: boolean; inputFailOnce?: boolean; source?: "claude" | "codex"; forkGate?: Promise<void>; forkResponseFailOnce?: boolean; forkError?: { status: number; message: string }; agents?: { id: "claude" | "codex"; available: boolean; can_terminal?: boolean; can_chat?: boolean; can_fork?: boolean }[]; conversations?: (typeof conversation)[]; sessions?: (typeof session)[]; startGate?: Promise<void>; failMessage?: boolean } = {}) {
   const agent = await fakeAgent();
   const calls: { method: string; path: string; body: unknown }[] = [];
   let running = true;
   let started = false;
-  let outputFailed = false;
+  let outputUnavailable = options.outputUnavailable ?? false;
   let inputFailed = false;
   let forkResponseFailed = false;
   let launches = 0;
@@ -24,7 +24,7 @@ async function localFixture(app: App, options: { structuredContinue?: boolean; s
     calls.push({ method: req.method(), path: url.pathname + url.search, body: req.postDataJSON() });
     let body: unknown;
     let status = 200;
-    if (url.pathname === "/v1/local") body = { supported: options.supported ?? true, name: "work-hp", home: cwd, agents: options.agents ?? [{ id: "claude", available: options.available ?? true, can_fork: options.canFork ?? false, can_continue_chat: options.structuredContinue }, { id: "codex", available: options.canFork ?? false, can_fork: options.canFork ?? false, can_continue_chat: options.structuredContinue }], sessions: [...(options.sessions ?? []), ...(started ? [{ ...ownedSession, state: running ? ownedSession.state : "exited" }] : [])] };
+    if (url.pathname === "/v1/local") body = { supported: options.supported ?? true, name: options.name ?? "work-hp", home: options.home ?? cwd, agents: options.agents ?? [{ id: "claude", available: options.available ?? true, can_fork: options.canFork ?? false, can_continue_chat: options.structuredContinue }, { id: "codex", available: options.canFork ?? false, can_fork: options.canFork ?? false, can_continue_chat: options.structuredContinue }], sessions: [...(options.sessions ?? []), ...(started ? [{ ...ownedSession, state: running ? ownedSession.state : "exited" }] : [])] };
     else if (url.pathname === "/v1/local/conversations") { status = options.failHistory ? 500 : 200; body = options.failHistory ? { error: "History scan failed" } : options.conversations ?? [history]; }
     else if (url.pathname === "/v1/local/conversations/history-1") body = url.searchParams.has("before") && url.searchParams.get("before") !== "500"
       ? { items: [{ kind: "user", id: "older", off: 0, text: "Earlier request" }], more: false, start: 0 }
@@ -65,7 +65,7 @@ async function localFixture(app: App, options: { structuredContinue?: boolean; s
       await route.abort("connectionreset");
       return;
     } else if (url.pathname.endsWith("/output")) {
-      if (options.outputFailOnce && !outputFailed) { outputFailed = true; status = 503; body = { error: "Terminal temporarily unavailable" }; }
+      if (outputUnavailable) { status = 503; body = { error: "Terminal temporarily unavailable" }; }
       else body = { data: url.searchParams.get("after") === "0" ? Buffer.from("Local terminal ready\r\n").toString("base64") : "", next: 22, reset: false, state: running ? "running" : "exited" };
     }
     else if (req.method() === "DELETE") { running = false; body = {}; }
@@ -74,18 +74,18 @@ async function localFixture(app: App, options: { structuredContinue?: boolean; s
   });
   await app.open({ agent });
   if (options.mobile) await app.page.getByRole("button", { name: "Hide the sidebar", exact: true }).click();
-  return { agent, calls, launches: () => launches };
+  return { agent, calls, launches: () => launches, restoreOutput: () => { outputUnavailable = false; } };
 }
 
 async function expandComposer(app: App) {
-  const summary = app.page.getByRole("dialog").getByTestId("task-composer-summary");
+  const summary = app.page.getByTestId("task-composer-summary");
   await expect(summary).toContainText("on work-hp · this folder");
   if (await summary.getAttribute("aria-expanded") === "false") await summary.click();
 }
 
 async function enterFolder(app: App, path: string) {
   await expandComposer(app);
-  await app.page.getByRole("dialog").getByRole("button", { name: /^Project:/ }).click();
+  await app.page.getByTestId("task-composer").getByRole("button", { name: /^Project:/ }).click();
   await app.page.getByRole("menuitem", { name: "Type folder path…", exact: true }).click();
   await app.page.getByLabel("Project directory").fill(path);
 }
@@ -146,16 +146,44 @@ test("local sidebar can be searched and folded with the keyboard", async ({ app 
   } finally { await agent.close(); }
 });
 
-test("an unpaired Mac opens its supported setup path", async ({ app }) => {
-  const agent = await fakeAgent();
+test("an unpaired Mac opens local messages directly and sends once", async ({ app }) => {
+  const macFolder = "/Users/example/project";
+  const { agent, calls } = await localFixture(app, {
+    name: "myles-macbook-pro", home: macFolder, conversations: [],
+    agents: [{ id: "codex", available: true, can_chat: true, can_terminal: false }],
+  });
   try {
-    await app.context.route(`${agent.url}/v1/local`, (route) => route.fulfill({ json: { supported: false, name: "", home: "", agents: [], sessions: [] } }));
-    await app.context.route(`${agent.url}/v1/boxes/local`, (route) => route.fulfill({ json: { supported: true, available: true, installed: false, owned: false, running: false, name: "myles-macbook-pro" } }));
-    await app.open({ agent });
     await app.page.getByTestId("nav-local").click();
-    await expect(app.page.getByRole("dialog")).toBeVisible();
+    const composer = app.page.getByTestId("task-composer");
+    await expect(composer.getByRole("textbox")).toBeVisible();
+    await expect(composer.getByTestId("task-composer-summary")).toContainText("project on myles-macbook-pro · this folder · Codex");
+    await expect(app.page.getByRole("dialog")).toHaveCount(0);
     await expect(app.page.getByText("Local agents are unavailable on this computer.", { exact: true })).toHaveCount(0);
+    expect(calls.filter((call) => call.method === "POST")).toHaveLength(0);
+    await composer.getByRole("textbox").fill("Test local messages");
+    await expect(composer.getByRole("button", { name: "Start", exact: true })).toBeEnabled();
+    await composer.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByTestId("local-chat").getByText("Structured reply", { exact: true })).toBeVisible();
+    expect(calls.filter((call) => call.method === "POST" && call.path === "/v1/local/chats")).toEqual([{ method: "POST", path: "/v1/local/chats", body: { cwd: macFolder } }]);
+    expect(calls.filter((call) => call.path.endsWith("/messages"))).toEqual([{ method: "POST", path: "/v1/local/chats/chat-1/messages", body: { text: "Test local messages" } }]);
+    expect(calls.filter((call) => call.path === "/v1/local/sessions")).toHaveLength(0);
     expect(agent.calls.filter((c) => c.startsWith("POST /v1/boxes/local"))).toHaveLength(0);
+  } finally { await agent.close(); }
+});
+
+test("local entry keeps the loaded machine when a later capability read fails", async ({ app }) => {
+  const { agent, calls } = await localFixture(app, { conversations: [], agents: [{ id: "codex", available: true, can_chat: true }] });
+  try {
+    await app.context.route(`${agent.url}/v1/local`, async (route) => {
+      if (await app.page.getByRole("heading", { name: "work-hp", exact: true }).count()) return route.fulfill({ status: 503, json: { error: "Capability read unavailable" } });
+      return route.fallback();
+    });
+    await app.page.getByTestId("nav-local").click();
+    const composer = app.page.getByTestId("task-composer");
+    await expect(composer.getByTestId("task-composer-summary")).toContainText("on work-hp · this folder · Codex");
+    await expect(composer.getByRole("button", { name: "Start", exact: true })).toBeEnabled();
+    await expect(app.page.getByRole("dialog")).toHaveCount(0);
+    expect(calls.filter((call) => call.method === "POST")).toHaveLength(0);
   } finally { await agent.close(); }
 });
 
@@ -300,6 +328,7 @@ test("repeated continuation clicks and returning to history reuse the owned sess
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
     const start = app.page.getByRole("button", { name: "Continue in Burf", exact: true });
+    await expect(start).toBeEnabled();
     await start.evaluate((button) => { if (button instanceof HTMLButtonElement) { button.click(); button.click(); } });
     await expect(app.page.getByRole("button", { name: "Starting...", exact: true })).toBeDisabled();
     await expect.poll(() => calls.filter((c) => c.path.endsWith("/fork")).length).toBe(1);
@@ -407,11 +436,12 @@ test("leaving a pending continuation keeps the newly selected view", async ({ ap
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
     await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
     await expect.poll(() => calls.filter((c) => c.path.endsWith("/fork")).length).toBe(1);
-    await app.page.getByRole("button", { name: "New agent", exact: true }).click();
-    await expect(app.page.getByRole("dialog").getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
+    await app.page.getByRole("button", { name: "New chat", exact: true }).click();
+    await expect(app.page.getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
     release();
-    await expect(app.page.getByRole("dialog").getByRole("heading", { name: "New task", exact: true })).toBeVisible();
-    await expect(app.page.getByRole("dialog").getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
+    await expect(app.page.getByTestId("task-composer").getByRole("textbox")).toBeVisible();
+    await expect(app.page.getByRole("dialog")).toHaveCount(0);
+    await expect(app.page.getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
     await expect(app.page.getByTestId("local-terminal")).toHaveCount(0);
     expect(calls.filter((c) => c.method === "POST" && c.path === "/v1/local/sessions")).toHaveLength(0);
   } finally { release(); await agent.close(); }
@@ -421,10 +451,9 @@ test("lost input response warns of uncertain delivery and reconnect never replay
   const { agent, calls } = await localFixture(app, { inputFailOnce: true });
   try {
     await app.page.getByTestId("nav-local").click();
-    await app.page.getByRole("button", { name: "New agent", exact: true }).click();
-    await expect(app.page.getByRole("dialog").getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
-    await expect(app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true })).toBeEnabled();
-    await app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true }).click();
+    await expect(app.page.getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
+    await expect(app.page.getByTestId("task-composer").getByRole("button", { name: "Start", exact: true })).toBeEnabled();
+    await app.page.getByTestId("task-composer").getByRole("button", { name: "Start", exact: true }).click();
     await expect(app.page.locator("[data-testid=local-terminal] .xterm-rows")).toContainText("Local terminal ready");
     await app.page.locator("[data-testid=local-terminal] textarea").fill("hello");
     await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("Terminal input may have arrived");
@@ -462,14 +491,14 @@ test("an older CLI keeps history readable but cannot continue it", async ({ app 
 });
 
 test("terminal reconnect recovers output without starting another agent", async ({ app }) => {
-  const { agent, calls } = await localFixture(app, { outputFailOnce: true });
+  const { agent, calls, restoreOutput } = await localFixture(app, { outputUnavailable: true });
   try {
     await app.page.getByTestId("nav-local").click();
-    await app.page.getByRole("button", { name: "New agent", exact: true }).click();
-    await expect(app.page.getByRole("dialog").getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
-    await expect(app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true })).toBeEnabled();
-    await app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true }).click();
+    await expect(app.page.getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
+    await expect(app.page.getByTestId("task-composer").getByRole("button", { name: "Start", exact: true })).toBeEnabled();
+    await app.page.getByTestId("task-composer").getByRole("button", { name: "Start", exact: true }).click();
     await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("Terminal temporarily unavailable");
+    restoreOutput();
     await app.page.getByRole("button", { name: "Reconnect terminal", exact: true }).click();
     await expect(app.page.locator("[data-testid=local-terminal] .xterm-rows")).toContainText("Local terminal ready");
     expect(calls.filter((c) => c.method === "POST" && c.path === "/v1/local/sessions")).toHaveLength(1);
@@ -485,13 +514,13 @@ test("reconnecting a missing terminal reports the error without recreating its a
   });
   try {
     await app.page.getByTestId("nav-local").click();
-    await app.page.getByRole("button", { name: "New agent", exact: true }).click();
-    await expect(app.page.getByRole("dialog").getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
-    await expect(app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true })).toBeEnabled();
-    await app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true }).click();
+    await expect(app.page.getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
+    await expect(app.page.getByTestId("task-composer").getByRole("button", { name: "Start", exact: true })).toBeEnabled();
+    await app.page.getByTestId("task-composer").getByRole("button", { name: "Start", exact: true }).click();
     await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("Local session no longer exists");
+    const beforeReconnect = reads;
     await app.page.getByRole("button", { name: "Reconnect terminal", exact: true }).click();
-    await expect.poll(() => reads).toBe(2);
+    await expect.poll(() => reads).toBe(beforeReconnect + 1);
     await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("Local session no longer exists");
     expect(calls.filter((c) => c.method === "POST" && c.path === "/v1/local/sessions")).toHaveLength(1);
     expect(calls.filter((c) => c.path.endsWith("/fork") || c.path.endsWith("/input"))).toHaveLength(0);
@@ -502,12 +531,11 @@ test("launches and stops only a Burf-owned local terminal", async ({ app }, info
   const { agent, calls } = await localFixture(app);
   try {
     await app.page.getByTestId("nav-local").click();
-    await app.page.getByRole("button", { name: "New agent", exact: true }).click();
-    await expect(app.page.getByRole("dialog").getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
+    await expect(app.page.getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
     await enterFolder(app, cwd);
     await expect(app.page.getByLabel("Project directory")).toHaveValue(cwd);
-    await expect(app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true })).toBeEnabled();
-    await app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true }).click();
+    await expect(app.page.getByTestId("task-composer").getByRole("button", { name: "Start", exact: true })).toBeEnabled();
+    await app.page.getByTestId("task-composer").getByRole("button", { name: "Start", exact: true }).click();
     await expect(app.page.getByTestId("local-terminal")).toBeVisible();
     await expect.poll(() => calls.some((c) => c.path.endsWith("/output?after=0"))).toBe(true);
     await expect(app.page.locator("[data-testid=local-terminal] .xterm-rows")).toContainText("Local terminal ready");
@@ -536,9 +564,8 @@ test("no installed CLI disables launch without hiding local history", async ({ a
   try {
     await app.page.getByTestId("nav-local").click();
     await expect(app.page.getByRole("button", { name: /Checkout history/ })).toBeVisible();
-    await app.page.getByRole("button", { name: "New agent", exact: true }).click();
-    await expect(app.page.getByRole("dialog").getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
-    await expect(app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true })).toBeDisabled();
+    await expect(app.page.getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
+    await expect(app.page.getByTestId("task-composer").getByRole("button", { name: "Start: No installed agent available", exact: true })).toBeDisabled();
     expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
   } finally { await agent.close(); }
 });
@@ -548,9 +575,8 @@ test("failed history scan does not block starting an installed agent", async ({ 
   try {
     await app.page.getByTestId("nav-local").click();
     await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("History scan failed");
-    await app.page.getByRole("button", { name: "New agent", exact: true }).click();
-    await expect(app.page.getByRole("dialog").getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
-    await expect(app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true })).toBeEnabled();
+    await expect(app.page.getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
+    await expect(app.page.getByTestId("task-composer").getByRole("button", { name: "Start", exact: true })).toBeEnabled();
   } finally { await agent.close(); }
 });
 
@@ -580,16 +606,15 @@ test("unavailable agent cannot start and a failed launch keeps its error", async
   const { agent } = await localFixture(app, { failStart: true });
   try {
     await app.page.getByTestId("nav-local").click();
-    await app.page.getByRole("button", { name: "New agent", exact: true }).click();
-    await expect(app.page.getByRole("dialog").getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
+    await expect(app.page.getByTestId("task-composer-summary")).toContainText("on work-hp · this folder");
     await expandComposer(app);
-    await app.page.getByRole("dialog").getByRole("button", { name: "Provider: Claude Code", exact: true }).click();
+    await app.page.getByTestId("task-composer").getByRole("button", { name: "Provider: Claude Code", exact: true }).click();
     await expect(app.page.getByRole("menuitemradio", { name: "Codex", exact: true })).toHaveCount(0);
     await expect(app.page.getByRole("menuitemradio", { name: "Claude Code", exact: true })).toBeVisible();
     await app.page.keyboard.press("Escape");
     await enterFolder(app, cwd);
-    await expect(app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true })).toBeEnabled();
-    await app.page.getByRole("dialog").getByRole("button", { name: "Start ⏎", exact: true }).click();
+    await expect(app.page.getByTestId("task-composer").getByRole("button", { name: "Start", exact: true })).toBeEnabled();
+    await app.page.getByTestId("task-composer").getByRole("button", { name: "Start", exact: true }).click();
     await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("Project folder does not exist");
     await expect(app.page.getByLabel("Project directory")).toHaveValue(cwd);
   } finally { await agent.close(); }
@@ -645,9 +670,8 @@ test("a new local task defaults to home without history and offers only installe
   const { agent, calls } = await localFixture(app, { conversations: [] });
   try {
     await app.page.getByTestId("nav-local").click();
-    await app.page.getByRole("button", { name: "New agent", exact: true }).click();
     await expandComposer(app);
-    const composer = app.page.getByRole("dialog").getByTestId("task-composer");
+    const composer = app.page.getByTestId("task-composer");
     await expect(composer.getByTestId("task-composer-summary")).toContainText("shop on work-hp · this folder · Claude Code");
     await expect(composer.getByRole("button", { name: "Place: work-hp · This computer", exact: true })).toBeVisible();
     await expect(composer.getByRole("button", { name: /^Where:/ })).toHaveCount(0);

@@ -30,7 +30,7 @@ func (a *Agent) localChatRoutes(handle func(string, http.HandlerFunc)) {
 			localClientError(w, errors.New("installed agent CLI does not support continuing an independent structured chat"))
 			return
 		}
-		chat, err := a.localClient.chats.StartWith(r.Context(), localchat.LaunchOptions{Agent: source.Source, Program: command.Program, CWD: source.Cwd, Env: os.Environ(), Fork: source.SessionID, HistoryID: r.PathValue("id"), HistoryBefore: source.Size})
+		chat, err := a.localClient.chats.StartWith(r.Context(), localchat.LaunchOptions{Agent: source.Source, Program: command.Program, CWD: source.Cwd, Env: withLocalPATH(os.Environ(), command.PATH), Fork: source.SessionID, HistoryID: r.PathValue("id"), HistoryBefore: source.Size})
 		if err != nil {
 			localClientError(w, err)
 			return
@@ -55,14 +55,19 @@ func (a *Agent) localChatRoutes(handle func(string, http.HandlerFunc)) {
 		defer done()
 		var s localchat.Session
 		if req.Agent == "" || req.Agent == "codex" {
-			s, err = a.localClient.chats.Start(r.Context(), req.CWD)
+			command := a.localClient.commands["codex"]
+			if !command.CanChat {
+				localClientError(w, errors.New("Codex is not installed with support for structured chat on this computer"))
+				return
+			}
+			s, err = a.localClient.chats.StartWith(r.Context(), localchat.LaunchOptions{Agent: "codex", Program: command.Program, CWD: req.CWD, Env: withLocalPATH(os.Environ(), command.PATH)})
 		} else if req.Agent == "claude" {
 			command := a.localClient.commands["claude"]
 			if !command.CanChat {
 				localClientError(w, errors.New("Claude Code is not installed with support for structured chat on this computer"))
 				return
 			}
-			s, err = a.localClient.chats.StartWith(r.Context(), localchat.LaunchOptions{Agent: "claude", Program: command.Program, CWD: req.CWD, Env: os.Environ()})
+			s, err = a.localClient.chats.StartWith(r.Context(), localchat.LaunchOptions{Agent: "claude", Program: command.Program, CWD: req.CWD, Env: withLocalPATH(os.Environ(), command.PATH)})
 		} else {
 			localClientError(w, errors.New("unsupported chat agent"))
 			return

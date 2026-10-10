@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { useLayoutEffect, useRef } from "react";
 
 import { TaskComposer } from "@/components/conversation/task-composer";
 import { color } from "@/styles/tokens.stylex";
@@ -31,12 +32,14 @@ const styles = stylex.create({
     alignItems: "center",
     flexShrink: 0,
     width: "100%",
-    maxWidth: 640,
+    maxWidth: 720,
+    maxHeight: "50vh",
+    overflowY: "auto",
     marginLeft: "auto",
     marginRight: "auto",
     paddingLeft: 24,
     paddingRight: 24,
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 16,
   },
   grid: {
@@ -53,6 +56,23 @@ const styles = stylex.create({
 });
 
 export function HomeView() {
+  const composer = useRef<HTMLDivElement>(null);
+  // Floating loop details stay above the task entry, including its open
+  // configuration and any attachment or failure message.
+  useLayoutEffect(() => {
+    const el = composer.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const sync = () => root.style.setProperty("--berth-home-composer-h", `${el.offsetHeight}px`);
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--berth-home-composer-h");
+    };
+  }, []);
+
   return (
     <div {...stylex.props(styles.page)}>
       <div {...stylex.props(styles.scroll)}>
@@ -60,7 +80,7 @@ export function HomeView() {
           <HomeGrid />
         </div>
       </div>
-      <div {...stylex.props(styles.composer)}>
+      <div ref={composer} {...stylex.props(styles.composer)}>
         <TaskComposer autoFocus />
       </div>
     </div>

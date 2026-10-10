@@ -21,9 +21,11 @@ export interface LocalSession {
 }
 export interface LocalComputer {
   supported: boolean;
+  // Public installation identity scopes drafts; never an authentication value.
+  client_scope?: string;
   name: string;
   home: string;
-  agents: { id: LocalAgent; available: boolean; can_fork?: boolean; can_chat?: boolean; can_continue_chat?: boolean }[];
+  agents: { id: LocalAgent; available: boolean; can_terminal?: boolean; can_fork?: boolean; can_chat?: boolean; can_continue_chat?: boolean }[];
   sessions: LocalSession[];
 }
 export interface LocalConversation {

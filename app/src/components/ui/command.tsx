@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/autocomplete";
 import { FocusRescue } from "@/lib/focus-home";
 import { color, font, radius } from "@/styles/tokens.stylex";
+import { overlay } from "@/components/ui/overlay-tokens.stylex";
 
 
 const sm = "@media (min-width: 640px)";
@@ -30,7 +31,6 @@ const styles = stylex.create({
     inset: 0,
     zIndex: 50,
     backgroundColor: "color-mix(in oklab, black 32%, transparent)",
-    backdropFilter: "blur(8px)",
     transitionProperty: "opacity",
     transitionDuration: { default: "200ms", [still]: "0s" },
   },
@@ -67,7 +67,7 @@ const styles = stylex.create({
     opacity: "calc(1 - 0.1 * var(--nested-dialogs, 0))",
     translate: "0 calc(-1.25rem * var(--nested-dialogs, 0))",
     scale: "calc(1 - 0.1 * var(--nested-dialogs, 0))",
-    boxShadow: "0 10px 15px -3px color-mix(in oklab, var(--foreground) 5%, transparent), 0 4px 6px -4px color-mix(in oklab, var(--foreground) 5%, transparent)",
+    boxShadow: overlay.shadow,
     outline: "none",
     transitionProperty: "scale, opacity, translate",
     transitionDuration: { default: "200ms", [still]: "0s" },
@@ -80,7 +80,6 @@ const styles = stylex.create({
       inset: 0,
       borderRadius: "calc(var(--radius-2xl) - 1px)",
       backgroundColor: "color-mix(in oklab, var(--muted) 72%, transparent)",
-      boxShadow: "var(--dialog-edge)",
     },
     ":not(#\\#) [data-slot=scroll-area-viewport][data-has-overflow-y]": { paddingInlineEnd: 4 },
   },
@@ -105,7 +104,6 @@ const styles = stylex.create({
     borderColor: color.border,
     backgroundColor: color.popover,
     backgroundClip: "padding-box",
-    boxShadow: "0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent)",
     clipPath: "inset(0 1px)",
     ":not(:has(+ [data-slot=command-footer]))": {
       marginBottom: -1,

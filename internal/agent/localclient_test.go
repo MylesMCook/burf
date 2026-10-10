@@ -40,8 +40,8 @@ func TestLocalRoutesRequireAuthAndLoopback(t *testing.T) {
 }
 
 func TestLocalContinuationAPI(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("native local API is Windows only")
+	if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
+		t.Skip("native local API needs Windows or macOS")
 	}
 	for _, provider := range []string{"codex", "claude"} {
 		t.Run(provider, func(t *testing.T) { testLocalContinuationAPI(t, provider) })
@@ -140,8 +140,8 @@ func (p *localTestProcess) Wait() error                 { return nil }
 func (p *localTestProcess) Close() error                { p.once.Do(func() { p.w.Close() }); return nil }
 
 func TestLocalClientAPI(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("native local API is Windows only")
+	if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
+		t.Skip("native local API needs Windows or macOS")
 	}
 	dir := t.TempDir()
 	a := &Agent{ctx: context.Background()}

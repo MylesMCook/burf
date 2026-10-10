@@ -232,6 +232,7 @@ export function DialogDescription({
 
 export function DialogPanel({
   scrollFade = true,
+  contentSize = "default",
   inset = "default",
   stack,
   drop = false,
@@ -239,6 +240,7 @@ export function DialogPanel({
   ...props
 }: Omit<useRender.ComponentProps<"div">, "className" | "style"> & {
   scrollFade?: boolean;
+  contentSize?: "default" | "container";
   inset?: DialogInset;
   stack?: DialogStack;
   drop?: boolean;
@@ -248,7 +250,7 @@ export function DialogPanel({
     "data-slot": "dialog-panel",
   };
   return (
-    <ScrollArea overscrollContain scrollFade={scrollFade}>
+    <ScrollArea overscrollContain scrollFade={scrollFade} contentSize={contentSize}>
       {useRender({
         defaultTagName: "div",
         props: mergeProps<"div">(defaultProps, props),

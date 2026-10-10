@@ -442,10 +442,11 @@ export const ComposerAttachments: FC = () => {
 };
 
 export const ComposerAddAttachment: FC = () => {
+  const supported = useAuiState((s) => s.thread.capabilities.attachments);
   return (
-    <ComposerPrimitive.AddAttachment asChild>
+    <ComposerPrimitive.AddAttachment asChild disabled={!supported}>
       <TooltipIconButton
-        tooltip="Add Attachment"
+        tooltip={supported ? "Add Attachment" : "Attachments are not supported in this chat."}
         side="bottom"
         variant="ghost"
         size="icon"
@@ -455,6 +456,7 @@ export const ComposerAddAttachment: FC = () => {
         tone="muted"
         wash
         aria-label="Add Attachment"
+        disabled={!supported}
       >
         <PlusIcon className={[sx(paint.s19), "aui-attachment-add-icon"].filter(Boolean).join(" ")} />
       </TooltipIconButton>

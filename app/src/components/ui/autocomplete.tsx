@@ -8,6 +8,7 @@ import type React from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { color, radius } from "@/styles/tokens.stylex";
+import { overlay } from "@/components/ui/overlay-tokens.stylex";
 
 
 const sm = "@media (min-width: 640px)";
@@ -77,16 +78,8 @@ const styles = stylex.create({
     borderColor: color.border,
     backgroundColor: color.popover,
     backgroundClip: "padding-box",
-    boxShadow: "0 10px 15px -3px color-mix(in oklab, var(--foreground) 5%, transparent), 0 4px 6px -4px color-mix(in oklab, var(--foreground) 5%, transparent)",
+    boxShadow: overlay.shadow,
     transitionProperty: "scale, opacity",
-    "::before": {
-      content: '""',
-      pointerEvents: "none",
-      position: "absolute",
-      inset: 0,
-      borderRadius: "calc(var(--radius-lg) - 1px)",
-      boxShadow: "var(--dialog-edge)",
-    },
   },
   popupBody: {
     display: "flex",

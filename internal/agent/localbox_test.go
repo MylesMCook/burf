@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"testing"
@@ -354,6 +355,27 @@ func TestUseThisMacWithoutABundledBerthd(t *testing.T) {
 // service where it listens; it never downgrades a newer release.
 func TestAnAppUpdateRefreshesTheCopy(t *testing.T) {
 	e := newLocalEnv(t)
+	// The installed version writes PATH, as current berthd does. Leave the
+	// legacy-plist recovery behavior to its own test below.
+	tmpl, err := service.Render(service.Spec{Name: service.BerthdName(), Program: "__PROGRAM__", Args: []string{"serve", "--listen", "__LISTEN__"}, Env: map[string]string{"BERTH_HOME": "__HOME__", "PATH": "/usr/bin:/bin"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(e.root, "unit.tmpl"), string(tmpl), 0o644)
+	bundled, err := filepath.EvalSymlinks(e.bundled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nextBuild := localTestBuildInfo("new", "2026-10-10T10:00:00Z", "false")
+	haveBuild := localTestBuildInfo("old", "2026-10-09T10:00:00Z", "false")
+	oldBuildInfo := localBuildInfo
+	localBuildInfo = func(path string) (*debug.BuildInfo, error) {
+		if path == e.bundled || path == bundled {
+			return nextBuild, nil
+		}
+		return haveBuild, nil
+	}
+	t.Cleanup(func() { localBuildInfo = oldBuildInfo })
 	writeFile(t, e.stable, fakeBerthd("dev-old"), 0o755)
 	e.installUnit(e.stable, "127.0.0.1:7445", e.root)
 	a := &Agent{cfg: Config{Dir: e.dir, CLI: filepath.Join(e.dir, "fake-berth"), Log: log.New(io.Discard, "", 0)}, boxes: trust.NewStore(filepath.Join(e.dir, "boxes.json"))}
@@ -373,6 +395,19 @@ func TestAnAppUpdateRefreshesTheCopy(t *testing.T) {
 	if e.log(e.berthd) != before {
 		t.Fatal("checked again with nothing new in the app")
 	}
+	// A direct development rollout is newer than the stale bundled copy.
+	// The next app check keeps it, even though the bundle's mtime changed.
+	haveBuild = localTestBuildInfo("newer", "2026-10-11T10:00:00Z", "false")
+	installed := fakeBerthd("dev-newer")
+	writeFile(t, e.stable, installed, 0o755)
+	os.Chtimes(e.bundled, time.Now(), time.Now().Add(time.Minute))
+	a.refreshLocalBox(context.Background())
+	if b, err := os.ReadFile(e.stable); err != nil || string(b) != installed {
+		t.Fatalf("downgraded a newer development daemon: %v", err)
+	}
+	if n := strings.Count(e.log(e.berthd), "install --keep-listen"); n != 1 {
+		t.Fatalf("reinstalled the daemon after refusing the stale bundle: %s", e.log(e.berthd))
+	}
 	// The box was upgraded past what the app now carries.
 	writeFile(t, e.stable, fakeBerthd("v0.3.0"), 0o755)
 	writeFile(t, e.bundled, fakeBerthd("v0.2.0"), 0o755)
@@ -380,6 +415,26 @@ func TestAnAppUpdateRefreshesTheCopy(t *testing.T) {
 	a.refreshLocalBox(context.Background())
 	if b, _ := os.ReadFile(e.stable); !strings.Contains(string(b), "VERSION=v0.3.0") {
 		t.Fatal("downgraded the box")
+	}
+}
+
+func TestAStaleDevelopmentBundleDoesNotReplaceTheOwnedDaemon(t *testing.T) {
+	e := newLocalEnv(t)
+	writeFile(t, e.bundled, fakeBerthd("dev")+"\n# stale bundled build\n", 0o755)
+	installed := fakeBerthd("dev") + "\n# newer installed build\n"
+	writeFile(t, e.stable, installed, 0o755)
+	// Copying an old binary into a new app can give it a newer file time.
+	// Without source chronology, that is not permission to replace it.
+	if err := os.Chtimes(e.bundled, time.Now(), time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	a := &Agent{}
+	updated, err := a.updateLocalBerthd(context.Background(), e.bundled, e.stable, e.root, true, func(string, ...any) {})
+	if err != nil || updated {
+		t.Fatalf("stale development bundle updated the daemon: updated=%v, err=%v", updated, err)
+	}
+	if b, err := os.ReadFile(e.stable); err != nil || string(b) != installed {
+		t.Fatalf("installed daemon was replaced: %v", err)
 	}
 }
 

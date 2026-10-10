@@ -12,6 +12,7 @@ import { openAddBox } from "@/views/onboarding/add-box-dialog";
 
 import { useAgentRows } from "./agents";
 import { fitRows, useHomeWidget } from "./env";
+import { fleetStats } from "./fleet-stats";
 import { Bar, More, shortAgo, WidgetEmpty, WidgetRow, WidgetSkeleton } from "./parts";
 import { placeLabel } from "@/lib/worktree-names";
 
@@ -210,16 +211,16 @@ function BoxRow({ b }: { b: BoxStatus }) {
   const working = agents.filter((a) => a.box === b.name && a.state === "running").length;
   const waiting = agents.filter((a) => a.box === b.name && a.state === "waiting").length;
   const online = b.state === "online";
-  const cpu = st?.load?.length ? st.load[0] / Math.max(1, st.cpus) : 0;
-  const mem = st ? st.memory.used / Math.max(1, st.memory.total) : 0;
-  const disk = st?.disks[0] ? st.disks[0].used / Math.max(1, st.disks[0].total) : 0;
+  const readings = fleetStats(st);
+  const usage = ([ ["CPU", readings.cpu], ["Mem", readings.mem], ["Disk", readings.disk] ] as const).filter((entry): entry is readonly ["CPU" | "Mem" | "Disk", number] => entry[1] !== undefined);
+  const hardware = [readings.cpus && `${readings.cpus} CPU`, readings.memory && bytes(readings.memory)].filter(Boolean).join(" · ");
   return (
     <div className={sx(paint.s2)}>
       <span className={sx(paint.s3)}>
         <StatusDot state={state} />
         <span className={sx(paint.s4)}>{b.name}</span>
         <span className={sx(paint.s5)}>
-          {online ? (st ? `${st.cpus} CPU · ${bytes(st.memory.total)}` : "") : `offline${b.since ? ` · ${shortAgo(b.since)}` : ""}`}
+          {online ? hardware : `offline${b.since ? ` · ${shortAgo(b.since)}` : ""}`}
         </span>
         {waiting > 0 && <StateGlyph state="waiting" className={sx(paint.s6)} />}
         {working > 0 && (
@@ -229,15 +230,9 @@ function BoxRow({ b }: { b: BoxStatus }) {
           </span>
         )}
       </span>
-      {online && st ? (
-        <span className={sx(paint.s9)} role="group" aria-label={`${b.name}: CPU ${Math.round(cpu * 100)}%, memory ${Math.round(mem * 100)}%, disk ${Math.round(disk * 100)}%`}>
-          {(
-            [
-              ["CPU", cpu],
-              ["Mem", mem],
-              ["Disk", disk],
-            ] as const
-          ).map(([l, v]) => (
+      {online && usage.length ? (
+        <span className={sx(paint.s9)} role="group" aria-label={`${b.name}: ${usage.map(([label, value]) => `${label} ${Math.round(value * 100)}%`).join(", ")}`}>
+          {usage.map(([l, v]) => (
             <span key={l} className={sx(paint.s10)} aria-hidden>
               <span className={sx(paint.s11)}>
                 <span>{l}</span>
@@ -248,7 +243,7 @@ function BoxRow({ b }: { b: BoxStatus }) {
           ))}
         </span>
       ) : online ? (
-        <span className={sx(paint.s13)}>Reading stats…</span>
+        <span className={sx(paint.s13)}>{st ? "Stats unavailable" : "Reading stats…"}</span>
       ) : (
         <span className={sx(paint.s14)}>{b.error ? "Can't reach it" : "Not connected"}</span>
       )}

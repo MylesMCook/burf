@@ -10,6 +10,7 @@ import { FocusRescue } from "@/lib/focus-home";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { color, radius } from "@/styles/tokens.stylex";
+import { overlay } from "@/components/ui/overlay-tokens.stylex";
 
 
 const sm = "@media (min-width: 640px)";
@@ -25,7 +26,6 @@ const styles = stylex.create({
     inset: 0,
     zIndex: 50,
     backgroundColor: "color-mix(in oklab, black 32%, transparent)",
-    backdropFilter: "blur(8px)",
     transitionProperty: "opacity",
     transitionDuration: { default: "200ms", [still]: "0s" },
   },
@@ -47,18 +47,11 @@ const styles = stylex.create({
     backgroundColor: color.popover,
     backgroundClip: "padding-box",
     color: color.popoverForeground,
-    boxShadow: "0 10px 15px -3px color-mix(in oklab, var(--foreground) 5%, transparent)",
+    boxShadow: overlay.shadow,
     transitionProperty: "opacity, translate",
     transitionDuration: { default: "200ms", [still]: "0s" },
     transitionTimingFunction: "ease-in-out",
     willChange: "transform",
-    "::before": {
-      content: '""',
-      pointerEvents: "none",
-      position: "absolute",
-      inset: 0,
-      boxShadow: { default: "var(--dialog-edge)", [narrow]: "none" },
-    },
   },
   sideBottom: { gridRowStart: 2, borderTopWidth: 1, borderTopStyle: "solid", borderTopColor: color.border },
   sideTop: { borderBottomWidth: 1, borderBottomStyle: "solid", borderBottomColor: color.border },
@@ -94,14 +87,14 @@ const styles = stylex.create({
   },
   notices: {
     outline: "none",
-    height: { [sm]: "auto" },
-    maxHeight: { [sm]: "calc(100% - 26px)" },
-    maxWidth: { [sm]: 420 },
-    alignSelf: { [sm]: "start" },
+    height: "auto",
+    maxHeight: "calc(100dvh - 58px)",
+    maxWidth: 420,
+    alignSelf: "start",
+    overflow: "hidden",
   },
   inset: {
-    "::before": { display: { [sm]: "none" } },
-    borderRadius: { [sm]: radius.xxl },
+    borderRadius: { [sm]: radius.xl },
     borderWidth: { [sm]: 1 },
     borderStyle: { [sm]: "solid" },
     borderColor: { [sm]: color.border },

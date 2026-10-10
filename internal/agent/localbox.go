@@ -384,9 +384,9 @@ func (a *Agent) setUpLocalBox(ctx context.Context, say sayFunc) (string, error) 
 
 // updateLocalBerthd puts the bundled berthd at dst when dst is missing or
 // another build, and says whether it changed anything. Burf's own copy
-// follows the app (but is never downgraded below a newer release someone
-// upgraded it to); a berthd the install script put there is only replaced
-// by a newer release.
+// follows newer development commits, keeping builds it cannot safely order,
+// and never downgrades a newer release someone upgraded it to. A berthd the
+// install script put there is only replaced by a newer release.
 func (a *Agent) updateLocalBerthd(ctx context.Context, src, dst, home string, owned bool, say sayFunc) (bool, error) {
 	if isFile(dst) {
 		if same, err := sameBuild(src, dst); err != nil || same {
@@ -399,6 +399,12 @@ func (a *Agent) updateLocalBerthd(ctx context.Context, src, dst, home string, ow
 			return false, nil
 		}
 		if !owned && !newerRelease(next, have) {
+			return false, nil
+		}
+		_, haveRelease := parseRelease(have)
+		_, nextRelease := parseRelease(next)
+		if owned && !haveRelease && !nextRelease && !newerDevelopmentBuild(src, dst) {
+			say("Keeping berthd %s at %s: the development build Burf carries is not known to be newer.", orUnknown(have), dst)
 			return false, nil
 		}
 		say("Updating berthd at %s (%s → %s)…", dst, orUnknown(have), orUnknown(next))

@@ -9,6 +9,8 @@ import {
   checkProps,
   chevronProps,
   itemClass,
+  indicatorProps,
+  itemTextProps,
   labelClass,
   menuWidths,
   popupProps,
@@ -175,10 +177,10 @@ export function MenuCheckboxItem({
         </>
       ) : (
         <>
-          <MenuPrimitive.CheckboxItemIndicator>
+          <MenuPrimitive.CheckboxItemIndicator {...indicatorProps()}>
             <Check />
           </MenuPrimitive.CheckboxItemIndicator>
-          <span>{children}</span>
+          <span {...itemTextProps()}>{children}</span>
         </>
       )}
     </MenuPrimitive.CheckboxItem>
@@ -192,10 +194,10 @@ export function MenuRadioGroup(props: MenuPrimitive.RadioGroup.Props): React.Rea
 export function MenuRadioItem({ children, ...props }: Omit<MenuPrimitive.RadioItem.Props, "className">): React.ReactElement {
   return (
     <MenuPrimitive.RadioItem className={(state) => radioClass(state)} data-slot="menu-radio-item" {...props}>
-      <MenuPrimitive.RadioItemIndicator>
+      <MenuPrimitive.RadioItemIndicator {...indicatorProps()}>
         <Check />
       </MenuPrimitive.RadioItemIndicator>
-      <span>{children}</span>
+      <span {...itemTextProps()}>{children}</span>
     </MenuPrimitive.RadioItem>
   );
 }
