@@ -163,7 +163,7 @@ function Notice({ icon, title, body, onRetry }: { icon: string; title: string; b
         <EmptyHeader>
           <Icon name={icon} className="mx-auto mb-2 size-5 text-muted-foreground" />
           <EmptyTitle>{title}</EmptyTitle>
-          <EmptyDescription className="max-w-md">{body}</EmptyDescription>
+          <EmptyDescription measure="md">{body}</EmptyDescription>
         </EmptyHeader>
         <Button size="sm" variant="outline" onClick={onRetry}>Refresh</Button>
       </Empty>

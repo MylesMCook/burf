@@ -136,7 +136,7 @@ function MonitorScreen() {
           <Skeleton className="h-44" />
         </div>
       ) : all.length === 0 ? (
-        <Empty className="py-16">
+        <Empty pad="room">
           <EmptyHeader>
             <EmptyTitle>No boxes online</EmptyTitle>
             <EmptyDescription>When a box is connected, its memory, disk and load show up here.</EmptyDescription>

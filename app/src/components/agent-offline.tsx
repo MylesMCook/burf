@@ -74,7 +74,7 @@ function AgentOffline({ error }: { error?: string }) {
   const busy = phase.kind === "starting" || phase.kind === "waiting";
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-background">
-      <Empty className="max-w-md">
+      <Empty measure="md">
         <EmptyHeader>
           <EmptyMedia>
             <Scene name="offline" />

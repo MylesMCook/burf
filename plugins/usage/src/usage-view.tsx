@@ -52,7 +52,7 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
   const where = multi ? (counted.length === 1 ? counted[0] : `${counted.length} boxes`) : counted[0];
   if (!agents.length) {
     return (
-      <Empty className="rounded-xl border py-16">
+      <Empty frame="panel" pad="room">
         <EmptyHeader>
           <Icon name="ChartColumn" className="mx-auto mb-2 size-5 text-muted-foreground" />
           <EmptyTitle>
@@ -93,8 +93,8 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
             <FrameTitle>Tokens per day</FrameTitle>
             {showBox && (
               <PickOne
-                label="Stack by"
                 align="end"
+                label="Stack by"
                 value={stackBy}
                 onChange={(v: string) => setStackBy(v as "agent" | "box")}
                 options={[
@@ -121,16 +121,16 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
                 <TableRow>
                   <TableHead>Model</TableHead>
                   {showBox && <TableHead>Box</TableHead>}
-                  <TableHead className="text-right">Input</TableHead>
-                  <TableHead className="text-right">Output</TableHead>
-                  <TableHead className="text-right">Cache</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead end>Input</TableHead>
+                  <TableHead end>Output</TableHead>
+                  <TableHead end>Cache</TableHead>
+                  <TableHead end>Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sum.byModel.slice(0, 12).map((m) => (
                   <TableRow key={m.agent + m.model + m.box}>
-                    <TableCell className="max-w-56">
+                    <TableCell truncate>
                       <span className="flex items-center gap-2">
                         <span className={cn("size-2 shrink-0 rounded-[2px]", SERIES[m.agent].dot)} />
                         <span className="truncate font-mono text-xs">{m.model}</span>
@@ -141,10 +141,10 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
                         <BoxChip box={m.box} allBoxes={allBoxes} />
                       </TableCell>
                     )}
-                    <TableCell className="text-right tabular-nums">{compact(m.tokens[0])}</TableCell>
-                    <TableCell className="text-right tabular-nums">{compact(m.tokens[1])}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{compact(m.tokens[2] + m.tokens[3])}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{compact(total(m.tokens))}</TableCell>
+                    <TableCell end nums>{compact(m.tokens[0])}</TableCell>
+                    <TableCell end nums>{compact(m.tokens[1])}</TableCell>
+                    <TableCell end nums tone="muted">{compact(m.tokens[2] + m.tokens[3])}</TableCell>
+                    <TableCell end nums weight="medium">{compact(total(m.tokens))}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -161,14 +161,14 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
                 <TableRow>
                   <TableHead>Worktree</TableHead>
                   {showBox && <TableHead>Box</TableHead>}
-                  <TableHead className="text-right">Sessions</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead end>Sessions</TableHead>
+                  <TableHead end>Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sum.byWorktree.slice(0, 12).map((w) => (
                   <TableRow key={w.box + w.name.label}>
-                    <TableCell className="max-w-56 truncate" title={w.name.path ?? w.name.label}>
+                    <TableCell title={w.name.path ?? w.name.label} truncate>
                       {w.name.location ? w.name.label : <span className="font-mono text-muted-foreground text-xs">{w.name.label}</span>}
                     </TableCell>
                     {showBox && (
@@ -176,8 +176,8 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
                         <BoxChip box={w.box} allBoxes={allBoxes} />
                       </TableCell>
                     )}
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{w.sessions || ""}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{compact(total(w.tokens))}</TableCell>
+                    <TableCell end nums tone="muted">{w.sessions || ""}</TableCell>
+                    <TableCell end nums weight="medium">{compact(total(w.tokens))}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

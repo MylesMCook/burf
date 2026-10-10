@@ -180,7 +180,7 @@ function ServersScreen({ berth }: ScreenProps) {
           <Skeleton className="h-24 w-full" />
         </div>
       ) : groups.length === 0 ? (
-        <Empty className="py-16">
+        <Empty pad="room">
           <EmptyHeader>
             <Icon name="Radio" className="mx-auto mb-2 size-5 text-muted-foreground" />
             <EmptyTitle>{query ? "Nothing matches" : "Nothing is listening"}</EmptyTitle>

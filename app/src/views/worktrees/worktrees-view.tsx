@@ -228,7 +228,7 @@ export function WorktreesView() {
             ))}
           </div>
         ) : flat.length === 0 ? (
-          <Empty className="mt-16">
+          <Empty space="16">
             <EmptyHeader>
               <EmptyMedia>
                 {/* Worktrees are berths: none yet is an empty one; none

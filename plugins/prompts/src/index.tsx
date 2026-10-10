@@ -145,7 +145,7 @@ function Library({ berth }: ScreenProps) {
         )}
 
         {shown.length === 0 ? (
-          <Empty className="rounded-xl border py-16">
+          <Empty frame="panel" pad="room">
             <EmptyHeader>
               <Icon name="BookMarked" className="mx-auto mb-2 size-5 text-muted-foreground" />
               <EmptyTitle>{prompts.length ? "Nothing matches" : "No saved prompts"}</EmptyTitle>

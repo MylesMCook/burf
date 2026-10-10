@@ -316,10 +316,10 @@ export function SendOptions({
                 <Input size="sm" mono value={v.check} onChange={(e) => set({ check: e.target.value })} />
               </Labelled>
               <Labelled label="Rounds">
-                <NumberField className="w-28" size="sm" value={v.rounds} min={1} max={20} onValueChange={(n) => n != null && set({ rounds: n })}>
+                <NumberField measure="28" size="sm" value={v.rounds} min={1} max={20} onValueChange={(n) => n != null && set({ rounds: n })}>
                   <NumberFieldGroup>
                     <NumberFieldDecrement />
-                    <NumberFieldInput className="text-center tabular-nums" />
+                    <NumberFieldInput />
                     <NumberFieldIncrement />
                   </NumberFieldGroup>
                 </NumberField>

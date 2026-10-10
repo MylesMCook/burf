@@ -12,10 +12,10 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
 export function Stepper({ value, onChange, min, max, step = 1, format }: { value: number; onChange(v: number): void; min: number; max: number; step?: number; format?: Intl.NumberFormatOptions }) {
   const row = useSettingsRow();
   return (
-    <NumberField size="sm" className="w-36" value={value} min={min} max={max} step={step} format={format} onValueChange={(v) => v != null && onChange(v)}>
+    <NumberField format={format} max={max} measure="36" min={min} onValueChange={(v) => v != null && onChange(v)} size="sm" step={step} value={value}>
       <NumberFieldGroup aria-labelledby={row?.labelledBy}>
         <NumberFieldDecrement />
-        <NumberFieldInput className="text-center tabular-nums" aria-labelledby={row?.labelledBy} aria-describedby={row?.describedBy} />
+        <NumberFieldInput aria-describedby={row?.describedBy} aria-labelledby={row?.labelledBy} />
         <NumberFieldIncrement />
       </NumberFieldGroup>
     </NumberField>

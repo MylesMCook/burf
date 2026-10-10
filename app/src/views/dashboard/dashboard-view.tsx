@@ -128,7 +128,7 @@ export function DashboardView() {
       />
 
       {agents.length === 0 ? (
-        <Empty className="mt-16">
+        <Empty space="16">
           <EmptyHeader>
             <EmptyMedia>
               <Scene name="setting-out" />

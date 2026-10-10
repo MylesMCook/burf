@@ -479,13 +479,13 @@ export function NotificationCenter() {
 
         {notes.length === 0 && live.length === 0 ? (
           <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-10">
-            <Empty className="p-0">
+            <Empty pad="none">
               <EmptyHeader>
                 <EmptyMedia>
                   <Scene name="bottle" width={128} className="text-muted-foreground" />
                 </EmptyMedia>
-                <EmptyTitle className="text-base">You're all caught up</EmptyTitle>
-                <EmptyDescription className="text-sm">Agents that need you, failures and finished work land here.</EmptyDescription>
+                <EmptyTitle size="base">You're all caught up</EmptyTitle>
+                <EmptyDescription>Agents that need you, failures and finished work land here.</EmptyDescription>
               </EmptyHeader>
             </Empty>
           </div>

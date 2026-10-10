@@ -232,6 +232,11 @@
     --separator-press: var(--separator-shade);
     --slider-thumb-border: var(--input);
     --slider-ring: color-mix(in oklab, var(--ring) 24%, transparent);
+    --row-hover: color-mix(in srgb, var(--background), black 2%);
+    --row-selected: color-mix(in srgb, var(--background), black 4%);
+    --card-hover: color-mix(in srgb, var(--card), black 2%);
+    --card-selected: color-mix(in srgb, var(--card), black 4%);
+    --footer-fill: color-mix(in srgb, var(--card), black 2%);
 }
 
 .dark {
@@ -254,6 +259,11 @@
     --separator-press: var(--input);
     --slider-thumb-border: var(--background);
     --slider-ring: color-mix(in oklab, var(--ring) 48%, transparent);
+    --row-hover: color-mix(in srgb, var(--background), white 2%);
+    --row-selected: color-mix(in srgb, var(--background), white 4%);
+    --card-hover: color-mix(in srgb, var(--card), white 2%);
+    --card-selected: color-mix(in srgb, var(--card), white 4%);
+    --footer-fill: color-mix(in srgb, var(--card), white 2%);
     --destructive-foreground: var(--color-red-400);
     --info: var(--color-blue-500);
     --info-foreground: var(--color-blue-400);

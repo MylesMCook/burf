@@ -50,7 +50,7 @@ function PortsScreen({ berth }: ScreenProps) {
       {!rows ? (
         <Spinner />
       ) : rows.length === 0 ? (
-        <Empty className="mt-10">
+        <Empty space="10">
           <EmptyHeader>
             <EmptyTitle>Nothing is listening</EmptyTitle>
             <EmptyDescription>Start a dev server in a worktree and it shows up here.</EmptyDescription>

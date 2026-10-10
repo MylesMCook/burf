@@ -108,7 +108,7 @@ function MissingScreen({ screen }: { screen: string }) {
 
   if (loading || (ownerId && info === undefined)) {
     return (
-      <Empty className="h-full">
+      <Empty fill>
         <Spinner size="lg" muted />
         <EmptyDescription>Loading plugins…</EmptyDescription>
       </Empty>
@@ -136,7 +136,7 @@ function MissingScreen({ screen }: { screen: string }) {
   }
 
   return (
-    <Empty className="h-full">
+    <Empty fill>
       <EmptyHeader>
         <EmptyMedia>
           {/* Off is at anchor; failed is weather; gone is an empty berth. */}

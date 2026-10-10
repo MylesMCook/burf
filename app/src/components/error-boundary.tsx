@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
     const detail = [error.stack || `${error.name}: ${error.message}`, stack && `Component stack:${stack}`].filter(Boolean).join("\n\n");
     return (
       <div className="flex h-full min-h-0 items-center justify-center overflow-y-auto p-6">
-        <Empty className="max-w-xl">
+        <Empty measure="xl">
           <EmptyHeader>
             <EmptyMedia>
               <Scene name="storm" />

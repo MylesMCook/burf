@@ -65,7 +65,7 @@ export function RunsTab({ runs: legacy, boxes, names }: { runs: BoxFlowRun[]; bo
 
   if (all.length === 0)
     return (
-      <Empty className="mt-12">
+      <Empty space="12">
         <EmptyHeader>
           <EmptyMedia>
             <Scene name="chart" />
@@ -111,7 +111,7 @@ export function RunsTab({ runs: legacy, boxes, names }: { runs: BoxFlowRun[]; bo
         <BoxFilter align="end" boxes={boxes} hidden={hidden} onChange={hide} />
       </div>
       {shown.length === 0 ? (
-        <Empty className="rounded-xl border py-12">
+        <Empty frame="panel">
           <EmptyHeader>
             <EmptyTitle>No runs match</EmptyTitle>
             <EmptyDescription>None of the {all.length} runs kept passes every filter.</EmptyDescription>

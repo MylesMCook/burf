@@ -72,7 +72,7 @@ function ChangesPanel({ berth, box, location, worktree, path, main }: WorktreePa
         <Empty>
           <EmptyHeader>
             <EmptyTitle>Couldn't read this worktree's changes</EmptyTitle>
-            <EmptyDescription className="max-w-md whitespace-pre-wrap font-mono text-xs">{status.message}</EmptyDescription>
+            <EmptyDescription measure="md" mono size="xs" wrap>{status.message}</EmptyDescription>
           </EmptyHeader>
           <Button size="sm" variant="outline" onClick={refresh}>Try again</Button>
         </Empty>

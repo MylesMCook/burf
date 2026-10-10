@@ -215,7 +215,7 @@ function IssuesScreen({ berth }: ScreenProps) {
       />
 
       {projects.length === 0 ? (
-        <Empty className="flex-1">
+        <Empty>
           <EmptyHeader>
             <Icon name="CircleDot" className="mb-2 size-6 text-muted-foreground" />
             <EmptyTitle>No GitHub projects yet</EmptyTitle>

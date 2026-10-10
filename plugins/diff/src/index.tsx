@@ -230,7 +230,7 @@ function Message({ title, detail, children }: { title: string; detail: ReactNode
       <Empty>
         <EmptyHeader>
           <EmptyTitle>{title}</EmptyTitle>
-          <EmptyDescription className="max-w-md">{detail}</EmptyDescription>
+          <EmptyDescription measure="md">{detail}</EmptyDescription>
         </EmptyHeader>
         {children}
       </Empty>
