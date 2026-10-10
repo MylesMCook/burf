@@ -253,7 +253,7 @@ export class WidgetBoundary extends Component<{ title: string; children: ReactNo
 
   render() {
     if (!this.state.error) return this.props.children;
-    return <WidgetEmpty scene="storm" title={`${this.props.title} hit an error`} hint={this.state.error.message} action="Try again" onAction={() => this.setState({ error: undefined })} compact />;
+    return <WidgetEmpty scene="storm" title={`${this.props.title} hit an error`} hint={this.state.error.message} action="Try again" onAction={() => this.setState({ error: undefined })} compact hold />;
   }
 }
 

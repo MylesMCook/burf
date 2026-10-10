@@ -1,5 +1,6 @@
-import { createContext, type ReactNode, useContext, useMemo } from "react";
+import { createContext, type ReactNode, useContext, useLayoutEffect, useMemo } from "react";
 
+import { homePresence, type HomeList } from "@/lib/home-list";
 import { SIZES, type WidgetSize } from "@/lib/home-layout";
 import { WidgetEnvContext } from "@/lib/widget-data";
 
@@ -26,6 +27,25 @@ export interface HomeWidgetInfo {
 const Ctx = createContext<HomeWidgetInfo>({ size: "m", span: { c: 2, r: 1 }, height: ROW - HEAD, lines: 3, visible: true, refresh: 0, preview: false });
 
 export const useHomeWidget = () => useContext(Ctx);
+
+export type { HomeList };
+export { homePresence };
+
+const ListCtx = createContext<(state: HomeList) => void>(() => {});
+
+// useHomeList reports the list. Leaving the widget counts as shown, so a
+// later list of rows is not stuck hidden behind an earlier empty report.
+export function useHomeList(state: HomeList) {
+  const report = useContext(ListCtx);
+  useLayoutEffect(() => {
+    report(state);
+    return () => report("shown");
+  }, [report, state]);
+}
+
+export function HomeListReport({ report, children }: { report: (state: HomeList) => void; children: ReactNode }) {
+  return <ListCtx.Provider value={report}>{children}</ListCtx.Provider>;
+}
 
 // bodyHeight is the body of a card r rows tall.
 export const bodyHeight = (r: number, bare = false) => r * ROW + (r - 1) * GAP - (bare ? 0 : HEAD + 6);

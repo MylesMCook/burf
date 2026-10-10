@@ -1,11 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 
-import { Scene, type SceneName } from "@/components/art/scenes";
+import type { SceneName } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { useHomeWidget } from "./env";
+import { useHomeList, useHomeWidget } from "./env";
 import { color } from "@/styles/tokens.stylex";
 
 const paint = stylex.create({
@@ -195,15 +195,14 @@ export function WidgetRow({ children, onClick, className, label }: { children: R
   );
 }
 
-// WidgetEmpty is a widget with nothing to show: a small scene, what that
-// means, and the one thing to do about it. Compact in a one-row widget.
-export function WidgetEmpty({ scene = "calm", title, hint, action, onAction, compact }: { scene?: SceneName; title: string; hint?: ReactNode; action?: string; onAction?: () => void; compact?: boolean }) {
-  // In a one-row card the scene makes room for the action.
-  const { height } = useHomeWidget();
-  const art = !compact && (!action || height > 200);
+// WidgetEmpty is a widget with nothing to show: what that means, and the
+// one thing to do about it. hold keeps the card (an error). An empty list
+// does not: the card leaves the grid, and it draws no scene.
+export function WidgetEmpty({ scene = "calm", title, hint, action, onAction, compact, hold = false }: { scene?: SceneName; title: string; hint?: ReactNode; action?: string; onAction?: () => void; compact?: boolean; hold?: boolean }) {
+  const { preview } = useHomeWidget();
+  useHomeList(hold || preview ? "shown" : "empty");
   return (
-    <div className={sx(paint.s2)}>
-      {art && <Scene name={scene} width={104} className={[sx(paint.s3), sx(paint.s23)].filter(Boolean).join(" ")} />}
+    <div className={sx(paint.s2)} data-scene={scene} data-compact={compact ? "" : undefined}>
       <p className={sx(paint.s4)}>{title}</p>
       {hint && <p className={sx(paint.s5)}>{hint}</p>}
       {action && onAction && (

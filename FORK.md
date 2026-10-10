@@ -39,6 +39,11 @@ screen scraping or simulated terminal keystrokes when implementing this.
 Keep terminals as a fallback for shell work and unsupported agent interactions.
 Preserve source-history isolation, agent permissions and no-replay guarantees.
 
+The desktop window is still the Tauri shell. The next shell is Wails, so a
+desktop build is Go and TypeScript only, with no Rust compile. Do not add
+Rust while that move is open. This change does not replace the shell: the
+running app still loads its interface from the installed UI.
+
 ### Removed Team Setup and Kits
 
 Team setup and Kits are no longer product features. Their CLI commands, API

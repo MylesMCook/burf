@@ -1,5 +1,6 @@
 import type { BerthReport } from "@/lib/transcript";
 import { useEffect, useState } from "react";
+import { create } from "zustand";
 import { load, save } from "@/lib/storage";
 import { ApiError, type Client } from "@/lib/api";
 import { useStore } from "@/lib/store";
@@ -125,6 +126,19 @@ export const localApi = {
   },
   resize: (c: Client, id: string, cols: number, rows: number, signal?: AbortSignal) => c.laptop("POST", `/v1/local/sessions/${encodeURIComponent(id)}/resize`, { cols, rows }, signal),
 };
+
+// Local threads the sidebar and This computer share. stamp keeps a slow
+// list from wiping a session that started after that list was asked for.
+interface LocalThreadState {
+  sessions: LocalSession[];
+  conversations: LocalConversation[];
+  stamp: number;
+}
+export const useLocalThreadList = create<LocalThreadState>(() => ({ sessions: [], conversations: [], stamp: 0 }));
+
+export function publishLocalThreads(sessions: LocalSession[] | undefined, conversations: LocalConversation[] | undefined, stamp = Date.now()) {
+  useLocalThreadList.setState((s) => (stamp < s.stamp ? s : { sessions: sessions ?? [], conversations: conversations ?? [], stamp }));
+}
 
 // Older agents have no local API. Its absence must not hide paired boxes.
 export function useLocalComputer(enabled = true) {

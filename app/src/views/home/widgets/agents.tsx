@@ -15,7 +15,7 @@ import { useAsk } from "@/lib/transcript-feed";
 import { focusSession, homeBox, selectWorktree, useWorkspaces, type WorktreeRef } from "@/lib/workspaces";
 import { useReview } from "@/views/review/review-store";
 
-import { fitRows, useHomeWidget } from "./env";
+import { fitRows, homePresence, useHomeList, useHomeWidget } from "./env";
 import { DiffStat, More, shortAgo, WidgetEmpty, WidgetRow, WidgetSkeleton } from "./parts";
 import { placeLabel, worktreeLabel } from "@/lib/worktree-names";
 
@@ -416,6 +416,7 @@ export function NeedsYouWidget() {
   const rows = byState(useAgentRows(), "waiting").reverse();
   const loading = useAgentsLoading();
   const offline = useOfflineBoxes();
+  useHomeList(homePresence(loading, rows.length, offline.length > 0));
   if (loading && !rows.length) return <WidgetSkeleton rows={Math.min(lines, 3)} />;
   if (!rows.length) return offline.length ? <OfflineNote boxes={offline} /> : null;
   const shown = rows.slice(0, fitRows(height, 54));
@@ -494,6 +495,7 @@ export function WorkingWidget() {
   const rows = byState(useAgentRows(), "running");
   const loading = useAgentsLoading();
   const offline = useOfflineBoxes();
+  useHomeList(homePresence(loading, rows.length, offline.length > 0));
   if (loading && !rows.length) return <WidgetSkeleton rows={Math.min(lines, 3)} />;
   if (!rows.length) return offline.length ? <OfflineNote boxes={offline} /> : null;
   const shown = rows.slice(0, fitRows(height, 48));
@@ -579,6 +581,7 @@ export function FinishedWidget() {
   const rows = byState(useAgentRows(), "finished");
   const loading = useAgentsLoading();
   const entries = useReview((s) => s.entries);
+  useHomeList(homePresence(loading, rows.length));
   if (loading && !rows.length) return <WidgetSkeleton rows={Math.min(lines, 3)} />;
   if (!rows.length) return null;
   const shown = rows.slice(0, rows.length > lines ? fitRows(height, 36) : lines);
@@ -636,6 +639,7 @@ export function AreasWidget() {
   const areas = useAreas();
   const loading = useAgentsLoading();
   const hasProjects = useStore((s) => Object.values(s.boxes).some((b) => b.locations?.length));
+  useHomeList(homePresence(loading, areas.length));
   if (loading && !areas.length) return <WidgetSkeleton rows={Math.min(lines, 3)} />;
   if (!areas.length)
     return hasProjects ? (
