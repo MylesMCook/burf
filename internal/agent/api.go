@@ -22,6 +22,7 @@ var (
 // private to the user, so it is not reachable from browsers or other users.
 func (a *Agent) api(stop context.CancelFunc) http.Handler {
 	mux := http.NewServeMux()
+	a.inventoryRoutes(mux)
 	a.appStateRoutes(mux)
 	a.doctorRoutes(mux)
 	a.editorRoutes(mux)

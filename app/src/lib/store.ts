@@ -35,6 +35,8 @@ export type View =
   // run, when set, opens Review's Compare of an attempts run.
   | { kind: "review"; run?: { box: string; id: string } }
   | { kind: "worktrees"; box?: string }
+  // A machine Burf only inspects over SSH: it has no box, so no worktrees to open.
+  | { kind: "machine"; id: string }
   | { kind: "settings"; section?: string }
   | { kind: "plugin"; screen: string };
 

@@ -5,6 +5,10 @@ import { SMOKE, specsFor } from "./e2e-pick.mjs";
 
 const all = () => true;
 
+test("inventory data, views and acceptance scenarios reach the inventory spec", () => {
+  assert.deepEqual(specsFor(["app/src/lib/inventory.ts", "app/src/components/inventory/machine-inventory.tsx", "app/src/views/machine-view.tsx", "app/src/views/settings/inspect-ssh.tsx", "app/e2e/inventory.feature"], all), ["inventory"]);
+});
+
 test("a spec that changed runs itself, and only itself", () => {
   assert.deepEqual(specsFor(["app/e2e/custom-font.spec.ts"], all), ["custom-font"]);
 });

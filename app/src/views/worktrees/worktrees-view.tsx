@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Scene } from "@/components/art/scenes";
 import { BoxFilter, shownBoxes as shownOf } from "@/components/box-filter";
 import { FilterChip } from "@/components/filter-chip";
+import { MachineServices } from "@/components/inventory/machine-inventory";
 import { SimpleSelect } from "@/components/simple-select";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -307,6 +308,7 @@ export function WorktreesView({ box }: { box?: string } = {}) {
         title={box ? `Worktrees on ${box}` : "Worktrees"}
         actions={box && (
           <>
+            <MachineServices key="services" where={{ box }} />
             <Button key="add-project" size="sm" variant="outline" disabled={!online} aria-label={`Add a project on ${box}`} aria-describedby="machine-work-actions" onClick={() => useStore.getState().openAddLocation(box)}>Add project</Button>
             <Button key="new-task" size="sm" disabled={!!taskBlocker} aria-label={`New task on ${box}`} aria-describedby="machine-work-actions" onClick={() => {
               if (online && taskLocation) useStore.getState().openNewWorktree({ box, location: taskLocation });

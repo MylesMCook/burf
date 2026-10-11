@@ -407,6 +407,8 @@ func serve(b boxHome, args []string) error {
 	}
 	bx.AutoFix = &box.AutoFixStore{Path: filepath.Join(b.dir, "autofix.json")}
 	bx.EnableChats()
+	bx.StartInventory(ctx, b.dir, logger.Printf)
+	defer bx.CloseInventory()
 	defer bx.CloseChats()
 	bx.Triggers = &box.TriggerSecrets{Path: filepath.Join(b.dir, "trigger-secrets.json")}
 	rc := box.LoadRunsConfig(filepath.Join(userDir, "runs.json"))

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chat } from "@/components/chat/chat";
 import type { ChatTransport } from "@/components/chat/chat-transport";
 import { TaskComposer } from "@/components/conversation/task-composer";
+import { MachineServices } from "@/components/inventory/machine-inventory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tip } from "@/components/tip";
@@ -358,6 +359,7 @@ function sx(...parts: readonly (false | null | undefined | object)[]): string {
 }
 
 const EMPTY: LocalHistoryPage["items"] = [];
+const THIS_MACHINE = { local: true } as const;
 
 type Selection = { kind: "history"; conversation: LocalConversation } | { kind: "session"; session: LocalSession };
 
@@ -427,6 +429,7 @@ export function LocalComputerView() {
 
   return <div className={[sx(paint.s0), sx(paint.s43)].filter(Boolean).join(" ")}>
     <ViewHeader title={local?.name || "This computer"} description="This computer" actions={<>
+      <MachineServices where={THIS_MACHINE} />
       <Tip label="Refresh local conversations"><Button size="icon-sm" variant="ghost" aria-label="Refresh local conversations" disabled={loading} onClick={() => void refresh()}><RotateCwIcon className={[sx(paint.s1), loading && "burf-spin"].filter(Boolean).join(" ")} /></Button></Tip>
       {selection && <Button size="sm" disabled={!local?.supported} onClick={() => useStore.getState().setView({ kind: "local" })}><PlusIcon />New chat</Button>}
     </>} />

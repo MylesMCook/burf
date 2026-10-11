@@ -46,6 +46,7 @@ import { useWhatsNewAfterUpdate } from "@/lib/whats-new";
 import { homeBox, useWorkspaces } from "@/lib/workspaces";
 import { AutomationsView } from "@/views/automations";
 import { WorktreesView } from "@/views/worktrees/worktrees-view";
+import { MachineView } from "@/views/machine-view";
 import { ReviewView } from "@/views/review/review-view";
 import { ProjectView } from "@/views/project/project-view";
 import { DashboardView } from "@/views/dashboard";
@@ -65,7 +66,7 @@ import { color } from "@/styles/tokens.stylex";
 const DemoGuide = __BERTH_DEMO__ ? lazy(() => import("@/demo/guide")) : null;
 const LocalComputerView = lazy(() => import("@/views/local-computer").then((m) => ({ default: m.LocalComputerView })));
 
-const viewTitles = { dashboard: "Agent Dashboard", local: "This computer", review: "Review", worktrees: "Worktrees", automations: "Automations", project: "Project settings", settings: "Settings", plugin: "" } as const;
+const viewTitles = { dashboard: "Agent Dashboard", local: "This computer", review: "Review", worktrees: "Worktrees", machine: "Machine",automations: "Automations", project: "Project settings", settings: "Settings", plugin: "" } as const;
 
 const wide = "@media (min-width: 1300px)";
 
@@ -293,6 +294,7 @@ function MainView() {
       {view.kind === "automations" && <AutomationsView />}
       {view.kind === "review" && <ReviewView />}
       {view.kind === "worktrees" && <WorktreesView key={view.box ?? "all"} box={view.box} />}
+      {view.kind === "machine" && <MachineView key={view.id} id={view.id} />}
       {view.kind === "project" && <ProjectView key={`${view.box}/${view.location}`} box={view.box} location={view.location} />}
       {view.kind === "settings" && <SettingsView />}
       {view.kind === "plugin" && <PluginScreenView screen={view.screen} />}

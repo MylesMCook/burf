@@ -200,6 +200,9 @@ func (b *Box) Capabilities() []string {
 		// sessions' usage, and guard's session_memory_gb (boxprocs.go).
 		caps = append(caps, "processes")
 	}
+	if b.Inventory != nil {
+		caps = append(caps, "inventory.v1")
+	}
 	return caps
 }
 

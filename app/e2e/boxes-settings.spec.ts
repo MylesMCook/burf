@@ -129,14 +129,14 @@ test("unavailable computer information stays visible and retry can recover it", 
 test("settings separate paired agent hosts from trusted computer access without changing IDs", async ({ app }) => {
   const agent = await fakeAgent();
   try {
-    await app.open({ agent });
+    await app.open({ agent, prefs: { home: { version: 1, items: [] } } });
     const paired = await app.openSettings("boxes");
-    await expect(app.page.getByRole("heading", { name: "Paired computers", exact: true })).toBeVisible();
+    await expect(app.page.getByRole("heading", { name: "Settings / Paired computers", exact: true })).toBeVisible();
     await expect(paired).toContainText("Start local chats from This computer in the sidebar");
     await expect(app.page.getByTestId("settings-nav-boxes")).toHaveAccessibleName("Paired computers");
     await app.page.getByRole("button", { name: "Computer access", exact: true }).click();
     const access = app.page.getByTestId("settings-computers");
-    await expect(app.page.getByRole("heading", { name: "Computer access", exact: true })).toBeVisible();
+    await expect(app.page.getByRole("heading", { name: "Settings / Computer access", exact: true })).toBeVisible();
     await expect(access.getByRole("button", { name: "Add another computer", exact: true })).toBeVisible();
     await expect(access.getByRole("button", { name: "Use a join link", exact: true })).toBeVisible();
     expect(agent.calls.filter((call) => /^(POST|PUT|DELETE) /.test(call))).toEqual([]);

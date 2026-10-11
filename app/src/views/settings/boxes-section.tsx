@@ -29,6 +29,7 @@ import { BoxRouteList, BoxRoutes } from "@/views/settings/box-routes";
 import { activeRoute, viaRoute } from "@/lib/box-routes";
 import { CommandLog } from "@/views/settings/command-log";
 import { ConfirmDialog } from "@/views/settings/confirm";
+import { MachineInventoryGroup } from "@/views/settings/inspect-ssh";
 import { RemoveLocalBoxDialog } from "@/views/settings/local-box-remove";
 import { Code, SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 import { thisComputer } from "@/lib/platform";
@@ -259,6 +260,7 @@ export function BoxesSection() {
         )}
       </SettingsGroup>
       <OutdatedNotice className={sx(paint.s0)} />
+      <MachineInventoryGroup />
       {boxes.length > 0 && (
         <SettingsGroup>
           <SettingsRow label="Update Burf on paired computers automatically" description="Off by default. Turning this on can immediately replace Burf’s background daemon on connected computers with this app’s bundled build when their builds differ. Active chats block replacement. It does not update Codex or Claude Code, or check for new releases.">

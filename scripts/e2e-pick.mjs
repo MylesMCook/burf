@@ -16,6 +16,10 @@ export const SMOKE = ["first-run", "home-composer", "remote-chat", "local-comput
 
 // First match wins per path: put the narrower prefix first.
 export const RULES = [
+	{ paths: ["app/src/lib/inventory", "app/src/components/inventory/", "app/src/views/machine-view", "app/src/views/settings/inspect-ssh", "app/e2e/inventory.feature"], specs: ["inventory"] },
+  { paths: ["app/src/views/local-computer"], specs: ["local-computer", "local-chat", "inventory"] },
+  { paths: ["app/src/views/worktrees/worktrees-view"], specs: ["inventory", "sidebar-machines"] },
+  { paths: ["app/src/views/settings/boxes-section"], specs: ["boxes-settings", "box-agents", "box-routes", "box-processes", "inventory"] },
   { paths: ["app/src/views/settings/general-section", "app/src/views/settings/terminal-section"], specs: ["custom-font", "feedback-refinement"] },
   { paths: ["app/src/native-feedback/", "app/src/views/settings/developer-section"], specs: ["native-feedback-settings"] },
   { paths: ["app/src/components/assistant-ui/elements/composer"], specs: ["home-composer", "composer", "local-computer", "chat-features"] },

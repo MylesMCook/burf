@@ -18,6 +18,7 @@ import { usageCall, usageExec } from "@/lib/mock-usage";
 import { initMockQueue, queueCall } from "@/lib/mock-queue";
 import { computersBoxCall, computersCall, initMockComputers } from "@/lib/mock-computers";
 import { initMockLocalBox, localBoxCall, localBoxFolders, localBoxStream } from "@/lib/mock-local-box";
+import { machinesCall } from "@/lib/mock-machines";
 import { initMockInstall, mockBoxAgents, mockInstallAgents, mockInstallPlan, mockInstallTerminal } from "@/lib/mock-install";
 import { mockBoxDoctor, mockDiagnosticsCall } from "@/lib/mock-diagnostics";
 import { ApiError } from "@/lib/api";
@@ -1351,6 +1352,8 @@ function mockAgent(): Client {
       if (boxes) return boxes as Promise<T>;
       const computers = computersCall(method, path, body);
       if (computers) return computers as Promise<T>;
+      const machines = machinesCall(method, path, body, status, delay);
+      if (machines) return machines as Promise<T>;
       const queued = queueCall(method, path, body);
       if (queued) return queued as Promise<T>;
       const eds = editorsCall(method, path, body, delay);

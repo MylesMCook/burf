@@ -223,6 +223,7 @@ type Status struct {
 }
 
 type Agent struct {
+	inventory   *machineInventory
 	seqs        *seqStore
 	cfg         Config
 	hooks       *hooks.Runner
@@ -375,6 +376,8 @@ func Run(ctx context.Context, cfg Config) error {
 	}
 	a.startProxy(ctx)
 	a.sync()
+	a.startInventory(ctx)
+	defer a.closeInventory()
 	a.startSavedForwards(ctx)
 	go a.healthLoop(ctx)
 	go a.routeLoop(ctx)

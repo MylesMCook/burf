@@ -122,7 +122,7 @@ func main() {
 // helpText is what burf help prints: the laptop's commands, then the box
 // commands (with the box in front), then the integrations.
 func helpText() string {
-	return usage + "\n" + boxcmd.Usage("burf", "BOX/") + "\n" + fmt.Sprintf(integrations.Usage, "burf")
+	return usage + "\n" + inventoryUsage + "\n" + boxcmd.Usage("burf", "BOX/") + "\n" + fmt.Sprintf(integrations.Usage, "burf")
 }
 
 type laptop struct {
@@ -155,6 +155,15 @@ func run(args []string) error {
 	l := laptop{dir: filepath.Join(home, "client")}
 	cmd, rest := args[0], args[1:]
 	switch cmd {
+	case "machines":
+		return inventoryCommand(l, cmd, rest)
+	case "services":
+		for _, arg := range rest {
+			if arg == "--machine" || strings.HasPrefix(arg, "--machine=") {
+				return inventoryCommand(l, cmd, rest)
+			}
+		}
+		return runOnBox(l, args)
 	case "ui":
 		return uiCommand(home, rest)
 	case "pair":

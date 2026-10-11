@@ -10,6 +10,7 @@ import { color } from "@/styles/tokens.stylex";
 const sm = "@media (min-width: 640px)";
 
 const styles = stylex.create({
+  group: { display: "flex", width: "100%", flexDirection: "column", gap: 16 },
   root: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 },
   label: {
     display: "inline-flex",
@@ -26,6 +27,11 @@ const styles = stylex.create({
   truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" },
   error: { color: color.destructiveForeground, fontSize: 12 },
 });
+
+// FieldGroup stacks a form's fields.
+export function FieldGroup(props: Omit<React.ComponentProps<"div">, "className" | "style">): React.ReactElement {
+  return <div {...stylex.props(styles.group)} data-slot="field-group" {...props} />;
+}
 
 export function Field(props: Omit<FieldPrimitive.Root.Props, "className" | "style">): React.ReactElement {
   return <FieldPrimitive.Root className={stylex.props(styles.root).className} data-slot="field" {...props} />;

@@ -20,9 +20,12 @@ import { memo, useMemo, useState } from "react";
 import { AgentIcon, BoxStateDot, StateGlyph } from "@/components/agent-glyph";
 import { type Action, Armed, boxActions, useArmed, ContextRow, DotsMenu, newSection, projectActions, projectGroupActions, worktreeActions } from "@/components/sidebar/actions";
 import { confirm } from "@/components/sidebar/confirm";
+import { useLoadMachines, useMachines } from "@/components/inventory/use-inventory";
+import { sshOnly } from "@/lib/inventory";
 import { rowMarker } from "@/components/sidebar/row-marker.stylex";
 import { type Project, projectActions as groupActions, useProjects } from "@/lib/project-groups";
 import { Tip } from "@/components/tip";
+import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar";
 import { startSession } from "@/lib/actions";
@@ -699,6 +702,7 @@ export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
           </div>
         ))
       )}
+      <InspectedMachines />
     </>
   );
 }
@@ -719,6 +723,31 @@ function RepoList({ repos, chip, prefs, update, pagination, pageKey }: { repos: 
   const shown = sidebarPage(repos, limit, (r) => (view.kind === "project" ? view.box === r.box.name && view.location === r.loc.name : view.kind === "workspace" && !!r.loc.worktrees?.some((wt) => current === wsKey(r.box.name, wt.path))) || !!data[r.box.name]?.sessions?.some((s) => sidebarPageKey("chat", r.box.name, s.name) === pagination.selectedChat && r.loc.worktrees?.some((wt) => wt.path === s.dir)));
   return <>{shown.map((r) => <RepoGroup key={r.key} repo={r} chip={chip} prefs={prefs} update={update} pagination={pagination} />)}<SidebarLoadMore remaining={repos.length - shown.length} label="projects" expanded={limit > SIDEBAR_PAGE} onClick={() => pagination.setLimit(pageKey, limit + SIDEBAR_PAGE)} onFewer={() => pagination.setLimit(pageKey, SIDEBAR_PAGE)} /></>;
 }
+
+// Machines inspected over SSH open their service inventory.
+function InspectedMachines() {
+  useLoadMachines();
+  const machines = useMachines((s) => s.machines);
+  const current = useStore((s) => (s.view.kind === "machine" ? s.view.id : undefined));
+  const inspected = machines.filter(sshOnly);
+  if (!inspected.length) return null;
+  return (
+    <section aria-label="Inspected over SSH" className={sx(paint.s0)}>
+      <SidebarMenu gap="tight">
+        {inspected.map((m) => (
+          <SidebarMenuItem key={m.id} aria-label={`${m.name}, inspected over SSH`}>
+            <SidebarMenuButton data-testid="nav-machine" aria-label={`Open machine ${m.name}`} aria-current={current === m.id ? "page" : undefined} isActive={current === m.id} size="sm" density="place" onClick={() => useStore.getState().setView({ kind: "machine", id: m.id })}>
+              <ServerIcon data-icon="inline-start" />
+              <span>{m.name}</span>
+              <Badge variant="outline" size="sm">SSH only</Badge>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ))}
+      </SidebarMenu>
+    </section>
+  );
+}
+
 
 // BoxHeader heads a box: its name, state and latency, with a way to add a
 // project to it, or to reconnect when it is not online.

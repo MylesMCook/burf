@@ -21,6 +21,7 @@ import (
 	"github.com/MylesMCook/burf/internal/events"
 	"github.com/MylesMCook/burf/internal/hooks"
 	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/inventory"
 	"github.com/MylesMCook/burf/internal/localchat"
 	"github.com/MylesMCook/burf/internal/terminal"
 	"github.com/MylesMCook/burf/internal/wire"
@@ -31,6 +32,7 @@ import (
 const OriginHeader = boxclient.OriginHeader
 
 type Box struct {
+	Inventory *inventory.Engine
 	Name      string
 	Locations *Locations
 	Sessions  *Sessions
@@ -110,6 +112,7 @@ func (b *Box) own(path string) {
 // Mount registers the box's routes on s. They are reachable by paired
 // laptops and, through ServeLocal, by the box's own user.
 func (b *Box) Mount(s *wire.Server) {
+	b.mountInventory(s)
 	route := func(pattern string, h func(http.ResponseWriter, *http.Request) error) {
 		s.Handle(pattern, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := h(w, r); err != nil {

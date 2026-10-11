@@ -15,6 +15,7 @@ test("a box's routes show with their latency and the one in use, and can be adde
   // Tailscale relays devl, but Burf goes over SSH meanwhile.
   await expect(boxes.getByTestId("box-relayed").first()).toContainText("Burf goes via SSH instead");
 
+  await boxes.getByText("Details for devl", { exact: true }).click();
   await devl.getByTestId("box-routes-toggle").click();
   const list = boxes.getByTestId("box-route-list");
   const ssh = list.getByTestId("box-route-ssh");
@@ -42,6 +43,7 @@ test("an SSH host named like the box is offered, and turning it on adds it", asy
   await app.open();
   const boxes = await app.openSettings("boxes");
   const gpu = boxes.getByTestId("box-routes").nth(1);
+  await boxes.getByText("Details for gpu", { exact: true }).click();
   await gpu.getByTestId("box-routes-toggle").click();
   const list = boxes.getByTestId("box-route-list");
   const offered = list.getByTestId("box-route-ssh");
