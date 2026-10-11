@@ -47,6 +47,7 @@ const overlay = (page: Page) => page.locator("[data-testid=pane][data-pane-kind=
 
 test("on a slow link, typing in a shell shows before the box echoes it", async ({ app }) => {
   mockOnly("the mock holds echoes back");
+  await app.page.clock.install();
   await app.open({ params: { echoDelay: DELAY } });
   const page = app.page;
   await openShell(page);
@@ -58,22 +59,34 @@ test("on a slow link, typing in a shell shows before the box echoes it", async (
   await expect(overlay(page)).toHaveAttribute("data-rtt", /^\d+$/);
   expect(Number(await overlay(page).getAttribute("data-rtt"))).toBeGreaterThanOrEqual(Number(DELAY) - 50);
 
+  // Hold the mock's echo while inspecting predictions. Runner speed must
+  // not decide whether the echo arrives between these assertions.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
   // The rest shows at once, underlined, while the box hasn't echoed it.
-  await page.keyboard.type("cho hi");
+  for (const char of "cho hi") {
+    await page.keyboard.type(char);
+    // Keys retain their order even while wall time is paused.
+    await page.clock.runFor(1);
+  }
+  await page.clock.runFor(16);
   await expect(overlay(page)).toHaveAttribute("data-cells", /^[1-9]/);
   await expect(overlay(page)).toHaveAttribute("data-flagged", "true");
   await expect(overlay(page)).toBeVisible();
   expect(await screenText(page)).not.toContain("echo hi");
 
   // Then the echoes land, and the overlay hands over to them.
+  await page.clock.runFor(Number(DELAY));
   await expect.poll(() => screenText(page)).toContain("me@gpu:~$ echo hi");
   await expect(overlay(page)).toHaveAttribute("data-cells", "0");
   await expect(overlay(page)).toBeHidden();
 
   // Backspace too.
   await page.keyboard.press("Backspace");
+  await page.clock.runFor(1);
   await page.keyboard.press("Backspace");
+  await page.clock.runFor(16);
   await expect(overlay(page)).toHaveAttribute("data-cells", /^[1-9]/);
+  await page.clock.runFor(Number(DELAY));
   await expect.poll(() => screenText(page)).not.toContain("echo hi");
   await expect(overlay(page)).toHaveAttribute("data-cells", "0");
 });
