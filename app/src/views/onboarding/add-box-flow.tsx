@@ -353,7 +353,7 @@ export function AddBoxFlow({
             {inspect && (
               <div className={sx(paint.inspect)}>
                 <p id={inspectNote} className={sx(paint.inspectNote)}>
-                  To only see what runs on a machine, inspect it over SSH. Nothing is installed there, so it cannot run chats or tasks.
+                  Inspect a machine over SSH without installing Burf's daemon. A machine inspected only over SSH cannot run chats or tasks in Burf.
                   {inspect.reason && ` ${inspect.reason}`}
                 </p>
                 {/* Off while a box is being set up: its pairing closes this screen. */}

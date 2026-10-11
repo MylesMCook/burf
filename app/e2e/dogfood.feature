@@ -39,4 +39,5 @@ Feature: Everyday Burf workflows remain usable
     Given a known database process is listening on a computer
     When I inspect its server entry
     Then I can copy its address without a browser action
+    And a refused clipboard action gives me a way to copy it manually
     And unknown and debug-enabled web listeners remain openable

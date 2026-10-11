@@ -64,7 +64,7 @@ export function MachineInventoryGroup() {
     <>
       <SettingsGroup
         title="Machine inventory"
-        description="Burf lists what runs on each machine. Inspect over SSH reads a machine's services without installing Burf's daemon there, so that machine cannot run chats or tasks. To run work on a machine, add it as a paired computer."
+        description="Inspect services over SSH without installing Burf's daemon. Machines inspected only over SSH cannot run chats or tasks in Burf. Pair a computer to run work there."
         actions={
           <Button size="xs" variant="outline" disabled={!ready} onClick={() => setRequest({})}>
             <PlusIcon data-icon="inline-start" />

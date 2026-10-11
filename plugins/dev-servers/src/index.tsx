@@ -440,11 +440,17 @@ function ServerRow({ item: l, berth, service, onChanged }: { item: Listening; be
     berth.openWorktree(worktree);
     berth.openBrowser(l.url, split ? { split } : undefined);
   };
-  const copy = (text: string) =>
-    void navigator.clipboard?.writeText(text).then(() => {
+  const copy = async (text: string) => {
+    try {
+      if (!navigator.clipboard) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    });
+    } catch {
+      setCopied(false);
+      berth.notify(page ? "Couldn't copy URL" : "Couldn't copy address", `Copy ${text} manually from the server entry.`);
+    }
+  };
   const stop = async () => {
     if (!service) return;
     await berth.api
@@ -461,7 +467,7 @@ function ServerRow({ item: l, berth, service, onChanged }: { item: Listening; be
         <span className={sx(paint.s17)}>{l.process ?? "listening"}</span>
         <span className={sx(paint.s18)}>{page ? l.url.replace(/^https?:\/\//, "") : `${address} on ${l.box}`}</span>
       </span>
-      {copied && <span className={sx(paint.s19)}>Copied</span>}
+      <span role="status" className={sx(paint.s19)}>{copied ? "Copied" : ""}</span>
       {page ? (
         <Button size="xs" variant="outline" onClick={() => openInTab()}>
           <Icon name="AppWindow" className={sx(paint.s20)} /> Open in tab

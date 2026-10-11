@@ -150,6 +150,13 @@ scenario("Known database listeners do not promise a web page", async ({ app }) =
   await expect(redis.getByRole("button", { name: "Open in tab", exact: true })).toHaveCount(0, { timeout: 1000 });
   await redis.getByRole("button", { name: "Copy address", exact: true }).click();
   expect(await app.page.evaluate(() => navigator.clipboard.readText())).toBe("localhost:6379");
+  await expect(redis.getByRole("status")).toHaveText("Copied");
+  await app.page.evaluate(() => {
+    navigator.clipboard.writeText = () => Promise.reject(new DOMException("Clipboard denied", "NotAllowedError"));
+  });
+  await redis.getByRole("button", { name: "Copy address", exact: true }).click();
+  await expect(app.page.getByText("Couldn't copy address", { exact: true }).first()).toBeVisible({ timeout: 1000 });
+  await expect(app.page.getByText("Copy localhost:6379 manually from the server entry.", { exact: true }).first()).toBeVisible();
   await expect(redis).not.toContainText("6379.devl.localhost");
   const web = app.page.locator("li").filter({ hasText: "vite" }).first();
   await expect(web.getByRole("button", { name: "Open in tab", exact: true })).toBeVisible();
