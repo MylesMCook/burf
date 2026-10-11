@@ -219,8 +219,9 @@ func startAgentConfig(t *testing.T, dir string, nets Networks, change func(*Conf
 		t.Fatal(err)
 	}
 	proxyAddr := proxyLn.Addr().String()
-	proxyLn.Close()
 	uiAddr := fmt.Sprintf("127.0.0.1:%d", freePort(t))
+	// Keep the proxy port reserved until the distinct UI port is selected.
+	proxyLn.Close()
 	socket := shortSocket(t)
 	clk := &clock{}
 	ctx, cancel := context.WithCancel(context.Background())
