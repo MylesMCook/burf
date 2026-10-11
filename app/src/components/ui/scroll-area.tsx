@@ -16,9 +16,15 @@ const fadeMask = [
 ].join(", ");
 
 const styles = stylex.create({
-  root: { width: "100%", height: "100%", minHeight: 0 },
+  // A flex parent can shrink the root while its percentage-height viewport
+  // still resolves against intrinsic content. Keep the viewport in this flex
+  // column so it shrinks with the root instead of overlapping sibling actions.
+  root: { display: "flex", flexDirection: "column", width: "100%", height: "100%", minHeight: 0 },
   grow: { flexGrow: 1, flexShrink: 1, flexBasis: 0 },
   viewport: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: "auto",
     height: "100%",
     borderRadius: "inherit",
     outline: "none",

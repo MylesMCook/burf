@@ -341,6 +341,7 @@ export function SheetDescription({
 
 export function SheetPanel({
   scrollFade = true,
+  contentSize = "default",
   stack,
   container = false,
   padTop = false,
@@ -348,6 +349,8 @@ export function SheetPanel({
   ...props
 }: Omit<useRender.ComponentProps<"div">, "className" | "style"> & {
   scrollFade?: boolean;
+  /** "container" holds content to the sheet's width, so a wide table scrolls in its own frame. */
+  contentSize?: "default" | "container";
   stack?: 4 | 5;
   container?: boolean;
   padTop?: boolean;
@@ -364,7 +367,7 @@ export function SheetPanel({
     "data-slot": "sheet-panel",
   };
   return (
-    <ScrollArea overscrollContain scrollFade={scrollFade}>
+    <ScrollArea overscrollContain scrollFade={scrollFade} contentSize={contentSize}>
       {useRender({ defaultTagName: "div", props: mergeProps<"div">(defaultProps, props), render })}
     </ScrollArea>
   );

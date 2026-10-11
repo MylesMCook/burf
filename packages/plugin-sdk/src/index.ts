@@ -430,3 +430,8 @@ export declare function worktreeLocation(w: { location: string; worktree: string
 // Code"); with place, where it runs too ("shop / checkout-fix · Codex").
 // Pass the box's sessions for the number and its locations for the place.
 export declare function sessionName(session: Session, opts?: { sessions?: Session[]; locations?: Location[]; place?: boolean; agent?: boolean }): string;
+// Recognizes a process role from Service.process, without port guesses.
+// "data" identifies a known database/cache; "other" identifies a helper
+// role, not the protocol of every socket owned by that process. A debug-enabled
+// web server can also expose HTTP. undefined means the command is unrecognized.
+export declare function knownServiceProcess(process?: string): { name: string; kind: "dev" | "web" | "data" | "other" } | undefined;

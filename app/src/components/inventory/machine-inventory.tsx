@@ -367,7 +367,8 @@ export function MachineServices({ where }: { where: MachineLookup }) {
           <SheetTitle size="base">Services on {machine.name}</SheetTitle>
           <SheetDescription>{machine.routes.map(routeLabel).join(" · ")}</SheetDescription>
         </SheetHeader>
-        <SheetPanel>
+        {/* Held to the sheet's width: a service with many ports scrolls in its table. */}
+        <SheetPanel contentSize="container">
           <MachineInventory key={machine.id} machine={machine} />
         </SheetPanel>
       </SheetPopup>

@@ -6,7 +6,7 @@ test.beforeEach(() => mockOnly("isolated sidebar machines"));
 test("sidebar discovery opens the existing tailnet flow without pairing a machine", async ({ app }) => {
   await app.open();
   await app.page.getByRole("button", { name: "Discover or pair a computer", exact: true }).click();
-  const dialog = app.page.getByRole("dialog", { name: "Add a box", exact: true });
+  const dialog = app.page.getByRole("dialog", { name: "Add computer", exact: true });
   await expect(dialog.getByText("build-01", { exact: true })).toBeVisible();
   await expect(dialog.getByPlaceholder("berth://…  paste the link it printed")).toBeVisible();
   await app.page.keyboard.press("Escape");

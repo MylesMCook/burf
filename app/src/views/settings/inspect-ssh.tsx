@@ -46,9 +46,17 @@ const ROUTE_OPTIONS: PickOneOption<RouteChoice>[] = [
 // Settings › Paired computers, and is where one is added for inspection over
 // SSH: reading its services without installing Burf's daemon there. A route
 // is attached to the machine the person picks; nothing is merged by name.
-export function MachineInventoryGroup() {
+// useInspectSsh says whether the form can be offered, in Settings and in Add
+// computer alike: not while the agent is still answering, and not on an agent
+// older than machine inventory. Asking keeps the list of machines current.
+export function useInspectSsh() {
   useLoadMachines();
   const state = useMachines((s) => s.state);
+  return { state, ready: state !== "missing" && state !== "loading" };
+}
+
+export function MachineInventoryGroup() {
+  const { state, ready } = useInspectSsh();
   const machines = useMachines((s) => s.machines);
   const error = useMachines((s) => s.error);
   const [request, setRequest] = useState<{ machine?: Machine }>();
@@ -56,9 +64,9 @@ export function MachineInventoryGroup() {
     <>
       <SettingsGroup
         title="Machine inventory"
-        description="Burf lists what runs on each machine. Inspect over SSH reads a machine's services without installing Burf's daemon there, so that machine cannot run chats or tasks. To run work on a machine, add it as a paired computer."
+        description="Inspect services over SSH without installing Burf's daemon. Machines inspected only over SSH cannot run chats or tasks in Burf. Pair a computer to run work there."
         actions={
-          <Button size="xs" variant="outline" disabled={state === "missing" || state === "loading"} onClick={() => setRequest({})}>
+          <Button size="xs" variant="outline" disabled={!ready} onClick={() => setRequest({})}>
             <PlusIcon data-icon="inline-start" />
             Inspect over SSH
           </Button>
@@ -127,10 +135,25 @@ export function MachineInventoryGroup() {
           ))
         )}
       </SettingsGroup>
-      <Dialog open={!!request} onOpenChange={(open) => !open && setRequest(undefined)}>
-        <DialogPopup>{request && <RouteForm key={request.machine?.id ?? NEW} initial={request.machine} machines={machines} onDone={() => setRequest(undefined)} />}</DialogPopup>
-      </Dialog>
+      <InspectSshDialog open={!!request} machine={request?.machine} onClose={() => setRequest(undefined)} />
     </>
+  );
+}
+
+// InspectSshDialog is the form in its own dialog, wherever it is offered:
+// Settings, and Add computer as a step apart from installing the daemon.
+// machine is one Burf already lists, to add a route to. Closing drops what
+// was typed; onSaved follows a machine or route that was saved.
+export function InspectSshDialog({ open, machine, onClose, onSaved }: { open: boolean; machine?: Machine; onClose(): void; onSaved?(): void }) {
+  const machines = useMachines((s) => s.machines);
+  const done = () => {
+    onClose();
+    onSaved?.();
+  };
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogPopup>{open && <RouteForm key={machine?.id ?? NEW} initial={machine} machines={machines} onDone={done} />}</DialogPopup>
+    </Dialog>
   );
 }
 

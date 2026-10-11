@@ -89,7 +89,7 @@ test("Monitor offers computer discovery beside its paired computer filter", asyn
     await openBuiltin(app, "Computer monitor");
     await expect(app.page.getByRole("group", { name: "Machines to monitor", exact: true })).toBeVisible();
     await app.page.getByRole("button", { name: "Discover or pair a computer", exact: true }).last().click();
-    await expect(app.page.getByRole("dialog")).toContainText("Add a box");
+    await expect(app.page.getByRole("dialog")).toContainText("Add computer");
     expect(agent.calls.filter((call) => /^POST .*\/(?:pair|install|sessions)/.test(call))).toEqual([]);
   } finally { await agent.close(); }
 });

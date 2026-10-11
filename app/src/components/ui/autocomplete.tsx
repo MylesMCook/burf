@@ -338,14 +338,17 @@ export function AutocompleteList({
   pad = "default",
   cap,
   hideBar = false,
+  contentSize = "default",
   ...props
 }: Omit<AutocompletePrimitive.List.Props, "className" | "style"> & {
   pad?: "default" | "room";
   cap?: "96";
   hideBar?: boolean;
+  /** "container" holds rows to the list's width, so a long row truncates instead of widening the list. */
+  contentSize?: "default" | "container";
 }): React.ReactElement {
   return (
-    <ScrollArea overscrollContain scrollbarGutter scrollFade>
+    <ScrollArea overscrollContain scrollbarGutter scrollFade contentSize={contentSize}>
       <AutocompletePrimitive.List
         className={name(styles.list, pad === "room" && styles.listRoom, cap === "96" && styles.cap96, hideBar && styles.hideBar)}
         data-slot="autocomplete-list"

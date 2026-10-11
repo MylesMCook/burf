@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { definePlugin, useBoxes, useCurrentWorktree, useEvent, type BerthPluginContext, type Location, type ScreenProps, type Service, type WorktreeService } from "@berth/plugin";
+import { definePlugin, knownServiceProcess, useBoxes, useCurrentWorktree, useEvent, type BerthPluginContext, type Location, type ScreenProps, type Service, type WorktreeService } from "@berth/plugin";
 import {
   Badge,
   Button,
@@ -21,6 +21,7 @@ import {
   Skeleton,
   Menu,
   MenuItem,
+  MenuGroup,
   MenuPopup,
   MenuSeparator,
   MenuTrigger,
@@ -429,9 +430,26 @@ function WorktreeGroup({ group: g, berth, here, onChanged }: { group: Group; ber
 function ServerRow({ item: l, berth, service, onChanged }: { item: Listening; berth: BerthPluginContext; service?: Configured; onChanged(): void }) {
   const [copied, setCopied] = useState(false);
   const worktree = { box: l.box, location: l.location, worktree: l.worktree, path: l.path, main: l.main };
+  // Recognized data stores get an address rather than a web promise. Other
+  // process roles do not identify every socket: a debug-enabled Node process
+  // can also serve HTTP, so those listeners remain manually openable.
+  const known = knownServiceProcess(l.process);
+  const page = known?.kind !== "data";
+  const address = `localhost:${l.port}`;
   const openInTab = (split?: "row") => {
     berth.openWorktree(worktree);
     berth.openBrowser(l.url, split ? { split } : undefined);
+  };
+  const copy = async (text: string) => {
+    try {
+      if (!navigator.clipboard) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+      berth.notify(page ? "Couldn't copy URL" : "Couldn't copy address", `Copy ${text} manually from the server entry.`);
+    }
   };
   const stop = async () => {
     if (!service) return;
@@ -447,43 +465,50 @@ function ServerRow({ item: l, berth, service, onChanged }: { item: Listening; be
       <span className={sx(paint.s15)}>
         {service && <span className={sx(paint.s16)}>{service.name}</span>}
         <span className={sx(paint.s17)}>{l.process ?? "listening"}</span>
-        <span className={sx(paint.s18)}>{l.url.replace(/^https?:\/\//, "")}</span>
+        <span className={sx(paint.s18)}>{page ? l.url.replace(/^https?:\/\//, "") : `${address} on ${l.box}`}</span>
       </span>
-      {copied && <span className={sx(paint.s19)}>Copied</span>}
-      <Button size="xs" variant="outline" onClick={() => openInTab()}>
-        <Icon name="AppWindow" className={sx(paint.s20)} /> Open in tab
-      </Button>
-      <Menu>
-        <MenuTrigger render={<Button size="icon-xs" variant="ghost" aria-label={`More for port ${l.port}`} />}>
-          <Icon name="Ellipsis" className={sx(paint.s21)} />
-        </MenuTrigger>
-        <MenuPopup align="end" className={sx(paint.s22)}>
-          <MenuItem onClick={() => openInTab("row")}>
-            <Icon name="PanelRight" /> Open beside the terminal
-          </MenuItem>
-          <MenuItem onClick={() => berth.openUrl(l.url)}>
-            <Icon name="ArrowUpRight" /> Open in your browser
-          </MenuItem>
-          <MenuItem
-            onClick={() =>
-              void navigator.clipboard?.writeText(l.url).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              })
-            }
-          >
-            <Icon name="Copy" /> Copy URL
-          </MenuItem>
-          {service && (
-            <>
-              <MenuSeparator />
-              <MenuItem onClick={() => void stop()}>
-                <Icon name="Square" /> Stop {service.name}
-              </MenuItem>
-            </>
-          )}
-        </MenuPopup>
-      </Menu>
+      <span role="status" className={sx(paint.s19)}>{copied ? "Copied" : ""}</span>
+      {page ? (
+        <Button size="xs" variant="outline" onClick={() => openInTab()}>
+          <Icon name="AppWindow" className={sx(paint.s20)} /> Open in tab
+        </Button>
+      ) : (
+        <Button size="xs" variant="outline" onClick={() => copy(address)}>
+          <Icon name="Copy" className={sx(paint.s20)} /> Copy address
+        </Button>
+      )}
+      {(page || service) && (
+        <Menu>
+          <MenuTrigger render={<Button size="icon-xs" variant="ghost" aria-label={`More for port ${l.port}`} />}>
+            <Icon name="Ellipsis" className={sx(paint.s21)} />
+          </MenuTrigger>
+          <MenuPopup align="end" className={sx(paint.s22)}>
+            <MenuGroup>
+            {page && (
+              <>
+                <MenuItem onClick={() => openInTab("row")}>
+                  <Icon name="PanelRight" /> Open beside the terminal
+                </MenuItem>
+                <MenuItem onClick={() => berth.openUrl(l.url)}>
+                  <Icon name="ArrowUpRight" /> Open in your browser
+                </MenuItem>
+                <MenuItem onClick={() => copy(l.url)}>
+                  <Icon name="Copy" /> Copy URL
+                </MenuItem>
+              </>
+            )}
+            {service && (
+              <>
+                {page && <MenuSeparator />}
+                <MenuItem onClick={() => void stop()}>
+                  <Icon name="Square" /> Stop {service.name}
+                </MenuItem>
+              </>
+            )}
+            </MenuGroup>
+          </MenuPopup>
+        </Menu>
+      )}
     </li>
   );
 }

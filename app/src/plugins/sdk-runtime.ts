@@ -108,3 +108,8 @@ export function worktreeLocation(w: { location: string; worktree: string; main?:
 // webhook"), or "Claude Code", "Shell 2"; with place "shop / checkout-fix ·
 // Codex". See lib/derive.ts.
 export { sessionName } from "@/lib/derive";
+
+// knownServiceProcess is what the app's own worktree view takes a listener's
+// command line for: a dev server, a page, a data store, a helper. See
+// lib/worktree-services.ts.
+export { knownServiceProcess } from "@/lib/worktree-services";

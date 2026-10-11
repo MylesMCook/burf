@@ -399,7 +399,7 @@ export function FlowList({
 
       {boxes.map((box) => {
         const bf = byBox[box];
-        if (!bf) return <div className={sx(paint.s10)}><Skeleton key={box}  shape="lg" /></div>;
+        if (!bf) return <div key={box} className={sx(paint.s10)}><Skeleton shape="lg" /></div>;
         if (bf.error)
           return (
             <section key={box} className={sx(paint.s11)}>
@@ -480,7 +480,12 @@ function FlowRow({ f, run, onEdit, onToggle, overridden }: { f: ScopedFlow; run?
       role="button"
       tabIndex={0}
       onClick={onEdit}
-      onKeyDown={(e) => e.key === "Enter" && onEdit()}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        // Space would also scroll the page. A held key opens the editor once.
+        if (e.key === " ") e.preventDefault();
+        if (!e.repeat) onEdit();
+      }}
       className={[[sx(paint.s19), "group"].filter(Boolean).join(" "), !flow.enabled && sx(paint.s20)].filter(Boolean).join(" ")}
     >
       <span className={[sx(paint.s21), sx(paint.s35)].filter(Boolean).join(" ")}>

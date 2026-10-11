@@ -43,10 +43,10 @@ const BY_COMMAND: [RegExp, string, Kind][] = [
   [/\bnuxt\b/i, "Nuxt", "dev"],
   [/jupyter/i, "Jupyter", "web"],
   [/mailpit/i, "Mailpit", "web"],
-  [/\bpostgres\b/i, "PostgreSQL", "data"],
-  [/\bmysqld?\b/i, "MySQL", "data"],
-  [/redis-server|\bredis\b/i, "Redis", "data"],
-  [/\bmongod\b/i, "MongoDB", "data"],
+  [/^postgres(?:\.exe)?:?$/i, "PostgreSQL", "data"],
+  [/^mysqld(?:\.exe)?$/i, "MySQL", "data"],
+  [/^redis-server(?:\.exe)?$/i, "Redis", "data"],
+  [/^mongod(?:\.exe)?$/i, "MongoDB", "data"],
 ];
 
 // Known by their usual port, when the command doesn't say.
@@ -71,7 +71,7 @@ const RUNTIMES = /^(node|bun|deno|python[\d.]*|ruby|php|java|dotnet|uvicorn|guni
 export function executable(command?: string): string | undefined {
   const first = command?.trim().match(/^"([^"]+)"|^'([^']+)'|^(\S+)/);
   const prog = first?.[1] ?? first?.[2] ?? first?.[3];
-  return prog?.split("/").pop() || undefined;
+  return prog?.split(/[\\/]/).pop() || undefined;
 }
 
 // middle shortens text in the middle, keeping both ends.
@@ -81,13 +81,22 @@ export function middle(s: string, max = 40): string {
   return `${s.slice(0, half)}…${s.slice(s.length - (max - 1 - half))}`;
 }
 
+// knownServiceProcess is what a command line says a listener is; undefined
+// when it doesn't say. The port is never asked: a page can be served from a
+// database's usual port. Plugins ask the same through @berth/plugin.
+export function knownServiceProcess(process?: string): { name: string; kind: Kind } | undefined {
+  // Database words in a web server's path or arguments do not identify its
+  // protocol. Match data-store executables; keep other role hints unchanged.
+  const byCmd = BY_COMMAND.find(([re, , kind]) => re.test(kind === "data" ? executable(process) ?? "" : process ?? ""));
+  return byCmd && { name: byCmd[1], kind: byCmd[2] };
+}
+
 function identify(s: Service): { name: string; kind: Kind } {
-  const cmd = s.process ?? "";
-  const byCmd = BY_COMMAND.find(([re]) => re.test(cmd));
-  if (byCmd) return { name: byCmd[1], kind: byCmd[2] };
+  const byCmd = knownServiceProcess(s.process);
+  if (byCmd) return byCmd;
   const byPort = BY_PORT[s.port];
   if (byPort) return { name: byPort[0], kind: byPort[1] };
-  const exe = executable(cmd);
+  const exe = executable(s.process);
   if (!exe) return { name: `Port ${s.port}`, kind: "other" };
   return { name: middle(exe, 24), kind: RUNTIMES.test(exe) ? "web" : "other" };
 }
