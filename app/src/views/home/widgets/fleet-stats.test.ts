@@ -21,6 +21,12 @@ test("visible machines and their More control fit the measured body budget", () 
   }
 });
 
+test("an offline one-line machine fits beside current readings without unnecessary overflow", () => {
+  assert.equal(fleetVisibleCount(142, 98, 1, 2, [98, 32]), 2);
+  assert.equal(fleetVisibleCount(142, 98, 1, 3, [98, 98, 32]), 1);
+  assert.equal(fleetVisibleCount(142, 98, 2, 4, [98, 98, 32, 32]), 4);
+});
+
 test("partial box stats distinguish absent readings from measured zero", () => {
   const readings = fleetStats({ cpus: 14, load: [0], disks: [{ mount: "/", used: 5, total: 10 }] });
   assert.equal(readings.load, 0);

@@ -5,10 +5,21 @@ export function fleetLayout(width: number, span: number) {
   return { columns, rowHeight: width / columns < 420 ? 98 : 82 };
 }
 
-export function fleetVisibleCount(height: number, rowHeight: number, columns: number, total: number): number {
-  const capacity = Math.max(1, Math.floor((height + 2) / (rowHeight + 2))) * columns;
-  if (total <= capacity) return total;
-  return Math.min(total, Math.max(1, Math.floor((height - 24) / (rowHeight + 2))) * columns);
+export function fleetVisibleCount(height: number, rowHeight: number, columns: number, total: number, heights?: readonly number[]): number {
+  const sizes = heights ?? Array<number>(total).fill(rowHeight);
+  const rows: number[] = [];
+  for (let i = 0; i < total; i += columns) rows.push(Math.max(...sizes.slice(i, i + columns)));
+  const full = rows.reduce((sum, size) => sum + size, 0) + Math.max(0, rows.length - 1) * 2;
+  if (full <= height) return total;
+  let used = 0;
+  let visible = 0;
+  for (const size of rows) {
+    const next = used + size + (visible ? 2 : 0);
+    if (next + 26 > height) break;
+    used = next;
+    visible += columns;
+  }
+  return Math.min(total, Math.max(1, visible));
 }
 
 // Capacity readings use binary units, including tiny filesystems and measured zero.

@@ -9,7 +9,7 @@ test("Add a box keeps machine labels and pairing controls reachable at 1024px", 
   await app.page.setViewportSize({ width: 1024, height: 768 });
   await app.open();
   await app.openSettings("boxes");
-  await app.page.getByRole("button", { name: "Add a box", exact: true }).first().click();
+  await app.page.getByRole("button", { name: "Add computer", exact: true }).first().click();
   const dialog = app.page.getByRole("dialog", { name: "Add a box", exact: true });
   const machine = dialog.getByText("build-01", { exact: true });
   await expect(machine).toBeVisible();

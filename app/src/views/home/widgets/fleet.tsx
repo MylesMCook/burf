@@ -217,7 +217,7 @@ export function BoxesWidget() {
   if (!list.length) return <WidgetEmpty scene="arriving" title="No paired computers" hint="Add a computer to see its readings and agent activity." action="Add computer" onAction={openAddBox} />;
   // Online first, then by name; offline boxes take one line.
   const sorted = list.filter((b) => !selected || selected.includes(b.name)).sort((a, b) => Number(b.state === "online") - Number(a.state === "online") || a.name.localeCompare(b.name));
-  const shown = sorted.slice(0, fleetVisibleCount(height, rowHeight, columns, sorted.length));
+  const shown = sorted.slice(0, fleetVisibleCount(height, rowHeight, columns, sorted.length, sorted.map((b) => b.state === "online" ? rowHeight : 32)));
   return (
     <div ref={wrap} data-testid="home-machine-rows" className={[sx(paint.s0), columns === 2 && [sx(paint.s1), sx(paint.s21)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
       {shown.map((b) => (

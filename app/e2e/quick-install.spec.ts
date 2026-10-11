@@ -32,7 +32,7 @@ async function addBox(app: App, host: string) {
   const { page } = app;
   await app.open();
   await app.openSettings("boxes");
-  await page.getByRole("button", { name: "Add a box" }).first().click();
+  await page.getByRole("button", { name: "Add computer" }).first().click();
   await page.getByText("Or let Burf set it up over SSH").click();
   await page.getByLabel("SSH host, like me@my-box").fill(host);
   await watchTerminal(page);

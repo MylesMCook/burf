@@ -84,6 +84,7 @@ export function ContextMenuPopup({
       >
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-popup"
+          tabIndex={0}
           {...props}
           render={(base) => {
             const { children: popupChildren, ...rest } = base;

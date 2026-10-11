@@ -75,6 +75,7 @@ export function MenuPopup({
       >
         <MenuPrimitive.Popup
           data-slot="menu-popup"
+          tabIndex={0}
           {...props}
           render={(base) => {
             const { children: popupChildren, ...rest } = base;

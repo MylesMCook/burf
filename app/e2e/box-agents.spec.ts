@@ -16,6 +16,7 @@ test("a box's agent CLIs show with their version, path and install, and Look aga
   await expect(agents).toContainText("~/.nvm/…/bin/claude");
   await expect(agents).toContainText("(npm)");
   await expect(agents).toContainText("Codex 0.46.0");
+  await boxes.getByText("Details for devl", { exact: true }).click();
   await agents.getByTestId("box-agents-refresh").click();
   await expect(agents.getByTestId("box-agents-refresh")).toBeEnabled();
   await expect(agents).toContainText("Claude Code 2.1.3");

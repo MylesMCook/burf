@@ -28,6 +28,8 @@ const styles = stylex.create({
     minWidth: "min(15rem, var(--available-width))",
     maxWidth: `min(var(--available-width), ${overlay.selectMaxWidth})`,
     maxHeight: `min(var(--available-height), ${overlay.selectMaxHeight})`,
+    overflowY: "auto",
+    overscrollBehavior: "contain",
     borderRadius: radius.lg,
     borderWidth: 1,
     borderStyle: "solid",
@@ -40,11 +42,6 @@ const styles = stylex.create({
     fontFamily: font.sans,
   },
   scroll: {
-    maxHeight: `min(var(--available-height), calc(${overlay.selectMaxHeight} - 2px))`,
-    minHeight: 0,
-    width: "100%",
-    overflowY: "auto",
-    overscrollBehavior: "contain",
     padding: 4,
   },
   item: {

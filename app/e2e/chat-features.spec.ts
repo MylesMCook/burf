@@ -78,6 +78,7 @@ async function toolConversation(app: App, presentations: ChatPresentation[]) {
   await app.context.route(`${agent.url}/v1/boxes/${BOX}/api/**`, async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith("/info")) return route.fulfill({ json: { name: BOX, version: "test", capabilities: ["chat.codex", "transcript"], agents: [{ id: "codex", name: "Codex", command: "codex" }] } });
+    if (path.endsWith("/sessions")) return route.fulfill({ json: [] });
     if (path.endsWith("/chats")) return route.fulfill({ json: { chats: [chat] } });
     if (path.endsWith("/answer")) {
       const answer: PresentationAnswer = route.request().postDataJSON();

@@ -31,7 +31,7 @@ for (const provider of ["codex", "claude"] as const) test(`a new local ${provide
     await app.open({ agent });
     await app.page.getByTestId("nav-local").click();
     const composer = app.page.getByTestId("task-composer");
-    await expect(composer.getByTestId("task-composer-summary")).toContainText(`on work-hp · this folder · ${name}`);
+    await expect(composer.getByTestId("task-composer-summary")).toContainText(`Project: shop on work-hp · ${name}`);
     await composer.getByRole("button", { name: "Start", exact: true }).click();
     await expect(app.page.getByTestId("local-chat")).toBeVisible();
     await expect(app.page.getByTestId("local-terminal")).toHaveCount(0);
