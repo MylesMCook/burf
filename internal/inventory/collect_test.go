@@ -144,9 +144,9 @@ func TestLinuxCollectionPreservesCoverageAndCorrelatesPorts(t *testing.T) {
 			return nil, errors.New("denied with secret=private")
 		case name == "ss":
 			return []byte(`LISTEN 0 100 127.0.0.1:3000 0.0.0.0:* users:(("worker",pid=42,fd=8))` + "\n"), nil
-		case name == "sh" && strings.Contains(joined, "docker context"):
+		case name == "docker" && strings.Contains(joined, "context inspect"):
 			return []byte("unix:///var/run/docker.sock\n"), nil
-		case name == "env" && strings.Contains(joined, "--host unix:///var/run/docker.sock container ls"):
+		case name == "docker" && strings.Contains(joined, "--host unix:///var/run/docker.sock container ls"):
 			return nil, nil
 		default:
 			t.Fatalf("unexpected query %s %v", name, args)

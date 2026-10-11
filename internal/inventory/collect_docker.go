@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -19,6 +20,12 @@ func (c *collector) docker(ctx context.Context) Collection {
 	var err error
 	if c.goos == "windows" {
 		data, err = c.powershell(ctx, dockerWindowsEndpointQuery)
+	} else if c.target == "" {
+		if host := os.Getenv("DOCKER_HOST"); host != "" && os.Getenv("DOCKER_CONTEXT") == "" {
+			data = []byte(host)
+		} else {
+			data, err = c.query(ctx, "docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}")
+		}
 	} else {
 		data, err = c.query(ctx, "sh", "-c", dockerEndpointQuery)
 	}
@@ -82,11 +89,11 @@ func (c *collector) dockerCommand(ctx context.Context, endpoint string, args ...
 	if !localDockerEndpoint(endpoint) {
 		return nil, errors.New("nonlocal Docker endpoint")
 	}
+	if c.target == "" {
+		command := append([]string{"--host", endpoint}, args...)
+		return c.query(ctx, "docker", command...)
+	}
 	if c.goos == "windows" {
-		if c.target == "" {
-			command := append([]string{"--host", endpoint}, args...)
-			return c.query(ctx, "docker", command...)
-		}
 		// Clear inherited context selection, then force the verified local socket.
 		parts := []string{"docker", "--host", endpoint}
 		parts = append(parts, args...)
