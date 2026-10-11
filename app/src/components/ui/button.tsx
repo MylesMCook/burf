@@ -1,3 +1,4 @@
+import { iconScale } from "@/components/ui/icon-tokens.stylex";
 "use client";
 
 import { mergeProps } from "@base-ui/react/merge-props";
@@ -14,6 +15,7 @@ const still = "@media (prefers-reduced-motion: reduce)";
 
 const styles = stylex.create({
   base: {
+    "--burf-button-icon-size": iconScale.action,
     position: "relative",
     display: "inline-flex",
     flexShrink: 0,
@@ -50,17 +52,20 @@ const styles = stylex.create({
     paddingRight: 9,
   },
   sizeLg: {
+    "--burf-button-icon-size": iconScale.large,
     height: { default: 40, [sm]: 36 },
     paddingLeft: 13,
     paddingRight: 13,
   },
   sizeXl: {
+    "--burf-button-icon-size": iconScale.large,
     height: { default: 44, [sm]: 40 },
     paddingLeft: 15,
     paddingRight: 15,
     fontSize: { default: 18, [sm]: 16 },
   },
   sizeXs: {
+    "--burf-button-icon-size": iconScale.compact,
     height: { default: 28, [sm]: 24 },
     gap: 4,
     borderRadius: radius.md,
@@ -71,14 +76,15 @@ const styles = stylex.create({
   icon: { width: { default: 36, [sm]: 32 }, height: { default: 36, [sm]: 32 }, paddingLeft: 0, paddingRight: 0 },
   iconSm: { width: { default: 32, [sm]: 28 }, height: { default: 32, [sm]: 28 }, paddingLeft: 0, paddingRight: 0 },
   iconXs: {
+    "--burf-button-icon-size": iconScale.compact,
     width: { default: 28, [sm]: 24 },
     height: { default: 28, [sm]: 24 },
     borderRadius: radius.md,
     paddingLeft: 0,
     paddingRight: 0,
   },
-  iconLg: { width: { default: 40, [sm]: 36 }, height: { default: 40, [sm]: 36 }, paddingLeft: 0, paddingRight: 0 },
-  iconXl: { width: { default: 44, [sm]: 40 }, height: { default: 44, [sm]: 40 }, paddingLeft: 0, paddingRight: 0 },
+  iconLg: { "--burf-button-icon-size": iconScale.large, width: { default: 40, [sm]: 36 }, height: { default: 40, [sm]: 36 }, paddingLeft: 0, paddingRight: 0 },
+  iconXl: { "--burf-button-icon-size": iconScale.large, width: { default: 44, [sm]: 40 }, height: { default: 44, [sm]: 40 }, paddingLeft: 0, paddingRight: 0 },
   primary: {
     borderColor: color.primary,
     backgroundColor: { default: color.primary, ":hover": "color-mix(in oklab, var(--primary) 90%, transparent)", ":active": "color-mix(in oklab, var(--primary) 90%, transparent)" },
@@ -131,6 +137,8 @@ const styles = stylex.create({
   hiddenLabel: {
     visibility: "hidden",
   },
+  truncate: { minWidth: 0, maxWidth: "100%", flexShrink: 1 },
+  fitLabel: { minWidth: 0, maxWidth: "100%", width: "100%" },
   fill: {
     width: "100%",
     height: "100%",
@@ -223,6 +231,8 @@ export interface ButtonProps extends Omit<useRender.ComponentProps<"button">, "c
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
+  /** Bound the inner icon/label group so its text can truncate in a picker. */
+  truncate?: boolean;
   muted?: boolean;
   /** Stretch to a sized wrapper. The wrapper owns the box. */
   fill?: boolean;
@@ -247,6 +257,7 @@ export function Button({
   render,
   children,
   loading = false,
+  truncate = false,
   muted = false,
   fill = false,
   align = "center",
@@ -274,6 +285,7 @@ export function Button({
     wash && styles.wash,
     look === "remove" && styles.remove,
     fill && styles.fill,
+    truncate && styles.truncate,
   );
   const visual = marker
     ? { ...painted, className: [marker, painted.className].filter(Boolean).join(" ") }
@@ -281,13 +293,14 @@ export function Button({
   const defaultProps = {
     children: (
       <>
-        <span {...stylex.props(styles.label, loading && styles.hiddenLabel)}>{children}</span>
+        <span data-slot="button-label" {...stylex.props(styles.label, truncate && styles.fitLabel, loading && styles.hiddenLabel)}>{children}</span>
         {loading ? <Spinner cover data-slot="button-loading-indicator" /> : null}
       </>
     ),
     "aria-disabled": loading || undefined,
     "data-loading": loading ? "" : undefined,
     "data-slot": "button",
+    "data-burf-button": "",
     disabled: isDisabled,
     type: typeValue,
   };

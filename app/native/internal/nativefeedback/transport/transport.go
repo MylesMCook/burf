@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
@@ -30,6 +31,22 @@ type Bridge struct {
 // Start binds an ephemeral loopback port. The returned endpoint includes a
 // random capability which must only be returned through the guarded native binding.
 func Start(companionURL, nativeOrigin string) (*Bridge, error) {
+	return start(companionURL, nativeOrigin, "")
+}
+
+// StartAuthenticated keeps the runtime bearer private to the proxy. Its
+// capability permits only human toolbar operations from the exact main origin.
+func StartAuthenticated(companionURL, nativeOrigin, token string) (*Bridge, error) {
+	if len(token) != 64 {
+		return nil, errors.New("invalid feedback runtime credential")
+	}
+	if _, err := hex.DecodeString(token); err != nil {
+		return nil, errors.New("invalid feedback runtime credential")
+	}
+	return start(companionURL, nativeOrigin, token)
+}
+
+func start(companionURL, nativeOrigin, token string) (*Bridge, error) {
 	target, err := companion(companionURL)
 	if err != nil {
 		return nil, err
@@ -54,7 +71,7 @@ func Start(companionURL, nativeOrigin string) (*Bridge, error) {
 		MaxIdleConnsPerHost:   4,
 	}
 	server := &http.Server{
-		Handler:           handler(target, prefix, listener.Addr().String(), nativeOrigin, client),
+		Handler:           authenticatedHandler(target, prefix, listener.Addr().String(), nativeOrigin, token, client),
 		ReadHeaderTimeout: 3 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		IdleTimeout:       30 * time.Second,
@@ -155,6 +172,14 @@ func id(value string) bool {
 }
 
 func handler(target *url.URL, prefix, host, nativeOrigin string, client *http.Transport) http.Handler {
+	return authenticatedHandler(target, prefix, host, nativeOrigin, "", client)
+}
+
+func authenticatedHandler(
+	target *url.URL,
+	prefix, host, nativeOrigin, token string,
+	client *http.Transport,
+) http.Handler {
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(p *httputil.ProxyRequest) {
 			p.Out.URL.Path = strings.TrimPrefix(p.In.URL.Path, prefix)
@@ -162,6 +187,9 @@ func handler(target *url.URL, prefix, host, nativeOrigin string, client *http.Tr
 			p.SetURL(target)
 			p.Out.Host = target.Host
 			p.Out.Header = make(http.Header)
+			if token != "" {
+				p.Out.Header.Set("Authorization", "Bearer "+token)
+			}
 			for _, key := range []string{"Content-Type", "Accept", "Last-Event-ID"} {
 				for _, value := range p.In.Header.Values(key) {
 					p.Out.Header.Add(key, value)
@@ -191,7 +219,7 @@ func handler(target *url.URL, prefix, host, nativeOrigin string, client *http.Tr
 			return
 		}
 		origin := r.Header.Get("Origin")
-		if origin != "" && origin != nativeOrigin {
+		if (token != "" && origin != nativeOrigin) || (origin != "" && origin != nativeOrigin) {
 			http.Error(w, "origin not allowed", http.StatusForbidden)
 			return
 		}
@@ -234,9 +262,40 @@ func handler(target *url.URL, prefix, host, nativeOrigin string, client *http.Tr
 				http.Error(w, "feedback body is too large or unreadable", http.StatusRequestEntityTooLarge)
 				return
 			}
+			if token != "" && r.Method == http.MethodPatch {
+				var allowed bool
+				body, allowed = humanPatch(body)
+				if !allowed {
+					http.Error(w, "toolbar update is not allowed", http.StatusBadRequest)
+					return
+				}
+			}
 			r.Body = io.NopCloser(bytes.NewReader(body))
 			r.ContentLength = int64(len(body))
 		}
 		proxy.ServeHTTP(w, r)
 	})
+}
+
+func humanPatch(body []byte) ([]byte, bool) {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil || len(fields) == 0 {
+		return nil, false
+	}
+	for key := range fields {
+		switch key {
+		case "id":
+			// Layout updates include the local ID. The server's ID is immutable.
+			delete(fields, key)
+		case "comment", "x", "y", "boundingBox", "elementBoundingBoxes", "frame", "placement", "rearrange",
+			"element", "elementPath", "timestamp", "url", "intent", "severity", "kind":
+		default:
+			return nil, false
+		}
+	}
+	if len(fields) == 0 {
+		return nil, false
+	}
+	data, err := json.Marshal(fields)
+	return data, err == nil
 }

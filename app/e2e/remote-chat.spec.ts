@@ -1093,3 +1093,29 @@ test("the worktree composer is the way to start an agent", async ({ app }) => {
     expect(f.calls.some((call) => call.method === "POST" && (call.path === "chats" || call.path === "sessions"))).toBe(false);
   } finally { await f.agent.close(); }
 });
+
+
+test("the fixed task target opens destination editing with its draft and explicit choices intact", async ({ app }) => {
+  const f = await fixture(app.context, true, true);
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    const composer = app.page.getByTestId("task-composer");
+    const prompt = composer.getByRole("textbox", { name: "What should your agents work on?", exact: true });
+    await prompt.fill("Keep this task while choosing a different project");
+    await composer.getByRole("button", { name: "Model: Default", exact: true }).click();
+    await app.page.getByRole("menuitemradio", { name: "Alpha", exact: true }).click();
+    await composer.getByRole("button", { name: /^Reasoning:/ }).click();
+    await app.page.getByRole("menuitemradio", { name: "High", exact: true }).click();
+    await composer.getByRole("button", { name: /^Permissions:/ }).click();
+    await app.page.getByRole("menuitemradio", { name: "Edit workspace", exact: true }).click();
+    await composer.getByRole("button", { name: /^Change task project:/ }).click();
+    const dialog = app.page.getByRole("dialog");
+    await expect(dialog.getByRole("textbox", { name: "What should your agents work on?", exact: true })).toHaveValue("Keep this task while choosing a different project");
+    await openTaskPickers(dialog.getByTestId("task-composer"));
+    for (const name of ["Project: shop", "Where: Main checkout", "Provider: Codex", "Model: Alpha", "Reasoning: High", "Permissions: Edit workspace"]) await expect(dialog.getByRole("button", { name, exact: true })).toBeVisible();
+    expect(f.calls.filter((call) => call.method !== "GET" && /^(chats|sessions|tasks)/.test(call.path))).toEqual([]);
+    await app.page.keyboard.press("Escape");
+    await expect(prompt).toHaveValue("Keep this task while choosing a different project");
+  } finally { await f.agent.close(); }
+});

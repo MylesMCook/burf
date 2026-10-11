@@ -670,6 +670,9 @@ type Stats struct {
 	Swap     Usage     `json:"swap"`
 	Disks    []Disk    `json:"disks"`
 	Agents   []Agent   `json:"agents"`
+	// AgentsAvailable is false when process detection is unsupported. Older
+	// daemons omit it; Agents remains a list for existing clients.
+	AgentsAvailable *bool `json:"agents_available,omitempty"`
 	// Hooks is true when an agent tool on the box reports to berthd, so
 	// an agent's waiting or finished state is known.
 	Hooks bool `json:"hooks"`

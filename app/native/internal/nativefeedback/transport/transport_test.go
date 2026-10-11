@@ -3,6 +3,7 @@ package transport
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -272,5 +273,61 @@ func TestDevserverOriginKeepsExactPort(t *testing.T) {
 			}
 		}
 		Stop(bridge)
+	}
+}
+
+func TestAuthenticatedToolbarCredentialAndHumanPatchBoundary(t *testing.T) {
+	token := strings.Repeat("a", 64)
+	var calls atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		if r.Header.Get("Authorization") != "Bearer "+token || r.Header.Get("Origin") != "" {
+			t.Error("runtime auth not isolated")
+		}
+		if r.Method == http.MethodPatch {
+			var fields map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&fields); err != nil {
+				t.Error(err)
+			}
+			if _, ok := fields["id"]; ok {
+				t.Error("client ID forwarded for mutation")
+			}
+		}
+		w.WriteHeader(200)
+	}))
+	defer upstream.Close()
+	bridge, err := StartAuthenticated(upstream.URL, "wails://localhost:1425", token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer Stop(bridge)
+	for _, body := range []string{
+		`{"comment":"edited"}`,
+		`{"id":"local","x":1,"y":2,"comment":"placed","element":"button","elementPath":"button","timestamp":1,"url":"/","intent":"change","severity":"important","kind":"placement","placement":{"width":20,"height":20,"componentType":"button","scrollY":0}}`,
+	} {
+		response := request(t, bridge, "PATCH", "/annotations/id", "wails://localhost:1425", strings.NewReader(body))
+		if response.StatusCode != 200 {
+			t.Fatalf("valid human update denied: %d", response.StatusCode)
+		}
+	}
+	for _, body := range []string{
+		`{"status":"acknowledged"}`, `{"thread":[]}`, `{"resolvedBy":"agent"}`, `{"resolvedAt":"now"}`,
+		`{"sessionId":"other"}`, `{"createdAt":"now"}`, `{"comment":"edit","status":"resolved"}`, `{"id":"local"}`, `null`,
+	} {
+		response := request(t, bridge, "PATCH", "/annotations/id", "wails://localhost:1425", strings.NewReader(body))
+		if response.StatusCode != 400 {
+			t.Fatalf("private mutation accepted: %s %d", body, response.StatusCode)
+		}
+	}
+	for _, origin := range []string{"", "wails://localhost", "wails://localhost:1426", "https://example.com"} {
+		if response := request(t, bridge, "GET", "/health", origin, nil); response.StatusCode != 403 {
+			t.Fatal("untrusted origin accepted")
+		}
+	}
+	if calls.Load() != 2 {
+		t.Fatal("denied update reached authenticated store")
+	}
+	if _, err := StartAuthenticated(upstream.URL, "wails://localhost", "bad"); err == nil {
+		t.Fatal("invalid bearer accepted")
 	}
 }

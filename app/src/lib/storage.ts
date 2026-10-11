@@ -17,3 +17,17 @@ export function save(key: string, value: unknown) {
     // Remembering is a convenience; losing it is fine.
   }
 }
+
+
+export class StorageWriteError extends Error {
+  constructor() {
+    super("Burf could not save the chat draft. Free space or allow local storage, then try again. Keep this window open to preserve your text.");
+    this.name = "StorageWriteError";
+  }
+}
+
+// A request must not leave the app until its recovery journal is saved.
+export function saveChecked(key: string, value: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(value)); }
+  catch { throw new StorageWriteError(); }
+}

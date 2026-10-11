@@ -6,6 +6,9 @@ export interface LocalChatDraft {
   options: SavedQueueMessage["options"];
   queue: SavedQueueMessage[];
   held?: boolean;
+  sendError?: string;
+  // Only a saved-history draft carries a launch whose outcome is not yet known.
+  launch?: string;
   pending?: SavedQueueMessage & { id: string };
 }
 
@@ -24,7 +27,7 @@ export function readLocalChatDraft(value: unknown): LocalChatDraft {
   };
   const queue = Array.isArray(record.queue) ? record.queue.flatMap((message) => message && typeof message.text === "string" ? [{ text: message.text, options: options(message.options) }] : []) : [];
   const pending = record.pending as Record<string, unknown> | undefined;
-  return { text: typeof record.text === "string" ? record.text : "", options: options(record.options), queue, held: record.held === true, ...(pending && typeof pending.id === "string" && typeof pending.text === "string" ? { pending: { id: pending.id, text: pending.text, options: options(pending.options) } } : {}) };
+  return { text: typeof record.text === "string" ? record.text : "", options: options(record.options), queue, held: record.held === true, ...(typeof record.sendError === "string" ? { sendError: record.sendError } : {}), ...(typeof record.launch === "string" ? { launch: record.launch } : {}), ...(pending && typeof pending.id === "string" && typeof pending.text === "string" ? { pending: { id: pending.id, text: pending.text, options: options(pending.options) } } : {}) };
 }
 
 export function recoveredLocalChatDraft(draft: LocalChatDraft): LocalChatDraft {

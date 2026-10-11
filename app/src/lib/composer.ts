@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { OrchestrateDraft, WorktreeDraft } from "@/lib/store";
+import type { ChatOptions } from "@/lib/local-computer";
 
 // The composer is the one way to start work: what to do, where, and with
 // which agents (one is a task, several are attempts), or a prompt for agents
@@ -30,6 +31,8 @@ export interface ComposerDraft {
   location?: string;
   where?: "new" | "main";
   text?: string;
+  // Explicit next-message permission retained when choosing a task destination.
+  permission?: ChatOptions["permission"];
   // The agents to start, each with its model and effort if picked; several
   // are attempts. noAgent makes the worktree alone.
   agents?: { agent: string; model?: string; effort?: string }[];

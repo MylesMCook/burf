@@ -113,8 +113,8 @@ export const BUILTIN_WIDGETS: WidgetDef[] = [
   },
   {
     id: "boxes",
-    title: "Boxes",
-    description: "Each box's CPU, memory and disk, and its agents at work.",
+    title: "Computers",
+    description: "Each box's one-minute load, memory and fullest filesystem, and its agents at work.",
     icon: lucide(ServerIcon),
     category: "Fleet",
     sizes: ["s", "m", "t", "l"],

@@ -31,6 +31,18 @@
 * { --wails-draggable: no-drag; }
 [data-burf-drag-region] { --wails-draggable: drag; }
 
+/* Lucide owns these SVG elements. The shared Button owns their scale,
+   including icons supplied through a Base UI render target. */
+[data-burf-button] .lucide {
+  width: var(--burf-button-icon-size, 16px) !important;
+  height: var(--burf-button-icon-size, 16px) !important;
+  flex-shrink: 0;
+}
+[data-burf-button] .lucide:is(.lucide-chevron-down, .lucide-chevron-up, .lucide-chevron-left, .lucide-chevron-right) {
+  width: 12px !important;
+  height: 12px !important;
+}
+
 .desktop-startup-error {
   margin: auto;
   max-width: 36rem;

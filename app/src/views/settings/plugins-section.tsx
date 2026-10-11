@@ -221,19 +221,22 @@ export function PluginsSection() {
   const [installed, setInstalled] = useState<PluginInfo[]>();
   const [builtins, setBuiltins] = useState<PluginInfo[]>();
   const [reloading, setReloading] = useState(false);
+  const [error, setError] = useState("");
   useEffect(() => void builtinPlugins().then(setBuiltins), []);
 
   const refresh = useCallback(async () => {
-    if (client) setInstalled(await client.plugins().catch(() => []));
+    if (!client) return;
+    try { setInstalled(await client.plugins()); setError(""); }
+    catch (err) { setError(errorMessage(err)); }
   }, [client]);
   useEffect(() => void refresh(), [refresh]);
 
   const reload = async () => {
     if (!client) return;
     setReloading(true);
-    await loadPlugins(client);
-    await refresh();
-    setReloading(false);
+    try { await loadPlugins(client); await refresh(); }
+    catch (err) { setError(errorMessage(err)); }
+    finally { setReloading(false); }
   };
 
   return (
@@ -245,6 +248,7 @@ export function PluginsSection() {
         </>
       }
     >
+      {error && <p role="alert">Could not read installed plugins: {error}. Use Reload to try again.</p>}
       <SettingsGroup title="Built in" description="Ship with Burf and use the same plugin API as yours. A plugin of yours with the same id replaces one.">
         {builtins === undefined ? (
           <div className={sx(paint.s0)}>Loading…</div>
@@ -264,9 +268,9 @@ export function PluginsSection() {
           </Button></span>
         }
       >
-        {installed === undefined ? (
+        {installed === undefined && !error ? (
           <div className={sx(paint.s4)}>Loading…</div>
-        ) : installed.length === 0 ? (
+        ) : installed?.length === 0 ? (
           <div className={sx(paint.s5)}>
             No plugins yet.{" "}
             <button type="button" onClick={() => void openDocs("/guides/plugins")} className={sx(paint.s6)}>
@@ -275,7 +279,7 @@ export function PluginsSection() {
             .
           </div>
         ) : (
-          installed.map((p) => <PluginRow key={p.id} plugin={p} status={loaded.find((l) => l.id === p.id)} onChanged={() => void reload()} />)
+          installed?.map((p) => <PluginRow key={p.id} plugin={p} status={loaded.find((l) => l.id === p.id)} onChanged={() => void reload()} />)
         )}
       </SettingsGroup>
     </SettingsPage>

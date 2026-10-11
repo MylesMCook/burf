@@ -48,8 +48,8 @@ export async function fakeAgent(): Promise<FakeAgent> {
     close: () =>
       new Promise((resolve) => {
         for (const s of streams) s.end();
-        server.closeAllConnections();
         server.close(() => resolve());
+        server.closeAllConnections();
       }),
   };
 

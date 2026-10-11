@@ -111,6 +111,13 @@ func runCLI(ctx context.Context, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	command := exec.CommandContext(ctx, bin.Path, args...)
+	home, err := agentConnectionHome(os.Getenv("BERTH_HOME"))
+	if err != nil {
+		return "", err
+	}
+	if home != "" {
+		command.Env = append(os.Environ(), "BERTH_HOME="+home)
+	}
 	backgroundCommand(command)
 	var stdout, stderr boundedOutput
 	command.Stdout, command.Stderr = &stdout, &stderr

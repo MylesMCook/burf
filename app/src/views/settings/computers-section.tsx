@@ -363,20 +363,20 @@ export function ComputersSection() {
   const [joining, setJoining] = useState(false);
   return (
     <SettingsPage
-      title="Computers"
+      title="Computer access"
       description={
         <>
-          Use Burf on another computer. Each pairs with your boxes with its own key, and they all work at once. <Code>burf invite</Code> and <Code>burf join</Code> do the same.
+          Give another Burf client access to selected paired computers, or review which clients can connect. Each client uses its own key. Local chats are under This computer in the sidebar. <Code>burf invite</Code> and <Code>burf join</Code> do the same.
         </>
       }
     >
       <SettingsGroup>
-        <SettingsRow label="Add another computer" description="A link that pairs another computer of yours with the boxes you choose. It works once per box, for ten minutes.">
+        <SettingsRow label="Add another computer" description="A link that gives another Burf client access to selected paired computers. It works once per computer, for ten minutes.">
           <span className={sx(paint.s0)}><Button size="xs" variant="outline"  disabled={boxes.length === 0} onClick={() => setInviting(true)}>
             Add another computer
           </Button></span>
         </SettingsRow>
-        <SettingsRow label="Join from another computer" description="Paste a link made on your other computer to pair this one with its boxes.">
+        <SettingsRow label="Join from another computer" description="Paste a link made on your other computer to give this client access to its paired computers.">
           <span className={sx(paint.s1)}><Button size="xs" variant="outline"  onClick={() => setJoining(true)}>
             Use a join link
           </Button></span>

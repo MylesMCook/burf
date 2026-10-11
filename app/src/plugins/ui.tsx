@@ -3,7 +3,8 @@ import { DynamicIcon, iconNames, type IconName } from "lucide-react/dynamic";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardFooter, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -64,6 +65,11 @@ export const pluginUi = {
   EmptyHeader,
   EmptyTitle,
   EmptyDescription,
+  EmptyContent,
+  EmptyMedia,
+  Collapsible,
+  CollapsiblePanel,
+  CollapsibleTrigger,
   Input,
   Kbd,
   ScrollArea,

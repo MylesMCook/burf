@@ -232,37 +232,37 @@ export function BoxesSection() {
   const auto = usePrefs((p) => p.autoUpdateBoxes);
   return (
     <SettingsPage
-      title="Boxes"
+      title="Paired computers"
       description={
         <>
-          Paired machines running a box agent. Local agents and chats are under This computer. <Code>burf boxes</Code> lists these connections.
+          Computers that host your projects and agents. Check connections and Burf updates here. Start local chats from This computer in the sidebar; manage trusted clients in Computer access.
         </>
       }
     >
-      <OutdatedNotice className={sx(paint.s0)} />
       <SettingsGroup
         title={boxes.length === 1 ? "1 paired" : `${boxes.length} paired`}
         actions={
           <Button size="xs" variant="outline" onClick={openAddBox}>
-            <PlusIcon /> Add a box
+            <PlusIcon /> Add computer
           </Button>
         }
       >
         {boxes.length === 0 ? (
           <div className={sx(paint.s1)}>
-            <p className={sx(paint.s2)}>No boxes yet. Agents run on a box: any VPS or dev machine you can SSH into.</p>
+            <p className={sx(paint.s2)}>No paired computers yet. Add a computer to work with its projects and agents. You can start local chats from This computer.</p>
             <Button size="sm" onClick={openAddBox}>
-              Add your first box
+              Add your first computer
             </Button>
           </div>
         ) : (
           boxes.map((b) => <BoxRow key={b.name} box={b} />)
         )}
       </SettingsGroup>
+      <OutdatedNotice className={sx(paint.s0)} />
       {boxes.length > 0 && (
         <SettingsGroup>
-          <SettingsRow label="Install bundled agents automatically" description="When a connected box has a different build, replace its box agent with the one bundled with this Burf. This is not a check for the latest upstream release.">
-            <Switch checked={auto} onCheckedChange={(autoUpdateBoxes) => usePrefs.setState({ autoUpdateBoxes })} aria-label="Install bundled agents automatically" />
+          <SettingsRow label="Update Burf on paired computers automatically" description="Off by default. Turning this on can immediately replace Burf’s background daemon on connected computers with this app’s bundled build when their builds differ. Active chats block replacement. It does not update Codex or Claude Code, or check for new releases.">
+            <Switch checked={auto} onCheckedChange={(autoUpdateBoxes) => usePrefs.setState({ autoUpdateBoxes })} aria-label="Update Burf on paired computers automatically" />
           </SettingsRow>
         </SettingsGroup>
       )}
@@ -296,6 +296,8 @@ function BoxRow({ box }: { box: BoxStatus }) {
   const canAddAgents = !!info?.capabilities?.includes("agents.install");
   const [retrying, setRetrying] = useState(false);
   const [routesOpen, setRoutesOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [loadingInfo, setLoadingInfo] = useState(false);
   const online = box.state === "online";
   const state = useBoxState(box.name);
   const upgrading = update?.state === "queued" || update?.state === "running";
@@ -319,8 +321,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
               {state === "online" && box.latency_ms != null ? latencyText(box.latency_ms, box.link) : BOX_WORDS[state].word}
             </span>
           </div>
-          <div className={sx(paint.s11)}>{details.join(" · ")}</div>
-          <BoxRoutes box={box} open={routesOpen} onOpenChange={setRoutesOpen} />
+
           {online && <LinkNotes box={box} />}
           {problem && (
             <div className={sx(paint.s12)}>
@@ -402,11 +403,23 @@ function BoxRow({ box }: { box: BoxStatus }) {
         </div>
       )}
       {online && check?.outdated && check.available && !check.error && <p className={sx(paint.s16)}>Bundled agent: <span className={sx(paint.s17)}>{check.available}</span>. Installing replaces this box's agent with Burf's bundled build.</p>}
-      {routesOpen && !box.local && <BoxRouteList box={box} />}
-      {/* The agent's browser can't start here (Chromium's sandbox), or runs without it. */}
-      {online && <BrowserSandboxCard box={box.name} full className={sx(paint.s18)} />}
+      {online && !info && <div className={sx(paint.s14)}>
+        <p>Computer information unavailable. Burf cannot show its tools or capabilities yet; older builds may not provide this information.</p>
+        <Button size="xs" variant="outline" loading={loadingInfo} onClick={async () => {
+          setLoadingInfo(true);
+          try { await useStore.getState().refreshBox(box.name, ["info"]); } finally { setLoadingInfo(false); }
+        }}>Retry information</Button>
+      </div>}
+      <details open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)} className={sx(paint.s18)}>
+        <summary>Details for {box.name}</summary>
+        <div className={sx(paint.s11)}>{details.join(" · ")}</div>
+        <BoxRoutes box={box} open={routesOpen} onOpenChange={setRoutesOpen} />
+        {routesOpen && !box.local && <BoxRouteList box={box} />}
+        {online && <BoxAgents box={box.name} />}
+      </details>
       {online && <BoxProcessesCard box={box.name} className={sx(paint.s19)} />}
-      {online && <BoxAgents box={box.name} />}
+      {/* Recovery remains visible while healthy browser information follows Details. */}
+      {online && <BrowserSandboxCard box={box.name} full={detailsOpen} className={sx(paint.s18)} />}
       {update && update.state !== "queued" && <CommandLog lines={update.lines ?? []} done={update.state === "done"} error={update.error} />}
       {update?.state === "queued" && <p className={sx(paint.s21)}>Waiting for the box before it to finish updating…</p>}
       <GuardDialog box={box.name} open={guarding} onOpenChange={setGuarding} />

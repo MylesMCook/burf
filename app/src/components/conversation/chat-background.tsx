@@ -15,6 +15,7 @@ import "@/components/conversation/chat-background.css";
 const paint = stylex.create({
   s0: {
     "pointerEvents": "none",
+    "zIndex": -1,
     "position": "absolute",
     "top": 0,
     "right": 0,
@@ -68,6 +69,8 @@ const paint = stylex.create({
   s9: {
     "opacity": 0,
   },
+  sheetInset: { left: -24, right: -24 },
+  originalSheetInset: { left: -96, right: -96 },
   q10: {
     "right": {
       "@container (min-width: 900px)": {
@@ -103,7 +106,7 @@ function Layer({ bg }: { bg: Bg }) {
   const { drawn, sheet, pixelated } = useRendered(wrap, canvas, bg);
   const full = usePrefs((p) => p.chatWidth === "full");
   return (
-    <div ref={wrap} aria-hidden data-testid="chat-background" data-drawn={drawn || undefined} className={[sx(paint.s0), "-z-10"].filter(Boolean).join(" ")} style={{ "--chat-sheet": `${Math.round(sheet * 100)}%` } as CSSProperties}>
+    <div ref={wrap} aria-hidden data-testid="chat-background" data-drawn={drawn || undefined} className={sx(paint.s0)} style={{ "--chat-sheet": `${Math.round(sheet * 100)}%` } as CSSProperties}>
       <canvas ref={canvas} className={[sx(paint.s1), pixelated && sx(paint.s2), drawn ? sx(paint.s3) : sx(paint.s4)].filter(Boolean).join(" ")} />
       {/* The reading column stays clean: the plain page lies over the
           background behind the conversation and its composer, easing in
@@ -114,7 +117,7 @@ function Layer({ bg }: { bg: Bg }) {
           picture shown as it is is loud, so its fade ends before the column. */}
       <div className={[sx(paint.s5), sx(paint.q10)].filter(Boolean).join(" ")}>
         <div className={[sx(paint.s6), sx(paint.q11)].filter(Boolean).join(" ")}>
-          <div data-glass={bg.original || undefined} data-full={full || undefined} className={[[sx(paint.s7), "cb-sheet"].filter(Boolean).join(" "), bg.original ? "-inset-x-24" : "-inset-x-6", drawn ? sx(paint.s8) : sx(paint.s9)].filter(Boolean).join(" ")} />
+          <div data-glass={bg.original || undefined} data-full={full || undefined} className={[[sx(paint.s7), "cb-sheet"].filter(Boolean).join(" "), bg.original ? sx(paint.originalSheetInset) : sx(paint.sheetInset), drawn ? sx(paint.s8) : sx(paint.s9)].filter(Boolean).join(" ")} />
         </div>
       </div>
     </div>

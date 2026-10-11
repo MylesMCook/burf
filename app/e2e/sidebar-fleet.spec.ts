@@ -17,6 +17,19 @@ test.slow();
 // Base UI's per-row parts, which made 300 rows cost over a second at start.
 const ROOTS = "[data-row-menu] :is([data-slot=tooltip-trigger], [data-slot=menu-trigger], [data-slot=context-menu-trigger])";
 
+async function loadSidebarRows(page: Page) {
+  const more = page.getByTestId("sidebar").getByTestId("sidebar-load-more");
+  await expect(more.first()).toBeVisible();
+  // Park the pointer away from rows; scrolling batches under it would arm
+  // controls before this test deliberately uses a row. Load controls are
+  // outside hosted rows, so keyboard activation keeps those rows dormant.
+  await page.mouse.move(800, 450);
+  while (await more.count()) {
+    await more.first().focus();
+    await more.first().press("Enter");
+  }
+}
+
 async function longTasks(page: Page) {
   return page.evaluate(() => (window as unknown as { __long: number[] }).__long.reduce((a, b) => a + b, 0));
 }
@@ -33,6 +46,8 @@ test("300 worktrees: the sidebar stays small and its rows make no menus or toolt
     } catch {}
   });
   await app.open({ params: FLEET });
+  await expect(app.page.locator(ROOTS)).toHaveCount(0);
+  await loadSidebarRows(app.page);
   const page = app.page;
   const sidebar = page.getByTestId("sidebar");
   await expect(sidebar.getByTestId("worktree-row")).toHaveCount(309);
@@ -85,6 +100,7 @@ test("300 worktrees: the sidebar stays small and its rows make no menus or toolt
 test("the keyboard: Shift+F10 and the menu key open a row's menu, F2 renames it, Shift+Tab reaches the row before's buttons", async ({ app }) => {
   mockOnly();
   await app.open({ params: FLEET });
+  await loadSidebarRows(app.page);
   const page = app.page;
   const row = app.worktree("acme-build/auth-cache-36");
   await row.focus();
@@ -122,6 +138,7 @@ test("the keyboard: Shift+F10 and the menu key open a row's menu, F2 renames it,
 test("projects fold and open, and drag into a section", async ({ app }) => {
   mockOnly();
   await app.open({ params: FLEET });
+  await loadSidebarRows(app.page);
   const page = app.page;
   const sidebar = page.getByTestId("sidebar");
   await expect(sidebar.getByTestId("worktree-row")).toHaveCount(309);

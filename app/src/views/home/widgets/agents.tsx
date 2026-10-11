@@ -16,6 +16,8 @@ import { focusSession, homeBox, selectWorktree, useWorkspaces, type WorktreeRef 
 import { useReview } from "@/views/review/review-store";
 
 import { fitRows, homePresence, useHomeList, useHomeWidget } from "./env";
+import { useHomeActivity, useHomeMachines } from "./machine-filter";
+import { matchesActivity, projectKey } from "./activity-filter";
 import { DiffStat, More, shortAgo, WidgetEmpty, WidgetRow, WidgetSkeleton } from "./parts";
 import { placeLabel, worktreeLabel } from "@/lib/worktree-names";
 
@@ -352,15 +354,19 @@ export interface AgentRow {
   since?: string;
 }
 
-export function useAgentRows(): AgentRow[] {
+export function useAgentRows(filterActivity = true): AgentRow[] {
   const all = useAllSessions();
+  const activity = useHomeActivity();
+  const selected = useHomeMachines();
   const boxes = useStore((s) => s.boxes);
   return useMemo(() => {
     const rows: AgentRow[] = [];
     for (const e of all as SessionEntry[]) {
+      if (selected && !selected.includes(e.box)) continue;
       const agent = agentOf(e.session);
       if (!agent || (e.state !== "waiting" && e.state !== "running" && e.state !== "finished")) continue;
       const wt = worktreeOf(boxes[e.box]?.locations, e.session);
+      if (filterActivity && !matchesActivity({ state: e.state, provider: agent, project: wt ? projectKey(e.box, wt.location.name) : undefined, projectKnown: boxes[e.box]?.locations !== undefined, since: e.session.state_since ?? e.session.created }, activity.filter, activity.now)) continue;
       const place = wt ? (wt.worktree.main ? wt.location.name : `${wt.location.name} / ${worktreeLabel(wt.worktree)}`) : "";
       rows.push({
         key: `${e.box}/${e.session.name}`,
@@ -375,19 +381,21 @@ export function useAgentRows(): AgentRow[] {
       });
     }
     return rows.sort((a, b) => (b.since ?? "").localeCompare(a.since ?? ""));
-  }, [all, boxes]);
+  }, [all, boxes, selected, activity, filterActivity]);
 }
 
 // Until the agent and every online box have answered, agent lists are
 // loading, not empty.
 export function useAgentsLoading(): boolean {
-  return useStore((s) => !s.status || s.status.boxes.some((b) => b.state === "online" && !s.boxes[b.name]?.sessions));
+  const selected = useHomeMachines();
+  return useStore((s) => !s.status || s.status.boxes.some((b) => (!selected || selected.includes(b.name)) && b.state === "online" && !s.boxes[b.name]?.sessions));
 }
 
 // Boxes that are paired but not reachable: their agents aren't listed.
 export function useOfflineBoxes(): string[] {
+  const selected = useHomeMachines();
   const boxes = useStore((s) => s.status?.boxes);
-  return useMemo(() => (boxes ?? []).filter((b) => b.state !== "online").map((b) => b.name), [boxes]);
+  return useMemo(() => (boxes ?? []).filter((b) => (!selected || selected.includes(b.name)) && b.state !== "online").map((b) => b.name), [boxes, selected]);
 }
 
 const byState = (rows: AgentRow[], s: AgentRow["state"]) => rows.filter((r) => r.state === s);
@@ -498,7 +506,7 @@ export function WorkingWidget() {
   useHomeList(homePresence(loading, rows.length, offline.length > 0));
   if (loading && !rows.length) return <WidgetSkeleton rows={Math.min(lines, 3)} />;
   if (!rows.length) return offline.length ? <OfflineNote boxes={offline} /> : null;
-  const shown = rows.slice(0, fitRows(height, 48));
+  const shown = rows.slice(0, fitRows(height, 72));
   return (
     <div className={sx(paint.s15)}>
       {shown.map((r) => (
@@ -567,9 +575,12 @@ function WorkingRow({ r }: { r: AgentRow }) {
         <span className={sx(paint.s20)}>{step?.elapsed ?? shortAgo(r.since)}</span>
       </span>
       <span className={sx(paint.s21)}>
-        <span className={sx(paint.s22)}>{step?.now ?? `${agentLabel(r.agent)} · ${r.where}`}</span>
-        {step?.sub && <span className={[sx(paint.s23), sx(paint.s36)].filter(Boolean).join(" ")}>· {step.sub}</span>}
+        <span className={sx(paint.s7)}>{agentLabel(r.agent)} · {r.where}</span>
       </span>
+      {step?.now && <span className={sx(paint.s21)}>
+        <span className={sx(paint.s22)}>{step.now}</span>
+        {step.sub && <span className={[sx(paint.s23), sx(paint.s36)].filter(Boolean).join(" ")}>· {step.sub}</span>}
+      </span>}
     </button>
   );
 }
@@ -616,12 +627,14 @@ interface Area {
 // useAreas ranks worktrees by when you last opened one or an agent last
 // changed state in it, whichever is later.
 export function useAreas(): Area[] {
+  const selected = useHomeMachines();
   const spaces = useWorkspaces((s) => s.spaces);
   const boxes = useStore((s) => s.boxes);
-  const rows = useAgentRows();
+  const rows = useAgentRows(false);
   return useMemo(() => {
     const out = new Map<string, Area>();
     const touch = (ref: WorktreeRef, at: number, agent?: AgentRow) => {
+      if (selected && !selected.includes(ref.box)) return;
       const k = `${ref.box}:${ref.path}`;
       const a = out.get(k) ?? { ref, label: placeLabel(ref, boxes), project: ref.location, at: 0, agents: [] };
       a.at = Math.max(a.at, at);
@@ -631,7 +644,7 @@ export function useAreas(): Area[] {
     for (const [key, w] of Object.entries(spaces)) if (!homeBox(key) && w.visitedAt && w.ref?.path) touch(w.ref, w.visitedAt);
     for (const r of rows) if (r.worktree) touch(r.worktree, Date.parse(r.since ?? "") || 0, r);
     return [...out.values()].sort((a, b) => b.at - a.at);
-  }, [spaces, rows, boxes]);
+  }, [spaces, rows, boxes, selected]);
 }
 
 export function AreasWidget() {

@@ -20,6 +20,7 @@ export interface BoxData {
   services?: Service[];
   info?: BoxInfo;
   error?: string;
+  partErrors?: Partial<Record<BoxPart, string>>;
 }
 
 // The main area shows the current worktree's workspace, or one of the
@@ -122,6 +123,8 @@ const persisted = load<{ themeId?: string }>("berth.ui", {});
 // the store, not in it: it changes with every read, and a read that changes
 // no rows must draw nothing.
 const sessionsAskedAt = new Map<string, string>();
+let boxReadSequence = 0;
+const partReads = new Map<string, Partial<Record<BoxPart, number>>>();
 export const sessionsAsked = (box: string) => sessionsAskedAt.get(box);
 
 // onSessionsRead calls fn after each successful session read of a box,
@@ -165,26 +168,43 @@ export const useStore = create<State & Actions>()((set, get) => ({
     const { client } = get();
     if (!client) return;
     const asked = new Date().toISOString();
-    const results = await Promise.allSettled(parts.map((p) => fetchers[p](client, box)));
-    // The rows about to be kept are the ones asked for then, even if a read
-    // started later has already landed.
-    const readSessions = results[parts.indexOf("sessions")]?.status === "fulfilled";
-    if (readSessions) sessionsAskedAt.set(box, asked);
-    set((s) => {
-      const prev = s.boxes[box];
-      const next: BoxData = { ...prev, error: undefined };
-      results.forEach((r, i) => {
-        // info is optional on older daemons; a failure there is not the box's.
-        // What is as it was keeps its objects (lib/share.ts), so rows drawn
-        // from them aren't drawn again.
-        if (r.status === "fulfilled") (next as Record<string, unknown>)[parts[i]] = share(prev?.[parts[i]], r.value);
-        else if (parts[i] !== "info") next.error = errorMessage(r.reason);
-      });
-      // Nothing new: nothing to draw.
-      if (prev && prev.error === next.error && parts.every((p) => prev[p] === next[p])) return s;
-      return { boxes: { ...s.boxes, [box]: next } };
-    });
-    if (readSessions) for (const fn of sessionReads) fn(box);
+    const sequence = ++boxReadSequence;
+    await Promise.allSettled(parts.map((p) =>
+      fetchers[p](client, box).then((value) => {
+        const reads = partReads.get(box) ?? {};
+        if (get().client !== client || (reads[p] ?? 0) > sequence) return value;
+        // Publish each available part without waiting for unrelated reads.
+        // A late response cannot replace a newer outcome of that part.
+        partReads.set(box, { ...reads, [p]: sequence });
+        set((s) => {
+          const prev = s.boxes[box];
+          const next = share(prev?.[p], value);
+          const errors = { ...prev?.partErrors };
+          delete errors[p];
+          const partErrors = share(prev?.partErrors, errors);
+          const error = Object.values(partErrors)[0];
+          return next === prev?.[p] && error === prev?.error && partErrors === prev?.partErrors ? s : { boxes: { ...s.boxes, [box]: { ...prev, [p]: next, partErrors, error } } };
+        });
+        if (p === "sessions") {
+          sessionsAskedAt.set(box, asked);
+          for (const fn of sessionReads) fn(box);
+        }
+        return value;
+      }).catch((cause) => {
+        const reads = partReads.get(box) ?? {};
+        if (get().client !== client || (reads[p] ?? 0) > sequence) return;
+        partReads.set(box, { ...reads, [p]: sequence });
+        // info is optional on older daemons. Other failures remain until
+        // that same part succeeds; an unrelated refresh cannot erase them.
+        if (p === "info") return;
+        set((s) => {
+          const prev = s.boxes[box];
+          const partErrors = share(prev?.partErrors, { ...prev?.partErrors, [p]: errorMessage(cause) });
+          const error = Object.values(partErrors)[0];
+          return partErrors === prev?.partErrors && error === prev?.error ? s : { boxes: { ...s.boxes, [box]: { ...prev, partErrors, error } } };
+        });
+      }),
+    ));
   },
 
   // One at a time: a reconnect, a focus, an event and the poll landing

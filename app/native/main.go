@@ -10,6 +10,7 @@ import (
 	"runtime"
 
 	"github.com/MylesMCook/burf/app/native/desktop"
+	"github.com/MylesMCook/burf/app/native/internal/nativefeedback"
 	"github.com/MylesMCook/burf/internal/agent"
 	"github.com/MylesMCook/burf/internal/proxy"
 	"github.com/MylesMCook/burf/internal/statefile"
@@ -17,7 +18,6 @@ import (
 	"github.com/MylesMCook/burf/internal/uicontract"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
-	"github.com/MylesMCook/burf/app/native/internal/nativefeedback"
 )
 
 // Populated from app/dist by the repository's existing frontend build.
@@ -56,20 +56,60 @@ func run() error {
 		return err
 	}
 	slog.Info("Burf interface", "source", info.Source, "version", info.Version, "reason", info.Reason)
-	service := desktop.New(desktop.Config{
-		Version: version, StateHome: home, Interface: info,
-		DevtoolsScript: proxy.DevtoolsScript(),
-		UIState:        func() (any, error) { return agent.LoadClientUIState(filepath.Join(home, "client")) },
-	})
-	identity := "dev.myles.burf"
-	if runtime.GOOS == "windows" {
-		identity = "dev.myles.berth.windows"
-	}
 	feedbackBridge, feedbackErr := nativefeedback.Start(nativefeedback.Config{CompanionURL: os.Getenv("WAILS_FEEDBACK_COMPANION_URL")})
 	if feedbackErr != nil {
 		return feedbackErr
 	}
 	defer nativefeedback.Stop(feedbackBridge)
+	var feedbackControl *nativefeedback.Runtime
+	feedbackDirectory, directoryErr := desktop.FeedbackDirectory(home)
+	feedbackOrigin, originErr := desktop.FeedbackOrigin()
+	if directoryErr == nil && originErr == nil {
+		feedbackControl, feedbackErr = nativefeedback.NewRuntime(nativefeedback.RuntimeConfig{Directory: feedbackDirectory, Origin: feedbackOrigin})
+	}
+	if feedbackControl != nil {
+		defer feedbackControl.Close()
+	}
+	feedbackStatus := func() any {
+		if feedbackControl == nil {
+			return nativefeedback.RuntimeStatus{Error: "Native feedback is unavailable on this computer."}
+		}
+		status := feedbackControl.Status()
+		if !status.Enabled {
+			if endpoint := nativefeedback.DevelopmentEndpoint(feedbackBridge); endpoint != "" {
+				return map[string]any{"available": true, "enabled": true, "endpoint": endpoint, "mode": "development"}
+			}
+		}
+		return status
+	}
+	service := desktop.New(desktop.Config{
+		Version: version, StateHome: home, Interface: info,
+		DevtoolsScript: proxy.DevtoolsScript(),
+		UIState:        func() (any, error) { return agent.LoadClientUIState(filepath.Join(home, "client")) },
+		FeedbackStatus: feedbackStatus,
+		FeedbackEnable: func() (any, error) {
+			if feedbackControl == nil {
+				return nil, fmt.Errorf("native feedback is unavailable on this computer")
+			}
+			return feedbackControl.Enable()
+		},
+		FeedbackDisable: func() (any, error) {
+			if feedbackControl == nil {
+				return nil, fmt.Errorf("native feedback is unavailable on this computer")
+			}
+			return feedbackControl.Disable()
+		},
+		FeedbackClose: func() error {
+			if feedbackControl != nil {
+				return feedbackControl.Close()
+			}
+			return nil
+		},
+	})
+	identity := "dev.myles.burf"
+	if runtime.GOOS == "windows" {
+		identity = "dev.myles.berth.windows"
+	}
 	app := application.New(application.Options{
 		Name:        "Burf",
 		Description: "Coding agents on your own computers",

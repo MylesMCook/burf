@@ -13,7 +13,7 @@ test("different bundled builds do not claim version ordering or update automatic
     await expect(settings).toContainText("Build IDs do not indicate which is newer.");
     await expect(settings).not.toContainText("older berthd");
     await expect(settings).not.toContainText("only connects");
-    await expect(settings.getByRole("switch", { name: "Install bundled agents automatically" })).not.toBeChecked();
+    await expect(settings.getByRole("switch", { name: "Update Burf on paired computers automatically" })).not.toBeChecked();
     expect(agent.calls.some((call) => call.startsWith("POST /v1/boxes/") && call.includes("upgrade"))).toBe(false);
   } finally { await agent.close(); }
 });
@@ -87,5 +87,58 @@ test("the editor SSH prompt reviews settings without writing configuration", asy
     await app.page.getByRole("button", { name: "Review setup", exact: true }).click();
     await expect(app.page.getByTestId("settings-boxes")).toBeVisible();
     expect(writes).toBe(0);
+  } finally { await agent.close(); }
+});
+
+
+test("paired computer details are optional and opening them does not change a computer", async ({ app }) => {
+  const agent = await fakeAgent();
+  try {
+    await app.open({ agent });
+    const settings = await app.openSettings("boxes");
+    const details = settings.locator("details").filter({ has: app.page.getByText(`Details for ${BOX}`, { exact: true }) });
+    await expect(details).not.toHaveAttribute("open", "");
+    await expect(settings.getByText(BOX, { exact: true }).first()).toBeVisible();
+    const before = agent.calls.filter((call) => /^(POST|PUT|DELETE) /.test(call));
+    await details.locator("summary").click();
+    await expect(details).toHaveAttribute("open", "");
+    expect(agent.calls.filter((call) => /^(POST|PUT|DELETE) /.test(call))).toEqual(before);
+    await expect(settings).toContainText("does not update Codex or Claude Code");
+  } finally { await agent.close(); }
+});
+
+test("unavailable computer information stays visible and retry can recover it", async ({ app }) => {
+  const agent = await fakeAgent();
+  let failing = true;
+  await app.context.route(`${agent.url}/v1/boxes/${BOX}/api/info`, async (route) => {
+    if (failing) return route.fulfill({ status: 503, json: { error: "information unavailable" } });
+    return route.fallback();
+  });
+  try {
+    await app.open({ agent });
+    const settings = await app.openSettings("boxes");
+    await expect(settings).toContainText("Computer information unavailable");
+    failing = false;
+    await settings.getByRole("button", { name: "Retry information", exact: true }).click();
+    await expect(settings.getByRole("button", { name: "Retry information", exact: true })).toHaveCount(0);
+    expect(agent.calls.some((call) => call.startsWith("POST ") && call.includes("upgrade"))).toBe(false);
+  } finally { await agent.close(); }
+});
+
+
+test("settings separate paired agent hosts from trusted computer access without changing IDs", async ({ app }) => {
+  const agent = await fakeAgent();
+  try {
+    await app.open({ agent });
+    const paired = await app.openSettings("boxes");
+    await expect(app.page.getByRole("heading", { name: "Paired computers", exact: true })).toBeVisible();
+    await expect(paired).toContainText("Start local chats from This computer in the sidebar");
+    await expect(app.page.getByTestId("settings-nav-boxes")).toHaveAccessibleName("Paired computers");
+    await app.page.getByRole("button", { name: "Computer access", exact: true }).click();
+    const access = app.page.getByTestId("settings-computers");
+    await expect(app.page.getByRole("heading", { name: "Computer access", exact: true })).toBeVisible();
+    await expect(access.getByRole("button", { name: "Add another computer", exact: true })).toBeVisible();
+    await expect(access.getByRole("button", { name: "Use a join link", exact: true })).toBeVisible();
+    expect(agent.calls.filter((call) => /^(POST|PUT|DELETE) /.test(call))).toEqual([]);
   } finally { await agent.close(); }
 });

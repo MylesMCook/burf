@@ -1,9 +1,13 @@
 ---
 name: berth-artifacts
-description: Show the user data as a chart, table, diagram, notes or one small page in their Burf app instead of a wall of text — write a berth.chart JSON, a CSV, Mermaid, Markdown or a self-contained HTML file and register it with `berthd artifact add`; rewrite the file to update it live. Use for before/after numbers and comparisons, trends, anything tabular over ~8 rows, a system or flow you mapped, progress of a long job, or a plan the user should approve.
+description: Show the user data as a chart, table, diagram, notes or one small page in their Burf app instead of a wall of text — write a berth.chart JSON, a CSV, Mermaid, Markdown or a self-contained HTML file and register it with `burfd artifact add`; rewrite the file to update it live. Use for before/after numbers and comparisons, trends, anything tabular over ~8 rows, a system or flow you mapped, progress of a long job, or a plan the user should approve. Applies to daemon-managed worktrees on remote boxes; local structured chats do not automatically receive these tools.
 ---
 
 # Artifacts
+
+These workflows apply to daemon-managed worktrees on remote boxes. This
+computer structured chats do not automatically receive the box's MCP tools or
+worktree environment. Inspect available commands and capabilities first.
 
 An artifact is something you made for the user to look at. Burf shows it
 as a card in your chat (with a live thumbnail and a one-line headline it
@@ -12,11 +16,11 @@ the worktree's artifacts on one board. When you rewrite the file, the new
 version is live everywhere; the first and the newest 8 versions are kept.
 
 ```sh
-berthd artifact add perf/p95.json --title "p95 before and after"
-berthd artifact add tests.csv --title "Search test results" --note "after the index"
-berthd artifact list                 # this worktree's: id, kind, version, file, title
-berthd artifact show a1b2c3d4e5      # one, with its versions
-berthd artifact rm a1b2c3d4e5
+burfd artifact add perf/p95.json --title "p95 before and after"
+burfd artifact add tests.csv --title "Search test results" --note "after the index"
+burfd artifact list                 # this worktree's: id, kind, version, file, title
+burfd artifact show a1b2c3d4e5      # one, with its versions
+burfd artifact rm a1b2c3d4e5
 ```
 
 `add` answers with a line like `Artifact a1b2c3d4e5 v1 · chart · p95 before
@@ -191,17 +195,17 @@ Variables: `--berth-bg`, `--berth-fg`, `--berth-card`, `--berth-muted`,
 ## Visual before/after: a kind of its own
 
 For what a change did to a web app's pages, don't screenshot and chart it
-yourself: `berthd shots compare` makes a **visual diff** (before and after
+yourself: `burfd shots compare` makes a **visual diff** (before and after
 at phone, tablet and desktop widths, a heatmap, the changed regions, and
 what broke) and shows it like any other artifact. See the
-berth-visual-diff skill. `berthd artifact add` refuses a visual diff made
+berth-visual-diff skill. `burfd artifact add` refuses a visual diff made
 by hand.
 
 ## Update it, don't make a new one
 
 Rewrite the same file: Burf watches the file you registered and shows the
 new version live, with a pulse, and the user can step back through the
-versions. Run `berthd artifact add` on the same file again only to change
+versions. Run `burfd artifact add` on the same file again only to change
 its title or to say what changed (`--note "with the suggest cache"`); from a
 file elsewhere, `--id <id>` updates that artifact. Make a new artifact only
 for a different question.

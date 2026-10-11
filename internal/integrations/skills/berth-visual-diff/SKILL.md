@@ -1,19 +1,23 @@
 ---
 name: berth-visual-diff
-description: Check what your change did to a web app's pages before you say you're done — `berthd shots compare` screenshots your worktree's dev server and the main checkout's at phone, tablet and desktop widths, diffs every pair pixel by pixel, prints which pages changed, where (named by the element), and what broke (a 404, a 500, a page that now scrolls sideways), and shows the result in the user's Burf as a visual diff with a before/after slider and a heatmap. Use after any change that can show on a page (CSS, components, layout, copy, dependencies that render), when the user asks what changed visually, or to confirm a refactor changed nothing.
+description: Check what your change did to a web app's pages before you say you're done — `burfd shots compare` screenshots your worktree's dev server and the main checkout's at phone, tablet and desktop widths, diffs every pair pixel by pixel, prints which pages changed, where (named by the element), and what broke (a 404, a 500, a page that now scrolls sideways), and shows the result in the user's Burf as a visual diff with a before/after slider and a heatmap. Use after any change that can show on a page (CSS, components, layout, copy, dependencies that render), when the user asks what changed visually, or to confirm a refactor changed nothing. Applies to daemon-managed worktrees on remote boxes; local structured chats do not automatically receive these tools.
 ---
 
 # Visual before/after
+
+These workflows apply to daemon-managed worktrees on remote boxes. This
+computer structured chats do not automatically receive the box's MCP tools or
+worktree environment. Inspect available commands and capabilities first.
 
 After a UI change, look before you say done. One command shoots your
 worktree's pages and the same pages of a base, at several widths, and says
 what moved:
 
 ```sh
-berthd shots compare                                  # pages and sizes from .berth/config.json
-berthd shots compare --pages / /search /login --sizes 375 768 1280
-berthd shots compare --base turn-start                # against the start of your turn
-berthd shots compare --color-scheme both              # light and dark
+burfd shots compare                                  # pages and sizes from .berth/config.json
+burfd shots compare --pages / /search /login --sizes 375 768 1280
+burfd shots compare --base turn-start                # against the start of your turn
+burfd shots compare --color-scheme both              # light and dark
 ```
 
 It prints a few lines (about 450 tokens for 6 pages × 3 sizes) and keeps
@@ -27,9 +31,9 @@ baseline either, tells you what to do.
 ## The loop
 
 1. **Before you change anything**, if main's dev server may not be running:
-   `berthd shots baseline` (saves your pages as `turn-start`, ~5 s).
+   `burfd shots baseline` (saves your pages as `turn-start`, ~5 s).
 2. **Make the change**, start or keep your dev server.
-3. **Compare**: `berthd shots compare`. About 5-7 s for 6 pages × 3 sizes.
+3. **Compare**: `burfd shots compare`. About 5-7 s for 6 pages × 3 sizes.
 4. **Read the summary** (below). For every changed page, ask: *did I mean
    this?*
 5. **Look where it matters.** Each changed shot prints `look: <name>.png`,
@@ -125,12 +129,12 @@ repeat too.
 - `--base main` (the default): the main checkout's dev server, as it runs
   now. Best for "what does my branch change?". Without `--base`, a stopped
   main falls back to `turn-start`; with `--base main` it doesn't.
-- `--base turn-start`: what `berthd shots baseline` saved (at the start of
+- `--base turn-start`: what `burfd shots baseline` saved (at the start of
   your turn, or before you began). Best for "what did *this turn* change?".
 - `--base accepted`: what the user accepted with **Accept as baseline** in
-  the visual diff (or `berthd shots accept ID`). After they accept, compare
+  the visual diff (or `burfd shots accept ID`). After they accept, compare
   against it to show nothing else moved.
-- `berthd shots baseline --name NAME` saves your worktree's pages now, to
+- `burfd shots baseline --name NAME` saves your worktree's pages now, to
   compare with later (`--base NAME`): before a refactor that should change
   nothing, say.
 

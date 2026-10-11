@@ -1,7 +1,7 @@
 import { folderChat } from "@/lib/chat-target";
 import { openRemoteChat, remoteChatApi } from "@/lib/remote-chat";
 import { useStore } from "@/lib/store";
-import { selectWorktree, useWorkspaces, wsKey, type WorktreeRef } from "@/lib/workspaces";
+import { focusedPane, selectWorktree, useWorkspaces, wsKey, type WorktreeRef } from "@/lib/workspaces";
 
 let generation = 0;
 
@@ -10,6 +10,7 @@ let generation = 0;
 export function selectFolder(ref: WorktreeRef) {
   const ticket = ++generation;
   selectWorktree(ref);
+  const opened = focusedPane();
   const client = useStore.getState().client;
   if (!client) return;
   const caps = useStore.getState().boxes[ref.box]?.info?.capabilities;
@@ -17,7 +18,11 @@ export function selectFolder(ref: WorktreeRef) {
   void remoteChatApi.list(client, ref.box).then(
     (result) => {
       if (ticket !== generation) return;
+      if (useStore.getState().view.kind !== "workspace") return;
       if (useWorkspaces.getState().current !== wsKey(ref.box, ref.path)) return;
+      // A later explicit pane action takes precedence over this slow lookup.
+      const current = focusedPane();
+      if (current?.tab.id !== opened?.tab.id || current?.leaf.id !== opened?.leaf.id || current?.leaf.content !== opened?.leaf.content) return;
       const chat = folderChat(result.chats ?? [], ref.path);
       if (!chat) return;
       openRemoteChat(ref.box, chat, ref);

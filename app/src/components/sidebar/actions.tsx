@@ -67,20 +67,27 @@ import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
 import { renameWorktree, shortLabel, worktreeLabel } from "@/lib/worktree-names";
 import { openHomeTerminal } from "@/components/box-picker";
 import { boxLoad } from "@/components/sidebar/box-load";
+import { selectFolder } from "@/lib/open-folder-chat";
 import { deriveProjects, type Member, type Project, projectActions as groupActions, useProjectsDoc } from "@/lib/project-groups";
 
 const paint = stylex.create({
   s0: {
+    "minWidth": "0px",
+    "overflowWrap": "anywhere",
     "flexGrow": 1,
     "flexShrink": 1,
     "flexBasis": "0%",
   },
   s1: {
+    "minWidth": "0px",
+    "maxWidth": "45%",
+    "overflowWrap": "anywhere",
     "color": "var(--muted-foreground)",
     "fontSize": "12px",
     "lineHeight": "16px",
   },
   s2: {
+    "flexShrink": 0,
     "marginLeft": "8px",
   },
   s3: {
@@ -426,7 +433,7 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
   const front = ws.current && ws.current !== key ? ws.spaces[ws.current]?.ref : undefined;
   const grouping = usePrefs.getState().labs;
   const items: Action[] = [
-    item("Open", wt.main ? <HomeIcon /> : <GitBranchIcon />, select),
+    item("Open", wt.main ? <HomeIcon /> : <GitBranchIcon />, () => selectFolder(refOf(box, loc, wt))),
     ...(grouping && front && !isShown(key) ? [item(`Add to tabs beside ${shortLabel(front)}`, <ListPlusIcon />, () => void addGroup(key), { shortcut: "⌥ Click" })] : []),
     ...(grouping ? [item("Compare with…", <GitCompareArrowsIcon />, () => openWorktreePicker({ kind: "compare", from: key }))] : []),
     item("New terminal", <SquareTerminalIcon />, () => {
@@ -604,7 +611,7 @@ export function projectActions(box: string, loc: Location): Action[] {
   const main = loc.worktrees?.find((w) => w.main);
   const gh = githubSlug(loc);
   const items: Action[] = [];
-  if (main) items.push(item("Open main checkout", <HomeIcon />, () => selectWorktree(refOf(box, loc, main))));
+  if (main) items.push(item("Open main checkout", <HomeIcon />, () => selectFolder(refOf(box, loc, main))));
   items.push({ type: "sub", label: "Open in", icon: <CodeXmlIcon />, items: () => <EditorMenuItems box={box} path={main?.path ?? loc.path} /> });
   items.push(
     item("New task…", <GitBranchPlusIcon />, () => st.openNewWorktree({ box, location: loc.name }), { shortcut: "⌘N" }),
@@ -710,7 +717,7 @@ export function projectGroupActions(p: Project): Action[] {
   // submenu per object (its boxes, how it is organised), then
   // removing, last and in red, never inside a submenu.
   const mm = def && main(def);
-  if (mm) items.push(item(multi ? `Open main checkout on ${def.box.name}` : "Open main checkout", <HomeIcon />, () => selectWorktree(refOf(def.box.name, def.loc, mm))));
+  if (mm) items.push(item(multi ? `Open main checkout on ${def.box.name}` : "Open main checkout", <HomeIcon />, () => selectFolder(refOf(def.box.name, def.loc, mm))));
   if (def) items.push(item(multi ? `New task on ${def.box.name}…` : "New task…", <GitBranchPlusIcon />, () => st.openNewWorktree({ box: def.box.name, location: def.loc.name }), { shortcut: "⌘N" }));
 
   // Its boxes: where to make a worktree, which box is the default, and

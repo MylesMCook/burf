@@ -28,6 +28,13 @@ import { promptsFor, usePrompts } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
 
 const paint = stylex.create({
+  pickerFrame: {
+    display: "inline-flex",
+    alignItems: "center",
+    height: { default: 32, "@media (min-width: 640px)": 28 },
+    paddingLeft: 8,
+    paddingRight: 8,
+  },
   s0: {
     "display": "flex",
     "width": "12px",
@@ -148,7 +155,7 @@ const paint = stylex.create({
   },
   s25: {
     "minWidth": "0px",
-    "maxWidth": "176px",
+    "maxWidth": "min(176px, 100%)",
     "flexShrink": 0,
     "color": {
       "default": "var(--muted-foreground)",
@@ -159,11 +166,16 @@ const paint = stylex.create({
     "pointerEvents": "none",
   },
   s27: {
+    "minWidth": 0,
+    "flexGrow": 1,
+    "flexShrink": 1,
+    "textAlign": "start",
     "overflow": "hidden",
     "textOverflow": "ellipsis",
     "whiteSpace": "nowrap",
   },
   s28: {
+    "flexShrink": 0,
     "opacity": 0.6,
   },
   s29: {
@@ -397,7 +409,7 @@ export function AgentsPicker({
   };
   return (
     <Menu>
-      <span className={sx(paint.s3)}><MenuTrigger render={<Button fill size="sm" variant="ghost" aria-label={`Agents: ${label}`} />}>
+      <span className={sx(paint.pickerFrame, paint.s3)}><MenuTrigger render={<Button fill size="sm" variant="ghost" aria-label={`Agents: ${label}`} />}>
         {ids.length > 0 && (
           <span className={sx(paint.s4)}>
             {ids.map((id) => (
@@ -406,7 +418,7 @@ export function AgentsPicker({
           </span>
         )}
         <span data-slot="picker-label" className={sx(paint.s5)}>{label}</span>
-        <ChevronsUpDownIcon className={sx(paint.s6)} />
+        <ChevronsUpDownIcon size={12} className={sx(paint.s6)} />
       </MenuTrigger></span>
       <MenuPopup align="end" width={menuWidths.w64}>
         {onCompare && <><MenuItem onClick={() => onCompare(false)}>Use one agent</MenuItem><MenuSeparator /></>}
@@ -536,11 +548,11 @@ function SingleAgentPicker({ presets, sel, none, missing, allowNone, onChange, o
   return (
     <>
       <Menu>
-        <span className={[sx(paint.s15), missing && !preset ? sx(paint.s16) : sx(paint.s17)].filter(Boolean).join(" ")}><MenuTrigger render={<Button fill size="sm" variant="ghost" aria-label={`Provider: ${label}`} />}>
+        <span className={[sx(paint.pickerFrame, paint.s15), missing && !preset ? sx(paint.s16) : sx(paint.s17)].filter(Boolean).join(" ")}><MenuTrigger render={<Button fill size="sm" variant="ghost" aria-label={`Provider: ${label}`} />}>
           {!none && preset && <AgentIcon agent={id} />}
-          {!none && !preset && missing && <MinusIcon className={sx(paint.s18)} />}
+          {!none && !preset && missing && <MinusIcon size={16} className={sx(paint.s18)} />}
           <span data-slot="picker-label" className={sx(paint.s19)}>{label}</span>
-          <ChevronsUpDownIcon className={sx(paint.s20)} />
+          <ChevronsUpDownIcon size={12} className={sx(paint.s20)} />
         </MenuTrigger></span>
         <MenuPopup align="end" width={menuWidths.w52}>
           <MenuGroup>
@@ -572,7 +584,7 @@ function SingleAgentPicker({ presets, sel, none, missing, allowNone, onChange, o
             <>
               <MenuSeparator />
               <MenuItem disabled={presets.length < 1} onClick={() => onCompare(true)}>
-                <UsersIcon />
+                <UsersIcon size={16} />
                 Compare agents…
               </MenuItem>
             </>
@@ -591,11 +603,11 @@ function AgentOption({ label, value, values, labels, required, onChange }: { lab
   const shown = text(value);
   return (
     <Menu>
-      <span className={sx(paint.s22)}><MenuTrigger render={<Button fill size="sm" variant="ghost" aria-label={`${label}: ${shown}`} muted />}>
+      <span className={sx(paint.pickerFrame, paint.s22)}><MenuTrigger render={<Button fill size="sm" variant="ghost" aria-label={`${label}: ${shown}`} muted />}>
         <span data-slot="picker-label" className={sx(paint.s23)}>
           {label}: {shown}
         </span>
-        <ChevronsUpDownIcon className={sx(paint.s24)} />
+        <ChevronsUpDownIcon size={12} className={sx(paint.s24)} />
       </MenuTrigger></span>
       <MenuPopup align="end">
         <MenuGroup>
@@ -645,12 +657,12 @@ export function Pick({
   const fixed = options.length <= 1 && !footer;
   return (
     <Menu>
-      <span className={[sx(paint.s25), fixed && sx(paint.s26), className].filter(Boolean).join(" ")}><MenuTrigger render={<Button fill size="sm" variant="ghost" aria-label={`${label}: ${shown}`} disabled={fixed && !options.length} />}
+      <Tip label={`${label}: ${shown}`}><span className={[sx(paint.pickerFrame, paint.s25), fixed && sx(paint.s26), className].filter(Boolean).join(" ")}><MenuTrigger render={<Button fill truncate size="sm" variant="ghost" aria-label={`${label}: ${shown}`} disabled={fixed && !options.length} />}
       >
         {icon}
         <span data-slot="picker-label" className={sx(paint.s27)}>{shown}</span>
-        {!fixed && <ChevronsUpDownIcon className={sx(paint.s28)} />}
-      </MenuTrigger></span>
+        {!fixed && <ChevronsUpDownIcon size={12} className={sx(paint.s28)} />}
+      </MenuTrigger></span></Tip>
       <MenuPopup align="start" width={menuWidths.w52}>
         <MenuGroup>
           <MenuGroupLabel>{label}</MenuGroupLabel>
@@ -676,7 +688,7 @@ export function AddProjectItem({ box }: { box?: string }) {
     <>
       <MenuSeparator />
       <MenuItem onClick={() => useStore.getState().openAddProject(box || undefined)}>
-        <FolderPlusIcon />
+        <FolderPlusIcon size={16} />
         Add a project…
       </MenuItem>
     </>
@@ -688,7 +700,7 @@ export function DefaultBoxItem({ box, onSet }: { box: string; onSet(): void }) {
     <>
       <MenuSeparator />
       <MenuItem onClick={onSet}>
-        <PinIcon />
+        <PinIcon size={16} />
         Make {box} this project's default box
       </MenuItem>
     </>
@@ -724,10 +736,10 @@ export function TargetsPicker({
   const label = chosen.length === 0 ? "Pick agents" : chosen.length === 1 ? sessionName(chosen[0].session, { sessions: boxes[chosen[0].box]?.sessions }) : `${chosen.length} agents`;
   return (
     <Menu>
-      <span className={[sx(paint.s32), !chosen.length && sx(paint.s33)].filter(Boolean).join(" ")}><MenuTrigger render={<Button fill size="sm" variant="ghost" aria-label={`Send to: ${label}`} />}>
-        {chosen.length === 1 ? <AgentIcon agent={chosen[0].session.agent} /> : <UsersIcon />}
+      <span className={[sx(paint.pickerFrame, paint.s32), !chosen.length && sx(paint.s33)].filter(Boolean).join(" ")}><MenuTrigger render={<Button fill size="sm" variant="ghost" aria-label={`Send to: ${label}`} />}>
+        {chosen.length === 1 ? <AgentIcon agent={chosen[0].session.agent} /> : <UsersIcon size={16} />}
         <span data-slot="picker-label" className={sx(paint.s34)}>{label}</span>
-        <ChevronsUpDownIcon className={sx(paint.s35)} />
+        <ChevronsUpDownIcon size={12} className={sx(paint.s35)} />
       </MenuTrigger></span>
       <MenuPopup align="start" width={menuWidths.w80}>
         <MenuCheckboxItem checked={onlyFree} onCheckedChange={onOnlyFree}>
@@ -780,7 +792,7 @@ export function SavedPrompts({ onPick }: { onPick(id: string, body: string): voi
     <Menu>
       <Tip label="Start from a saved prompt">
         <MenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Saved prompts" muted />}>
-          <BookMarkedIcon />
+          <BookMarkedIcon size={16} />
         </MenuTrigger>
       </Tip>
       <MenuPopup align="end" width={menuWidths.fixed72}>

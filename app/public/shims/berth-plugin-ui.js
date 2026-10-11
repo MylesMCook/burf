@@ -3,7 +3,8 @@ const ui = globalThis.__berth.ui;
 export default ui;
 export const {
   Badge, Button, Card, CardHeader, CardTitle, CardDescription, CardPanel, CardFooter,
-  Empty, EmptyHeader, EmptyTitle, EmptyDescription, Input, Kbd, ScrollArea, Separator,
+  Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia,
+  Collapsible, CollapsiblePanel, CollapsibleTrigger, Input, Kbd, ScrollArea, Separator,
   Spinner, Switch, Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
   Tooltip, TooltipTrigger, TooltipPopup, Icon, cn, ViewHeader, PluginPage,
   Frame, FramePanel, FrameHeader, FrameTitle, FrameDescription, FrameFooter, Tabs, TabsList, TabsTab, TabsPanel, Textarea, AlertDialog, AlertDialogTrigger, AlertDialogPopup, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogClose, ToggleGroup, ToggleGroupItem, Meter, MeterLabel, MeterTrack, MeterIndicator, MeterValue, Alert, AlertTitle, AlertDescription, Skeleton, Menu, MenuTrigger, MenuPopup, MenuItem, MenuGroup, MenuGroupLabel, MenuSeparator,

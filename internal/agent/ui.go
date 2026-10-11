@@ -36,7 +36,7 @@ const DefaultUIPort = 1378
 const UITokenFile = "ui-token"
 
 // uiOrigins are the pages allowed to call the UI API from a browser engine:
-// the Tauri webview on macOS and Windows, and Vite while developing.
+// native webviews on macOS and Windows, and Vite while developing.
 var uiOrigins = map[string]bool{
 	"tauri://localhost":       true,
 	"http://tauri.localhost":  true,
@@ -48,7 +48,7 @@ var uiOrigins = map[string]bool{
 
 // devOrigin is Vite on the ports the app's developers use side by side.
 // The token, not the origin, is what keeps other pages out.
-var devOrigin = regexp.MustCompile(`^http://localhost:14[23][0-9]$`)
+var devOrigin = regexp.MustCompile(`^(?:http://(?:localhost|wails\.localhost)|wails://localhost):14[23][0-9]$`)
 
 // UIToken returns the app's token, creating it on first use.
 func UIToken(dir string) (string, error) {

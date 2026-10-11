@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { ArrowUpIcon, ChevronDownIcon, FolderIcon, GitBranchIcon, SendIcon, ServerIcon, ShieldAlertIcon, SlidersHorizontalIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { Composer, ComposerActions, ComposerBar, ComposerInput, ComposerSend, ComposerToolbar } from "@/components/assistant-ui/elements/composer";
 import { AgentIcon, StatusDot } from "@/components/agent-glyph";
 import { Scene } from "@/components/art/scenes";
 import { AttemptsOptions, type AttemptValues, SendOptions, type SendValues, WorktreeOptions, type WorktreeValues } from "@/components/conversation/composer-options";
@@ -16,7 +17,7 @@ import { ErrorText, toastError } from "@/components/error-note";
 import { Tip } from "@/components/tip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Frame, FrameFooter, FramePanel } from "@/components/ui/frame";
+import { Frame, FramePanel } from "@/components/ui/frame";
 import { Input } from "@/components/ui/input";
 import { MenuItem, MenuSeparator } from "@/components/ui/menu";
 import { Kbd } from "@/components/ui/kbd";
@@ -25,7 +26,7 @@ import { copyText } from "@/lib/clipboard";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
 import { resolveAgentChoice } from "@/lib/agent-choice";
 import { agentPresets } from "@/lib/actions";
-import type { Worktree } from "@/lib/api";
+import { ApiError, type Worktree } from "@/lib/api";
 import { type AttachTarget, withAttachments } from "@/lib/attachments";
 import { type AgentPick, type ComposerDraft, openComposer } from "@/lib/composer";
 import { agentLabel, agentOf, sessionName, sessionState } from "@/lib/derive";
@@ -35,7 +36,7 @@ import { handoffPrompt, reviewPrompt } from "@/lib/orchestrate";
 import { loadProjects, projectActions, useProjects } from "@/lib/project-groups";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
-import { BASE_PERMISSIONS, chatPermissions, localAgentName, localApi, useLocalComputer, type LocalComputer, type LocalConversation, type LocalSession, savedChatPermission, saveChatPermission } from "@/lib/local-computer";
+import { BASE_PERMISSIONS, chatPermissions, localAgentName, localApi, useLocalComputerLookup, type LocalComputer, type LocalConversation, type LocalSession, savedChatPermission, saveChatPermission } from "@/lib/local-computer";
 import { errorMessage } from "@/lib/format";
 import { folderName, localFolders } from "@/lib/local-folders";
 import { hasChatOptions, hasFullAccess, hasRemoteChat, useChatModels } from "@/lib/remote-chat";
@@ -47,6 +48,10 @@ import { load, save } from "@/lib/storage";
 import { NONE, useStore } from "@/lib/store";
 import { fill as fillTemplate, templateVariables } from "@/lib/templates";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
+import { localChatAccountScope } from "@/lib/local-chat-scope";
+import { changeLocalChatDraftChecked } from "@/lib/workspaces";
+import { joinDraft } from "@/lib/chat-quote";
+import { settleLocalChatDraft, type LocalChatDraft, type LocalChatScope } from "@/lib/local-chat-draft";
 
 const paint = stylex.create({
   s0: {
@@ -58,9 +63,10 @@ const paint = stylex.create({
     "minWidth": "0px",
     "alignItems": "center",
     "gap": "4px",
-    "paddingLeft": "4px",
-    "paddingRight": "4px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
     "paddingTop": "4px",
+    "paddingBottom": "8px",
   },
   s2: {
     "display": "flex",
@@ -95,8 +101,8 @@ const paint = stylex.create({
     "whiteSpace": "nowrap",
   },
   s4: {
-    "width": "14px",
-    "height": "14px",
+    "width": "12px",
+    "height": "12px",
     "flexShrink": 0,
     "opacity": 0.72,
     "transitionProperty": "transform",
@@ -214,10 +220,10 @@ const paint = stylex.create({
     "minWidth": "0px",
     "alignItems": "center",
     "gap": "4px",
-    "paddingLeft": "6px",
-    "paddingRight": "6px",
+    "paddingLeft": "8px",
+    "paddingRight": "8px",
     "paddingTop": "2px",
-    "paddingBottom": "2px",
+    "paddingBottom": "8px",
   },
   s22: {
     "display": "flex",
@@ -251,8 +257,8 @@ const paint = stylex.create({
     "overflowWrap": "anywhere",
   },
   s24: {
-    "width": "14px",
-    "height": "14px",
+    "width": "12px",
+    "height": "12px",
     "flexShrink": 0,
     "opacity": 0.72,
     "transitionProperty": "transform",
@@ -329,8 +335,8 @@ const paint = stylex.create({
     "lineHeight": "16px",
   },
   s37: {
-    "width": "14px",
-    "height": "14px",
+    "width": "16px",
+    "height": "16px",
     "flexShrink": 0,
   },
   s38: {
@@ -440,26 +446,6 @@ const paint = stylex.create({
     "paddingLeft": "8px",
     "paddingRight": "8px",
   },
-  s56: {
-    "fieldSizing": "content",
-    "display": "block",
-    "maxHeight": "200px",
-    "minHeight": "84px",
-    "width": "100%",
-    "resize": "none",
-    "borderRadius": "inherit",
-    "backgroundColor": "transparent",
-    "paddingLeft": "16px",
-    "paddingRight": "16px",
-    "paddingTop": "14px",
-    "paddingBottom": "14px",
-    "fontSize": "14px",
-    "lineHeight": "22px",
-    "outline": "none",
-    "color": {
-      "::placeholder": "var(--muted-foreground)",
-    },
-  },
   s57: {
     "marginTop": "calc(4px * -1)",
     "overflow": "hidden",
@@ -567,13 +553,30 @@ const paint = stylex.create({
   shell: {
     width: "100%",
     minWidth: 0,
-    ":not(#\\#) > [data-slot=frame]": {
-      borderRadius: "var(--radius-2xl)",
-      boxShadow: "none",
-    },
-    ":not(#\\#) > [data-slot=frame]:has(textarea:focus-visible)": {
-      borderColor: "var(--ring)",
-    },
+  },
+  composerOptions: {
+    display: "flex",
+    minWidth: 0,
+    flexDirection: "column",
+    gap: 16,
+    maxHeight: "min(46vh, 30rem)",
+    overflowY: "auto",
+    borderTopWidth: 1,
+    borderTopStyle: "solid",
+    borderTopColor: "var(--border)",
+    padding: 14,
+  },
+  fixedTarget: { display: "inline-flex", minWidth: 0, maxWidth: "min(240px, 100%)" },
+  composerToolbar: {
+    minWidth: 0,
+    gap: 2,
+    borderTopWidth: 1,
+    borderTopStyle: "solid",
+    borderTopColor: "var(--border)",
+    paddingTop: 8,
+    paddingRight: 8,
+    paddingBottom: 8,
+    paddingLeft: 8,
   },
 });
 function sx(...parts: readonly (false | null | undefined | object)[]): string {
@@ -634,7 +637,8 @@ export function defaultCheck(box: string, loc: string): string {
 
 export function TaskComposer(props: TaskComposerProps) {
   const draft = props.draft ?? EMPTY;
-  const detectedLocal = useLocalComputer(!props.localComputer && !props.fixed && !props.to && !draft.from);
+  const lookup = useLocalComputerLookup(!props.localComputer && !props.fixed && !props.to && !draft.from);
+  const detectedLocal = lookup.state === "ready" ? lookup.local : undefined;
   const local = props.localComputer ?? detectedLocal;
   const [place, setPlace] = useState(draft.place);
   const [mode, setMode] = useState<"start" | "send">(draft.mode ?? "start");
@@ -650,8 +654,12 @@ export function TaskComposer(props: TaskComposerProps) {
   };
   if (props.to) return <ToBody {...props} to={props.to} />;
   const tabs = !props.fixed && !draft.from ? <ModeTabs mode={mode} onMode={switchMode} /> : null;
-  if (mode === "start" && local?.supported && place?.kind === "local") {
-    return <LocalStartBody {...props} draft={draft} text={text} setText={setText} tabs={tabs} local={local} onPlace={setPlace} />;
+  if (mode === "start" && place?.kind === "local") {
+    if (local?.supported) return <LocalStartBody {...props} draft={draft} text={text} setText={setText} tabs={tabs} local={local} onPlace={setPlace} />;
+    return <Frame><FramePanel>
+      {lookup.state === "failed" ? <><p role="alert">Could not check This computer: {lookup.error}</p><Button size="sm" variant="outline" onClick={lookup.retry}>Retry This computer</Button></>
+        : <p role="status">{local ? "Local chat is unavailable on This computer. Close this dialog and check Agents settings." : "Checking This computer..."}</p>}
+    </FramePanel></Frame>;
   }
   const startDraft = place?.kind === "box" ? { ...draft, box: place.box } : draft;
   return mode === "send" ? <SendBody {...props} draft={draft} text={text} setText={setText} tabs={tabs} /> : <StartBody key={place?.kind === "box" ? place.box : "remote"} {...props} draft={startDraft} text={text} setText={setText} tabs={tabs} local={local?.supported ? local : undefined} onLocal={() => setPlace({ kind: "local" })} />;
@@ -677,6 +685,8 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
   const [cwd, setCwd] = useState(local.home);
   const folderTouched = useRef(false);
   const [typingFolder, setTypingFolder] = useState(false);
+  const folderInput = useRef<HTMLInputElement>(null);
+  const folderFieldId = useId();
   const [agentChoice, setAgent] = useState<string>(draft.agents?.[0]?.agent ?? "");
   const available = local.agents.filter((a) => a.available && (a.can_chat || a.can_terminal !== false));
   const agent = available.find((a) => a.id === agentChoice) ?? available.find((a) => a.id === "codex" && a.can_chat) ?? available[0];
@@ -687,6 +697,8 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
   const [error, setError] = useState("");
   const [started, setStarted] = useState<LocalSession>();
   const startedSession = useRef<LocalSession | undefined>(undefined);
+  const optionsDraft = useRef(false);
+  const firstPrompt = useRef<{ scope: LocalChatScope; id: string; text: string; outcome: "pending" | "refused" | "sent"; error?: string } | undefined>(undefined);
   const launch = useRef<AbortController | null>(null);
   const inFlight = useRef(false);
   const expanded = usePrefs((s) => s.taskComposerExpanded) || !agent;
@@ -706,12 +718,38 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
   }, [folders, local.home]);
   useEffect(() => () => launch.current?.abort(), [client]);
   const chooseFolder = (path: string) => { folderTouched.current = true; setCwd(path); };
+  const editFolder = () => { setTypingFolder(true); requestAnimationFrame(() => folderInput.current?.focus()); };
+  const persistFirstPrompt = (recover = false) => {
+    const attempt = firstPrompt.current;
+    if (!attempt) return;
+    changeLocalChatDraftChecked(attempt.scope, (current) => {
+      if (current.pending?.id !== attempt.id && attempt.outcome === "pending") return current;
+      const next: LocalChatDraft = attempt.outcome === "pending"
+        ? { ...current, held: true, sendError: attempt.error }
+        : { ...settleLocalChatDraft(current, attempt.id, attempt.outcome === "sent"), ...(attempt.outcome === "refused" ? { held: true, sendError: attempt.error } : {}) };
+      return recover && text !== attempt.text ? { ...next, text, held: true } : next;
+    });
+  };
   const openSession = (session: LocalSession) => {
+    if (firstPrompt.current) {
+      try { persistFirstPrompt(true); }
+      catch (error) { setError(errorMessage(error)); return; }
+      firstPrompt.current = undefined;
+      setText("");
+    } else if (optionsDraft.current) {
+      const scope = { ...session, account: localChatAccountScope(client, local.client_scope) };
+      // Persist before leaving task entry. A failed save retains its draft and
+      // started-session latch; recovery reopens this chat without relaunching.
+      try { changeLocalChatDraftChecked(scope, (current) => ({ ...current, text: joinDraft(current.text, text), held: true })); }
+      catch (error) { setError(errorMessage(error)); return; }
+      optionsDraft.current = false;
+      setText("");
+    }
     useStore.getState().setView({ kind: "local", session });
     onDone?.({ mode: "start" });
   };
   const blocker = started ? "Open the agent already started" : !agent ? "No installed agent available" : !cwd.trim() ? "Choose a folder" : !foldersReady ? "Reading recent folders" : !structured && /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]/.test(text) ? "Remove control characters from the prompt" : undefined;
-  const submit = async () => {
+  const submit = async (configure = false) => {
     if (blocker || inFlight.current || startedSession.current || !agent) return;
     inFlight.current = true;
     const controller = new AbortController();
@@ -724,9 +762,31 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
       if (controller.signal.aborted) return;
       startedSession.current = session;
       setStarted(session);
+      optionsDraft.current = configure && structured;
+      if (optionsDraft.current) { openSession(session); return; }
       let kept = false;
       if (text.trim()) {
-        if (structured) await localApi.message(client, session.id, text);
+        if (structured) {
+          const scope = { ...session, account: localChatAccountScope(client, local.client_scope) };
+          const id = crypto.randomUUID();
+          // The first message follows the shared chat's checked journal contract.
+          // A failed pre-send save leaves recovery responsible for the draft.
+          optionsDraft.current = true;
+          changeLocalChatDraftChecked(scope, (current) => ({ ...current, text: "", sendError: undefined, pending: { id, text, options: {} } }));
+          optionsDraft.current = false;
+          const attempt: NonNullable<typeof firstPrompt.current> = { scope, id, text, outcome: "pending" };
+          firstPrompt.current = attempt;
+          try { await localApi.message(client, session.id, text); }
+          catch (error) {
+            if (error instanceof ApiError && error.status >= 400 && error.status < 500) attempt.outcome = "refused";
+            attempt.error = errorMessage(error);
+            persistFirstPrompt();
+            throw error;
+          }
+          attempt.outcome = "sent";
+          persistFirstPrompt();
+          firstPrompt.current = undefined;
+        }
         // Nothing is typed into a terminal agent for the person: what its
         // screen shows as it starts is not known here (a first-run question
         // would take a Return as its answer). The prompt goes with them on
@@ -744,14 +804,14 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
       if (!controller.signal.aborted) setBusy(false);
     }
   };
-  const summary = `${folderName(cwd) || "Choose folder"} on ${local.name} · this folder · ${agent ? localAgentName(agent.id) : "Choose agent"}`;
+  const summary = `Project: ${folderName(cwd) || "Choose folder"} on ${local.name} · ${agent ? localAgentName(agent.id) : "Choose agent"}`;
   const folderOptions = [...new Set([...folders, cwd].filter(Boolean))].map((path) => ({ value: path, label: folderName(path), detail: path }));
   return <fieldset disabled={busy} className={sx(paint.s0)}>
-    <Shell head={tabs}
+    <Shell head={tabs} footerHidden={!expanded}
       editor={<Editor value={text} onChange={setText} onSubmit={() => void submit()} autoFocus={autoFocus} label="What should your agents work on?" placeholder={placeholder ?? "Describe a task, a bug to fix, an idea to try…"} />}
       summary={<div className={sx(paint.s1)}>
-        <button type="button" data-testid="task-composer-summary" aria-expanded={expanded} aria-controls={pickersId} onClick={() => setPrefs({ taskComposerExpanded: !expanded })} className={sx(paint.s2)}>
-          <span className={sx(paint.s3)}>{summary}</span><ChevronDownIcon aria-hidden className={[sx(paint.s4), expanded && sx(paint.s5)].filter(Boolean).join(" ")} />
+        <button type="button" data-testid="task-composer-summary" aria-label={`${expanded ? "Task options: " : ""}${summary}. Folder: ${cwd || "Choose folder"}`} aria-expanded={expanded} aria-controls={pickersId} onClick={() => setPrefs({ taskComposerExpanded: !expanded })} className={sx(paint.s2)}>
+          <span className={sx(paint.s3)}>{expanded ? "Task options" : summary}</span><ChevronDownIcon size={12} aria-hidden className={[sx(paint.s4), expanded && sx(paint.s5)].filter(Boolean).join(" ")} />
         </button>
         {!expanded && <span className={sx(paint.s6)}><SendButton label="Start" dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
       </div>}
@@ -762,12 +822,13 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
         {started && !busy && <Button size="sm" variant="outline" onClick={() => openSession(started)}>Open started {started.mode === "chat" ? "chat" : "terminal"}</Button>}
       </>}
       footer={<div id={pickersId} hidden={!expanded} className={sx(paint.s10)}>
-        {typingFolder && <label className={sx(paint.s11)}>Folder path<Input aria-label="Project directory" value={cwd} onChange={(e) => chooseFolder(e.target.value)} placeholder="Full folder path" /></label>}
+        {typingFolder && <label className={sx(paint.s11)}>Folder path<Input ref={folderInput} id={folderFieldId} aria-label="Project directory" value={cwd} onChange={(e) => chooseFolder(e.target.value)} placeholder="Full folder path" /></label>}
         <div data-slot="launch-toolbar" className={sx(paint.s12)}>
-          <Pick label="Project" icon={<FolderIcon />} value={cwd} options={folderOptions} onPick={chooseFolder} footer={<><MenuSeparator /><MenuItem onClick={() => setTypingFolder(true)}>Type folder path…</MenuItem></>} />
-          <Pick label="Place" icon={<ServerIcon />} value="local" options={[{ value: "local", label: `${local.name} · This computer` }, ...boxes.filter((b) => b.state === "online").map((b) => ({ value: `box:${b.name}`, label: b.name }))]} onPick={(value) => { if (!busy && value !== "local") onPlace({ kind: "box", box: value.slice(4) }); }} />
-          <span className={sx(paint.s13)}>this folder</span>
+          <Pick label="Place" icon={<ServerIcon size={16} />} value="local" options={[{ value: "local", label: `${local.name} · This computer` }, ...boxes.filter((b) => b.state === "online").map((b) => ({ value: `box:${b.name}`, label: b.name }))]} onPick={(value) => { if (!busy && value !== "local") onPlace({ kind: "box", box: value.slice(4) }); }} />
+          <Pick label="Project" icon={<FolderIcon size={16} />} value={cwd} options={folderOptions} onPick={chooseFolder} footer={<><MenuSeparator /><MenuItem onClick={editFolder}>Type folder path…</MenuItem></>} />
+          <Button size="sm" variant="ghost" aria-label="Change folder" aria-expanded={typingFolder} aria-controls={typingFolder ? folderFieldId : undefined} onClick={editFolder}>Change folder</Button>
           <AgentsPicker presets={presets} sel={sel} copies={1} single onChange={(value) => { if (!busy) setAgent(Object.keys(value)[0] ?? ""); }} onCopies={() => {}} />
+          {structured && <Tip label="Open a new chat to choose its model, reasoning and permissions. Your prompt stays a draft until you send it."><span><Button size="sm" variant="ghost" disabled={!!blocker || busy} onClick={() => void submit(true)}>Chat options</Button></span></Tip>}
           <span className={sx(paint.s14)}><SendButton label="Start" dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>
         </div>
       </div>}
@@ -1036,7 +1097,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   // A structured chat on a box that takes options: the account's own models, and a permission mode.
   const chatControls = structuredChat && hasChatOptions(box);
   const chatModels = useChatModels(box, locName, chatControls, reqAgent);
-  const [chosenPermission, setPermission] = useState<keyof typeof chatPermissions>(() => savedChatPermission() ?? "strict");
+  const [chosenPermission, setPermission] = useState<keyof typeof chatPermissions>(() => draft.permission ?? savedChatPermission() ?? "strict");
   // Full access is offered only where the box takes it.
   const permission = chosenPermission === "full-access" && !hasFullAccess(box) ? "strict" : chosenPermission;
   const pickerPresets: PickerPreset[] = !chatModels?.length
@@ -1162,7 +1223,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
     if (!multi) return undefined;
     const stats = boxesData[b]?.stats;
     const memory = stats?.memory.total ? Math.round((stats.memory.used / stats.memory.total) * 100) : undefined;
-    const working = stats?.agents.filter((a) => a.state === "running").length ?? 0;
+    const working = stats?.agents?.filter((a) => a.state === "running").length ?? 0;
     return [b === project?.defaultBox && "default", memory !== undefined && `${memory}% memory`, working > 0 && `${working} working`].filter(Boolean).join(" · ") || undefined;
   };
 
@@ -1239,6 +1300,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   return (
     <Shell
       drop={files}
+      footerHidden={collapsible && !expanded}
       head={
         (tabs || followed || ((!collapsible || expanded) && hasOptions)) && (
           <>
@@ -1284,14 +1346,15 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
         <button
           type="button"
           data-testid="task-composer-summary"
+          aria-label={expanded ? `Task options: ${summary}` : undefined}
           aria-expanded={expanded}
           aria-controls={pickersId}
           onClick={() => setPrefs({ taskComposerExpanded: !expanded })}
           className={sx(paint.s22)}
         >
-          <span className={sx(paint.s23)}>{summary}</span>
+          <span className={sx(paint.s23)}>{expanded ? "Task options" : summary}</span>
           {/* Says the line opens: it reads as plain words otherwise. */}
-          <ChevronDownIcon aria-hidden className={[sx(paint.s24), expanded && sx(paint.s25)].filter(Boolean).join(" ")} />
+          <ChevronDownIcon size={12} aria-hidden className={[sx(paint.s24), expanded && sx(paint.s25)].filter(Boolean).join(" ")} />
         </button>
         {!expanded && <span className={sx(paint.s26)}><SendButton label={action} labelled={!dialog} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
       </div>}
@@ -1303,7 +1366,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           {box && !structuredChat && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className={sx(paint.s28)} />}
           {pendingTrust?.wants && fresh && (
             <div className={sx(paint.s29)}><Alert variant="warning">
-              <ShieldAlertIcon />
+              <ShieldAlertIcon size={16} />
               <AlertTitle>This repository wants to run commands on {box}</AlertTitle>
               <AlertDescription>
                 <p>
@@ -1340,16 +1403,21 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           <div data-slot="launch-toolbar" className={sx(paint.s34)}>
           <div data-slot="launch-place" className={sx(paint.s35)}>
           {fixed && (
-            <span className={sx(paint.s36)}>
-              <GitBranchIcon className={sx(paint.s37)} />
-              <span className={sx(paint.s38)}>{attempts ? "Each attempt in a new worktree from this branch" : `In ${fixed.name}`}</span>
-            </span>
+            <Tip label={`${attempts ? "Each attempt in a new worktree from this branch. " : ""}Choose the project for this new task. Current destination: ${fixed.box} · ${fixed.at}.`}>
+              <span className={sx(paint.fixedTarget)}><Button size="sm" variant="ghost" truncate disabled={busy}
+                aria-label={`${attempts ? "Each attempt in a new worktree from this branch. " : ""}Change task project: ${fixed.name}`}
+                onClick={() => openComposer({ ...draft, mode: "start", place: { kind: "box", box: fixed.box }, box: fixed.box, location: fixed.location, where: "main", text, agents: picks, noAgent, attempts: comparison || undefined, permission })}>
+                <GitBranchIcon data-icon="inline-start" />
+                <span data-slot="picker-label" className={sx(paint.s38)}>{attempts ? "Each attempt in a new worktree from this branch" : `In ${fixed.name}`}</span>
+                <ChevronDownIcon data-icon="inline-end" />
+              </Button></span>
+            </Tip>
           )}
           {!pinned && (
             <>
               <Pick
                 label="Project"
-                icon={<FolderIcon />}
+                icon={<FolderIcon size={16} />}
                 value={project?.id ?? ""}
                 options={projects.map((p) => ({ value: p.id, label: p.name, detail: p.places.length > 1 ? `${p.places.length} boxes` : p.places[0].box.name }))}
                 onPick={(id) => {
@@ -1377,7 +1445,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
               />}
             </>
           )}
-          {(!pinned || from?.kind === "handoff") && !attempts && <Pick label="Where" icon={<GitBranchIcon />} value={where} options={whereOptions} onPick={(v) => setWhere(v as "new" | "main" | "here")} />}
+          {(!pinned || from?.kind === "handoff") && !attempts && <Pick label="Where" icon={<GitBranchIcon size={16} />} value={where} options={whereOptions} onPick={(v) => setWhere(v as "new" | "main" | "here")} />}
           </div>
           <div data-slot="launch-agent" className={sx(paint.s40)}>
             <AgentsPicker
@@ -1626,9 +1694,9 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
             }
             onAll={(on) => setSelected(new Set(on ? shown.map(entryKey) : []))}
           />
-          <div className={sx(paint.s50)}>
-            <SendButton label={action} icon={<SendIcon />} dialog={dialog} blocker={blocker} onClick={submit} />
-          </div>
+          <ComposerActions className={sx(paint.s50)}>
+            <SendButton label={action} icon={<SendIcon size={16} />} dialog={dialog} blocker={blocker} onClick={submit} />
+          </ComposerActions>
         </>
       }
     />
@@ -1691,9 +1759,9 @@ function ToBody({ to, onSend, onFail, autoFocus }: TaskComposerProps & { to: Non
             <AgentIcon agent={to.agent} className={sx(paint.s53)} />
             {who} · {AGENT_WORDS.idle.lower}, waiting for a first task
           </span>
-          <div className={sx(paint.s54)}>
+          <ComposerActions className={sx(paint.s54)}>
             <SendButton label="Send" blocker={att.blocker ?? (ready ? undefined : "Write the first prompt")} busy={busy} onClick={() => void go()} />
-          </div>
+          </ComposerActions>
         </>
       }
     />
@@ -1704,18 +1772,18 @@ function ToBody({ to, onSend, onFail, autoFocus }: TaskComposerProps & { to: Non
 
 // drop: the composer's attachments, which a file dropped anywhere on the
 // frame joins; while one is held over it, the frame is outlined.
-function Shell({ head, editor, summary, options, notice, footer, drop }: { head?: React.ReactNode; editor: React.ReactNode; summary?: React.ReactNode; options?: React.ReactNode; notice?: React.ReactNode; footer: React.ReactNode; drop?: Attachments }) {
+function Shell({ head, editor, summary, options, notice, footer, footerHidden = false, drop }: { head?: React.ReactNode; editor: React.ReactNode; summary?: React.ReactNode; options?: React.ReactNode; notice?: React.ReactNode; footer: React.ReactNode; footerHidden?: boolean; drop?: Attachments }) {
   return (
-    <div className={sx(paint.shell)}>
-    <Frame variant="card" data-testid="task-composer" data-dragging={drop?.dragging || undefined} {...drop?.dropProps} width="full" dragging={!!drop?.dragging}>
-      {head && <div className={sx(paint.s55)}>{head}</div>}
-      <FramePanel pad="none">{editor}</FramePanel>
-      {summary}
-      {options && <FramePanel pad="compact" stack gap={4} scroll>{options}</FramePanel>}
-      {notice}
-      <FrameFooter bar>{footer}</FrameFooter>
-    </Frame>
-    </div>
+    <Composer appearance="task" className={sx(paint.shell)}>
+      <ComposerBar appearance="task" data-testid="task-composer" data-dragging={drop?.dragging || undefined} {...drop?.dropProps} dragActive={!!drop?.dragging}>
+        {head && <div className={sx(paint.s55)}>{head}</div>}
+        {editor}
+        {summary}
+        {options && <div className={sx(paint.composerOptions)}>{options}</div>}
+        {notice}
+        <ComposerToolbar hidden={footerHidden} className={sx(paint.composerToolbar)}>{footer}</ComposerToolbar>
+      </ComposerBar>
+    </Composer>
   );
 }
 
@@ -1723,7 +1791,9 @@ function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, p
   return (
     <>
       {above}
-      <textarea
+      <ComposerInput
+        multiline
+        onSubmit={onSubmit}
         onPaste={onPaste}
         // biome-ignore lint/a11y/noAutofocus: the composer is where typing goes
         autoFocus={autoFocus}
@@ -1731,15 +1801,10 @@ function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, p
         onChange={(e) => onChange(e.target.value)}
         onSelect={menu?.onSelect}
         onKeyDown={(e) => {
-          if (menu?.onKeyDown(e)) return;
-          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            onSubmit();
-          }
+          if (menu?.onKeyDown(e)) e.preventDefault();
         }}
         aria-label={label}
         placeholder={placeholder}
-        className={sx(paint.s56)}
       />
       {hint && <p className={sx(paint.s57)}>{hint}</p>}
       {menu?.chip}
@@ -1759,7 +1824,7 @@ function SendButton({ label, icon, dialog, labelled, blocker, busy, onClick }: {
       <Tip label={blocker}>
         {/* A disabled button takes no pointer: the wrapper keeps the tip. */}
         <span className={sx(paint.s59)}>
-          <Button size="sm" disabled={!!blocker} loading={busy} onClick={onClick}>
+          <Button render={<ComposerSend appearance="task" streaming={false} idle={!!blocker} />} data-slot="composer-send" size="sm" disabled={!!blocker} loading={busy} onClick={onClick}>
             {icon}
             {label}
             <span className={sx(paint.s60)}><Kbd>⏎</Kbd></span>
@@ -1771,8 +1836,8 @@ function SendButton({ label, icon, dialog, labelled, blocker, busy, onClick }: {
   return (
     <Tip label={tip}>
       <span className={sx(paint.s61)}>
-        <Button size={labelled ? "sm" : "icon-sm"} aria-label={blocker ? `${label}: ${blocker}` : label} disabled={!!blocker} loading={busy} onClick={onClick}>
-          <ArrowUpIcon />
+        <Button render={<ComposerSend appearance="task" streaming={false} idle={!!blocker} />} data-slot="composer-send" size={labelled ? "sm" : "icon-sm"} aria-label={blocker ? `${label}: ${blocker}` : label} disabled={!!blocker} loading={busy} onClick={onClick}>
+          <ArrowUpIcon size={16} />
           {labelled && label}
         </Button>
       </span>
@@ -1784,7 +1849,7 @@ function OptionsToggle({ open, onOpen }: { open: boolean; onOpen(open: boolean):
   return (
     <Tip label={open ? "Hide options" : "Options"}>
       <span className={[sx(paint.s62), open && sx(paint.s63)].filter(Boolean).join(" ")}><Button size="icon-sm" variant="ghost" aria-label="Options" aria-pressed={open}  onClick={() => onOpen(!open)}>
-        <SlidersHorizontalIcon />
+        <SlidersHorizontalIcon size={16} />
       </Button></span>
     </Tip>
   );
@@ -1844,7 +1909,7 @@ function NoProjects({ tabs }: { tabs?: React.ReactNode }) {
         <p className={sx(paint.s71)}>{copy.title}</p>
         <p className={[sx(paint.s72), sx(paint.q74)].filter(Boolean).join(" ")}>{copy.text}</p>
         <span className={sx(paint.s73)}><Button size="sm"  onClick={go}>
-          <ServerIcon />
+          <ServerIcon size={16} />
           {state === "no-boxes" ? "Add a box" : state === "offline" ? "Open Boxes" : "Add a project"}
         </Button></span>
       </FramePanel>

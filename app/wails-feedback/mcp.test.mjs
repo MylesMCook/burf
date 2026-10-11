@@ -2,15 +2,54 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, realpath, rm, utimes, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { feedbackFetch } from "./mcp.mjs";
+import { feedbackFetch, runtimeFeedbackDirectory } from "./mcp.mjs";
 import { codexCommand, connectCodex } from "./connect-codex.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const app = process.env.WAILS_FEEDBACK_TEST_APP ?? resolve(here, "..");
+
+test("regular feedback discovery matches the native state layout on Mac and Windows", () => {
+  assert.equal(runtimeFeedbackDirectory("darwin", {}, "/Users/test"), "/Users/test/Library/Application Support/berth/client/native-feedback");
+  assert.equal(runtimeFeedbackDirectory("win32", { APPDATA: "C:\\Users\\test\\AppData\\Roaming" }, "C:\\Users\\test"), "C:\\Users\\test\\AppData\\Roaming\\berth\\client\\native-feedback");
+  assert.equal(runtimeFeedbackDirectory("win32", { BERTH_HOME: "D:\\Synthetic\\berth" }, "C:\\Users\\test"), "D:\\Synthetic\\berth\\client\\native-feedback");
+  assert.throws(() => runtimeFeedbackDirectory("win32", { BERTH_HOME: "relative" }, "C:\\Users\\test"), /absolute/);
+});
+
+test("runtime discovery revokes disabled generations and rotates capability without replay", async () => {
+  const f = await fixture();
+  const runtime = join(f.root, "runtime");
+  await mkdir(runtime, { mode: 0o700 });
+  const attempts = [];
+  const fetch = feedbackFetch(join(f.root, "state"), "pnpm --dir app dev:feedback", async (url, options) => {
+    attempts.push({ url: url.href, token: options.headers.get("Authorization") });
+    return new Response("{}");
+  }, runtime);
+  const record = { version: 1, mode: "runtime", enabled: true, pid: process.pid, runID: "a".repeat(32), companionURL: "http://127.0.0.1:49002", token: "b".repeat(64) };
+  const write = (value) => writeFile(join(runtime, "session.json"), JSON.stringify(value), { mode: 0o600 });
+  try {
+    await write({ ...record, enabled: false, token: undefined, companionURL: undefined });
+    await assert.rejects(fetch("http://127.0.0.1:1/pending"), /off.*Settings > Developer/);
+    assert.equal(attempts.length, 0);
+    await write(record);
+    await fetch("http://127.0.0.1:1/pending");
+    assert.deepEqual(attempts[0], { url: "http://127.0.0.1:49002/pending", token: "Bearer " + record.token });
+    await assert.rejects(fetch("http://127.0.0.1:1/pending", { headers: { Origin: "http://wails.localhost" } }), /browser Origin/);
+    await write({ ...record, enabled: false });
+    await assert.rejects(fetch("http://127.0.0.1:1/pending"), /off/);
+    await write({ ...record, companionURL: "http://127.0.0.1:49003", token: "c".repeat(64), runID: "d".repeat(32) });
+    await fetch("http://127.0.0.1:1/pending");
+    assert.equal(attempts[1].url, "http://127.0.0.1:49003/pending");
+    assert.equal(attempts[1].token, "Bearer " + "c".repeat(64));
+    await write({ ...record, companionURL: "https://example.invalid" });
+    await assert.rejects(fetch("http://127.0.0.1:1/pending"), /Invalid private/);
+    assert.equal(attempts.length, 2);
+  } finally { await f.clean(); }
+});
 async function fixture() {
   const root = await mkdtemp(join(await realpath(tmpdir()), "feedback-mcp-"));
   await mkdir(join(root, "state", "run.lock"), { recursive: true });
@@ -23,6 +62,35 @@ async function fixture() {
   };
   return { root, planFile, setSession, clean: () => rm(root, { recursive: true, force: true }) };
 }
+
+test("a dead newer development run cannot hide enabled normal-app feedback", async () => {
+  const f = await fixture();
+  const runtime = join(f.root, "runtime");
+  await mkdir(runtime, { mode: 0o700 });
+  const record = { version: 1, mode: "runtime", enabled: true, pid: process.pid, runID: "a".repeat(32), companionURL: "http://127.0.0.1:49002", token: "b".repeat(64) };
+  let request;
+  const fetch = feedbackFetch(join(f.root, "state"), "pnpm --dir app dev:feedback", async (url, options) => {
+    request = { url: url.href, token: options.headers?.get("Authorization") };
+    return new Response("{}");
+  }, runtime);
+  try {
+    await writeFile(join(runtime, "session.json"), JSON.stringify(record), { mode: 0o600 });
+    const child = spawnSync(process.execPath, ["-e", ""], { timeout: 5000 });
+    assert.equal(child.status, 0);
+    assert.throws(() => process.kill(child.pid, 0), { code: "ESRCH" });
+    const dead = { pid: child.pid, runID: "c".repeat(32) };
+    await writeFile(join(f.root, "state", "run.lock", "owner.json"), JSON.stringify(dead));
+    await writeFile(join(f.root, "state", "session.json"), JSON.stringify({ ...dead, companionURL: "http://127.0.0.1:49003" }));
+    const newer = new Date(Date.now() + 2000);
+    await utimes(join(f.root, "state", "session.json"), newer, newer);
+    await fetch("http://127.0.0.1:1/pending");
+    assert.deepEqual(request, { url: "http://127.0.0.1:49002/pending", token: "Bearer " + record.token });
+    await f.setSession("http://127.0.0.1:49003", "c".repeat(32));
+    await utimes(join(f.root, "state", "session.json"), newer, newer);
+    await fetch("http://127.0.0.1:1/pending");
+    assert.deepEqual(request, { url: "http://127.0.0.1:49003/pending", token: undefined });
+  } finally { await f.clean(); }
+});
 
 test("one MCP client discovers tools offline and reads and resolves comments across companion restarts", async () => {
   const f = await fixture();
@@ -61,6 +129,7 @@ test("one MCP client discovers tools offline and reads and resolves comments acr
     const offline = await client.callTool({ name: "agentation_get_all_pending", arguments: {} });
     assert.equal(offline.isError, true);
     assert.match(offline.content[0].text, /not running.*dev:feedback/);
+    assert.match(offline.content[0].text, /Open Burf and enable it in Settings > Developer/);
     const first = await companion("before-restart");
     await f.setSession(first.url);
     assert.equal(data(await client.callTool({ name: "agentation_get_all_pending", arguments: {} })).annotations[0].id, "before-restart");

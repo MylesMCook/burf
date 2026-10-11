@@ -16,7 +16,7 @@ const paint = stylex.create({
     "paddingLeft": "4px",
     "paddingRight": "4px",
     "fontWeight": 500,
-    "fontSize": "11px",
+    "fontSize": "12px",
     "fontVariantNumeric": "tabular-nums",
   },
   s1: {
@@ -46,7 +46,8 @@ const paint = stylex.create({
     "textOverflow": "ellipsis",
     "whiteSpace": "nowrap",
     "fontWeight": 500,
-    "fontSize": "13px",
+    "fontSize": "14px",
+    "lineHeight": "20px",
   },
   s6: {
     "display": "inline-flex",

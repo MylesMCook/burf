@@ -52,6 +52,8 @@ export interface Prefs {
   // Update a box's berthd as soon as Burf ships a newer one
   // (lib/outdated.ts). Off: the status bar offers it instead.
   autoUpdateBoxes: boolean;
+  // Computer memory meters hidden in this window; all remain in the fleet dialog.
+  statusBarHiddenBoxes: string[];
   // The picture behind conversations and its effects (Settings ›
   // Appearance › Chat background); none by default.
   chatBackground: ChatBackground;
@@ -104,6 +106,7 @@ const DEFAULTS: Prefs = {
   labsChosen: false,
   zen: false,
   autoUpdateBoxes: false,
+  statusBarHiddenBoxes: [],
   chatBackground: DEFAULT_CHAT_BACKGROUND,
   chatWidth: "default",
   filesPanel: false,

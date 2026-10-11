@@ -16,6 +16,7 @@ import { savedChatMessages } from "@/lib/saved-chat";
 import { ViewHeader } from "@/views/view-header";
 import { LocalTerminal } from "@/views/local-terminal";
 import { LocalChat } from "@/views/local-chat";
+import { LocalHistoryChat } from "@/views/local-history-chat";
 
 const paint = stylex.create({
   s0: {
@@ -322,6 +323,8 @@ const paint = stylex.create({
     "color": "var(--destructive)",
   },
 
+  continuation: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8, paddingTop: 12, paddingBottom: 12 },
+
   s43: {
     containerType: "inline-size",
     containerName: "local",
@@ -448,7 +451,7 @@ export function LocalComputerView() {
       </aside>}
       <section className={[sx(paint.s30), !selection && !sidebarOpen && [sx(paint.s31), sx(paint.s46)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
         {selection && <div className={[sx(paint.s32), sx(paint.s47)].filter(Boolean).join(" ")}><Button size="sm" variant="ghost" onClick={() => useStore.getState().setView({ kind: "local" })}><ArrowLeftIcon />Conversations</Button></div>}
-        {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={conversations.find((c) => c.id === selection.conversation.id) ?? selection.conversation} canFork={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_fork} canContinueChat={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_continue_chat} onStart={(session, conversationID) => {
+        {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={conversations.find((c) => c.id === selection.conversation.id) ?? selection.conversation} canFork={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_fork} canTerminal={local?.agents.find((a) => a.id === selection.conversation.source)?.can_terminal} accountScope={local?.client_scope} canContinueChat={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_continue_chat} onStart={(session, conversationID) => {
           changeSession(session);
           const current = useStore.getState().view;
           if (current.kind === "local" && current.history?.id === conversationID) useStore.getState().setView({ kind: "local", session });
@@ -460,7 +463,7 @@ export function LocalComputerView() {
   </div>;
 }
 
-function LocalHistory({ client, conversation, canFork, canContinueChat, onStart }: { client: Client; conversation: LocalConversation; canFork: boolean; canContinueChat: boolean; onStart(session: LocalSession, conversationID: string): void }) {
+function LocalHistory({ client, conversation, canFork, canTerminal, canContinueChat, accountScope, onStart }: { client: Client; conversation: LocalConversation; canFork: boolean; canTerminal?: boolean; canContinueChat: boolean; accountScope?: string; onStart(session: LocalSession, conversationID: string): void }) {
   const [page, setPage] = useState<LocalHistoryPage>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -490,8 +493,9 @@ function LocalHistory({ client, conversation, canFork, canContinueChat, onStart 
   useEffect(() => () => launch.current?.abort(), [client, conversation.id]);
   const before = page?.start ?? page?.items[0]?.off;
   const usable = conversation.can_continue !== false;
-  const canContinue = canFork && usable;
-  const continueReason = usable ? undefined : conversation.continue_reason;
+  const canContinue = canFork && usable && (canContinueChat || canTerminal !== false);
+  const structured = canContinue && canContinueChat;
+  const continueReason = !canFork ? "Installed CLI does not support continuing a copy." : !usable ? conversation.continue_reason || "This conversation cannot be continued on this computer." : !canContinueChat && canTerminal === false ? "This computer cannot start a terminal continuation for this provider." : undefined;
   const messages = useMemo(() => savedChatMessages(page?.items ?? EMPTY), [page?.items]);
   const transport = useMemo<ChatTransport>(() => {
     const session = { id: conversation.id, agent: conversation.source, cwd: conversation.cwd, state: "idle" as const, started_at: conversation.updated_at };
@@ -504,10 +508,15 @@ function LocalHistory({ client, conversation, canFork, canContinueChat, onStart 
     };
   }, [conversation, messages, loading, page, before, load]);
   return <>
-    <div className={sx(paint.s34)}><Tip label={conversation.title || undefined} width="lg"><h2 className={sx(paint.s35)}>{conversation.title}</h2></Tip><span className={sx(paint.s36)}>Read-only</span></div>
+    <div className={sx(paint.s34)}><Tip label={conversation.title || undefined} width="lg"><h2 className={sx(paint.s35)}>{conversation.title}</h2></Tip><span className={sx(paint.s36)}>{structured ? "Saved history" : "Read-only"}</span></div>
     <div className={sx(paint.s37)}>
+      <Tip label="Refresh conversation"><Button size="icon-sm" variant="ghost" aria-label="Refresh conversation" disabled={loading} onClick={() => void load()}><RotateCwIcon className={sx(paint.s39)} /></Button></Tip>
+      {loading && <span role="status" className={sx(paint.s40)}>Loading conversation...</span>}
+    </div>
+    {error && <p role="alert" className={sx(paint.s41)}>{error}</p>}
+    {structured ? <LocalHistoryChat client={client} conversation={conversation} accountScope={accountScope} messages={messages} loading={loading && !page} hasEarlier={!!page?.more && before !== undefined} loadEarlier={async () => { if (!loading && before !== undefined) await load(before); }} onStart={onStart} /> : <Chat transport={transport} beforeComposer={<section aria-label="Continue this conversation" className={sx(paint.continuation)}>
       <Tip label={canFork ? `Continue as a new ${canContinueChat ? "chat" : "terminal"}; the original stays unchanged` : "Installed CLI does not support continuing a copy"}>
-        <Button size="sm" variant="outline" disabled={!canContinue || starting} aria-describedby={continueReason ? "local-continue-reason" : undefined} onClick={async () => {
+        <Button size="sm" variant="outline" disabled={!canContinue || starting} aria-describedby="local-continue-reason" onClick={async () => {
           if (!canContinue || startingRef.current) return;
           startingRef.current = true;
           const controller = new AbortController();
@@ -521,12 +530,8 @@ function LocalHistory({ client, conversation, canFork, canContinueChat, onStart 
           finally { startingRef.current = false; setStarting(false); }
         }}><GitForkIcon />{starting ? "Starting..." : "Continue in Burf"}</Button>
       </Tip>
-      {continueReason && <p id="local-continue-reason" role="status" className={sx(paint.s38)}>{continueReason}</p>}
-      <Tip label="Refresh conversation"><Button size="icon-sm" variant="ghost" aria-label="Refresh conversation" disabled={loading} onClick={() => void load()}><RotateCwIcon className={sx(paint.s39)} /></Button></Tip>
-      {loading && <span role="status" className={sx(paint.s40)}>Loading conversation...</span>}
-    </div>
-    {error && <p role="alert" className={sx(paint.s41)}>{error}</p>}
-    {startError && <p role="alert" className={sx(paint.s42)}>{startError}</p>}
-    <Chat transport={transport} />
+      <p id="local-continue-reason" role={continueReason ? "status" : undefined} className={sx(paint.s38)}>{continueReason || `Open an independent ${canContinueChat ? "chat with this history, then type your message" : "terminal with this history"}. The saved conversation stays unchanged.`}</p>
+      {startError && <p role="alert" className={sx(paint.s42)}>{startError}</p>}
+    </section>} />}
   </>;
 }

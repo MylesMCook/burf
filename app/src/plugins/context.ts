@@ -1,6 +1,9 @@
 import type { BerthApi, BerthPluginContext } from "@berth/plugin";
 import { createContext } from "react";
 
+import { openHomeTerminal } from "@/components/box-picker";
+import { openAddBox } from "@/views/onboarding/add-box-dialog";
+
 import { boxApi, type Client } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import * as orchestrate from "@/lib/orchestrate";
@@ -83,6 +86,10 @@ export function makeContext(id: string, client: Client): BerthPluginContext {
     notify: (title, body) => notify(title, body),
     openScreen: (screen) => useStore.getState().setView({ kind: "plugin", screen }),
     openTerminal: (box, session) => void focusSession(box, session),
+    openAddProject: (box) => useStore.getState().openAddProject(box),
+    openComputerDiscovery: openAddBox,
+    openComputerSettings: () => useStore.getState().setView({ kind: "settings", section: "boxes" }),
+    openHomeTerminal,
     openUrl: (url) => void openUrl(url),
     openWorktree: (w) => selectWorktree(w),
     openBrowser: (url, opts) => openBrowser(url, opts),

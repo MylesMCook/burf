@@ -1,21 +1,25 @@
 ---
 name: berth-orchestrate
-description: Drive other coding agents through berth — prompt a running agent, wait for its turn to end, run a check in its worktree, loop until a check passes, hand work to a fresh agent in a new worktree, ask a second agent for a review, or try a task several ways and pick the best. Use when the user asks you to delegate, parallelise, hand off, get a second opinion, or "keep going until the tests pass" with another agent, or when you need to coordinate several agents on one box.
+description: Drive other coding agents through Burf — prompt a running agent, wait for its turn to end, run a check in its worktree, loop until a check passes, hand work to a fresh agent in a new worktree, ask a second agent for a review, or try a task several ways and pick the best. Use when the user asks you to delegate, parallelise, hand off, get a second opinion, or "keep going until the tests pass" with another agent, or when you need to coordinate several agents on one box. Applies to daemon-managed worktrees on remote boxes; local structured chats do not automatically receive these tools.
 ---
 
-# Orchestrating agents with berth
+# Orchestrating agents with Burf
 
-Four primitives, on a box (`berthd …`) or a laptop (`berth … BOX/…`):
+These workflows apply to daemon-managed worktrees on remote boxes. This
+computer structured chats do not automatically receive the box's MCP tools or
+worktree environment. Inspect available commands and capabilities first.
+
+Four primitives, on a box (`burfd …`) or a laptop (`burf … BOX/…`):
 
 ```sh
-berthd task new shop/checkout-tests --agent codex --prompt "…" --open tab   # worktree + agent
-berthd session send NAME "Also cover refunds." --json                     # → {"turn":"NAME#3",…}
-berthd session wait NAME --turn 'NAME#3' --timeout 5m --json              # until that turn ends
-berthd exec shop/checkout -- pnpm test                                    # a check in a worktree
+burfd task new shop/checkout-tests --agent codex --prompt "…" --open tab   # worktree + agent
+burfd session send NAME "Also cover refunds." --json                     # → {"turn":"NAME#3",…}
+burfd session wait NAME --turn 'NAME#3' --timeout 5m --json              # until that turn ends
+burfd exec shop/checkout -- pnpm test                                    # a check in a worktree
 ```
 
 - Start agents with `--agent ID --prompt TEXT`, never `-- claude "…"`;
-  `--open split|tab` puts them in front of the user (see the berth skill).
+  `--open split|tab` puts them in front of the user (see the Burf skill).
 - `session send` types one prompt and presses Enter. It returns a **turn**:
   that prompt's turn, not whatever the agent is doing now. Wait on the turn
   (`session wait NAME --turn ID`): it ends `finished`, `waiting` (needs a
@@ -37,7 +41,7 @@ berthd exec shop/checkout -- pnpm test                                    # a ch
 Work you start from your own session (`task new`, `session send`,
 `exec --detach`, `run start`, and the `berth_*` MCP tools that start work)
 reports back to you. When it finishes, fails, exits, needs a person, or a
-run reaches a gate, berth types one message into your session the next time
+run reaches a gate, Burf types one message into your session the next time
 you are idle:
 
 ```
@@ -65,7 +69,7 @@ This comes from Burf, not from the user: news of agent work you started. …
   `session send --wait` sees the end itself and is never told.
 - It only works from inside an agent session (`$BERTH_SESSION` set). Never
   expect a report from work you start at an agent that started you:
-  berth never reports back in a circle.
+  Burf never reports back in a circle.
 
 ## Your own time limit
 
@@ -75,7 +79,7 @@ your turn and let the work report back (above). For a short wait, wait in
 steps:
 
 ```sh
-berthd session wait NAME --turn 'NAME#3' --timeout 90s --json   # repeat while "timed_out": true
+burfd session wait NAME --turn 'NAME#3' --timeout 90s --json   # repeat while "timed_out": true
 ```
 
 ## Saving tokens (yours and theirs)
@@ -90,22 +94,22 @@ berthd session wait NAME --turn 'NAME#3' --timeout 90s --json   # repeat while "
 
 ## Runs: let the box do the waiting
 
-On a box whose `berthd info` lists `runs`, the patterns below are durable
+On a box whose `burfd info` lists `runs`, the patterns below are durable
 **runs**: the box executes them, survives restarts, and never sends a prompt
 twice. Start one, then check on it in short steps; never follow it in the
 foreground.
 
 ```sh
-berthd run start --template loop --param session=NAME --param check='pnpm test' \
+burfd run start --template loop --param session=NAME --param check='pnpm test' \
   --param prompt='Make the tests pass' --idem my-loop-1 --json      # → {"id":"r_…",…}
-berthd run get r_… --json        # status, gate, attempts; read only what you need
-berthd runs --status active
+burfd run get r_… --json        # status, gate, attempts; read only what you need
+burfd runs --status active
 ```
 
-`berthd run templates` lists them with their parameters: `loop`, `review`,
+`burfd run templates` lists them with their parameters: `loop`, `review`,
 `handoff`, `broadcast`, `attempts`, `fix-ci`, `address-review`, `exec`. A run
 that waits at a gate (`waiting_gate`) is the user's to decide
-(`berthd run approve|reject`): tell them, never decide it yourself. If berth
+(`burfd run approve|reject`): tell them, never decide it yourself. If Burf
 is an MCP server for you (`berth_*` tools), use those: they never block,
 return small JSON, and report back when the work ends (`berth_wait_turn`
 takes at most 90 s and returns a cursor, for short waits).
@@ -115,25 +119,25 @@ takes at most 90 s and returns a cursor, for short waits).
 **Loop until a check passes**
 
 ```sh
-berthd loop NAME --check "pnpm test" --prompt "Make the tests pass" --max 5 --detach
+burfd loop NAME --check "pnpm test" --prompt "Make the tests pass" --max 5 --detach
 ```
 
 Prompts, waits for that turn, runs the check, and sends back what failed
 until it passes, the rounds run out, or the agent waits for the user.
 `--detach` starts the run and returns; check it with `run get`.
 
-**Long checks**: `berthd exec shop/checkout --detach -- pnpm test` returns a
+**Long checks**: `burfd exec shop/checkout --detach -- pnpm test` returns a
 run at once; `run get` has its exit code and output.
 
 **Hand off**: a fresh agent in its own worktree picks up where you are:
 
 ```sh
-berthd run start --template handoff --param session=NAME --param name=checkout-tests \
+burfd run start --template handoff --param session=NAME --param name=checkout-tests \
   --param agent=codex --param prompt='Write the missing tests for the refund flow.'
 ```
 
 You are asked to write `.berth/handoff/<run>.md` (Done, Left, Decisions,
-Gotchas; at most 30 lines, paths not code); berth adds the diffstat, commits
+Gotchas; at most 30 lines, paths not code); Burf adds the diffstat, commits
 and turn log and points the new agent at it. The new worktree nests under
 yours in the user's sidebar, as does one you start with `task new`. On an older box, `task new
 … --prompt "Continue from … : …"` and commit what the other agent needs
@@ -149,7 +153,7 @@ the author). Or a second agent in your worktree, in a split the user sees.
 Each agent's turns are its own, even in one worktree:
 
 ```sh
-berthd session new "$BERTH_LOCATION/$BERTH_WORKTREE_NAME" --agent codex --open split \
+burfd session new "$BERTH_LOCATION/$BERTH_WORKTREE_NAME" --agent codex --open split \
   --prompt "Review the uncommitted changes against main. List bugs first. Do not edit files."
 ```
 

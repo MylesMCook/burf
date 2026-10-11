@@ -23,7 +23,7 @@ test("nothing in the page changed: no browser spec", () => {
 });
 
 test("a spec that no longer exists is not asked for", () => {
-  assert.deepEqual(specsFor(["app/src/views/home/home-view.tsx"], (s) => s !== "home-terminal"), ["home-composer", "home-widgets"]);
+  assert.deepEqual(specsFor(["app/src/views/home/home-view.tsx"], (s) => s !== "home-terminal"), ["home-composer", "home-widgets", "monitor"]);
 });
 
 test("launcher deletions reach the composer and workspace specs", () => {
@@ -40,4 +40,18 @@ test("native Go and generated binding paths do not pull in unrelated browser smo
 
 test("shared overlay changes run geometry assertions as well as smoke", () => {
   assert.ok(specsFor(["app/src/components/ui/sheet.tsx"], all).includes("overlay-layout"));
+});
+
+test("plugin and Home source changes reach their saved acceptance cases", () => {
+  assert.deepEqual(specsFor(["plugins/box-monitor/src/index.tsx"], all), ["monitor", "plugin-workflow-actions"]);
+  assert.deepEqual(specsFor(["app/src/plugins/host.ts", "plugins/issues/src/index.tsx"], all), ["feedback-refinement", "plugin-workflow-actions", "plugins"]);
+  assert.deepEqual(specsFor(["app/src/views/home/widgets/machine-filter.tsx"], all), ["home-widgets", "monitor"]);
+});
+
+test("native feedback controls and stock task composer reach their browser outcomes", () => {
+  assert.ok(specsFor(["app/src/views/settings/general-section.tsx"], all).includes("custom-font"));
+  assert.ok(specsFor(["app/src/views/settings/terminal-section.tsx"], all).includes("custom-font"));
+  assert.deepEqual(specsFor(["app/src/native-feedback/state.ts"], all), ["native-feedback-settings"]);
+  assert.ok(specsFor(["app/src/components/assistant-ui/elements/composer.tsx"], all).includes("home-composer"));
+  assert.ok(specsFor(["app/src/components/ui/button.tsx"], all).includes("feedback-refinement"));
 });

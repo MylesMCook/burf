@@ -1,7 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
-import { definePlugin, type BerthPluginContext, type Stats } from "@berth/plugin";
+import { definePlugin, sessionName, useBerth, useBoxes, useLocations, useSessions, useStorage, type BerthPluginContext, type Stats } from "@berth/plugin";
 import {
   Badge,
+  BoxFilter,
+  Button,
+  ViewHeader,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -14,6 +17,7 @@ import {
   Skeleton,
 } from "@berth/plugin/ui";
 import { useSyncExternalStore } from "react";
+import { SAMPLE_INTERVAL, fraction, readings, retainHistory, historySeries, elapsed, type Sample } from "./metrics";
 
 const paint = stylex.create({
   s0: {
@@ -139,6 +143,12 @@ const paint = stylex.create({
     "transitionProperty": "width",
     "transitionDuration": "150ms",
   },
+  spark: { display: "flex", flexDirection: "column", gap: "2px", flexShrink: 0 },
+  sparkCaption: { color: "var(--muted-foreground)", fontSize: "10px", lineHeight: "14px", maxWidth: "112px" },
+  filter: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: "16px" },
+  details: { color: "var(--muted-foreground)", fontSize: "12px", lineHeight: "18px" },
+  process: { overflowWrap: "anywhere", marginTop: "8px" },
+  session: { display: "block", marginTop: "8px", textAlign: "left" },
   toneBad: { color: "var(--destructive)" },
   toneWarn: { color: "var(--warning)" },
   toneMuted: { color: "var(--muted-foreground)" },
@@ -150,33 +160,23 @@ function sx(...parts: readonly (false | null | undefined | object)[]): string {
   return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
 }
 
-// Box monitor: how loaded each box is, sampled every 15 seconds while the app
-// is open and on screen (the status bar already shows each box's memory), with an hour of history and a notification when a box is about
-// to run out of memory or disk. Agents and dev servers are heavy; a box
-// that runs out stops them.
-
-const EVERY = 15_000;
-const KEEP = 240; // an hour of samples
+// History is collected only while Burf is visible; pauses remain gaps.
 const WARN = 0.85;
 const CRITICAL = 0.92;
-
-interface Sample {
-  t: number;
-  mem: number; // fraction of memory in use
-  load: number; // 1-minute load per CPU
-  disk: number; // fullest disk, fraction
-}
-
 interface BoxView {
   box: string;
+  os?: string;
+  online: boolean;
   stats?: Stats;
   error?: string;
+  sampledAt?: number;
   history: Sample[];
 }
 
 // A small store the screen and status bar both read.
 let views: BoxView[] = [];
 let ready = false;
+let fleetError: string | undefined;
 const listeners = new Set<() => void>();
 const emit = () => {
   views = [...views];
@@ -188,56 +188,74 @@ const subscribe = (l: () => void) => {
 };
 const useViews = () => useSyncExternalStore(subscribe, () => views);
 const useReady = () => useSyncExternalStore(subscribe, () => ready);
-
-const memOf = (s: Stats) => (s.memory.total ? s.memory.used / s.memory.total : 0);
-const diskOf = (s: Stats) => Math.max(0, ...s.disks.map((d) => (d.total ? d.used / d.total : 0)));
-const loadOf = (s: Stats) => (s.load?.[0] ?? 0) / Math.max(1, s.cpus);
+const useFleetError = () => useSyncExternalStore(subscribe, () => fleetError);
 
 export default definePlugin((berth) => {
-  const saved = berth.storage.get<Record<string, Sample[]>>("history", {});
+  const saved = berth.storage.get<Record<string, Sample[]>>("history-v2", {});
   // One warning per box and resource until it recovers.
   const warned = new Set<string>();
 
+  let sampling = false;
+  let disposed = false;
   const sample = async () => {
-    const boxes = (await berth.api.boxes().catch(() => [])).filter((b) => b.state === "online");
-    const next: BoxView[] = await Promise.all(
-      boxes.map(async (b) => {
+    if (sampling || disposed) return;
+    sampling = true;
+    try {
+      const boxes = await berth.api.boxes();
+      if (disposed) return;
+      fleetError = undefined;
+      const next: BoxView[] = await Promise.all(boxes.map(async (b) => {
         const prev = views.find((v) => v.box === b.name);
-        const history = prev?.history ?? saved[b.name] ?? [];
+        const history = retainHistory(prev?.history ?? saved[b.name] ?? [], Date.now());
+        if (b.state !== "online") return { box: b.name, os: prev?.os, online: false, stats: prev?.stats, sampledAt: prev?.sampledAt, history };
         try {
           const stats = await berth.api.stats(b.name);
-          const s: Sample = { t: Date.now(), mem: memOf(stats), load: loadOf(stats), disk: diskOf(stats) };
-          check(berth, warned, b.name, "memory", s.mem);
-          check(berth, warned, b.name, "disk", s.disk);
-          return { box: b.name, stats, history: [...history, s].slice(-KEEP) };
+          const sampledAt = Date.now();
+          if (disposed) return { box: b.name, online: true, history };
+          const os = prev?.os ?? await berth.api.info(b.name).then((info) => info.os, () => undefined);
+          if (disposed) return { box: b.name, online: true, history };
+          const r = readings(stats);
+          const point: Sample = { t: sampledAt, mem: r.mem, load: r.load, disk: r.disk };
+          check(berth, warned, b.name, "memory", point.mem);
+          check(berth, warned, b.name, "disk", point.disk);
+          return { box: b.name, os, online: true, stats, sampledAt, history: retainHistory([...history, point], sampledAt) };
         } catch (err) {
-          return { box: b.name, stats: prev?.stats, error: String((err as Error).message ?? err), history };
+          return { box: b.name, os: prev?.os, online: true, stats: prev?.stats, sampledAt: prev?.sampledAt, error: String((err as Error).message ?? err), history: [...history, { t: Date.now() }] };
         }
-      }),
-    );
-    views = next;
-    ready = true;
-    emit();
-    berth.storage.set("history", Object.fromEntries(next.map((v) => [v.box, v.history.slice(-120)])));
+      }));
+      if (disposed) return;
+      views = next;
+      berth.storage.set("history-v2", Object.fromEntries(next.map((v) => [v.box, v.history])));
+    } catch (err) {
+      if (disposed) return;
+      // A failed fleet read preserves known machines and marks the readings stale.
+      fleetError = String((err as Error).message ?? err);
+      views = views.map((v) => ({ ...v, error: String((err as Error).message ?? err) }));
+    } finally {
+      sampling = false;
+      if (!disposed) { ready = true; emit(); }
+    }
   };
 
   void sample();
   // Not while the window is hidden: nobody is looking, and a hidden Burf
   // shouldn't keep the Mac awake. Coming back samples at once.
-  const timer = setInterval(() => !document.hidden && void sample(), EVERY);
+  const timer = setInterval(() => !document.hidden && void sample(), SAMPLE_INTERVAL);
   const back = () => !document.hidden && void sample();
   document.addEventListener("visibilitychange", back);
 
-  berth.addScreen({ id: "boxes", title: "Box monitor", description: "Memory, disk and load on every online box, sampled every 15 seconds while Burf is open.", Component: MonitorScreen });
-  berth.addSidebarItem({ id: "boxes", title: "Box monitor", icon: "Activity", screen: "boxes" });
+  berth.addScreen({ id: "boxes", title: "Computer monitor", description: "Memory, disk and one-minute load on paired machines. Readings sampled every 15 seconds while Burf is visible.", Component: MonitorScreen });
+  berth.addSidebarItem({ id: "boxes", title: "Computer monitor", icon: "Activity", screen: "boxes" });
   berth.addCommand({ id: "boxes", title: "Show box monitor", group: "Boxes", run: () => berth.openScreen("boxes") });
   return () => {
+    disposed = true;
     clearInterval(timer);
     document.removeEventListener("visibilitychange", back);
   };
 });
 
-function check(berth: BerthPluginContext, warned: Set<string>, box: string, what: "memory" | "disk", frac: number) {
+function check(berth: BerthPluginContext, warned: Set<string>, box: string, what: "memory" | "disk", frac: number | undefined) {
+  if (frac === undefined) return;
   const key = `${box}:${what}`;
   if (frac >= CRITICAL && !warned.has(key)) {
     warned.add(key);
@@ -247,10 +265,11 @@ function check(berth: BerthPluginContext, warned: Set<string>, box: string, what
 
 const pct = (f: number) => `${Math.round(f * 100)}%`;
 const tone = (f: number) => sx(f >= CRITICAL ? paint.toneBad : f >= WARN ? paint.toneWarn : paint.toneMuted);
+const loadTone = (f: number) => sx(f > 1 ? paint.toneWarn : paint.toneMuted);
 const fill = (f: number) => sx(f >= CRITICAL ? paint.fillBad : f >= WARN ? paint.fillWarn : paint.fillOk);
 
 function gib(bytes: number) {
-  return `${(bytes / 2 ** 30).toFixed(bytes >= 10 * 2 ** 30 ? 0 : 1)} GB`;
+  return `${(bytes / 2 ** 30).toFixed(bytes >= 10 * 2 ** 30 ? 0 : 1)} GiB`;
 }
 
 function uptime(s?: number) {
@@ -261,10 +280,28 @@ function uptime(s?: number) {
 }
 
 function MonitorScreen() {
-  const all = useViews();
+  const berth = useBerth();
+  const sampled = useViews();
+  const paired = useBoxes();
   const loaded = useReady();
+  const error = useFleetError();
+  const [hidden, setHidden] = useStorage<string[]>("hidden-boxes", []);
+  const boxes = [...new Set([...paired.map((b) => b.name), ...sampled.map((v) => v.box)])].sort();
+  const selected = boxes.filter((b) => !hidden.includes(b));
+  const shown = selected.length ? selected : boxes;
+  const all = shown.map((box) => {
+    const view = sampled.find((v) => v.box === box);
+    const status = paired.find((b) => b.name === box);
+    return { ...(view ?? { box, history: [] }), online: status ? status.state === "online" : view?.online ?? false };
+  });
   return (
     <>
+      <ViewHeader title="Computer monitor" description="One-minute load is work waiting or running, not CPU utilization. History covers collected readings; pauses leave gaps." />
+      {error && <p className={sx(paint.s7)}>Machine status unavailable: {error}</p>}
+      <div className={sx(paint.filter)}>
+        <BoxFilter boxes={boxes} hidden={hidden} onChange={setHidden} label="Machines to monitor" />
+        {boxes.length > 0 && berth.openComputerDiscovery && <Button size="sm" variant="outline" onClick={() => berth.openComputerDiscovery?.()}>Discover or pair a computer</Button>}
+      </div>
       {!loaded ? (
         <div className={sx(paint.s0)}>
           <Skeleton className={sx(paint.s1)} />
@@ -273,15 +310,14 @@ function MonitorScreen() {
       ) : all.length === 0 ? (
         <Empty pad="room">
           <EmptyHeader>
-            <EmptyTitle>No boxes online</EmptyTitle>
-            <EmptyDescription>When a box is connected, its memory, disk and load show up here.</EmptyDescription>
+            <EmptyTitle>No paired machines</EmptyTitle>
+            <EmptyDescription>Pair a machine to see its memory, disk and load here.</EmptyDescription>
           </EmptyHeader>
+          {berth.openComputerDiscovery && <Button size="sm" onClick={() => berth.openComputerDiscovery?.()}>Discover or pair a computer</Button>}
         </Empty>
       ) : (
         <div className={sx(paint.s3)}>
-          {all.map((v) => (
-            <BoxCard key={v.box} view={v} />
-          ))}
+          {all.map((v) => <BoxCard key={v.box} view={v} />)}
         </div>
       )}
     </>
@@ -289,89 +325,80 @@ function MonitorScreen() {
 }
 
 function BoxCard({ view: v }: { view: BoxView }) {
+  const berth = useBerth();
+  const sessions = useSessions(v.box);
+  const locations = useLocations(v.box);
+  const agentSessions = sessions?.filter((s) => s.agent && !s.exited);
   const s = v.stats;
-  if (!s) {
-    return (
-      <Frame variant="card">
-        <FrameHeader pad="tight">
-          <FrameTitle>{v.box}</FrameTitle>
-        </FrameHeader>
-        <FramePanel tone>{v.error ?? "No stats yet."}</FramePanel>
-      </Frame>
-    );
-  }
-  const m = memOf(s);
-  const l = loadOf(s);
-  const working = s.agents.filter((a) => a.state === "running").length;
-  const waiting = s.agents.filter((a) => a.state === "waiting").length;
+  const processesAvailable = s?.agents_available ?? (v.os !== "darwin" || !!s?.agents?.length);
+  const now = Date.now();
+  const stale = !v.online || !!v.error || (v.sampledAt !== undefined && now - v.sampledAt > SAMPLE_INTERVAL * 2);
+  const r = s && readings(s);
   return (
     <Frame variant="card">
       <FrameHeader row gap={2} pad="snug">
         <Icon name="Server" className={sx(paint.s4)} />
         <FrameTitle>{v.box}</FrameTitle>
-        <span className={sx(paint.s5)}>
-          {s.hostname} · {s.cpus} CPUs {uptime(s.uptime_s) && `· ${uptime(s.uptime_s)}`}
-        </span>
-        {v.error && (
-          <Badge variant="outline" size="sm" className={sx(paint.s6)}>
-            stale
-          </Badge>
-        )}
+        {s && <span className={sx(paint.s5)}>{s.hostname} · {s.cpus > 0 ? `${s.cpus} CPUs` : "CPU count unavailable"} {uptime(s.uptime_s) && `· ${uptime(s.uptime_s)}`}</span>}
+        {stale && <Badge variant="outline" size="sm" className={sx(paint.s6)}>{v.online ? "Stale" : "Offline"}</Badge>}
       </FrameHeader>
       <FramePanel pad="room" space={4}>
-        {s.memory.total > 0 ? (
-          <Row label="Memory" value={`${gib(s.memory.used)} of ${gib(s.memory.total)}`} frac={m} history={v.history.map((h) => h.mem)} />
-        ) : (
-          <p className={sx(paint.s7)}>
-            <span className={sx(paint.s8)}>Memory</span> isn't reported by this box's system.
-          </p>
-        )}
-        <Row label="Load" value={`${(s.load?.[0] ?? 0).toFixed(2)} on ${s.cpus} CPUs`} frac={Math.min(1, l)} history={v.history.map((h) => Math.min(1, h.load))} />
-        {s.swap.total > 0 && <Row label="Swap" value={`${gib(s.swap.used)} of ${gib(s.swap.total)}`} frac={s.swap.used / s.swap.total} />}
-        {s.disks.map((d) => (
-          <Row key={d.mount} label={`Disk ${d.mount}`} value={`${gib(d.used)} of ${gib(d.total)}`} frac={d.total ? d.used / d.total : 0} />
-        ))}
-        <p className={sx(paint.s9)}>
-          <span>
-            <b className={sx(paint.s10)}>{s.agents.length}</b> agent{s.agents.length === 1 ? "" : "s"}
-          </span>
-          {working > 0 && <span>{working} working</span>}
-          {waiting > 0 && <span className={sx(paint.s11)}>{waiting} waiting for you</span>}
-          {!s.hooks && <span>agent status hooks not installed</span>}
-        </p>
+        <p className={sx(paint.s7)}>{v.sampledAt === undefined ? (v.online ? "No readings yet." : "Offline. No readings yet.") : `${stale ? "Last reading" : "Sampled"} ${elapsed(now - v.sampledAt)} ago.`}{v.error && ` ${v.error}`}</p>
+        {s && r && <>
+          <Row label={v.os === "darwin" ? "RAM used (excludes cache)" : "Memory"} value={r.mem === undefined ? "Unavailable" : `${gib(s.memory.used)} of ${gib(s.memory.total)}`} frac={r.mem} history={v.history} metric="mem" now={now} />
+          <Row label="Load (1m)" value={r.loadAverage === undefined ? "Unavailable" : `${r.loadAverage.toFixed(2)}${r.load === undefined ? " · CPU count unavailable" : ` on ${s.cpus} CPUs`}`} frac={r.load} history={v.history} metric="load" now={now} load />
+          {s.swap?.total > 0 && <Row label="Swap" value={`${gib(s.swap.used)} of ${gib(s.swap.total)}`} frac={fraction(s.swap.used, s.swap.total)} />}
+          {(s.disks ?? []).length ? s.disks.map((d) => <Row key={d.mount} label={`Disk ${d.mount}${r.diskMount !== undefined && d.mount === r.diskMount ? " (fullest)" : ""}`} value={fraction(d.used, d.total) === undefined ? "Unavailable" : `${gib(d.used)} of ${gib(d.total)}`} frac={fraction(d.used, d.total)} />) : <Row label="Disk" value="Unavailable" />}
+          <details className={sx(paint.details)}>
+            <summary>{s.agents && processesAvailable ? `${s.agents.length} detected agent process${s.agents.length === 1 ? "" : "es"}${stale ? " at last reading" : ""}` : "Detected agent processes unavailable"}</summary>
+            {(s.agents ?? []).map((a) => {
+              const target = locations?.flatMap((location) => (location.worktrees ?? []).filter((worktree) => a.path ? a.path === worktree.path : a.location === location.name && a.worktree === worktree.name).map((worktree) => ({ location: location.name, worktree }))).at(0);
+              return <div className={sx(paint.process)} key={a.pid}>
+                <p>{a.tool} · PID {a.pid} · {a.state}{a.path && ` · ${a.path}`}{a.location && ` · ${a.location}`}{a.worktree && ` / ${a.worktree}`}</p>
+                {target ? <Button size="xs" variant="outline" disabled={!v.online} onClick={() => berth.openWorktree({ box: v.box, location: target.location, worktree: target.worktree.name, path: target.worktree.path })}>View project for PID {a.pid}</Button>
+                  : berth.openAddProject && a.path ? <Button size="xs" variant="outline" disabled={!v.online} onClick={() => berth.openAddProject?.(v.box)}>Add project on {v.box}</Button> : null}
+              </div>;
+            })}
+            <p>Process detection can include agents started outside Burf.{!s.hooks && " Agent status hooks are not installed."}</p>
+          </details>
+        </>}
+        <details className={sx(paint.details)}>
+          <summary>{agentSessions === undefined ? "Burf agent sessions unavailable" : `${agentSessions.length} open Burf agent session${agentSessions.length === 1 ? "" : "s"}`}</summary>
+          {agentSessions?.map((session) => <Button key={session.name} className={sx(paint.session)} variant="ghost" size="sm" disabled={!v.online} onClick={() => berth.openTerminal(v.box, session.name)}>Open {sessionName(session, { sessions, locations, place: true })}</Button>)}
+          <p>These sessions are tracked by Burf separately from detected processes.</p>
+        </details>
       </FramePanel>
     </Frame>
   );
 }
 
-function Row({ label, value, frac, history }: { label: string; value: string; frac: number; history?: number[] }) {
+function Row({ label, value, frac, history, metric, now = Date.now(), load = false }: { label: string; value: string; frac?: number; history?: Sample[]; metric?: "mem" | "load" | "disk"; now?: number; load?: boolean }) {
   return (
     <div className={sx(paint.s12)}>
       <div className={sx(paint.s13)}>
         <span className={sx(paint.s14)}>{label}</span>
         <span className={sx(paint.s15)}>{value}</span>
-        <span className={[sx(paint.s16), tone(frac)].filter(Boolean).join(" ")}>{pct(frac)}</span>
+        {frac !== undefined && <span className={[sx(paint.s16), load ? loadTone(frac) : tone(frac)].filter(Boolean).join(" ")}>{load ? `${frac.toFixed(2)}/CPU` : pct(frac)}</span>}
       </div>
       <div className={sx(paint.s17)}>
-        <div className={sx(paint.s18)} role="meter" aria-valuenow={Math.round(frac * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
-          <div className={[[sx(paint.s19), sx(paint.q22)].filter(Boolean).join(" "), fill(frac)].filter(Boolean).join(" ")} style={{ width: `${Math.min(100, frac * 100)}%` }} />
-        </div>
-        {history && <Spark values={history} />}
+        {frac !== undefined && <div className={sx(paint.s18)} role={load ? "img" : "meter"} aria-valuenow={load ? undefined : Math.min(100, Math.round(frac * 100))} aria-valuemin={load ? undefined : 0} aria-valuemax={load ? undefined : 100} aria-valuetext={load ? undefined : pct(frac)} aria-label={load ? `${label}: ${frac.toFixed(2)} per CPU; bar fills at 1 per CPU` : label}>
+          <div className={[sx(paint.s19, paint.q22), load ? sx(paint.fillOk) : fill(frac)].filter(Boolean).join(" ")} style={{ width: `${Math.min(100, frac * 100)}%` }} />
+        </div>}
+        {history && metric && <Spark history={history} metric={metric} now={now} />}
       </div>
     </div>
   );
 }
 
-// Spark draws the last hour as a small line, 0 to 100%.
-function Spark({ values }: { values: number[] }) {
-  const w = 96;
-  const h = 18;
-  if (values.length < 2) return <span className={sx(paint.s20)}>collecting…</span>;
-  const pts = values.map((v, i) => `${((i / (values.length - 1)) * w).toFixed(1)},${(h - Math.min(1, v) * h).toFixed(1)}`).join(" ");
-  const last = values[values.length - 1];
+function Spark({ history, metric, now }: { history: Sample[]; metric: "mem" | "load" | "disk"; now: number }) {
+  const series = historySeries(history, metric, now);
+  if (!series.count) return <span className={sx(paint.s20)}>No history</span>;
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className={[sx(paint.s21), tone(last)].filter(Boolean).join(" ")} aria-label="last hour">
-      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" />
+    <span className={sx(paint.spark)}>
+    <svg width={96} height={18} viewBox="0 0 96 18" className={[sx(paint.s21), metric === "load" ? loadTone(series.last ?? 0) : tone(series.last ?? 0)].filter(Boolean).join(" ")} role="img" aria-label={`${series.label}; range 0 to ${series.max.toFixed(2)}${metric === "load" ? " per CPU" : " of capacity"}`}>
+      {series.segments.map((points, i) => points.includes(" ") ? <polyline key={i} points={points} fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" /> : <circle key={i} cx={points.split(",")[0]} cy={points.split(",")[1]} r="1.5" fill="currentColor" />)}
     </svg>
+    <span className={sx(paint.sparkCaption)}>{series.count} reading{series.count === 1 ? "" : "s"} / {elapsed(series.spanMs)}{metric === "load" && ` · 0–${series.max.toFixed(2)}/CPU`}</span>
+    </span>
   );
 }

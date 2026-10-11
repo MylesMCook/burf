@@ -2,13 +2,13 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as ReactJSXRuntime from "react/jsx-runtime";
 
-import type { Client, PluginInfo } from "@/lib/api";
+import { ApiError, type Client, type PluginInfo } from "@/lib/api";
 import { plainError } from "@/lib/errors";
 import { builtinOn } from "@/lib/prefs";
 import { askToAllow, mayLoad, readPluginFiles, usePluginConsent } from "@/plugins/consent";
 import { makeContext } from "@/plugins/context";
 import { pluginContexts } from "@/plugins/plugin-boundary";
-import { removePlugin, setPluginOrder, setPluginStatus, usePluginsLoading, useRegistry } from "@/plugins/registry";
+import { removePlugin, setPluginOrder, setPluginStatus, usePluginCatalogError, usePluginsLoading, useRegistry } from "@/plugins/registry";
 import * as sdk from "@/plugins/sdk-runtime";
 import { pluginUi } from "@/plugins/ui";
 
@@ -52,6 +52,8 @@ export function rewriteImports(source: string, base = location.href): string {
 }
 
 const loaded = new Map<string, { dispose?: () => void; url: string }>();
+// Remember disabled/review-needed replacements too, not only active modules.
+let hasUserPluginOwners = false;
 
 // Built-in plugins ship with the app in public/builtin-plugins/, listed in
 // its index.json by `pnpm build:plugins`. A missing index means none. The
@@ -88,10 +90,11 @@ async function pluginSource(client: Client, p: PluginInfo): Promise<string> {
 
 async function loadPlugin(client: Client, p: PluginInfo) {
   setPluginStatus({ id: p.id, name: p.name, version: p.version, state: "loading", builtin: p.builtin });
+  let url: string | undefined;
   try {
     if (p.error) throw new Error(p.error);
     const source = rewriteImports(await pluginSource(client, p));
-    const url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+    url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
     const mod = (await import(/* @vite-ignore */ url)) as { default?: unknown };
     if (typeof mod.default !== "function") throw new Error("its module has no default export function");
     const ctx = makeContext(p.id, client);
@@ -100,6 +103,8 @@ async function loadPlugin(client: Client, p: PluginInfo) {
     loaded.set(p.id, { url, dispose: typeof dispose === "function" ? (dispose as () => void) : undefined });
     setPluginStatus({ id: p.id, name: p.name, version: p.version, state: "active", builtin: p.builtin });
   } catch (err) {
+    if (url) URL.revokeObjectURL(url);
+    pluginContexts.delete(p.id);
     removePlugin(p.id);
     const review = err instanceof PluginNeedsReview;
     setPluginStatus({ id: p.id, name: p.name, version: p.version, state: review ? "review" : "failed", error: plainError(err), builtin: p.builtin });
@@ -122,15 +127,38 @@ export function unloadPlugin(id: string) {
 
 // loadPlugins (re)loads the built-in plugins that are on, and every enabled
 // plugin the agent lists. A user plugin replaces a built-in with its id.
-export async function loadPlugins(client: Client) {
+let pluginLoad: Promise<void> = Promise.resolve();
+
+export function loadPlugins(client: Client): Promise<void> {
+  // Startup, reconnect and Reload may overlap. Each activation must finish
+  // before the next unload so contributions and module ownership stay paired.
+  pluginLoad = pluginLoad.catch(() => {}).then(() => reloadPlugins(client));
+  return pluginLoad;
+}
+
+async function reloadPlugins(client: Client) {
   usePluginsLoading.setState(true, true);
-  const [user, builtins] = await Promise.all([
-    client.plugins().catch((err) => {
-      console.warn("could not list plugins", err);
-      return [] as PluginInfo[];
-    }),
-    builtinPlugins(),
-  ]);
+  usePluginCatalogError.setState(null, true);
+  try {
+  let user: PluginInfo[];
+  try {
+    try { user = await client.plugins(); }
+    catch (err) {
+      // Older agents have no user-plugin endpoint. Their built-ins still work.
+      if (err instanceof ApiError && err.status === 404 && !hasUserPluginOwners) user = [];
+      else if (loaded.size === 0) user = await client.plugins();
+      else throw err;
+    }
+  }
+  catch (err) {
+    // Unknown replacement ownership is not an empty catalog. Keep the
+    // working plugins until a complete listing can be read again.
+    console.warn("could not list plugins; keeping current plugins", err);
+    usePluginCatalogError.setState(plainError(err), true);
+    return;
+  }
+  hasUserPluginOwners = user.some((p) => !p.builtin);
+  const builtins = await builtinPlugins();
   for (const id of [...loaded.keys()]) unloadPlugin(id);
   const userIds = new Set(user.map((p) => p.id));
   // A plugin of yours is never on by default: only once allowed (enabled),
@@ -142,8 +170,8 @@ export async function loadPlugins(client: Client) {
     setPluginStatus({ id: p.id, name: p.name, version: p.version, state: "review", error: "It changed since you allowed it. Review it to turn it back on." });
   }
   await Promise.all(list.map((p) => loadPlugin(client, p)));
-  usePluginsLoading.setState(false, true);
   void reviewChanged(client, [...changed, ...user.filter((p) => p.enabled === true && useRegistry.getState().plugins.some((s) => s.id === p.id && s.state === "review"))]);
+  } finally { usePluginsLoading.setState(false, true); }
 }
 
 // reviewChanged asks again about a plugin that changed since the user

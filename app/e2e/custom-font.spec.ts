@@ -225,3 +225,99 @@ test("a stored font that cannot load falls back and names the font in Settings",
   await app.openSettings("terminal");
   await expect(app.page.getByTestId("terminal-preview")).toHaveCSS("font-family", /Paper Mono/);
 });
+
+
+test("settings omit unsupported startup and explain Windows terminal limits", async ({ app }) => {
+  await app.context.addInitScript(() => Object.defineProperty(navigator, "platform", { value: "Win32", configurable: true }));
+  await app.open();
+  const general = await app.openSettings("general");
+  await expect(general).not.toContainText("Open Burf at login");
+  await expect(general).not.toContainText("closing Burf never stops an agent");
+  const terminal = await app.openSettings("terminal");
+  await expect(terminal).toContainText("Windows terminals on this computer always use xterm.js");
+  await expect(terminal).toContainText("cap this at 10,000");
+  await expect(terminal).toContainText("separately keep up to 50,000");
+  await expect(terminal).toContainText("Does not apply to agent terminals");
+});
+
+for (const theme of ["berth-light", "berth-dark"]) {
+  test(`a wide Select keeps long options bounded and keyboard reachable in ${theme}`, async ({ app }) => {
+    await app.page.setViewportSize({ width: 1280, height: 960 });
+    await app.open({ theme });
+    await addFont(app);
+    // Use real decoded font bytes and the normal settings consumer. Only the
+    // isolated fixture's catalog and field width grow to reproduce a wide field.
+    const fonts = Array.from({ length: 24 }, (_, index) => ({
+      id: `select-boundary-${index}`,
+      name: `Option ${String(index + 1).padStart(2, "0")} with a long readable font name that wraps within the dropdown`,
+    }));
+    await app.page.evaluate(async (fonts) => {
+      const prefs = JSON.parse(localStorage.getItem("berth.prefs")!);
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open("berth-custom-fonts", 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction("fonts", "readwrite");
+          const store = tx.objectStore("fonts");
+          const source = store.get(prefs.customFonts[0].id);
+          source.onsuccess = () => {
+            for (const font of fonts) store.put({ id: font.id, bytes: source.result.bytes });
+          };
+          tx.oncomplete = () => { db.close(); resolve(); };
+          tx.onabort = () => { db.close(); reject(tx.error); };
+        };
+      });
+      localStorage.setItem("berth.prefs", JSON.stringify({ ...prefs, customFonts: fonts }));
+    }, fonts);
+    await app.page.reload();
+    await app.openSettings("appearance");
+    const trigger = app.page.getByRole("combobox", { name: "Interface font", exact: true });
+    await expect.poll(() => app.page.evaluate(() => Array.from(document.fonts).filter((font) => font.family.startsWith("BurfFont-select-boundary-") && font.status === "loaded").length)).toBe(fonts.length);
+    await trigger.evaluate((element) => { element.style.width = "592px"; element.style.maxWidth = "100%"; });
+    expect((await trigger.boundingBox())!.width).toBeGreaterThan(500);
+    await trigger.focus();
+    await app.page.keyboard.press("ArrowDown");
+    const list = app.page.getByRole("listbox");
+    const popup = app.page.locator('[data-slot="select-popup"]');
+    await expect(list).toBeVisible();
+    await expect.poll(async () => {
+      const box = await popup.boundingBox();
+      return !!box && box.width <= 353 && box.height <= 321;
+    }).toBe(true);
+    await expect.poll(() => popup.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return [...element.querySelectorAll('[data-slot="select-scroll-up-arrow"], [data-slot="select-scroll-down-arrow"]')].every((arrow) => {
+        const rect = arrow.getBoundingClientRect();
+        return rect.height === 0 || rect.top >= bounds.top - 1 && rect.bottom <= bounds.bottom + 1;
+      });
+    })).toBe(true);
+    await expect.poll(() => list.evaluate((element) => element.scrollHeight > element.clientHeight && element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await app.page.keyboard.press("End");
+    const last = app.page.getByRole("option", { name: fonts.at(-1)!.name, exact: true });
+    await expect(last).toHaveAttribute("data-highlighted", "");
+    await expect.poll(() => last.evaluate((element) => {
+      const list = element.closest('[role="listbox"]')!;
+      const optionBox = element.getBoundingClientRect(), listBox = list.getBoundingClientRect();
+      return optionBox.top >= listBox.top && optionBox.bottom <= listBox.bottom + 1;
+    })).toBe(true);
+    await app.page.keyboard.press("Enter");
+    await expect(list).toBeHidden();
+    await expect(trigger).toContainText(fonts.at(-1)!.name);
+    await expect(trigger).toBeFocused();
+    await app.page.keyboard.press("ArrowDown");
+    await expect(last).toHaveAttribute("aria-selected", "true");
+    await expect.poll(() => popup.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight;
+    })).toBe(true);
+    await expect.poll(() => last.evaluate((element) => {
+      const listBox = element.closest('[role="listbox"]')!.getBoundingClientRect();
+      const box = element.getBoundingClientRect();
+      return box.top >= listBox.top && box.bottom <= listBox.bottom + 1;
+    })).toBe(true);
+    await app.page.keyboard.press("Escape");
+    await expect(list).toBeHidden();
+    await expect(trigger).toBeFocused();
+  });
+}

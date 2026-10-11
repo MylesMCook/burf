@@ -413,11 +413,11 @@ async function stop(box: string, id: string): Promise<boolean> {
 
 // BoxMeter is a box's memory in the status bar; clicked, it lists the box's
 // browsers and heavy sessions. A box without the list opens Settings.
-export function BoxMeter({ box, mem, route, className }: { box: string; mem: { used: number; total: number }; route?: string; className?: string }) {
+export function BoxMeter({ box, mem, route, className, onNavigate, memoryLabel = "memory" }: { box: string; mem: { used: number; total: number }; route?: string; className?: string; onNavigate?(): void; memoryLabel?: string }) {
   const has = useBoxHasProcesses(box);
   const [open, setOpen] = useState(false);
   const used = mem.used / mem.total;
-  const tip = [`${box} memory: ${bytes(mem.used)} of ${bytes(mem.total)} in use`, route].filter(Boolean).join(" · ");
+  const tip = [`${box} ${memoryLabel}: ${(mem.used / 2 ** 30).toFixed(1)} GiB of ${(mem.total / 2 ** 30).toFixed(1)} GiB in use`, route].filter(Boolean).join(" · ");
   const body = (
     <>
       {box}
@@ -431,7 +431,7 @@ export function BoxMeter({ box, mem, route, className }: { box: string; mem: { u
   if (!has) {
     return (
       <Tip label={tip}>
-        <button type="button" className={cls} onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
+        <button type="button" className={cls} onClick={() => { onNavigate?.(); useStore.getState().setView({ kind: "settings", section: "boxes" }); }}>
           {body}
         </button>
       </Tip>
@@ -443,7 +443,7 @@ export function BoxMeter({ box, mem, route, className }: { box: string; mem: { u
         <PopoverTrigger render={<button type="button" data-testid={`box-meter-${box}`} className={cls} />}>{body}</PopoverTrigger>
       </Tip>
       <PopoverPopup side="top" align="end" sideOffset={6} flush width="32">
-        <BoxProcessesPopover box={box} mem={mem} on={open} onSettings={() => setOpen(false)} />
+        <BoxProcessesPopover box={box} mem={mem} on={open} onSettings={() => { setOpen(false); onNavigate?.(); }} />
       </PopoverPopup>
     </Popover>
   );

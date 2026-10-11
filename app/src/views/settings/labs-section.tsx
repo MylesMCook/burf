@@ -8,7 +8,7 @@ export function LabsSection() {
   return (
     <SettingsPage title="Labs" description="Newer ideas, on by default. They may change or go away.">
       <SettingsGroup>
-        <SettingsRow label="Harbour home and experimental tools">
+        <SettingsRow label="Burf Home and experimental tools" description="On shows Burf Home. Off shows Agent Dashboard as the home page and hides experimental tools. Your saved preference is kept.">
           <Switch checked={labs} onCheckedChange={(on) => setPrefs({ labs: on, labsChosen: true })} />
         </SettingsRow>
       </SettingsGroup>

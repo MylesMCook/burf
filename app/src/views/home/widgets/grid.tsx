@@ -14,6 +14,7 @@ import { useOnScreen, WidgetBoundary, WidgetHeading, WidgetMenu } from "./card";
 import { GAP, HomeListReport, HomeWidgetProvider, ROW, type HomeList } from "./env";
 import { AddWidgetDialog } from "./picker";
 import { sizeFor, useWidgets, type WidgetDef } from "./registry";
+import { HomeMachineFilter } from "./machine-filter";
 
 const paint = stylex.create({
   s0: {
@@ -233,6 +234,7 @@ const paint = stylex.create({
   },
   s29: {
     "position": "relative",
+    "minWidth": "0px",
     "minHeight": "0px",
     "flexGrow": 1,
     "flexShrink": 1,
@@ -650,7 +652,7 @@ export function HomeGrid({ className }: { className?: string }) {
           </>
         ) : (
           <>
-            <span className={sx(paint.s12)} />
+            <HomeMachineFilter />
             <Button size="sm" variant="ghost"  onClick={() => setEdit(true)} data-testid="home-customize" muted>
               <LayoutGridIcon />
               Customize

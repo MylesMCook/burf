@@ -147,16 +147,26 @@ export function publishLocalThreads(sessions: LocalSession[] | undefined, conver
 
 // Older agents have no local API. Its absence must not hide paired boxes.
 export function useLocalComputer(enabled = true) {
+  const lookup = useLocalComputerLookup(enabled);
+  return lookup.state === "ready" ? lookup.local : undefined;
+}
+
+type LocalComputerLookup = { state: "checking" } | { state: "ready"; local: LocalComputer } | { state: "failed"; error: string };
+
+export function useLocalComputerLookup(enabled = true) {
   const client = useStore((s) => s.client);
-  const [local, setLocal] = useState<LocalComputer>();
+  const [lookup, setLookup] = useState<LocalComputerLookup>({ state: "checking" });
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    setLocal(undefined);
+    setLookup({ state: "checking" });
     if (!client || !enabled) return;
     const controller = new AbortController();
     void localApi.status(client, controller.signal).then((value) => {
-      if (!controller.signal.aborted) setLocal(value);
-    }).catch(() => {});
+      if (!controller.signal.aborted) setLookup({ state: "ready", local: value });
+    }).catch((error: unknown) => {
+      if (!controller.signal.aborted) setLookup({ state: "failed", error: error instanceof Error ? error.message : "This computer is unavailable." });
+    });
     return () => controller.abort();
-  }, [client, enabled]);
-  return local;
+  }, [client, enabled, attempt]);
+  return { ...lookup, retry: () => setAttempt((n) => n + 1) };
 }

@@ -1,3 +1,4 @@
+import { iconScale } from "@/components/ui/icon-tokens.stylex";
 import * as stylex from "@stylexjs/stylex";
 import {
   ChevronRightIcon,
@@ -28,6 +29,8 @@ import { startSession } from "@/lib/actions";
 import { type BoxStatus, type Location, type Session, type Worktree } from "@/lib/api";
 import { agentOf, sidebarChats, type SessionState, sessionName, sessionState, worktreeSessions } from "@/lib/derive";
 import { load, save } from "@/lib/storage";
+import { SIDEBAR_PAGE, sidebarPage, sidebarPageKey } from "@/lib/sidebar-page";
+import { findLeaf } from "@/lib/layout";
 import { type BoxData, NONE, useStore } from "@/lib/store";
 import { selectFolder } from "@/lib/open-folder-chat";
 import { addGroup, openSession, refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
@@ -68,13 +71,25 @@ const paint = stylex.create({
       ":hover": "var(--sidebar-accent)",
     },
   },
+  computerButton: {
+    display: "flex",
+    width: "100%",
+    minWidth: 0,
+    height: "100%",
+    alignItems: "center",
+    gap: 8,
+    textAlign: "left",
+    color: "inherit",
+    borderRadius: "var(--radius-md)",
+    outline: { ":focus-visible": "2px solid var(--ring)" },
+  },
   s3: {
-    "width": "12px",
-    "height": "12px",
+    "width": iconScale.action,
+    "height": iconScale.action,
   },
   s4: {
-    "width": "12px",
-    "height": "12px",
+    "width": iconScale.action,
+    "height": iconScale.action,
   },
   s5: {
     "overflow": "hidden",
@@ -640,6 +655,7 @@ interface Repo {
 }
 
 export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
+  const pagination = useSidebarPagination();
   const boxes = useStore((s) => s.status?.boxes ?? NONE);
   const data = useStore((s) => s.boxes);
 
@@ -654,24 +670,19 @@ export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
     return out.sort((a, b) => a.loc.name.localeCompare(b.loc.name) || a.box.name.localeCompare(b.box.name));
   }, [boxes, data]);
 
-  const group = (list: Repo[], chip: boolean) => list.map((r) => <RepoGroup key={r.key} repo={r} chip={chip} prefs={prefs} update={update} />);
-
-  // By repository, boxes only appear when there is something to say: an
-  // empty box, one that is not online, or one whose link is slow (below the
-  // projects, so nothing above it moves).
-  const notable = boxes.filter((b) => b.state !== "online" || b.link?.slow || !data[b.name]?.locations?.length);
+  const group = (list: Repo[], chip: boolean, box: string) => <RepoList repos={list} chip={chip} prefs={prefs} update={update} pagination={pagination} pageKey={sidebarPageKey("box", box, "projects")} />;
 
   return (
     <>
       {prefs.groupBy === "project" ? (
         <>
-          <ProjectSections prefs={prefs} update={update} />
-          {notable.length > 0 && (
-            <div className={sx(paint.s0)}>
-              {notable.map((b) => (
+          <ProjectSections prefs={prefs} update={update} pagination={pagination} />
+          {boxes.length > 0 && (
+            <section aria-label="Paired computers" className={sx(paint.s0)}>
+              {boxes.map((b) => (
                 <BoxHeader key={b.name} box={b} empty={!data[b.name]?.locations?.length} />
               ))}
-            </div>
+            </section>
           )}
         </>
       ) : (
@@ -682,6 +693,7 @@ export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
               {group(
                 repos.filter((r) => r.box.name === b.name),
                 false,
+                b.name,
               )}
             </SidebarMenu>
           </div>
@@ -691,19 +703,36 @@ export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
   );
 }
 
+function SidebarLoadMore({ remaining, label, expanded, onClick, onFewer }: { remaining: number; label: string; expanded: boolean; onClick(): void; onFewer(): void }) {
+  if (remaining <= 0 && !expanded) return null;
+  // Keep the focused control mounted when the final batch arrives.
+  return <SidebarMenuSubItem><SidebarMenuSubButton render={<button type="button" data-testid={remaining > 0 ? "sidebar-load-more" : "sidebar-show-fewer"} />} size="sm" density="quiet" onClick={remaining > 0 ? onClick : onFewer}>
+    <span>{remaining > 0 ? `Load more ${label} (${remaining})` : `Show fewer ${label}`}</span>
+  </SidebarMenuSubButton></SidebarMenuSubItem>;
+}
+
+function RepoList({ repos, chip, prefs, update, pagination, pageKey }: { repos: Repo[]; chip: boolean; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void; pagination: SidebarPagination; pageKey: string }) {
+  const limit = pagination.pages[pageKey] ?? SIDEBAR_PAGE;
+  const data = useStore((s) => s.boxes);
+  const current = useWorkspaces((s) => s.current);
+  const view = useStore((s) => s.view);
+  const shown = sidebarPage(repos, limit, (r) => (view.kind === "project" ? view.box === r.box.name && view.location === r.loc.name : view.kind === "workspace" && !!r.loc.worktrees?.some((wt) => current === wsKey(r.box.name, wt.path))) || !!data[r.box.name]?.sessions?.some((s) => sidebarPageKey("chat", r.box.name, s.name) === pagination.selectedChat && r.loc.worktrees?.some((wt) => wt.path === s.dir)));
+  return <>{shown.map((r) => <RepoGroup key={r.key} repo={r} chip={chip} prefs={prefs} update={update} pagination={pagination} />)}<SidebarLoadMore remaining={repos.length - shown.length} label="projects" expanded={limit > SIDEBAR_PAGE} onClick={() => pagination.setLimit(pageKey, limit + SIDEBAR_PAGE)} onFewer={() => pagination.setLimit(pageKey, SIDEBAR_PAGE)} /></>;
+}
+
 // BoxHeader heads a box: its name, state and latency, with a way to add a
 // project to it, or to reconnect when it is not online.
 function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
   const online = box.state === "online";
+  const active = useStore((s) => s.view.kind === "worktrees" && s.view.box === box.name);
   return (
     <ContextRow items={() => boxActions(box)}>
-      {/* Focusable for its menu (Shift-F10 or the menu key). */}
       <div
-        tabIndex={0}
         role="group"
         aria-label={`${box.name}, ${online ? (box.link?.slow ? "online, slow link" : "online") : awayText(box)}`}
         className={[sx(paint.s2), "group/row"].filter(Boolean).join(" ")}
       >
+        <button type="button" data-testid="nav-computer" aria-label={`Open computer ${box.name}`} aria-current={active ? "page" : undefined} className={sx(paint.computerButton)} onClick={() => useStore.getState().setView({ kind: "worktrees", box: box.name })}>
         {online ? <ServerIcon className={sx(paint.s3)} /> : <ServerOffIcon className={sx(paint.s4)} />}
         <span className={sx(paint.s5)}>{box.name}</span>
         {online ? (
@@ -719,6 +748,7 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
             <BoxStateDot box={box.name} />
           </span>
         )}
+        </button>
         <RowOverlay corner="md">
           {online ? (
             <RowButton label={`Add a project on ${box.name}`} onClick={() => useStore.getState().openAddLocation(box.name)}>
@@ -754,7 +784,7 @@ function BoxChip({ box }: { box: BoxStatus }) {
   return online ? chip : <Tip label={`${box.name} is ${awayText(box)}`}>{chip}</Tip>;
 }
 
-function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
+function RepoGroup({ repo, chip, prefs, update, pagination }: { repo: Repo; chip: boolean; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void; pagination: SidebarPagination }) {
   const { box, loc, main, worktrees } = repo;
   const data = useStore((s) => s.boxes[box.name]);
   const removals = useRemovals((s) => s.byKey);
@@ -787,6 +817,9 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
   collectPaths(shown, drawn);
   const here = new Set((loc.worktrees ?? []).map((w) => w.path));
   const chats = sidebarChats((data?.sessions ?? []).filter((s) => here.has(s.dir)), drawn);
+  const chatKey = sidebarPageKey("repo", repo.key, "chats");
+  const chatLimit = pagination.pages[chatKey] ?? SIDEBAR_PAGE;
+  const shownChats = sidebarPage(chats, chatLimit, (s) => sidebarPageKey("chat", box.name, s.name) === pagination.selectedChat);
   const open = (wt: Worktree) => selectFolder(refOf(box.name, loc, wt));
   const toggle = () => update({ collapsed: { ...prefs.collapsed, [repo.key]: !collapsed } });
 
@@ -843,8 +876,8 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
       {!collapsed && (all || shown.length > 0 || hidden > 0 || chats.length > 0) && (
         <SidebarMenuSub indent="repo">
           {all && main && <WorktreeRow box={box.name} loc={loc} wt={main} sessions={mainSessions} data={data} selected={mainSel} onOpen={() => open(main)} away={online ? undefined : box} />}
-          <WorktreeNodes nodes={shown} depth={0} prefs={prefs} update={update} />
-          {chats.map((s) => (
+          <WorktreeNodes nodes={shown} depth={0} prefs={prefs} update={update} pagination={pagination} pageKey={sidebarPageKey("repo", repo.key, "worktrees")} />
+          {shownChats.map((s) => (
             <SidebarMenuSubItem key={s.name}>
               <SidebarMenuSubButton
                 render={<button type="button" data-testid="project-chat" data-session={s.name} />}
@@ -857,6 +890,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
               </SidebarMenuSubButton>
             </SidebarMenuSubItem>
           ))}
+          <SidebarLoadMore remaining={chats.length - shownChats.length} label="chats" expanded={chatLimit > SIDEBAR_PAGE} onClick={() => pagination.setLimit(chatKey, chatLimit + SIDEBAR_PAGE)} onFewer={() => pagination.setLimit(chatKey, SIDEBAR_PAGE)} />
           {hidden > 0 && (
             <SidebarMenuSubItem>
               <SidebarMenuSubButton
@@ -1022,16 +1056,40 @@ function collectPaths(nodes: TreeNode<TreeRow>[], into: Set<string>, box?: strin
   }
 }
 
+interface SidebarPagination {
+  pages: Record<string, number>;
+  selectedChat?: string;
+  setLimit(key: string, limit: number): void;
+}
+
+// Projects owns these counts, so sections, projects and child lists can
+// unmount their rows when folded without losing a loaded batch.
+function useSidebarPagination(): SidebarPagination {
+  const [pages, setPages] = useState<Record<string, number>>({});
+  const workspaceView = useStore((s) => s.view.kind === "workspace");
+  const selected = useWorkspaces((s) => {
+    const ws = s.current ? s.spaces[s.current] : undefined;
+    const tab = ws?.tabs.find((t) => t.id === ws.active);
+    const content = tab && findLeaf(tab.root, tab.focus)?.content;
+    return content?.kind === "terminal" ? sidebarPageKey("chat", content.box, content.session) : undefined;
+  });
+  return { pages, selectedChat: workspaceView ? selected : undefined, setLimit: (key, limit) => setPages((prev) => ({ ...prev, [key]: limit })) };
+}
+
 // WorktreeNodes draws worktrees with the ones handed off from each under
 // it (lib/worktree-tree.ts).
-function WorktreeNodes({ nodes, depth, prefs, update }: { nodes: TreeNode<TreeRow>[]; depth: number; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
-  return nodes.map((n) => <WorktreeNode key={n.key} node={n} depth={depth} prefs={prefs} update={update} />);
+function WorktreeNodes({ nodes, depth, prefs, update, pagination, pageKey }: { nodes: TreeNode<TreeRow>[]; depth: number; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void; pagination: SidebarPagination; pageKey: string }) {
+  const limit = pagination.pages[pageKey] ?? SIDEBAR_PAGE;
+  const removals = useRemovals((s) => s.byKey);
+  const pinned = (r: TreeRow) => r.selected || !!removalOf(removals, r.box, r.wt.path);
+  const shown = sidebarPage(nodes, limit, (n) => pinned(n.row) || below(n).some(pinned));
+  return <>{shown.map((n) => <WorktreeNode key={n.key} node={n} depth={depth} prefs={prefs} update={update} pagination={pagination} />)}<SidebarLoadMore remaining={nodes.length - shown.length} label="worktrees" expanded={limit > SIDEBAR_PAGE} onClick={() => pagination.setLimit(pageKey, limit + SIDEBAR_PAGE)} onFewer={() => pagination.setLimit(pageKey, SIDEBAR_PAGE)} /></>;
 }
 
 // WorktreeNode is a worktree and, under a pill saying how many, its
 // children. The pill folds them; a fold never hides the worktree you have
 // open, and while folded it shows the most urgent agent inside.
-function WorktreeNode({ node, depth, prefs, update }: { node: TreeNode<TreeRow>; depth: number; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
+function WorktreeNode({ node, depth, prefs, update, pagination }: { node: TreeNode<TreeRow>; depth: number; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void; pagination: SidebarPagination }) {
   const r = node.row;
   const row = (
     <WorktreeRow box={r.box} loc={r.loc} wt={r.wt} sessions={r.sessions} data={r.data} selected={r.selected} chip={r.chip} away={r.away} onOpen={() => selectFolder(refOf(r.box, r.loc, r.wt))} />
@@ -1069,7 +1127,7 @@ function WorktreeNode({ node, depth, prefs, update }: { node: TreeNode<TreeRow>;
           {/* Up to MAX_INDENT levels step in, with a guide; deeper ones line
               up with their parent. */}
           <SidebarMenuSub indent={depth + 1 < MAX_INDENT ? "tree" : "flush"}>
-            <WorktreeNodes nodes={node.children} depth={depth + 1} prefs={prefs} update={update} />
+            <WorktreeNodes nodes={node.children} depth={depth + 1} prefs={prefs} update={update} pagination={pagination} pageKey={sidebarPageKey("worktree", r.box, r.wt.path, "children")} />
           </SidebarMenuSub>
         </SidebarMenuSubItem>
       )}
@@ -1208,7 +1266,7 @@ function RowButton({ label, ...props }: React.ComponentProps<"button"> & { label
 
 // ProjectSections lists projects under their sections (Work, Personal…);
 // projects in none come first. Drag a project onto a section to move it.
-function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
+function ProjectSections({ prefs, update, pagination }: { prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void; pagination: SidebarPagination }) {
   const { projects, sections } = useProjects();
   const multiBox = useStore((s) => (s.status?.boxes.length ?? 0) > 1);
   const [over, setOver] = useState<string>();
@@ -1227,12 +1285,12 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
       if (p && p.section !== section) void groupActions.setSection(p, section);
     },
   });
-  const list = (ps: Project[]) => ps.map((p) => <ProjectGroup key={p.id} project={p} chips={multiBox} prefs={prefs} update={update} />);
+  const list = (ps: Project[], pageKey: string) => <ProjectList projects={ps} chips={multiBox} prefs={prefs} update={update} pagination={pagination} pageKey={pageKey} />;
 
   return (
     <>
       <div {...drop(undefined)} className={[sx(paint.s50), over === "" && sx(paint.s51)].filter(Boolean).join(" ")}>
-        <SidebarMenu gap="tight">{list(loose)}</SidebarMenu>
+        <SidebarMenu gap="tight">{list(loose, sidebarPageKey("loose", "projects"))}</SidebarMenu>
       </div>
       {sections.map((name) => {
         const inside = projects.filter((p) => p.section === name);
@@ -1245,6 +1303,7 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
                 <button
                   type="button"
                   onClick={() => update({ collapsed: { ...prefs.collapsed, [key]: !closed } })}
+                  aria-expanded={!closed}
                   className={sx(paint.s55)}
                 >
                   <ChevronRightIcon className={[sx(paint.s56), !closed && sx(paint.s57)].filter(Boolean).join(" ")} />
@@ -1259,7 +1318,7 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
               </div>
             </ContextRow>
             {!closed &&
-              (inside.length ? <SidebarMenu gap="tight">{list(inside)}</SidebarMenu> : <p className={sx(paint.s61)}>Drag a project here.</p>)}
+              (inside.length ? <SidebarMenu gap="tight">{list(inside, sidebarPageKey("section", name, "projects"))}</SidebarMenu> : <p className={sx(paint.s61)}>Drag a project here.</p>)}
           </div>
         );
       })}
@@ -1295,9 +1354,18 @@ function sectionActions(name: string): Action[] {
   ];
 }
 
+function ProjectList({ projects, chips, prefs, update, pagination, pageKey }: { projects: Project[]; chips: boolean; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void; pagination: SidebarPagination; pageKey: string }) {
+  const limit = pagination.pages[pageKey] ?? SIDEBAR_PAGE;
+  const boxes = useStore((s) => s.boxes);
+  const current = useWorkspaces((s) => s.current);
+  const view = useStore((s) => s.view);
+  const shown = sidebarPage(projects, limit, (p) => p.members.some((m) => (view.kind === "project" ? view.box === m.box.name && view.location === m.loc.name : view.kind === "workspace" && !!m.loc.worktrees?.some((wt) => current === wsKey(m.box.name, wt.path))) || !!boxes[m.box.name]?.sessions?.some((s) => sidebarPageKey("chat", m.box.name, s.name) === pagination.selectedChat && m.loc.worktrees?.some((wt) => wt.path === s.dir))));
+  return <>{shown.map((p) => <ProjectGroup key={p.id} project={p} chips={chips} prefs={prefs} update={update} pagination={pagination} />)}<SidebarLoadMore remaining={projects.length - shown.length} label="projects" expanded={limit > SIDEBAR_PAGE} onClick={() => pagination.setLimit(pageKey, limit + SIDEBAR_PAGE)} onFewer={() => pagination.setLimit(pageKey, SIDEBAR_PAGE)} /></>;
+}
+
 // ProjectGroup is one project: its row (name, its boxes, how its agents are
 // doing), and under it the worktrees from all its boxes.
-function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; chips: boolean; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
+function ProjectGroup({ project: p, chips, prefs, update, pagination }: { project: Project; chips: boolean; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void; pagination: SidebarPagination }) {
   const boxes = useStore((s) => s.boxes);
   const removals = useRemovals((s) => s.byKey);
   const current = useWorkspaces((s) => s.current);
@@ -1345,6 +1413,9 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
     const sessions = (boxes[m.box.name]?.sessions ?? []).filter((s) => m.loc.worktrees?.some((w) => w.path === s.dir));
     return sidebarChats(sessions, drawn).map((session) => ({ box: m.box.name, session }));
   }).sort((a, b) => b.session.created.localeCompare(a.session.created));
+  const chatKey = sidebarPageKey("project", p.id, "chats");
+  const chatLimit = pagination.pages[chatKey] ?? SIDEBAR_PAGE;
+  const shownChats = sidebarPage(chats, chatLimit, ({ box, session }) => sidebarPageKey("chat", box, session.name) === pagination.selectedChat);
   const glyphSessions = multi ? (collapsed ? allSessions : []) : defMain ? worktreeSessions(boxes[def.box.name]?.sessions, defMain) : [];
   const online = p.members.some((m) => m.box.state === "online");
 
@@ -1426,8 +1497,8 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               away={def.box.state === "online" ? undefined : def.box}
             />
           )}
-          <WorktreeNodes nodes={shown} depth={0} prefs={prefs} update={update} />
-          {chats.map(({ box, session: s }) => {
+          <WorktreeNodes nodes={shown} depth={0} prefs={prefs} update={update} pagination={pagination} pageKey={sidebarPageKey("project", p.id, "worktrees")} />
+          {shownChats.map(({ box, session: s }) => {
             return (
               <SidebarMenuSubItem key={`${box}:${s.name}`}>
                 <SidebarMenuSubButton
@@ -1442,6 +1513,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               </SidebarMenuSubItem>
             );
           })}
+          <SidebarLoadMore remaining={chats.length - shownChats.length} label="chats" expanded={chatLimit > SIDEBAR_PAGE} onClick={() => pagination.setLimit(chatKey, chatLimit + SIDEBAR_PAGE)} onFewer={() => pagination.setLimit(chatKey, SIDEBAR_PAGE)} />
           {hidden > 0 && (
             <SidebarMenuSubItem>
               <SidebarMenuSubButton

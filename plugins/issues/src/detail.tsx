@@ -675,7 +675,7 @@ export function Detail({ berth, row, runs, viewer, onStart }: { berth: BerthPlug
       )}
 
       {load?.status === "problem" && !detail ? (
-        <Problem problem={load.problem} box={runnerOf(row.project)?.box} />
+        <Problem problem={load.problem} box={load.box ?? runnerOf(row.project)?.box} />
       ) : !detail ? (
         <div className={sx(paint.s22)}>
           <Skeleton className={[sx(paint.s23), sx(paint.q86)].filter(Boolean).join(" ")} />

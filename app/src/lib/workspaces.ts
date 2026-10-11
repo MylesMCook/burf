@@ -7,8 +7,9 @@ import { agentOf, sessionState } from "@/lib/derive";
 import { findLeaf, type Leaf, leaf, leaves, mapLeaf, moveBetween, movePane, neighbor, newId, type PaneContent, type PaneNode, paneWorktree, place, remove, sessionsShown, restorePane, setRatio, type Side, split, swap, worktreesOf } from "@/lib/layout";
 import { foldedOf, groupsOf, NARROW, stepGroup, stripTabs, withGroup, withoutGroup } from "@/lib/groups";
 import { usePrefs } from "@/lib/prefs";
-import { load, save } from "@/lib/storage";
+import { load, save, saveChecked } from "@/lib/storage";
 import { useStore } from "@/lib/store";
+import { transferLocalHistoryDraft } from "@/lib/local-history-draft";
 import { localChatDraftKey, readLocalChatDraft, type LocalChatDraft, type LocalChatScope } from "@/lib/local-chat-draft";
 
 // A workspace is one worktree's tabs, as in Orca: selecting a worktree in the
@@ -155,7 +156,19 @@ export const useWorkspaces = create<State>()(() => ({
   localChatDrafts: saved.localChatDrafts ?? {},
 }));
 
-useWorkspaces.subscribe((s) => save("berth.workspaces", { current: s.current, shown: s.shown, folded: s.folded, tones: s.tones, spaces: s.spaces, recentUrls: s.recentUrls, localChatDrafts: s.localChatDrafts }));
+const workspaceSnapshot = (s: State) => ({ current: s.current, shown: s.shown, folded: s.folded, tones: s.tones, spaces: s.spaces, recentUrls: s.recentUrls, localChatDrafts: s.localChatDrafts });
+let checkedWorkspace: State | undefined;
+useWorkspaces.subscribe((state) => { if (state !== checkedWorkspace) save("berth.workspaces", workspaceSnapshot(state)); });
+
+function commitLocalChatDrafts(drafts: State["localChatDrafts"]) {
+  const next = { ...useWorkspaces.getState(), localChatDrafts: drafts };
+  saveChecked("berth.workspaces", workspaceSnapshot(next));
+  // This exact state was already persisted. Other workspace changes still use
+  // the convenience subscriber; never perform a second unchecked journal write.
+  checkedWorkspace = next;
+  try { useWorkspaces.setState(next, true); }
+  finally { checkedWorkspace = undefined; }
+}
 
 export function localChatDraft(session: LocalChatScope): LocalChatDraft {
   return readLocalChatDraft(useWorkspaces.getState().localChatDrafts[localChatDraftKey(session)]);
@@ -164,6 +177,23 @@ export function localChatDraft(session: LocalChatScope): LocalChatDraft {
 export function changeLocalChatDraft(session: LocalChatScope, change: (draft: LocalChatDraft) => LocalChatDraft) {
   const key = localChatDraftKey(session);
   useWorkspaces.setState((state) => ({ localChatDrafts: { ...state.localChatDrafts, [key]: change(readLocalChatDraft(state.localChatDrafts[key])) } }));
+}
+
+export function changeLocalChatDraftChecked(session: LocalChatScope, change: (draft: LocalChatDraft) => LocalChatDraft) {
+  const state = useWorkspaces.getState();
+  const key = localChatDraftKey(session);
+  commitLocalChatDrafts({ ...state.localChatDrafts, [key]: change(readLocalChatDraft(state.localChatDrafts[key])) });
+}
+
+export function moveLocalHistoryDraft(source: LocalChatScope, target: LocalChatScope, sendPending: boolean, options: { sourceText?: string; changeTarget?(draft: LocalChatDraft): LocalChatDraft } = {}): boolean {
+  const state = useWorkspaces.getState();
+  const sourceKey = localChatDraftKey(source);
+  const targetKey = localChatDraftKey(target);
+  const savedSource = readLocalChatDraft(state.localChatDrafts[sourceKey]);
+  const sourceDraft = options.sourceText === undefined ? savedSource : { ...savedSource, pending: undefined, text: options.sourceText };
+  const moved = transferLocalHistoryDraft(sourceDraft, readLocalChatDraft(state.localChatDrafts[targetKey]), sendPending);
+  commitLocalChatDrafts({ ...state.localChatDrafts, [sourceKey]: moved.source, [targetKey]: options.changeTarget?.(moved.target) ?? moved.target });
+  return moved.send;
 }
 
 const mapLeaves = (n: PaneNode, fn: (l: Leaf) => Leaf): PaneNode => (n.kind === "leaf" ? fn(n) : { ...n, a: mapLeaves(n.a, fn), b: mapLeaves(n.b, fn) });

@@ -1,3 +1,4 @@
+import { iconScale } from "@/components/ui/icon-tokens.stylex";
 import {
   EllipsisIcon,
   FolderPlusIcon,
@@ -7,6 +8,7 @@ import {
   SearchIcon,
   ServerIcon,
   SettingsIcon,
+  TriangleAlertIcon,
 } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
@@ -21,6 +23,9 @@ import { SidebarResizeHandle } from "@/components/sidebar/resize-handle";
 import { RowLayer } from "@/components/sidebar/row-layer";
 import { Tip } from "@/components/tip";
 import { Kbd } from "@/components/ui/kbd";
+import { Button } from "@/components/ui/button";
+import { loadPlugins } from "@/plugins/host";
+import { usePluginCatalogError, usePluginsLoading } from "@/plugins/registry";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger, menuWidths } from "@/components/ui/menu";
 import { SidebarContext, type SidebarContextProps } from "@/components/ui/sidebar";
 import { usePrefs } from "@/lib/prefs";
@@ -29,6 +34,7 @@ import { SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN } from "@/lib/sidebar-width";
 import { WhatsNewNudge } from "@/components/whats-new/whats-new-dialog";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { platformKeys } from "@/lib/platform";
+import { isMac } from "@/lib/platform";
 import { color, radius } from "@/styles/tokens.stylex";
 
 const styles = stylex.create({
@@ -54,6 +60,9 @@ const styles = stylex.create({
     paddingLeft: 8,
     paddingRight: 8,
   },
+  brand: { flexGrow: 1, fontSize: 12, color: color.foreground },
+  nativeControls: { paddingLeft: 68 },
+  recovery: { marginLeft: 8, marginRight: 8, marginBottom: 8, padding: 8, fontSize: 12, color: color.mutedForeground, borderWidth: 1, borderStyle: "solid", borderColor: color.border, borderRadius: radius.md, display: "flex", flexDirection: "column", gap: 6 },
   searchWrap: { paddingLeft: 8, paddingRight: 8, paddingBottom: 4 },
   search: {
     display: "flex",
@@ -72,8 +81,8 @@ const styles = stylex.create({
     fontSize: 13,
     color: color.mutedForeground,
   },
-  icon35: { width: 14, height: 14, flexShrink: 0 },
-  icon4: { width: 16, height: 16, flexShrink: 0 },
+  icon35: { width: iconScale.action, height: iconScale.action, flexShrink: 0 },
+  icon4: { width: iconScale.action, height: iconScale.action, flexShrink: 0 },
   grow: { flexGrow: 1, flexShrink: 1, flexBasis: "0%", textAlign: "left" },
   kbd: { height: 18, fontSize: 10 },
   projectsHead: {
@@ -89,6 +98,7 @@ const styles = stylex.create({
   label: { fontWeight: 500, fontSize: 11, color: color.mutedForeground },
   iconBtn: {
     display: "inline-flex",
+    padding: 0,
     width: 24,
     height: 24,
     alignItems: "center",
@@ -96,7 +106,7 @@ const styles = stylex.create({
     borderRadius: radius.md,
     color: { default: color.mutedForeground, ":hover": color.foreground },
     backgroundColor: { default: "transparent", ":hover": color.sidebarAccent, "[data-popup-open]": color.sidebarAccent },
-    ":not(#\\#) svg": { width: 14, height: 14 },
+    ":not(#\\#) svg": { width: iconScale.action, height: iconScale.action, flexShrink: 0 },
   },
   hint: { marginLeft: "auto", color: color.mutedForeground, fontSize: 12 },
   foot: {
@@ -161,7 +171,7 @@ const styles = stylex.create({
     borderRadius: radius.lg,
     color: { default: color.mutedForeground, ":hover": color.foreground },
     backgroundColor: { default: "transparent", ":hover": color.sidebarAccent, "[data-popup-open]": color.sidebarAccent },
-    ":not(#\\#) svg": { width: 16, height: 16 },
+    ":not(#\\#) svg": { width: iconScale.action, height: iconScale.action },
   },
   railOn: { backgroundColor: color.sidebarAccent, color: color.foreground },
   badge: { position: "absolute", top: 2, right: 2, width: 8, height: 8, borderRadius: radius.full },
@@ -210,6 +220,10 @@ export function AppSidebar() {
         <SidebarResizeHandle />
         {/* Room for the macOS traffic lights; the strip drags the window. */}
         <div data-burf-drag-region {...stylex.props(styles.drag)}>
+          <span {...stylex.props(styles.brand, isMac() && styles.nativeControls)}>Burf</span>
+          <Tip label="Discover or pair a computer" side="bottom">
+            <button type="button" aria-label="Discover or pair a computer" {...stylex.props(styles.iconBtn)} onClick={openAddBox}><ServerIcon /></button>
+          </Tip>
           <NotificationBell />
         </div>
 
@@ -225,6 +239,7 @@ export function AppSidebar() {
           </button>
           <PlacesNav />
         </div>
+        <PluginRecovery />
 
         <div {...stylex.props(styles.projectsHead, noBoxes && styles.gone)}>
           <span {...stylex.props(styles.label)}>Projects</span>
@@ -246,7 +261,7 @@ export function AppSidebar() {
               </MenuItem>
               <MenuItem onClick={openAddBox}>
                 <ServerIcon />
-                Add a box…
+                Add a computer…
               </MenuItem>
               <MenuItem onClick={() => newSection()}>
                 <FolderPlusIcon />
@@ -288,7 +303,7 @@ export function AppSidebar() {
               onClick={(e) => setView({ kind: "settings", section: e.shiftKey ? "developer" : undefined })}
               {...stylex.props(styles.settings, view.kind === "settings" && styles.settingsOn)}
             >
-              <SettingsIcon {...stylex.props(styles.icon35)} />
+              <SettingsIcon {...stylex.props(styles.icon4)} />
               Settings
             </button>
           </Tip>
@@ -299,7 +314,7 @@ export function AppSidebar() {
               onClick={() => usePrefs.setState({ sidebarCollapsed: true })}
               {...stylex.props(styles.collapse)}
             >
-              <PanelLeftCloseIcon {...stylex.props(styles.icon35)} />
+              <PanelLeftCloseIcon {...stylex.props(styles.icon4)} />
             </button>
           </Tip>
         </div>
@@ -364,9 +379,24 @@ function Rail() {
         <RailAgents />
       </div>
       <div {...stylex.props(styles.railFoot)}>
+        <PluginRecovery compact />
         {item("Settings", <SettingsIcon />, view.kind === "settings", () => setView({ kind: "settings" }))}
         {item("Show the sidebar (⌘\\)", <PanelLeftOpenIcon />, false, () => usePrefs.setState({ sidebarCollapsed: false }))}
       </div>
     </aside>
   );
+}
+
+function PluginRecovery({ compact = false }: { compact?: boolean }) {
+  const error = usePluginCatalogError();
+  const loading = usePluginsLoading();
+  const client = useStore((s) => s.client);
+  if (!error) return null;
+  if (compact) return <Tip label="Some plugins could not load. Retry plugin loading." side="right">
+    <Button variant="ghost" size="icon-sm" aria-label="Retry plugin loading" disabled={!client || loading} onClick={() => client && void loadPlugins(client)}><TriangleAlertIcon /></Button>
+  </Tip>;
+  return <section role="alert" aria-label="Plugin loading" {...stylex.props(styles.recovery)}>
+    <p>Some features could not load. Retry to load them; any already loaded plugins remain available.</p>
+    <Button size="sm" variant="outline" disabled={!client || loading} onClick={() => client && void loadPlugins(client)}>Retry plugin loading</Button>
+  </section>;
 }

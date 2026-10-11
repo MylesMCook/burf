@@ -354,6 +354,13 @@ export interface BerthPluginContext {
   notify(title: string, body?: string): void;
   openScreen(id: string): void;
   openTerminal(box: string, session: string): void;
+  // Existing app flows; optional so plugins remain compatible with older hosts.
+  openAddProject?(box?: string): void;
+  openComputerDiscovery?(): void;
+  openComputerSettings?(): void;
+  // Opens a plain shell in this paired computer's home. Never sends a command.
+  // Resolves to the session name, or undefined when it could not open.
+  openHomeTerminal?(box: string): Promise<string | undefined>;
   openUrl(url: string): void;
   // Brings a worktree's workspace to the front, as clicking it in the
   // sidebar does.

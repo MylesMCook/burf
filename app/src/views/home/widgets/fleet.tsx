@@ -1,18 +1,19 @@
 import * as stylex from "@stylexjs/stylex";
 import { ArrowUpRightIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { StateGlyph, StatusDot, useBoxState } from "@/components/agent-glyph";
+import { Tip } from "@/components/tip";
 import type { BoxStatus } from "@/lib/api";
 import { hostSuffix, portUrl } from "@/lib/browser-url";
-import { bytes } from "@/lib/format";
 import { NONE, useStore } from "@/lib/store";
 import { openBrowser, selectWorktree } from "@/lib/workspaces";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 
 import { useAgentRows } from "./agents";
+import { useHomeMachines } from "./machine-filter";
 import { fitRows, useHomeWidget } from "./env";
-import { fleetStats } from "./fleet-stats";
+import { fleetLayout, fleetStats, fleetVisibleCount } from "./fleet-stats";
 import { Bar, More, shortAgo, WidgetEmpty, WidgetRow, WidgetSkeleton } from "./parts";
 import { placeLabel } from "@/lib/worktree-names";
 
@@ -28,6 +29,11 @@ const paint = stylex.create({
   },
   s2: {
     "display": "flex",
+    "width": "100%",
+    "textAlign": "left",
+    "backgroundColor": { default: "transparent", ":hover": "var(--accent)" },
+    "outline": { ":focus-visible": "2px solid var(--ring)" },
+    "outlineOffset": 2,
     "minWidth": "0px",
     "flexDirection": "column",
     "gap": "4px",
@@ -95,14 +101,18 @@ const paint = stylex.create({
   },
   s11: {
     "display": "flex",
+    "flexDirection": { default: "row", "@container (max-width: 420px)": "column" },
     "justifyContent": "space-between",
     "gap": "4px",
-    "fontSize": "10px",
+    "fontSize": "12px",
     "color": "var(--muted-foreground)",
   },
   s12: {
+    "color": "var(--foreground)",
+    "fontWeight": 500,
     "fontVariantNumeric": "tabular-nums",
   },
+  metricLabel: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   s13: {
     "height": "22px",
     "paddingLeft": "14px",
@@ -168,7 +178,7 @@ const paint = stylex.create({
   },
 
   s21: {
-    "@container (max-width: 420px)": {
+    "@container (max-width: 739px)": {
       gridTemplateColumns: "repeat(1, minmax(0, 1fr))",
     },
   },
@@ -177,6 +187,7 @@ const paint = stylex.create({
       display: "none",
     },
   },
+  normalization: { fontSize: 12, lineHeight: "16px", color: "var(--muted-foreground)", fontVariantNumeric: "tabular-nums" },
 });
 function sx(...parts: readonly (false | null | undefined | object)[]): string {
   return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
@@ -186,16 +197,29 @@ function sx(...parts: readonly (false | null | undefined | object)[]): string {
 // box's stats every 30s, its services), so they cost nothing extra.
 
 export function BoxesWidget() {
+  const selected = useHomeMachines();
   const { height, span } = useHomeWidget();
   const list = useStore((s) => s.status?.boxes ?? (NONE as BoxStatus[]));
   const loaded = useStore((s) => !!s.status);
+  const wrap = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  const { columns, rowHeight } = fleetLayout(width, span.c);
+  useLayoutEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const measure = () => setWidth(el.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [span.c, loaded, list.length]);
   if (!loaded) return <WidgetSkeleton rows={3} />;
-  if (!list.length) return <WidgetEmpty scene="arriving" title="No boxes yet" hint="A box is a computer your agents work on: this Mac, a server, a VM." action="Add a box" onAction={openAddBox} />;
+  if (!list.length) return <WidgetEmpty scene="arriving" title="No paired computers" hint="Add a computer to see its readings and agent activity." action="Add computer" onAction={openAddBox} />;
   // Online first, then by name; offline boxes take one line.
-  const sorted = [...list].sort((a, b) => Number(b.state === "online") - Number(a.state === "online") || a.name.localeCompare(b.name));
-  const shown = sorted.slice(0, Math.max(1, fitRows(height, 44)));
+  const sorted = list.filter((b) => !selected || selected.includes(b.name)).sort((a, b) => Number(b.state === "online") - Number(a.state === "online") || a.name.localeCompare(b.name));
+  const shown = sorted.slice(0, fleetVisibleCount(height, rowHeight, columns, sorted.length));
   return (
-    <div className={[sx(paint.s0), span.c >= 2 && [sx(paint.s1), sx(paint.s21)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
+    <div ref={wrap} data-testid="home-machine-rows" className={[sx(paint.s0), columns === 2 && [sx(paint.s1), sx(paint.s21)].filter(Boolean).join(" ")].filter(Boolean).join(" ")}>
       {shown.map((b) => (
         <BoxRow key={b.name} b={b} />
       ))}
@@ -207,47 +231,62 @@ export function BoxesWidget() {
 function BoxRow({ b }: { b: BoxStatus }) {
   const state = useBoxState(b.name);
   const st = useStore((s) => s.boxes[b.name]?.stats);
-  const agents = useAgentRows();
+  const mac = useStore((s) => s.boxes[b.name]?.info?.os === "darwin");
+  const error = useStore((s) => {
+    const data = s.boxes[b.name];
+    return data?.partErrors ? data.partErrors.stats : data?.error;
+  });
+  const connected = useStore((s) => s.connection.state === "online");
+  const sessionsKnown = useStore((s) => s.boxes[b.name]?.sessions !== undefined);
+  const sessionsFailed = useStore((s) => !!s.boxes[b.name]?.partErrors?.sessions);
+  const agents = useAgentRows(false);
   const working = agents.filter((a) => a.box === b.name && a.state === "running").length;
   const waiting = agents.filter((a) => a.box === b.name && a.state === "waiting").length;
   const online = b.state === "online";
-  const readings = fleetStats(st);
-  const usage = ([ ["CPU", readings.cpu], ["Mem", readings.mem], ["Disk", readings.disk] ] as const).filter((entry): entry is readonly ["CPU" | "Mem" | "Disk", number] => entry[1] !== undefined);
-  const hardware = [readings.cpus && `${readings.cpus} CPU`, readings.memory && bytes(readings.memory)].filter(Boolean).join(" · ");
+  const readings = fleetStats(online && connected && !error ? st : undefined);
+  const usage = [
+    { label: "Load (1m)", detail: "Load (1m), not CPU utilization", value: readings.loadPerCpu, text: readings.load === undefined ? "—" : readings.load.toFixed(2), normalization: readings.loadPerCpu === undefined ? undefined : `${readings.loadPerCpu.toFixed(2)}/CPU`, full: readings.load === undefined ? "Unavailable" : `${readings.load.toFixed(2)}${readings.cpus === undefined ? "" : ` on ${readings.cpus} CPUs · ${readings.loadPerCpu!.toFixed(2)}/CPU`}` },
+    { label: mac ? "RAM" : "Mem", detail: mac ? "RAM used (excludes cache)" : "Memory used", value: readings.mem, text: readings.mem === undefined ? "—" : `${Math.round(readings.mem * 100)}%`, full: readings.mem === undefined ? "Unavailable" : `${Math.round(readings.mem * 100)}%` },
+    { label: readings.diskMount ? `Disk ${readings.diskMount}` : "Disk", detail: readings.diskMount ? `Disk ${readings.diskMount}, fullest filesystem` : "Disk use", value: readings.disk, text: readings.disk === undefined ? "—" : `${Math.round(readings.disk * 100)}%`, full: readings.disk === undefined ? "Unavailable" : `${Math.round(readings.disk * 100)}%` },
+  ];
+  const hardware = [readings.cpus && `${readings.cpus} CPU`, readings.memory && `${(readings.memory / 2 ** 30).toFixed(1)} GiB`].filter(Boolean).join(" · ");
+  const readingState = !online ? (b.error ? "Can't reach it" : "Not connected") : !connected ? "Agent unreachable" : error ? "Refresh failed" : !st ? "Reading stats…" : undefined;
+  const detail = `${b.name}${hardware ? ` · ${hardware}` : ""}. ${readingState ? `${readingState}. ` : ""}${usage.map((m) => `${m.detail}: ${m.full}`).join(". ")}. ${sessionsKnown ? `${working} working, ${waiting} need you${!online || !connected || sessionsFailed ? " (last known)" : ""}` : "Agent sessions unavailable"}. Open projects.`;
   return (
-    <div className={sx(paint.s2)}>
+    <Tip label={detail}><button type="button" aria-label={detail} onClick={() => useStore.getState().setView({ kind: "worktrees", box: b.name })} className={sx(paint.s2)}>
       <span className={sx(paint.s3)}>
         <StatusDot state={state} />
         <span className={sx(paint.s4)}>{b.name}</span>
         <span className={sx(paint.s5)}>
           {online ? hardware : `offline${b.since ? ` · ${shortAgo(b.since)}` : ""}`}
         </span>
-        {waiting > 0 && <StateGlyph state="waiting" className={sx(paint.s6)} />}
+        {waiting > 0 && <span className={sx(paint.s7)}><StateGlyph state="waiting" className={sx(paint.s6)} />{waiting} need you</span>}
         {working > 0 && (
           <span className={sx(paint.s7)}>
             <StateGlyph state="running" className={sx(paint.s8)} />
-            {working}
+            {working} working
           </span>
         )}
       </span>
-      {online && usage.length ? (
-        <span className={sx(paint.s9)} role="group" aria-label={`${b.name}: ${usage.map(([label, value]) => `${label} ${Math.round(value * 100)}%`).join(", ")}`}>
-          {usage.map(([l, v]) => (
+      {online && connected && !error && st ? (
+        <span className={sx(paint.s9)} role="group" aria-label={`${b.name}: ${usage.map(({ detail, full }) => `${detail}: ${full}`).join(", ")}`}>
+          {usage.map(({ label: l, value: v, text, normalization }) => (
             <span key={l} className={sx(paint.s10)} aria-hidden>
               <span className={sx(paint.s11)}>
-                <span>{l}</span>
-                <span className={sx(paint.s12)}>{Math.round(Math.min(1, v) * 100)}%</span>
+                <span className={sx(paint.metricLabel)}>{l}</span>
+                <span className={sx(paint.s12)}>{text}</span>
               </span>
-              <Bar value={v} tone={v > 0.9 ? "destructive" : v > 0.8 ? "warning" : "muted"} />
+              {normalization && <span className={sx(paint.normalization)}>{normalization}</span>}
+              {v !== undefined && <Bar value={v} tone={l === "Load (1m)" ? (v > 1 ? "warning" : "muted") : v > 0.9 ? "destructive" : v > 0.8 ? "warning" : "muted"} />}
             </span>
           ))}
         </span>
       ) : online ? (
-        <span className={sx(paint.s13)}>{st ? "Stats unavailable" : "Reading stats…"}</span>
+        <span className={sx(paint.s13)}>{readingState}</span>
       ) : (
-        <span className={sx(paint.s14)}>{b.error ? "Can't reach it" : "Not connected"}</span>
+        <span className={sx(paint.s14)}>{readingState}</span>
       )}
-    </div>
+    </button></Tip>
   );
 }
 
@@ -266,6 +305,7 @@ function serviceName(process?: string) {
 }
 
 export function ServicesWidget() {
+  const selected = useHomeMachines();
   const { height, span } = useHomeWidget();
   const boxes = useStore((s) => s.boxes);
   const urlPort = useStore((s) => s.status?.proxy.url_port);
@@ -273,9 +313,10 @@ export function ServicesWidget() {
   const list = useMemo(
     () =>
       Object.entries(boxes)
+        .filter(([box]) => !selected || selected.includes(box))
         .flatMap(([box, d]) => (d.services ?? []).filter((s) => !NOISE.test(s.process ?? "")).map((s) => ({ box, ...s, name: serviceName(s.process) })))
         .sort((a, b) => a.box.localeCompare(b.box) || a.port - b.port),
-    [boxes],
+    [boxes, selected],
   );
   if (!loaded && !list.length) return <WidgetSkeleton rows={3} />;
   if (!list.length) return <WidgetEmpty scene="dock" title="Nothing is listening" hint="Dev servers your agents start in worktrees show here, a click from a tab." />;
@@ -285,7 +326,7 @@ export function ServicesWidget() {
       {shown.map((s) => (
         <WidgetRow
           key={`${s.box}:${s.port}`}
-          label={`Open ${placeLabel(s, boxes)} on port ${s.port}`}
+          label={`Open ${placeLabel(s, boxes)} on ${s.box}, port ${s.port}`}
           onClick={() => {
             const ref = { box: s.box, location: s.location, worktree: s.worktree, path: s.path, main: s.main };
             selectWorktree(ref);
@@ -295,6 +336,7 @@ export function ServicesWidget() {
           <span className={sx(paint.s16)} aria-hidden />
           <span className={sx(paint.s17)}>:{s.port}</span>
           <span className={sx(paint.s18)}>{placeLabel(s, boxes)}</span>
+          <span className={sx(paint.s19)}>{s.box}</span>
           {span.c > 1 && <span className={[sx(paint.s19), sx(paint.s22)].filter(Boolean).join(" ")}>{s.name}</span>}
           <ArrowUpRightIcon className={sx(paint.s20)} />
         </WidgetRow>

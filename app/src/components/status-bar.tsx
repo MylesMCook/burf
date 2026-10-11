@@ -6,9 +6,15 @@ import { StatusDot } from "@/components/agent-glyph";
 import { BoxMeter } from "@/components/box-processes";
 import { QueueIndicator } from "@/components/queue/queue-indicator";
 import { Tip } from "@/components/tip";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { setPrefs, usePrefs } from "@/lib/prefs";
+import { statusBarMemory } from "@/lib/status-bar-memory";
 import { Spinner } from "@/components/ui/spinner";
 import { useUpdateAll } from "@/components/upgrade-box";
 import { useAgentCounts } from "@/hooks/use-agent-counts";
+import { fleetBytes, fleetStats } from "@/views/home/widgets/fleet-stats";
 import { isMock } from "@/hooks/use-burf-connection";
 import { viaRoute } from "@/lib/box-routes";
 import { useOutdatedBoxes } from "@/lib/outdated";
@@ -66,6 +72,18 @@ const styles = stylex.create({
     paddingRight: 4,
     color: "var(--warning-foreground)",
   },
+  fleet: { flexShrink: 0 },
+  machines: { margin: 0, padding: 0, listStyleType: "none", display: "flex", flexDirection: "column", gap: 16 },
+  machine: { display: "flex", flexDirection: "column", gap: 8 },
+  machineHead: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  machineName: { fontWeight: 500, overflowWrap: "anywhere", minWidth: 0 },
+  detail: { fontSize: 12, color: color.mutedForeground, overflowWrap: "anywhere" },
+  choice: { display: "flex", alignItems: "center", gap: 8, fontSize: 12 },
+  memory: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12 },
+  readings: { display: "grid", gridTemplateColumns: { default: "repeat(2, minmax(0, 1fr))", "@media (max-width: 639px)": "minmax(0, 1fr)" }, gap: 8, margin: 0, fontSize: 12 },
+  reading: { minWidth: 0, overflowWrap: "anywhere" },
+  readingName: { color: color.mutedForeground },
+  readingValue: { margin: 0, fontVariantNumeric: "tabular-nums" },
   cluster: { display: "flex", alignItems: "center", gap: 6 },
   down: { display: "flex", alignItems: "center", gap: 6, color: color.destructive },
   dot: { width: 6, height: 6, borderRadius: radius.full, backgroundColor: color.destructive },
@@ -120,7 +138,10 @@ export function StatusBar() {
   const restarting = useAgentRestart((s) => s.restarting);
   const counts = useAgentCounts();
   const items = useRegistry((s) => s.statusBarItems);
+  const monitor = useRegistry((s) => s.screens.find((screen) => screen.plugin === "box-monitor" && screen.item.id === "boxes"));
   const [syncing, setSyncing] = useState(false);
+  const [fleetOpen, setFleetOpen] = useState(false);
+  const hiddenMeters = usePrefs((p) => p.statusBarHiddenBoxes);
   const go = useStore((s) => s.setView);
 
   const outdated = useOutdatedBoxes();
@@ -138,7 +159,7 @@ export function StatusBar() {
   const forwards = status?.forwards.length ?? 0;
 
   return (
-    <footer {...stylex.props(styles.bar)}>
+    <footer aria-label="Status bar" data-testid="status-bar" {...stylex.props(styles.bar)}>
       {/* ?shots=1, used by site/scripts/capture.mjs, hides the badge. */}
       {__BERTH_DEMO__ ? (
         !new URLSearchParams(location.search).has("shots") && <Tip label="A demo: invented boxes and repositories, and nothing runs">
@@ -195,14 +216,78 @@ export function StatusBar() {
         ))}
       <UpdateItem />
       <OutdatedItem />
-      {online.map((b) => {
-        const mem = boxes[b.name]?.stats?.memory;
+      <Dialog open={fleetOpen} onOpenChange={setFleetOpen}>
+        <Tip label="All computers and status bar options">
+          <DialogTrigger render={<button type="button" data-testid="status-fleet" {...stylex.props(styles.item, styles.fleet)} />}>
+            <StatusDot state={online.length === total && total > 0 ? (slow > 0 ? "slow" : "online") : "offline"} />
+            {online.length}/{total} {total === 1 ? "computer" : "computers"} online
+            {slow > 0 && <span data-testid="boxes-slow">· {slow === 1 && total > 1 ? online.find((b) => b.link?.slow)?.name + " slow" : "slow"}</span>}
+          </DialogTrigger>
+        </Tip>
+        <DialogPopup width="md">
+          <DialogHeader>
+            <DialogTitle>Computers and status bar</DialogTitle>
+            <DialogDescription>Current readings and known Burf sessions on paired computers. Choose which memory meters appear in this window's status bar.</DialogDescription>
+          </DialogHeader>
+          <DialogPanel>
+            {connection.state !== "online" && <p {...stylex.props(styles.detail)}>Agent unreachable. Memory readings are unavailable until it reconnects.</p>}
+            <ul {...stylex.props(styles.machines)}>
+              {status?.boxes.map((b) => {
+                const st = boxState(b, boxes[b.name], outdated.includes(b.name));
+                const data = boxes[b.name];
+                const available = connection.state === "online" && b.state === "online" && !data?.error;
+                const mem = statusBarMemory(data?.stats?.memory, available);
+                const readings = fleetStats(available ? data?.stats : undefined);
+                const sessions = available ? data?.sessions : undefined;
+                const unavailable = b.state !== "online" ? "Unavailable: computer offline" : data?.error ? "Unavailable: refresh failed" : connection.state !== "online" ? "Unavailable: agent unreachable" : "Unavailable: no reading";
+                const memoryLabel = boxes[b.name]?.info?.os === "darwin" ? "RAM used (excludes cache)" : "Memory";
+                return (
+                  <li key={b.name} data-testid="status-machine" data-box={b.name} {...stylex.props(styles.machine)}>
+                    <div {...stylex.props(styles.machineHead)}>
+                      <span {...stylex.props(styles.machineName)}>{b.name}</span>
+                      <StatusDot state={st} /><span {...stylex.props(styles.detail)}>{BOX_WORDS[st].word}</span>
+                      <Button variant="ghost" size="sm" aria-label={"Open projects on " + b.name} onClick={() => { setFleetOpen(false); go({ kind: "worktrees", box: b.name }); }}>Open projects</Button>
+                    </div>
+                    {b.state === "online" && viaRoute(b) && <p {...stylex.props(styles.detail)}>{viaRoute(b)}</p>}
+                    <div {...stylex.props(styles.memory)}>
+                      <span>{memoryLabel}</span>
+                      {mem ? <><BoxMeter box={b.name} mem={mem} route={viaRoute(b)} memoryLabel={memoryLabel} onNavigate={() => setFleetOpen(false)} /><span {...stylex.props(styles.detail)}>{mem.used === 0 ? "0 B" : `${(mem.used / 2 ** 30).toFixed(1)} GiB`} of {(mem.total / 2 ** 30).toFixed(1)} GiB in use</span></> : <span {...stylex.props(styles.detail)}>{unavailable}</span>}
+                    </div>
+                    <dl {...stylex.props(styles.readings)}>
+                      <div {...stylex.props(styles.reading)}><dt {...stylex.props(styles.readingName)}>Load average (1m)</dt><dd {...stylex.props(styles.readingValue)}>{readings.load === undefined ? unavailable : `${readings.load.toFixed(2)}${readings.cpus === undefined ? "" : ` on ${readings.cpus} CPUs`}`}</dd></div>
+                      <div {...stylex.props(styles.reading)}><dt {...stylex.props(styles.readingName)}>Fullest disk{readings.diskMount ? ` · ${readings.diskMount}` : ""}</dt><dd {...stylex.props(styles.readingValue)}>{readings.disk === undefined ? unavailable : `${Math.round(readings.disk * 100)}% used · ${fleetBytes(readings.diskUsed!)} of ${fleetBytes(readings.diskTotal!)}`}</dd></div>
+                      <div {...stylex.props(styles.reading)}><dt {...stylex.props(styles.readingName)}>Known Burf sessions</dt><dd {...stylex.props(styles.readingValue)}>{sessions === undefined ? unavailable : `${sessions.length} ${sessions.length === 1 ? "session" : "sessions"}`}</dd></div>
+                    </dl>
+                    <label {...stylex.props(styles.choice)}>
+                      <Checkbox checked={!hiddenMeters.includes(b.name)} onCheckedChange={(checked) => {
+                        const hidden = new Set(usePrefs.getState().statusBarHiddenBoxes);
+                        if (checked) hidden.delete(b.name); else hidden.add(b.name);
+                        setPrefs({ statusBarHiddenBoxes: [...hidden] });
+                      }} />
+                      Show {b.name} memory in status bar
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+            {!total && <p {...stylex.props(styles.detail)}>No paired computers. Add one in computer settings.</p>}
+            <p {...stylex.props(styles.detail)}>Load is work waiting or running, not CPU utilization. Session counts describe Burf sessions, not detected processes.</p>
+          </DialogPanel>
+          <DialogFooter>
+            {monitor && <Button variant="outline" onClick={() => { setFleetOpen(false); go({ kind: "plugin", screen: monitor.item.id }); }}>Open machine readings</Button>}
+            <Button variant="outline" onClick={() => { setFleetOpen(false); go({ kind: "settings", section: "boxes" }); }}>Computer settings</Button>
+          </DialogFooter>
+        </DialogPopup>
+      </Dialog>
+      {online.filter((b) => !hiddenMeters.includes(b.name)).map((b) => {
+        const mem = statusBarMemory(boxes[b.name]?.stats?.memory, connection.state === "online" && !boxes[b.name]?.error);
         const here = b.name === named;
-        if (!mem?.total) return here ? <span key={b.name}>{b.name}</span> : null;
+        if (!mem) return <span key={b.name} {...stylex.props(!here && styles.hideMeter)}><Item tip="Open all computer readings" onClick={() => setFleetOpen(true)}>{b.name} · Memory unavailable</Item></span>;
         // The computer on screen stays named when the bar runs short of room.
         // The others follow it. Clicked, a meter lists that box's browsers
         // and heavy sessions; its tip names the route Burf reaches it by.
-        const meter = <BoxMeter key={b.name} box={b.name} mem={mem} route={viaRoute(b)} />;
+        const memoryLabel = boxes[b.name]?.info?.os === "darwin" ? "RAM used (excludes cache)" : "Memory";
+        const meter = <span key={b.name} {...stylex.props(styles.cluster)}><Tip label={memoryLabel}><span>{memoryLabel === "Memory" ? "Memory" : "RAM"}</span></Tip> <BoxMeter box={b.name} mem={mem} route={viaRoute(b)} memoryLabel={memoryLabel} /></span>;
         return here ? meter : <span key={b.name} {...stylex.props(styles.hideMeter)}>{meter}</span>;
       })}
       {forwards > 0 && (
@@ -210,24 +295,6 @@ export function StatusBar() {
           {forwards} {forwards === 1 ? "forward" : "forwards"}
         </Item>
       )}
-      <Item
-        tip={status?.boxes.map((b) => {
-          const st = boxState(b, boxes[b.name], outdated.includes(b.name));
-          return (
-            <span key={b.name} {...stylex.props(styles.cluster)}>
-              <StatusDot state={st} />
-              {b.name}: {BOX_WORDS[st].lower}
-              {b.state === "online" && viaRoute(b) && <span {...stylex.props(styles.quiet)}>· {viaRoute(b)}</span>}
-            </span>
-          );
-        })}
-        onClick={() => go({ kind: "settings", section: "boxes" })}
-      >
-        {/* Green when every box is up (fainter while one's link is slow), grey when some aren't: amber is only ever "needs you". */}
-        <StatusDot state={online.length === total && total > 0 ? (slow > 0 ? "slow" : "online") : "offline"} />
-        {online.length}/{total} {total === 1 ? "box" : "boxes"} online
-        {slow > 0 && <span data-testid="boxes-slow">· {slow === 1 && total > 1 ? `${online.find((b) => b.link?.slow)?.name} slow` : "slow"}</span>}
-      </Item>
       <Tip label="Refresh" align="end">
         <button
           type="button"

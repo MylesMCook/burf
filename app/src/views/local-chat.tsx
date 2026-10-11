@@ -6,16 +6,15 @@ import { localApi, localAgentName, type LocalSession, type LocalHistoryPage, typ
 import { savedChatMessages } from "@/lib/saved-chat";
 import { errorMessage } from "@/lib/format";
 import { useChatPaneFocus } from "@/lib/focus-home";
-import { changeLocalChatDraft, localChatDraft } from "@/lib/workspaces";
+import { changeLocalChatDraft, changeLocalChatDraftChecked, localChatDraft } from "@/lib/workspaces";
 import { localChatDraftKey, recoveredLocalChatDraft, settleLocalChatDraft } from "@/lib/local-chat-draft";
+import { localChatAccountScope } from "@/lib/local-chat-scope";
 
 const layout = stylex.create({ root: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0 } });
-const fallbackScopes = new WeakMap<Client, string>();
 type LocalChatProps = { client: Client; session: LocalSession; accountScope?: string; onChange(session: LocalSession): void };
 
 export function LocalChat(props: LocalChatProps) {
-  let account = props.accountScope ?? fallbackScopes.get(props.client);
-  if (!account) { account = crypto.randomUUID(); fallbackScopes.set(props.client, account); }
+  const account = localChatAccountScope(props.client, props.accountScope);
   // Older clients can preserve navigation state, but cannot identify an account
   // across app launches. Never substitute a shared persistent fallback for it.
   return <LocalChatSession key={localChatDraftKey({ ...props.session, account })} {...props} accountScope={account} />;
@@ -54,13 +53,13 @@ function LocalChatSession({ client, session, onChange, accountScope }: LocalChat
   const transport = useMemo(() => ({
     initialDraft: saved.text, initialOptions: saved.options,
     initialQueue: saved.queue, initialQueueHeld: !!saved.held || !!saved.queue.length,
-    initialSendError: saved.uncertain ? "A previous send may have arrived. Refresh the chat and check before sending it again. Queued messages are held." : undefined,
+    initialSendError: saved.sendError ?? (saved.uncertain ? "A previous send may have arrived. Refresh the chat and check before sending it again. Queued messages are held." : undefined),
     onDraftChange: (text: string) => changeLocalChatDraft(scope, (draft) => ({ ...draft, text })),
     onOptionsChange: (options: ChatOptions) => changeLocalChatDraft(scope, (draft) => ({ ...draft, options })),
     onQueueChange: (queue: typeof saved.queue, held: boolean) => changeLocalChatDraft(scope, (draft) => ({ ...draft, queue, held })),
     onSendStart: (text: string, options: ChatOptions) => {
       const id = crypto.randomUUID();
-      changeLocalChatDraft(scope, (draft) => ({ ...draft, text: "", pending: { id, text, options } }));
+      changeLocalChatDraftChecked(scope, (draft) => ({ ...draft, text: "", sendError: undefined, pending: { id, text, options } }));
       return id;
     },
     onSendSettled: (request: string, sent: boolean) => changeLocalChatDraft(scope, (draft) => settleLocalChatDraft(draft, request, sent)),

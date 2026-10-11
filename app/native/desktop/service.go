@@ -23,11 +23,15 @@ import (
 // Config comes only from main. UI state writes belong to the authenticated
 // agent API; the desktop can read its validated snapshot through UIState.
 type Config struct {
-	Version        string
-	StateHome      string
-	Interface      any
-	UIState        func() (any, error)
-	DevtoolsScript string
+	Version         string
+	StateHome       string
+	Interface       any
+	UIState         func() (any, error)
+	DevtoolsScript  string
+	FeedbackStatus  func() any
+	FeedbackEnable  func() (any, error)
+	FeedbackDisable func() (any, error)
+	FeedbackClose   func() error
 }
 
 type Service struct {
@@ -69,8 +73,11 @@ func (s *Service) ServiceShutdown() error {
 	browsers := s.browsers
 	s.browserMu.Unlock()
 	var result error
+	if s.config.FeedbackClose != nil {
+		result = s.config.FeedbackClose()
+	}
 	if browsers != nil {
-		result = browsers.Shutdown()
+		result = errors.Join(result, browsers.Shutdown())
 	}
 	if s.notifier != nil && s.notifyErr == nil {
 		result = errors.Join(result, s.notifier.ServiceShutdown())
@@ -127,7 +134,11 @@ type endpoint struct {
 }
 
 func (s *Service) endpoint() (endpoint, error) {
-	path := filepath.Join(s.config.StateHome, "client", "ui-token")
+	home, err := agentConnectionHome(s.config.StateHome)
+	if err != nil {
+		return endpoint{}, err
+	}
+	path := filepath.Join(home, "client", "ui-token")
 	f, err := os.Open(path)
 	if err != nil {
 		return endpoint{}, fmt.Errorf("the Burf agent has not started yet (%s: %w)", path, err)
@@ -154,6 +165,21 @@ func (s *Service) Invoke(ctx context.Context, command string, args json.RawMessa
 		return nil, s.invokeBrowser(ctx, command, args)
 	}
 	switch command {
+	case "native_feedback_status":
+		if s.config.FeedbackStatus == nil {
+			return map[string]any{"available": false, "enabled": false}, nil
+		}
+		return s.config.FeedbackStatus(), nil
+	case "native_feedback_enable":
+		if s.config.FeedbackEnable == nil {
+			return nil, errors.New("update the Burf desktop shell to enable native feedback")
+		}
+		return s.config.FeedbackEnable()
+	case "native_feedback_disable":
+		if s.config.FeedbackDisable == nil {
+			return nil, errors.New("native feedback is unavailable in this desktop build")
+		}
+		return s.config.FeedbackDisable()
 	case "start_agent":
 		var p struct {
 			AtLogin *bool `json:"atLogin"`

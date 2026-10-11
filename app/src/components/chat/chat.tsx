@@ -160,7 +160,7 @@ function sx(...parts: readonly (false | null | undefined | object)[]): string {
   return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
 }
 
-export function Chat({ transport, messageList, after, children }: { transport: ChatTransport; messageList?: ReactNode; after?: ReactNode; children?: ReactNode }) {
+export function Chat({ transport, messageList, after, beforeComposer, children }: { transport: ChatTransport; messageList?: ReactNode; after?: ReactNode; beforeComposer?: ReactNode; children?: ReactNode }) {
   const { session, onChange, initialDraft = "", initialOptions, onDraftChange, onOptionsChange } = transport;
   const [readChat, setChat] = useState<ChatSnapshot>();
   const chat = transport.snapshot ?? readChat;
@@ -280,7 +280,17 @@ export function Chat({ transport, messageList, after, children }: { transport: C
     queueSnapshot.current = chat;
     const text = withAttachments(message.content.flatMap((p) => p.type === "text" ? [p.text] : []).join("\n"), attachmentPaths(message.attachments ?? []));
     const choices = (message.runConfig?.custom?.choices ?? {}) as ChatOptions;
-    const sendRequest = transport.onSendStart?.(text, choices);
+    let sendRequest: string | undefined;
+    try { sendRequest = transport.onSendStart?.(text, choices); }
+    catch (error) {
+      pause();
+      setError(errorMessage(error));
+      transport.onError?.(error);
+      const composer = runtimeRef.current?.thread.composer;
+      if (composer) composer.setText([text, composer.getState().text].filter(Boolean).join("\n\n"));
+      setOptions(() => choices);
+      return;
+    }
     submittedItems.current = new Set(chat.items.map((item) => item.id)); setSubmitted(text);
     const sent = await mutate(() => transport.message!(text, chat.composer ? choices : undefined));
     if (sendRequest) transport.onSendSettled?.(sendRequest, sent);
@@ -364,7 +374,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
   runtimeRef.current = runtime;
   const extras = useMemo<ChatExtras>(() => ({ tool: toolExtra, report: reportCards }), [toolExtra, reportCards]);
   const speakers = useMemo(() => ({ user: "You", assistant: transport.agentName }), [transport.agentName]);
-  const choicesReason = !transport.message ? "This conversation is read-only." : !chat?.composer ? "This chat cannot change model, reasoning or permissions. Its backend does not support chat options." : offline ? "Reconnect to change settings." : chat.state === "exited" ? "This chat has stopped." : busy ? "A request is in progress." : "";
+  const choicesReason = transport.optionsReason || (!transport.message ? "This conversation is read-only." : !chat?.composer ? "This chat cannot change model, reasoning or permissions. Its backend does not support chat options." : offline ? "Reconnect to change settings." : chat.state === "exited" ? "This chat has stopped." : busy ? "A request is in progress." : "");
   const commands = !offline && !busy && chat?.state !== "exited" ? [
     ...(running && chat?.turn_id && transport.interrupt ? [{ id: "interrupt", description: "Interrupt this turn", execute: () => runtime.thread.cancelRun() }] : []),
     ...(chat && transport.stop ? [{ id: "stop", description: "Stop this chat", execute: () => void mutate(() => transport.stop!()) }] : []),
@@ -423,7 +433,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
           composerInput={{ ref: input, onKeyDown: (event) => keyDown.current?.(event), "aria-label": transport.inputLabel ?? `Message ${transport.agentName}`, "data-autofocus": true, placeholder: transport.placeholder ?? "Send a message..." }}
           composerControls={<ChatChoices agentName={transport.agentName} models={models} model={model} effort={effort} permission={permission} accepted={accepted} permissions={chat?.permissions ?? BASE_PERMISSIONS} reason={choicesReason} modelsError={modelsError} onModel={pickModel} onEffort={(value) => setOptions((o) => ({ ...o, effort: value || undefined }))} onPermission={pickPermission} />}
           composerTriggers={<ChatTriggers searchFiles={chat?.cwd === session.cwd ? transport.searchFiles : undefined} commands={commands} catalog={transport.commands} />}
-          beforeComposer={transport.readOnly ? undefined : <ChatWaiting paused={queuePaused} agent={transport.agentName} />}
+          beforeComposer={<>{beforeComposer}{!transport.readOnly && <ChatWaiting paused={queuePaused} agent={transport.agentName} />}</>}
         />
       </ChatMessages>
     </AssistantRuntimeProvider>

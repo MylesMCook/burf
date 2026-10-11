@@ -4,8 +4,11 @@ package nativefeedback
 
 import "github.com/wailsapp/wails/v3/pkg/application"
 
-// No transport or bound Service is compiled into an ordinary or production build.
+// The development bridge and its inspection Service stay out of normal builds.
+// The separate Runtime controller remains dormant until explicitly enabled.
 type Bridge struct{}
+
+func DevelopmentEndpoint(*Bridge) string { return "" }
 
 func Start(Config) (*Bridge, error) { return nil, nil }
 

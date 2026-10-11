@@ -37,6 +37,9 @@ test("Labs turned off in Settings stays off", async ({ app }) => {
 test("Labs can be turned off and on in Settings", async ({ app }) => {
   await app.open();
   const labs = await app.openSettings("labs");
+  await expect(labs).toContainText("Burf Home and experimental tools");
+  await expect(labs).toContainText("Off shows Agent Dashboard");
+  await expect(labs).not.toContainText("Harbour");
   const toggle = labs.getByRole("switch");
   await expect(toggle).toBeChecked();
   await toggle.click();

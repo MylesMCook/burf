@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/MylesMCook/burf/app/native/desktop"
+	"github.com/MylesMCook/burf/app/native/internal/nativefeedback"
 	"github.com/MylesMCook/burf/app/native/nativebrowser"
 	"github.com/MylesMCook/burf/internal/proxy"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -84,6 +85,10 @@ func run() error {
 		return err
 	}
 	defer os.RemoveAll(home)
+	home, err = filepath.EvalSymlinks(home)
+	if err != nil {
+		return err
+	}
 	key, err := randomKey()
 	if err != nil {
 		return err
@@ -105,8 +110,21 @@ func run() error {
 	site := httptest.NewServer(s.handler(key)) // Always an ephemeral loopback listener.
 	defer site.Close()
 	assets := fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte(mainHTML(site.URL+"/report/"+key, token))}}
+	origin := "wails://localhost"
+	if runtime.GOOS == "windows" {
+		origin = "http://wails.localhost"
+	}
+	feedback, err := nativefeedback.NewRuntime(nativefeedback.RuntimeConfig{Directory: filepath.Join(home, "client", "native-feedback"), Origin: origin})
+	if err != nil {
+		return err
+	}
+	defer feedback.Close()
 	service := desktop.New(desktop.Config{
 		Version: "nativecheck", StateHome: home, DevtoolsScript: proxy.DevtoolsScript(),
+		FeedbackStatus:  func() any { return feedback.Status() },
+		FeedbackEnable:  func() (any, error) { return feedback.Enable() },
+		FeedbackDisable: func() (any, error) { return feedback.Disable() },
+		FeedbackClose:   feedback.Close,
 		UIState: func() (any, error) {
 			return map[string]any{"version": 1, "storage": map[string]string{}, "fonts": []any{}, "images": []any{}}, nil
 		},
@@ -194,7 +212,7 @@ func run() error {
 }
 
 func allChecks(checks map[string]bool) bool {
-	for _, name := range []string{"bootstrap", "ui_state", "ui_endpoint", "csp", "native_navigation", "isolated", "private_rpc_denied", "evaluation", "blank_frame", "srcdoc_frame", "console_capture", "picker_capture", "native_history", "native_reload", "evaluation_cancellation", "hide_show_bounds", "owned_close", "shutdown"} {
+	for _, name := range []string{"bootstrap", "ui_state", "ui_endpoint", "csp", "feedback_default_off", "feedback_enable", "feedback_comment", "feedback_authority_denied", "feedback_disable", "feedback_preserved", "native_navigation", "isolated", "private_rpc_denied", "evaluation", "blank_frame", "srcdoc_frame", "console_capture", "picker_capture", "native_history", "native_reload", "evaluation_cancellation", "hide_show_bounds", "owned_close", "shutdown"} {
 		if !checks[name] {
 			return false
 		}
@@ -249,7 +267,8 @@ func mainHTML(reportURL, token string) string {
 	expected, _ := json.Marshal(token)
 	return fmt.Sprintf(`<html><head><meta charset="utf-8"><script type="module">
 import { Call } from "/wails/runtime.js";
-const checks = {bootstrap: window.top === window && window.__BURF_WAILS__ === true, ui_state: false, ui_endpoint: false, csp: false};
+const checks = {bootstrap: window.top === window && window.__BURF_WAILS__ === true, ui_state: false, ui_endpoint: false, csp: false,
+  feedback_default_off:false, feedback_enable:false, feedback_comment:false, feedback_authority_denied:false, feedback_disable:false, feedback_preserved:false};
 try {
   const invoke = (name) => Call.ByName("github.com/MylesMCook/burf/app/native/desktop.Service.Invoke", name, {});
   const state = await invoke("ui_state");
@@ -259,6 +278,26 @@ try {
   const page = await fetch("/");
   const policy = page.headers.get("Content-Security-Policy") || "";
   checks.csp = policy.includes("'sha256-") && policy.includes("frame-ancestors 'none'") && page.headers.get("X-Content-Type-Options") === "nosniff";
+  const off = await invoke("native_feedback_status");
+  checks.feedback_default_off = off.available && !off.enabled && !off.endpoint;
+  const on = await invoke("native_feedback_enable");
+  const request = (endpoint, path, method="GET", body) => fetch(endpoint+path, {method, headers:{"Content-Type":"application/json"}, ...(body ? {body:JSON.stringify(body)} : {})});
+  const health = await request(on.endpoint, "/health");
+  checks.feedback_enable = on.enabled && health.ok;
+  const session = await (await request(on.endpoint, "/sessions", "POST", {url:location.href})).json();
+  const added = await request(on.endpoint, "/sessions/"+session.id+"/annotations", "POST", {x:1,y:1,element:"button",elementPath:"body > button",comment:"Synthetic native feedback",timestamp:Date.now()});
+  const comment = await added.json();
+  checks.feedback_comment = added.ok && comment.id && comment.comment === "Synthetic native feedback";
+  const denied = async (path, method, body) => {try {return !(await request(on.endpoint, path, method, body)).ok;} catch {return true;}};
+  checks.feedback_authority_denied = await denied("/annotations/"+comment.id, "PATCH", {status:"resolved"}) && await denied("/pending");
+  const disabled = await invoke("native_feedback_disable");
+  let revoked = false;
+  try {const response = await request(on.endpoint, "/health"); revoked = !response.ok;} catch {revoked = true;}
+  checks.feedback_disable = !disabled.enabled && !disabled.endpoint && revoked;
+  const again = await invoke("native_feedback_enable");
+  const preserved = await (await request(again.endpoint, "/sessions/"+session.id)).json();
+  checks.feedback_preserved = again.endpoint !== on.endpoint && preserved.annotations.some((a)=>a.id === comment.id && a.comment === comment.comment);
+  await invoke("native_feedback_disable");
 } catch {}
 await fetch(%s, {method: "POST", body: JSON.stringify({phase: "main", checks})});
 </script></head><body>synthetic native check</body></html>`, expected, report)

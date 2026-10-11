@@ -3,9 +3,14 @@ import { definePlugin, useBoxes, useCurrentWorktree, useEvent, type BerthPluginC
 import {
   Badge,
   Button,
+  Collapsible,
+  CollapsiblePanel,
+  CollapsibleTrigger,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
   Frame,
   FrameHeader,
@@ -374,12 +379,18 @@ function ServersScreen({ berth }: ScreenProps) {
       ) : groups.length === 0 ? (
         <Empty pad="room">
           <EmptyHeader>
-            <Icon name="Radio" className={sx(paint.s8)} />
+            <EmptyMedia variant="icon"><Icon name="Radio" /></EmptyMedia>
             <EmptyTitle>{query ? "Nothing matches" : "Nothing is listening"}</EmptyTitle>
             <EmptyDescription>
-              {query ? "Try another worktree or port." : <>Start a dev server in a worktree, or declare one under <code>services</code> in the repository's .berth/config.json, and it shows up here.</>}
+              {query ? "Try another worktree or port." : "Start a dev server in a project. Burf will show it here when it is listening."}
             </EmptyDescription>
           </EmptyHeader>
+          {!query && <EmptyContent><Collapsible>
+            <CollapsibleTrigger render={<Button size="sm" variant="ghost" />}>Configure a project service</CollapsibleTrigger>
+            <CollapsiblePanel pad="block" tone="muted" text="sm">
+              Declare project services under <code>services</code> in <code>.berth/config.json</code>. Burf preserves this compatible configuration filename.
+            </CollapsiblePanel>
+          </Collapsible></EmptyContent>}
         </Empty>
       ) : (
         groups.map((g) => <WorktreeGroup key={g.key} group={g} berth={berth} here={current?.box === g.box && current.location === g.location && current.worktree === g.worktree} onChanged={reload} />)

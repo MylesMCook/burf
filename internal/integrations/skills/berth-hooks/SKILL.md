@@ -1,9 +1,13 @@
 ---
 name: berth-hooks
-description: Automate berth with hooks — run a command when something happens (an agent finishes or needs the user, a worktree is created or removed, a session starts) or gate an action with a before: hook that can refuse it. Covers where hooks live (a repository's .berth/config.json, a box, the laptop), the event catalog, the variables hooks get, and how to test them. Use when the user asks to automate a workflow, react to agents or worktrees, block something, or set up per-worktree databases and ports.
+description: Automate Burf with hooks — run a command when something happens (an agent finishes or needs the user, a worktree is created or removed, a session starts) or gate an action with a before: hook that can refuse it. Covers where hooks live (a repository's .berth/config.json, a box, the laptop), the event catalog, the variables hooks get, and how to test them. Use when the user asks to automate a workflow, react to agents or worktrees, block something, or set up per-worktree databases and ports. Applies to daemon-managed worktrees on remote boxes; local structured chats do not automatically receive these tools.
 ---
 
-# berth hooks
+# Burf hooks
+
+These workflows apply to daemon-managed worktrees on remote boxes. This
+computer structured chats do not automatically receive the box's MCP tools or
+worktree environment. Inspect available commands and capabilities first.
 
 A hook runs a shell command when an event happens. A hook whose `on` starts
 with `before:` runs first and can refuse the action by exiting non-zero; what
@@ -59,8 +63,8 @@ Gates: `before:worktree.create`, `before:worktree.remove`,
 ## Test before you rely on it
 
 ```sh
-berthd events                                   # watch events arrive (Ctrl-C to stop)
-berthd emit agent.finished path="$PWD"          # fire one to try a hook
+burfd events                                   # watch events arrive (Ctrl-C to stop)
+burfd emit agent.finished path="$PWD"          # fire one to try a hook
 ```
 
 ## Safety

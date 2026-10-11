@@ -16,6 +16,16 @@ export const SMOKE = ["first-run", "home-composer", "remote-chat", "local-comput
 
 // First match wins per path: put the narrower prefix first.
 export const RULES = [
+  { paths: ["app/src/views/settings/general-section", "app/src/views/settings/terminal-section"], specs: ["custom-font", "feedback-refinement"] },
+  { paths: ["app/src/native-feedback/", "app/src/views/settings/developer-section"], specs: ["native-feedback-settings"] },
+  { paths: ["app/src/components/assistant-ui/elements/composer"], specs: ["home-composer", "composer", "local-computer", "chat-features"] },
+  { paths: ["app/src/components/ui/button", "app/src/components/ui/icon-tokens"], specs: ["feedback-refinement", "overlay-layout", ...SMOKE] },
+  { paths: ["plugins/box-monitor/", "app/src/lib/monitor-metrics"], specs: ["monitor", "plugin-workflow-actions"] },
+  { paths: ["app/src/plugins/host", "app/src/views/settings/plugins-section"], specs: ["plugins", "feedback-refinement"] },
+  { paths: ["app/src/plugins/context", "plugins/issues/"], specs: ["plugins", "plugin-workflow-actions"] },
+  { paths: ["app/src/views/home/widgets/"], specs: ["home-widgets", "monitor"] },
+  { paths: ["app/src/views/home/home-view"], specs: ["home-composer", "home-widgets", "monitor"] },
+  { paths: ["app/src/components/status-bar", "app/src/lib/status-bar-memory"], specs: ["status-bar", "box-processes"] },
   { paths: ["app/src/components/chat/", "app/src/views/local-chat", "app/src/views/remote-chat", "app/src/lib/remote-chat", "app/src/lib/chat-", "app/src/components/assistant-ui/"], specs: ["remote-chat", "local-chat", "chat-experience", "chat-features"] },
   { paths: ["app/src/views/local-computer", "app/src/views/local-terminal", "app/src/lib/local-"], specs: ["local-computer", "local-chat"] },
   { paths: ["app/src/components/conversation/task-composer", "app/src/components/conversation/composer-", "app/src/lib/start-work", "app/src/lib/composer"], specs: ["home-composer", "composer", "agent-picker", "drop"] },
@@ -47,8 +57,8 @@ export function specsFor(paths, has = exists) {
       out.add(own[1]);
       continue;
     }
-    if (!path.startsWith("app/") || path.startsWith("app/native/") || path.startsWith("app/bindings/") || /\.test\.ts$/.test(path)) continue;
     const rule = RULES.find((r) => r.paths.some((p) => path.startsWith(p)));
+    if ((!path.startsWith("app/") && !rule) || path.startsWith("app/native/") || path.startsWith("app/bindings/") || /\.test\.ts$/.test(path)) continue;
     for (const spec of rule ? rule.specs : SMOKE) out.add(spec);
   }
   return [...out].filter(has).sort();

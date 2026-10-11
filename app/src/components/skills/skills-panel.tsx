@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
+import { skillDisplayName } from "@/lib/skill-display-name";
 import { errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
 import { type SkillAgent, type SkillRow, type SkillsChange, type SkillsReport, type SkillState, skillSummary, skillsApi } from "@/lib/skills";
@@ -263,7 +264,7 @@ export function SkillsPanel({ box, location, hideTitle }: { box: string; locatio
           </CardFrameTitle>
         )}
         <CardFrameDescription size="xs">
-          {location ? "Only agents working in this repository learn them." : "Every agent the box's user runs learns them."} They teach Claude Code and Codex to use Burf.
+          {location ? "Only agents working in this repository learn them." : "Every agent the box's user runs learns them."} They teach Claude Code and Codex to use Burf on daemon-managed worktrees. Installing a skill does not add tools to This computer chats.
         </CardFrameDescription>
         <CardFrameAction>
           <Button size="xs" variant={pending ? "default" : "outline"} disabled={!report || !pending || !!busy} onClick={() => change("all", true, { skills: "all", agent: "all" })}>
@@ -293,7 +294,7 @@ export function SkillsPanel({ box, location, hideTitle }: { box: string; locatio
           <div key={s.name} className={sx(paint.s7)}>
             <div className={sx(paint.s8)}>
               <div className={sx(paint.s9)}>
-                <span className={sx(paint.s10)}>{s.name}</span>
+                <span className={sx(paint.s10)}>{skillDisplayName(s.name)}</span>
                 <span className={sx(paint.s11)}>{s.version.slice(0, 7)}</span>
               </div>
               <Tip label={s.description || undefined} width="lg">

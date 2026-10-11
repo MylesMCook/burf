@@ -11,6 +11,8 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { load, save } from "@/lib/storage";
+import { useStore } from "@/lib/store";
+import { openSettings } from "@/views/settings/settings-view";
 import { ViewHeader } from "@/views/view-header";
 import { BulkBar } from "@/views/worktrees/bulk-bar";
 import { DeleteDialog } from "@/views/worktrees/delete-dialog";
@@ -117,6 +119,11 @@ const paint = stylex.create({
       display: "none",
     },
   },
+  connection: {
+    padding: "8px 24px",
+    fontSize: "13px",
+    color: "var(--muted-foreground)",
+  },
   s15: {
     "@container toolbar (min-width: 56rem)": {
       display: "none",
@@ -141,6 +148,9 @@ const SORTS: { value: Sort; label: string }[] = [
 // each stands against its base and act on many at once: sync, pause, stop,
 // delete. A row opens its latest chat. History stays on the sheet.
 export function WorktreesView({ box }: { box?: string } = {}) {
+  const computer = useStore((s) => box ? s.status?.boxes.find((b) => b.name === box) : undefined);
+  const computerData = useStore((s) => box ? s.boxes[box] : undefined);
+  const online = computer?.state === "online";
   const all = useWorktrees();
   const { loaded, patch } = all;
   const rows = box ? all.rows.filter((r) => r.box === box) : all.rows;
@@ -275,13 +285,43 @@ export function WorktreesView({ box }: { box?: string } = {}) {
   };
   const behind = rows.filter((r) => r.behind > 0).length;
   const paused = rows.filter((r) => r.paused).length;
+  // Pin a registered project as well as the computer. A computer-only
+  // draft can otherwise resolve to a remembered project elsewhere.
+  const locations = computerData?.locations;
+  const taskLocation = locations?.find((l) => l.name === project)?.name ?? locations?.[0]?.name;
+  const taskBlocker = !online ? `Reconnect ${box} before starting work.`
+    : !locations ? `Projects on ${box} are unavailable. Add a project or check its connection.`
+    : !taskLocation ? `Add a project on ${box} before starting work.` : undefined;
+  const emptyTitle = filtered ? "No worktrees match"
+    : box && !online ? `${box} is offline`
+    : box && locations?.length === 0 ? `No projects on ${box}` : "No worktrees yet";
+  const emptyDescription = filtered ? "Nothing here passes every filter."
+    : !box ? "Worktrees you make on paired computers show up here."
+    : !online ? `Your projects and work remain on ${box}. Check its connection to see them again.`
+    : locations?.length === 0 ? `Add a folder or repository from ${box}, then start a task there.`
+    : taskBlocker ?? `Start a task in an existing project on ${box}, or add another project.`;
 
   return (
     <div className={sx(paint.s0)}>
       <ViewHeader
         title={box ? `Worktrees on ${box}` : "Worktrees"}
-        description={loaded ? [`${rows.length} on ${boxes.length} box${boxes.length === 1 ? "" : "es"}`, behind && `${behind} behind their base`, paused && `${paused} paused`].filter(Boolean).join(" · ") : undefined}
+        actions={box && (
+          <>
+            <Button key="add-project" size="sm" variant="outline" disabled={!online} aria-label={`Add a project on ${box}`} aria-describedby="machine-work-actions" onClick={() => useStore.getState().openAddLocation(box)}>Add project</Button>
+            <Button key="new-task" size="sm" disabled={!!taskBlocker} aria-label={`New task on ${box}`} aria-describedby="machine-work-actions" onClick={() => {
+              if (online && taskLocation) useStore.getState().openNewWorktree({ box, location: taskLocation });
+            }}>New task</Button>
+          </>
+        )}
+        description={loaded ? [`${rows.length} on ${boxes.length} computer${boxes.length === 1 ? "" : "s"}`, behind && `${behind} behind their base`, paused && `${paused} paused`].filter(Boolean).join(" · ") : undefined}
       />
+
+      {box && (
+        <div id="machine-work-actions" className={sx(paint.connection)}>
+          {online ? `Connected to ${box}. ${taskBlocker ?? `Choose a project, then start a task on ${box}.`}` : `${box} is ${computer?.state ?? "unavailable"}. Reconnect before adding projects or starting work.`}
+          {!online && <> <Button size="xs" variant="outline" onClick={() => openSettings("boxes")}>Paired computers</Button></>}
+        </div>
+      )}
 
       {/* One row of filters, search first; it stays one row down to 1100px. */}
       <div className={[sx(paint.s1), sx(paint.s12)].filter(Boolean).join(" ")}>
@@ -347,9 +387,12 @@ export function WorktreesView({ box }: { box?: string } = {}) {
                     passing the filters, a beam finding nothing. */}
                 <Scene name={filtered ? "lighthouse" : "ended"} />
               </EmptyMedia>
-              <EmptyTitle>{filtered ? "No worktrees match" : "No worktrees yet"}</EmptyTitle>
-              <EmptyDescription>{filtered ? "Nothing here passes every filter." : "Worktrees you make on any box show up here."}</EmptyDescription>
+              <EmptyTitle>{emptyTitle}</EmptyTitle>
+              <EmptyDescription>{emptyDescription}</EmptyDescription>
             </EmptyHeader>
+            {!filtered && box && online && (
+              <Button size="sm" variant="outline" onClick={() => useStore.getState().openAddLocation(box)}>Add a project on {box}</Button>
+            )}
             {filtered && (
               <Button size="sm" variant="outline" onClick={clearFilters}>
                 Clear filters

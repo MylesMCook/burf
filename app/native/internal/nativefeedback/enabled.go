@@ -35,6 +35,18 @@ type Configuration struct {
 	Endpoint string `json:"endpoint"`
 }
 
+func DevelopmentEndpoint(bridge *Bridge) string {
+	if bridge == nil {
+		return ""
+	}
+	bridge.service.mu.RLock()
+	defer bridge.service.mu.RUnlock()
+	if bridge.service.closed {
+		return ""
+	}
+	return bridge.service.endpoint
+}
+
 func Start(config Config) (*Bridge, error) {
 	if os.Getenv("WAILS_FEEDBACK") != "1" {
 		return nil, nil

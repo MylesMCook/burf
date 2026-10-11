@@ -1,13 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
 import { useLayoutEffect, useRef } from "react";
 
+import { ChatBackground } from "@/components/conversation/chat-background";
 import { TaskComposer } from "@/components/conversation/task-composer";
 import { color } from "@/styles/tokens.stylex";
 import { HomeGrid } from "@/views/home/widgets/grid";
+import { HomeMachineScope } from "@/views/home/widgets/machine-filter";
+import { ViewHeader } from "@/views/view-header";
 
 // Home is the workspace before a worktree is open. Lists that have rows
-// sit above the composer. The composer stays at the foot, where a chat's
-// composer sits.
+// share a feed with task entry. Only the composer surface covers the feed;
+// its side margins stay open and the last widget can scroll above it.
 const styles = stylex.create({
   page: {
     position: "absolute",
@@ -18,15 +21,38 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     backgroundColor: color.background,
+    isolation: "isolate",
   },
   scroll: {
+    position: "absolute",
+    inset: 0,
+    minHeight: 0,
+    overflowY: "auto",
+    scrollPaddingBottom: "calc(var(--berth-home-composer-h, 200px) + 24px)",
+    paddingBottom: "calc(var(--berth-home-composer-h, 200px) + 24px)",
+  },
+  feed: {
+    position: "relative",
     minHeight: 0,
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: "0%",
-    overflowY: "auto",
   },
   composer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    pointerEvents: "none",
+    display: "flex",
+    justifyContent: "center",
+    paddingLeft: { default: 24, "@media (max-width: 639px)": 12 },
+    paddingRight: { default: 24, "@media (max-width: 639px)": 12 },
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  entry: {
+    pointerEvents: "auto",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -37,10 +63,6 @@ const styles = stylex.create({
     overflowY: "auto",
     marginLeft: "auto",
     marginRight: "auto",
-    paddingLeft: 24,
-    paddingRight: 24,
-    paddingTop: 8,
-    paddingBottom: 16,
   },
   grid: {
     position: "relative",
@@ -75,13 +97,17 @@ export function HomeView() {
 
   return (
     <div {...stylex.props(styles.page)}>
-      <div {...stylex.props(styles.scroll)}>
-        <div {...stylex.props(styles.grid)}>
-          <HomeGrid />
+      <ChatBackground />
+      <ViewHeader title="Home" description="Agent activity and machine readings" />
+      <div data-testid="home-feed" {...stylex.props(styles.feed)}>
+        <div data-testid="home-scroll" {...stylex.props(styles.scroll)}>
+          <div {...stylex.props(styles.grid)}>
+            <HomeMachineScope><HomeGrid /></HomeMachineScope>
+          </div>
         </div>
-      </div>
-      <div ref={composer} {...stylex.props(styles.composer)}>
-        <TaskComposer autoFocus />
+        <div ref={composer} data-testid="home-composer-overlay" {...stylex.props(styles.composer)}>
+          <div {...stylex.props(styles.entry)}><TaskComposer autoFocus /></div>
+        </div>
       </div>
     </div>
   );

@@ -235,9 +235,12 @@ func editJSON(f files, rel string, change func(map[string]any) bool) (bool, erro
 	return true, f.write(rel, append(out, '\n'), 0o644)
 }
 
-// berth's MCP server is `berthd mcp`: only the box daemon serves it, as it
-// talks to the box's own socket.
-func mcpBin(bin string) bool { return filepath.Base(bin) == "berthd" }
+// Burf's MCP server is `burfd mcp`: only the box daemon serves it.
+// Keep accepting the legacy daemon alias, including Windows executables.
+func mcpBin(bin string) bool {
+	name := strings.TrimSuffix(filepath.Base(bin), ".exe")
+	return name == "burfd" || name == "berthd"
+}
 
 // InstallMCP adds berth's MCP server to a JSON settings file's mcpServers
 // (Claude Code's ~/.claude.json, Gemini CLI's settings.json).

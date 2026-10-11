@@ -52,7 +52,7 @@ export const bodyHeight = (r: number, bare = false) => r * ROW + (r - 1) * GAP -
 
 // fitRows is how many rows of rowPx fit in a body of height, leaving room
 // for a "+3 more" line under them.
-export const fitRows = (height: number, rowPx: number) => Math.max(1, Math.floor((height - 18) / rowPx));
+export const fitRows = (height: number, rowPx: number) => Math.max(1, Math.floor((height - 24) / rowPx));
 
 export function HomeWidgetProvider({ size, cols, visible, refresh, preview = false, bare, children }: { size: WidgetSize; cols: number; visible: boolean; refresh: number; preview?: boolean; bare?: boolean; children: ReactNode }) {
   const s = SIZES[size];

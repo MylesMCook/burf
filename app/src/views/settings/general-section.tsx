@@ -57,12 +57,6 @@ export function GeneralSection() {
 
       <CommandLineGroup />
 
-      <SettingsGroup title="Startup">
-        <SettingsRow label="Open Burf at login" description="Not available yet. Your boxes keep running either way: closing Burf never stops an agent.">
-          <Switch checked={false} disabled />
-        </SettingsRow>
-      </SettingsGroup>
-
       <SettingsGroup title="Private URLs" description="Dev servers on your boxes open on this computer at names like these.">
         <SettingsRow
           label="Worktree URLs"

@@ -213,6 +213,8 @@ export async function runFeedback(planFile, inspect = false) {
       WAILS_FEEDBACK_COMPANION_URL: `http://127.0.0.1:${companionPort}`,
       FRONTEND_DEVSERVER_URL: `http://127.0.0.1:${port}`,
       BERTH_UI_BUILTIN: "1", BERTH_HOME: profile,
+      // Burf reads the existing agent's token in place; WebView data stays here.
+      ...(plan.burf ? { WAILS_FEEDBACK_AGENT_HOME: clean.BERTH_HOME || "" } : {}),
     });
     let inspectorPort;
     if (inspect) {

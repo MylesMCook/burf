@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { type Project, type ScreenProps, type Session, definePlugin, useCurrentWorktree, useProjects, useSessions, useStorage } from "@berth/plugin";
+import { type Project, type ScreenProps, type Session, definePlugin, useBoxes, useCurrentWorktree, useProjects, useSessions, useStorage } from "@berth/plugin";
 import {
   Button,
   Checkbox,
@@ -31,9 +31,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, Detail, LabelChip, PrIcon, Problem, type Row, StatePill } from "./detail";
 import * as gh from "./gh";
 import { StartSheet, type Target } from "./start-sheet";
-import { type Run, askRefresh, isGitHubProject, listOf, loadList, refreshCount, runnerOf, runsByIssue, useIssuesStore } from "./store";
+import { type Load, type Run, askRefresh, detailOf, isGitHubProject, listOf, loadDetail, loadList, refreshCount, runnerOf, runsByIssue, useIssuesStore } from "./store";
 
 const paint = stylex.create({
+  recovery: { display: "flex", flexDirection: "column", gap: 8 },
+  recoveryActions: { display: "flex", flexWrap: "wrap", gap: 8 },
+  detailRecovery: { padding: 16 },
+  recoveryButton: { maxWidth: "100%", whiteSpace: "normal", overflowWrap: "anywhere" },
+  recoveryNote: { overflowWrap: "anywhere", color: "var(--muted-foreground)", fontSize: 12, lineHeight: "18px" },
+  scope: { paddingLeft: 24, paddingRight: 24, paddingTop: 8, paddingBottom: 8, fontSize: 12, lineHeight: "18px", color: "var(--muted-foreground)" },
   s0: {
     "display": "flex",
     "minHeight": "0px",
@@ -584,9 +590,9 @@ function sx(...parts: readonly (false | null | undefined | object)[]): string {
 // first prompt. Rows show how that agent is doing from then on.
 
 export default definePlugin((berth) => {
-  berth.addScreen({ id: "issues", title: "Issues", layout: "fill", Component: IssuesScreen });
-  berth.addSidebarItem({ id: "issues", title: "Issues", icon: "CircleDot", screen: "issues" });
-  berth.addCommand({ id: "issues", title: "Show issues", group: "Issues", run: () => berth.openScreen("issues") });
+  berth.addScreen({ id: "issues", title: "GitHub Issues", layout: "fill", Component: IssuesScreen });
+  berth.addSidebarItem({ id: "issues", title: "GitHub Issues", icon: "CircleDot", screen: "issues" });
+  berth.addCommand({ id: "issues", title: "Show GitHub issues", group: "GitHub Issues", run: () => berth.openScreen("issues") });
   berth.addCommand({
     id: "issues-refresh",
     title: "Refresh issues",
@@ -639,7 +645,7 @@ function IssuesScreen({ berth }: ScreenProps) {
 
   const loads = shown.map((p) => ({ project: p, load: listOf(p.id) }));
   const loading = loads.some((l) => !l.load || l.load.status === "loading");
-  const problems = loads.filter((l) => l.load?.status === "problem") as { project: Project; load: { status: "problem"; problem: gh.Problem } }[];
+  const problems = loads.filter((l) => l.load?.status === "problem") as { project: Project; load: Extract<Load<gh.IssueList>, { status: "problem" }> }[];
   const viewers = new Set(loads.map((l) => (l.load?.status === "ok" ? l.load.value.viewer : l.load?.status === "loading" ? l.load.prev?.viewer : undefined)).filter(Boolean) as string[]);
   const viewer = [...viewers][0];
 
@@ -736,6 +742,7 @@ function IssuesScreen({ berth }: ScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [berth]);
 
+  const selectedLoad = selected && detailOf(selected.repo, selected.number);
   const busyRuns = useMemo(() => [...runs.values()].filter((rs) => rs[0]?.session && rs[0].session.agent_state !== "finished").length, [runs]);
 
   return (
@@ -744,10 +751,11 @@ function IssuesScreen({ berth }: ScreenProps) {
         <SessionFeed key={b} box={b} onSessions={onSessions} />
       ))}
       <ViewHeader
-        title="Issues"
-        description={busyRuns > 0 ? `${busyRuns} agent${busyRuns === 1 ? " is" : "s are"} on issues right now.` : "Open GitHub issues, and an agent on any of them in one step."}
+        title="GitHub Issues"
+        description={busyRuns > 0 ? `${busyRuns} agent${busyRuns === 1 ? " is" : "s are"} on GitHub issues right now.` : "Read, comment on and start work from GitHub issues."}
         actions={
           <>
+            {projects.length > 0 && berth.openAddProject && <Button size="sm" variant="outline" onClick={() => berth.openAddProject?.(scoped?.defaultBox)}>Add project</Button>}
             <ProjectPicker projects={projects} scope={scope} onChange={(id) => (setStored(id), setChecked(new Set()))} />
             <Tooltip>
               <TooltipTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Refresh" onClick={refresh} disabled={!shown.length} />}>
@@ -759,13 +767,19 @@ function IssuesScreen({ berth }: ScreenProps) {
         }
       />
 
+      <p className={sx(paint.scope)}>Requires a registered GitHub repository and gh signed in on its paired computer. Comments post to GitHub after confirmation; Burf feedback uses the feedback toolbar.</p>
+
       {projects.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <Icon name="CircleDot" className={sx(paint.s2)} />
             <EmptyTitle>No GitHub projects yet</EmptyTitle>
-            <EmptyDescription>Add a repository whose origin is on GitHub to a box, and its open issues show up here.</EmptyDescription>
+            <EmptyDescription>Add a repository from a paired computer or clone one from GitHub. Its open issues appear here.</EmptyDescription>
           </EmptyHeader>
+          <div className={sx(paint.recoveryActions)}>
+            {berth.openAddProject && <Button size="sm" onClick={() => berth.openAddProject?.()}>Add project</Button>}
+            {berth.openComputerDiscovery && <Button size="sm" variant="outline" onClick={() => berth.openComputerDiscovery?.()}>Discover or pair a computer</Button>}
+          </div>
         </Empty>
       ) : (
         <>
@@ -808,10 +822,10 @@ function IssuesScreen({ berth }: ScreenProps) {
           {problems.length > 0 && scope === ALL && rows.length > 0 && (
             <div className={sx(paint.s12)}>
               {problems.map(({ project, load }) => (
-                <span key={project.id} className={sx(paint.s13)}>
-                  <Icon name="Info" className={sx(paint.s14)} />
-                  <b className={sx(paint.s15)}>{project.name}</b> {problemShort(load.problem)}
-                </span>
+                <div key={project.id} className={sx(paint.recovery)}>
+                  <b className={sx(paint.s15)}>{project.name}</b>
+                  <IssueProblem berth={berth} project={project} load={load} />
+                </div>
               ))}
             </div>
           )}
@@ -822,14 +836,14 @@ function IssuesScreen({ berth }: ScreenProps) {
                 {rows.length === 0 && loading ? (
                   Array.from({ length: 7 }, (_, i) => <RowSkeleton key={i} />)
                 ) : rows.length === 0 && problems.length > 0 ? (
-                  <div className={sx(paint.s19)}>
+                  <li className={sx(paint.s19)}>
                     {problems.map(({ project, load }) => (
                       <div key={project.id} className={sx(paint.s20)}>
                         {scope === ALL && <span className={sx(paint.s21)}>{project.name}</span>}
-                        <Problem problem={load.problem} box={runnerOf(project)?.box} />
+                        <IssueProblem berth={berth} project={project} load={load} />
                       </div>
                     ))}
-                  </div>
+                  </li>
                 ) : filtered.length === 0 ? (
                   <p className={sx(paint.s22)}>
                     {rows.length === 0 ? "No open issues. Nice." : "No issues match."}
@@ -904,7 +918,10 @@ function IssuesScreen({ berth }: ScreenProps) {
             </aside>
             <section className={sx(paint.s33)}>
               {selected ? (
-                <Detail key={selected.key} berth={berth} row={selected} runs={runs.get(selected.key) ?? []} viewer={viewer} onStart={() => startOn([selected])} />
+                <>
+                  {selectedLoad?.status === "problem" && <div className={sx(paint.detailRecovery)}><IssueProblem berth={berth} project={selected.project} load={selectedLoad} showProblem={false} onRefresh={() => void loadDetail(berth, selected.project, selected.number, true)} /></div>}
+                  <Detail key={selected.key} berth={berth} row={selected} runs={runs.get(selected.key) ?? []} viewer={viewer} onStart={() => startOn([selected])} />
+                </>
               ) : (
                 <div className={sx(paint.s34)}>{loading ? "" : "Pick an issue to read it."}</div>
               )}
@@ -913,6 +930,26 @@ function IssuesScreen({ berth }: ScreenProps) {
         </>
       )}
       <StartSheet berth={berth} targets={targets} onClose={() => setTargets([])} onStarted={() => setChecked(new Set())} />
+    </div>
+  );
+}
+
+// Setup stays on the computer whose gh call failed, even if the preferred
+// runner changes while the person is reading the error.
+function IssueProblem({ berth, project, load, showProblem = true, onRefresh }: { berth: ScreenProps["berth"]; project: Project; load: Extract<Load<gh.IssueList>, { status: "problem" }>; showProblem?: boolean; onRefresh?(): void }) {
+  const paired = useBoxes();
+  const box = load.box ?? runnerOf(project)?.box;
+  const online = !!box && paired.some((b) => b.name === box && b.state === "online");
+  const setup = load.problem.kind === "no-gh" || load.problem.kind === "no-auth";
+  return (
+    <div className={sx(paint.recovery)}>
+      {showProblem && <Problem problem={load.problem} box={box} />}
+      <div className={sx(paint.recoveryActions)}>
+        {setup && box && berth.openHomeTerminal && <Button size="xs" variant="outline" className={sx(paint.recoveryButton)} disabled={!online} onClick={() => void berth.openHomeTerminal?.(box)}>Open terminal on {box}</Button>}
+        {(load.problem.kind === "offline" || (setup && !online)) && berth.openComputerSettings && <Button size="xs" variant="outline" onClick={() => berth.openComputerSettings?.()}>Computer settings</Button>}
+        <Button size="xs" variant="outline" onClick={onRefresh ?? (() => void loadList(berth, project, true))}>Refresh {onRefresh ? "issue" : project.name}</Button>
+      </div>
+      {setup && !online && <p className={sx(paint.recoveryNote)}>{box ?? "This computer"} is offline. Reconnect it before opening a terminal.</p>}
     </div>
   );
 }
@@ -1092,21 +1129,4 @@ function SortMenu({ sort, onChange }: { sort: Sort; onChange(s: Sort): void }) {
       </MenuPopup>
     </Menu>
   );
-}
-
-function problemShort(p: gh.Problem) {
-  switch (p.kind) {
-    case "disabled":
-      return "has issues turned off";
-    case "no-gh":
-      return "needs gh on its box";
-    case "no-auth":
-      return "needs gh auth login on its box";
-    case "offline":
-      return "has no box online";
-    case "not-github":
-      return "isn't on GitHub";
-    default:
-      return "couldn't be read";
-  }
 }

@@ -140,3 +140,44 @@ func TestNewAgentHooksInstallOnceAndKeepOtherSettings(t *testing.T) {
 		}
 	}
 }
+
+func TestInstallToolOnlyAddsMCPForDaemonCommands(t *testing.T) {
+	for _, name := range []string{"burfd", "burfd.exe", "berthd", "berthd.exe", "burf", "burf.exe", "berth", "berth.exe"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			for _, tool := range []string{"claude", "codex", "gemini"} {
+				t.Run(tool, func(t *testing.T) {
+					home := t.TempDir()
+					bin := filepath.Join(home, "bin", name)
+					var output strings.Builder
+					if err := InstallTool(home, tool, bin, &output); err != nil {
+						t.Fatal(err)
+					}
+					want := name == "burfd" || name == "burfd.exe" || name == "berthd" || name == "berthd.exe"
+					var config string
+					switch tool {
+					case "claude":
+						config = filepath.Join(home, ".claude.json")
+					case "codex":
+						config = filepath.Join(home, ".codex", "config.toml")
+					case "gemini":
+						config = filepath.Join(home, ".gemini", "settings.json")
+					}
+					content, err := os.ReadFile(config)
+					if err != nil && !(tool == "claude" && !want && os.IsNotExist(err)) {
+						t.Fatal(err)
+					}
+					if got := strings.Contains(string(content), "mcp_servers.berth") || strings.Contains(string(content), "mcpServers"); got != want {
+						t.Fatalf("MCP installed = %v, want %v; config = %s", got, want, content)
+					}
+					if want && tool != "codex" {
+						server := readJSON(t, config)["mcpServers"].(map[string]any)["berth"].(map[string]any)
+						if server["command"] != bin {
+							t.Fatalf("MCP command = %v, want %s", server["command"], bin)
+						}
+					}
+				})
+			}
+		})
+	}
+}

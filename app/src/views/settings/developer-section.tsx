@@ -18,6 +18,7 @@ import { appVersion } from "@/views/settings/app-version";
 import { ConfirmButton } from "@/views/settings/confirm";
 import { Code, SettingsGroup, SettingsPage, SettingsRow, Value } from "@/views/settings/rows";
 import { color, font, radius } from "@/styles/tokens.stylex";
+import { FeedbackSettings } from "@/native-feedback/FeedbackSettings";
 
 const panelOpen = ":is(.group[data-panel-open] &)";
 
@@ -124,6 +125,7 @@ export function DeveloperSection() {
       title="Developer"
       description="Tools for working on Burf itself. Resets only clear this window's own memory of tabs and preferences; your agent, ~/.berth and every box stay exactly as they are. Shift-click Settings in the sidebar to come straight here."
     >
+      <FeedbackSettings />
       <SettingsGroup title="Reset">
         <SettingsRow label="Reset workspaces" description="Forget open tabs, splits and each worktree's layout. Sessions keep running on their boxes.">
           <ConfirmButton

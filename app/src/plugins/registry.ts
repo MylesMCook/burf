@@ -95,6 +95,7 @@ export function removePlugin(plugin: string) {
 // Whether plugins are still loading: until they are, a plugin's screen is
 // not missing, only not there yet.
 export const usePluginsLoading = create<boolean>()(() => true);
+export const usePluginCatalogError = create<string | null>()(() => null);
 
 // Which plugin added each screen, remembered across launches so a screen
 // whose plugin is now off can say which plugin to turn back on.

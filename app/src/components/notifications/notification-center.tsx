@@ -1,3 +1,4 @@
+import { iconScale } from "@/components/ui/icon-tokens.stylex";
 import * as stylex from "@stylexjs/stylex";
 import { color } from "@/styles/tokens.stylex";
 import { AlarmClockIcon, BellIcon, BellOffIcon, CheckCheckIcon, CheckIcon, ChevronDownIcon, CircleCheckIcon, CloudOffIcon, EllipsisIcon, GitPullRequestArrowIcon, GlobeIcon, KeyRoundIcon, MailIcon, MailOpenIcon, MegaphoneIcon, MessageCircleQuestionIcon, PuzzleIcon, SendIcon, ServerCrashIcon, SettingsIcon, ShieldAlertIcon, SquareTerminalIcon, TrashIcon, WorkflowIcon, WrenchIcon, XIcon } from "lucide-react";
@@ -44,16 +45,16 @@ const paint = stylex.create({
     "height": "32px",
     "borderRadius": "var(--radius-lg)",
     ":not(#\\#) svg": {
-      "width": "16px",
-      "height": "16px",
+      "width": iconScale.action,
+      "height": iconScale.action,
     },
   },
   s3: {
     "width": "26px",
     "height": "26px",
     ":not(#\\#) svg": {
-      "width": "14px",
-      "height": "14px",
+      "width": iconScale.action,
+      "height": iconScale.action,
     },
   },
   s4: {
@@ -322,8 +323,8 @@ const paint = stylex.create({
     "flexShrink": 0,
     "alignItems": "center",
     ":not(#\\#) svg": {
-      "width": "16px",
-      "height": "16px",
+      "width": iconScale.action,
+      "height": iconScale.action,
     },
   },
   s44: {
@@ -441,8 +442,8 @@ const paint = stylex.create({
       "default": "light-dark(var(--warning-foreground), var(--warning))",
     },
     ":not(#\\#) svg": {
-      "width": "16px",
-      "height": "16px",
+      "width": iconScale.action,
+      "height": iconScale.action,
     },
   },
   s58: {

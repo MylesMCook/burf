@@ -292,6 +292,8 @@ export interface Stats {
   swap: Usage;
   disks: (Usage & { mount: string })[];
   agents: BoxAgent[];
+  /** False when process detection is unsupported; omitted by older daemons. */
+  agents_available?: boolean;
   hooks: boolean;
 }
 

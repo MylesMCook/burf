@@ -1,8 +1,8 @@
 {
   "id": "issues",
-  "name": "Issues",
+  "name": "GitHub Issues",
   "version": "0.1.0",
-  "description": "Open GitHub issues for your projects, and an agent on any of them in one step.",
+  "description": "Read and comment on GitHub issues, or start an agent. Requires a registered GitHub repository and gh signed in on its paired computer.",
   "main": "dist/index.js",
   "builtin": true,
   "defaultEnabled": true

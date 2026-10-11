@@ -10,7 +10,7 @@ import * as gh from "./gh";
 export type Load<T> =
   | { status: "loading"; prev?: T }
   | { status: "ok"; value: T; at: number }
-  | { status: "problem"; problem: gh.Problem; at: number };
+  | { status: "problem"; problem: gh.Problem; box?: string; at: number };
 
 const lists = new Map<string, Load<gh.IssueList>>();
 const details = new Map<string, Load<gh.IssueDetail>>();
@@ -68,11 +68,11 @@ export async function loadList(berth: BerthPluginContext, p: Project, force = fa
   try {
     const res = await berth.orchestrate.exec(run.box, run.location, gh.listCommand(p.slug), "90s");
     const parsed = gh.parse<gh.IssueList>(res.exit_code, res.output, p.slug);
-    if ("problem" in parsed) lists.set(p.id, { status: "problem", problem: parsed.problem, at: Date.now() });
-    else if (!parsed.ok.enabled) lists.set(p.id, { status: "problem", problem: { kind: "disabled", repo: parsed.ok.repo || p.slug }, at: Date.now() });
+    if ("problem" in parsed) lists.set(p.id, { status: "problem", problem: parsed.problem, box: run.box, at: Date.now() });
+    else if (!parsed.ok.enabled) lists.set(p.id, { status: "problem", problem: { kind: "disabled", repo: parsed.ok.repo || p.slug }, box: run.box, at: Date.now() });
     else lists.set(p.id, { status: "ok", value: parsed.ok, at: Date.now() });
   } catch (err) {
-    lists.set(p.id, { status: "problem", problem: { kind: "error", message: err instanceof Error ? err.message : String(err) }, at: Date.now() });
+    lists.set(p.id, { status: "problem", problem: { kind: "error", message: err instanceof Error ? err.message : String(err) }, box: run.box, at: Date.now() });
   }
   changed();
 }
@@ -93,9 +93,9 @@ export async function loadDetail(berth: BerthPluginContext, p: Project, n: numbe
   try {
     const res = await berth.orchestrate.exec(run.box, run.location, gh.detailCommand(p.slug!, n), "60s");
     const parsed = gh.parse<gh.IssueDetail>(res.exit_code, res.output, p.slug);
-    details.set(key, "problem" in parsed ? { status: "problem", problem: parsed.problem, at: Date.now() } : { status: "ok", value: parsed.ok, at: Date.now() });
+    details.set(key, "problem" in parsed ? { status: "problem", problem: parsed.problem, box: run.box, at: Date.now() } : { status: "ok", value: parsed.ok, at: Date.now() });
   } catch (err) {
-    details.set(key, { status: "problem", problem: { kind: "error", message: err instanceof Error ? err.message : String(err) }, at: Date.now() });
+    details.set(key, { status: "problem", problem: { kind: "error", message: err instanceof Error ? err.message : String(err) }, box: run.box, at: Date.now() });
   }
   changed();
   const done = details.get(key);
@@ -135,15 +135,15 @@ export async function postComment(berth: BerthPluginContext, p: Project, n: numb
 export function describeProblem(p: gh.Problem, box = "the box"): { title: string; body: string; icon: string } {
   switch (p.kind) {
     case "no-gh":
-      return { icon: "TerminalSquare", title: `gh isn't installed on ${box}`, body: "Issues come from GitHub's CLI on the box. Install gh there, then refresh." };
+      return { icon: "TerminalSquare", title: `gh isn't installed on ${box}`, body: "Open a terminal here to install GitHub CLI on this computer, then return and refresh." };
     case "no-auth":
-      return { icon: "KeyRound", title: `gh isn't logged in on ${box}`, body: "Run gh auth login on the box, then refresh." };
+      return { icon: "KeyRound", title: `gh isn't logged in on ${box}`, body: "Open a terminal here, run gh auth login yourself, then return and refresh. Sign-in applies to this computer's account." };
     case "not-github":
       return { icon: "GitBranch", title: "Not a GitHub repository", body: "This project's origin isn't on GitHub, so it has no issues to show here." };
     case "disabled":
       return { icon: "CircleSlash", title: `Issues are turned off for ${p.repo}`, body: "The repository doesn't use GitHub issues. Turn them on in its settings to see them here." };
     case "offline":
-      return { icon: "CloudOff", title: "No box with this project is online", body: "Issues are read with gh on a box that has the repository. Reconnect one to see them." };
+      return { icon: "CloudOff", title: "No computer with this project is online", body: "Reconnect a paired computer with this repository in Computer settings, then refresh." };
     default:
       return { icon: "TriangleAlert", title: "gh couldn't list the issues", body: p.message };
   }

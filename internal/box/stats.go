@@ -76,6 +76,13 @@ func collectStats(proc string) Stats {
 // cgroup the box runs in: inside a container, the host's totals are not the
 // box's to use.
 func collectStatsIn(proc, cgroup string) Stats {
+	// Only the real kernel path selects a native collector. Synthetic proc
+	// directories keep exercising Linux parsing, including on macOS.
+	if proc == "/proc" {
+		if s, ok := nativeStats(); ok {
+			return s
+		}
+	}
 	s := Stats{CPUs: runtime.NumCPU()}
 	s.Hostname, _ = os.Hostname()
 	if b, err := os.ReadFile(filepath.Join(proc, "uptime")); err == nil {

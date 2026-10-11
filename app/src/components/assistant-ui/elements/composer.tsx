@@ -651,6 +651,47 @@ const paint = stylex.create({
   q100: {
     "transform": "rotate(-90deg)",
   },
+  taskRoot: {
+    minWidth: 0,
+  },
+  taskBar: {
+    position: "relative",
+    display: "flex",
+    width: "100%",
+    minWidth: 0,
+    flexDirection: "column",
+    borderRadius: "var(--radius-md)",
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: { default: "var(--border)", ":has(textarea:focus-visible)": "var(--ring)" },
+    backgroundColor: "var(--card)",
+    color: "var(--card-foreground)",
+  },
+  taskDrag: {
+    outlineWidth: 2,
+    outlineStyle: "dashed",
+    outlineColor: "var(--ring)",
+    outlineOffset: 4,
+  },
+  multilineInput: {
+    fieldSizing: "content",
+    display: "block",
+    maxHeight: "200px",
+    minHeight: "84px",
+    width: "100%",
+    resize: "none",
+    borderRadius: "inherit",
+    backgroundColor: "transparent",
+    paddingLeft: "16px",
+    paddingRight: "16px",
+    paddingTop: "14px",
+    paddingBottom: "14px",
+    fontSize: "14px",
+    lineHeight: "22px",
+    outline: "none",
+    caretColor: "var(--ring)",
+    color: { default: "var(--foreground)", "::placeholder": "var(--muted-foreground)" },
+  },
 });
 function sx(...parts: readonly (false | null | undefined | object)[]): string {
   return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
@@ -735,26 +776,27 @@ export function applyMention(value: string, name: string): string {
   return value.replace(/@[\w]*$/, `@${name} `);
 }
 
-export function Composer({ className, ...props }: ComponentProps<"div">) {
+export function Composer({ appearance = "default", className, ...props }: ComponentProps<"div"> & { appearance?: "default" | "task" }) {
   return (
     <div
       data-slot="composer"
-      className={[[sx(paint.s0), sx(paint.q96)].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
+      className={[sx(paint.s0, appearance === "task" ? paint.taskRoot : paint.q96), className].filter(Boolean).join(" ")}
       {...props}
     />
   );
 }
 
 export function ComposerBar({
+  appearance = "default",
   dragActive = false,
   className,
   ...props
-}: ComponentProps<"div"> & { dragActive?: boolean }) {
+}: ComponentProps<"div"> & { dragActive?: boolean; appearance?: "default" | "task" }) {
   return (
     <div
       data-slot="composer-bar"
       data-drag-active={dragActive || undefined}
-      className={[paper, sx(paint.s1), dragActive && sx(paint.s2), className].filter(Boolean).join(" ")}
+      className={[appearance === "task" ? sx(paint.taskBar, dragActive && paint.taskDrag) : [paper, sx(paint.s1, dragActive && paint.s2)].filter(Boolean).join(" "), className].filter(Boolean).join(" ")}
       {...props}
     />
   );
@@ -905,12 +947,28 @@ export function ComposerAttachmentChip({
   );
 }
 
-export function ComposerInput({
-  onSubmit,
-  onKeyDown,
-  className,
-  ...props
-}: Omit<ComponentProps<"input">, "onSubmit"> & { onSubmit?: () => void }) {
+type ComposerInputProps =
+  | (Omit<ComponentProps<"input">, "onSubmit"> & { multiline?: false; onSubmit?: () => void })
+  | (Omit<ComponentProps<"textarea">, "onSubmit"> & { multiline: true; onSubmit?: () => void });
+
+export function ComposerInput(props: ComposerInputProps) {
+  if (props.multiline) {
+    const { multiline: _multiline, onSubmit, onKeyDown, className, ...textareaProps } = props;
+    return (
+      <textarea
+        data-slot="composer-input"
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          if (event.defaultPrevented || event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+          event.preventDefault();
+          onSubmit?.();
+        }}
+        className={[sx(paint.multilineInput), className].filter(Boolean).join(" ")}
+        {...textareaProps}
+      />
+    );
+  }
+  const { multiline: _multiline, onSubmit, onKeyDown, className, ...inputProps } = props;
   return (
     <input
       data-slot="composer-input"
@@ -921,7 +979,7 @@ export function ComposerInput({
         onSubmit?.();
       }}
       className={[sx(paint.s32), className].filter(Boolean).join(" ")}
-      {...props}
+      {...inputProps}
     />
   );
 }
@@ -1182,26 +1240,32 @@ export function ComposerVoiceButton({
 export function ComposerSend({
   streaming,
   idle,
+  appearance = "default",
+  children,
   className,
   ...props
-}: Omit<ComponentProps<"button">, "children"> & {
+}: ComponentProps<"button"> & {
   streaming: boolean;
   idle: boolean;
+  /** Task entry uses Burf's shared Button through its render prop. */
+  appearance?: "default" | "task";
 }) {
   return (
     <button
       type="button"
-      aria-label={streaming ? "Stop generating" : "Send message"}
+      aria-label={appearance === "default" ? (streaming ? "Stop generating" : "Send message") : undefined}
       data-slot="composer-send"
-      className={[sx(paint.n4, streaming || !idle ? inkButton : paint.n5), className].filter(Boolean).join(" ")}
+      className={[appearance === "default" && sx(paint.n4, streaming || !idle ? inkButton : paint.n5), className].filter(Boolean).join(" ")}
       {...props}
     >
-      <ArrowUpIcon
-        className={sx(iconSwap, paint.n6, streaming ? iconSwapOut : iconSwapIn)}
-      />
-      <SquareIcon
-        className={sx(iconSwap, paint.n7, streaming ? iconSwapIn : iconSwapOut)}
-      />
+      {children ?? <>
+        <ArrowUpIcon
+          className={sx(iconSwap, paint.n6, streaming ? iconSwapOut : iconSwapIn)}
+        />
+        <SquareIcon
+          className={sx(iconSwap, paint.n7, streaming ? iconSwapIn : iconSwapOut)}
+        />
+      </>}
     </button>
   );
 }

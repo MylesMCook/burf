@@ -70,7 +70,7 @@ export function TerminalSection() {
   return (
     <SettingsPage
       title="Terminal"
-      description="Applies to every terminal pane; open ones update as you change these."
+      description="Text and cursor settings apply to terminal panes. Remote shell terminals use the connection settings below; Windows terminals on this computer use xterm.js with up to 10,000 lines of scrollback."
       actions={
         <Button size="xs" variant="ghost"  onClick={() => setPrefs({ terminal: DEFAULT_TERMINAL_PREFS, terminalFont: null })} muted>
           Restore defaults
@@ -108,12 +108,12 @@ export function TerminalSection() {
       </SettingsGroup>
 
       <SettingsGroup title="Behaviour">
-        <SettingsRow label="Scrollback" description="Lines kept in the app. The box's tmux keeps 50,000 more, redrawn when you reattach.">
+        <SettingsRow label="Scrollback" description="Lines kept in a remote terminal pane. Windows terminals on this computer cap this at 10,000. Remote tmux sessions separately keep up to 50,000 lines of history for reattachment.">
           <Stepper value={t.scrollback} min={1000} max={100000} step={1000} onChange={(scrollback) => set({ scrollback })} />
         </SettingsRow>
         <SettingsRow
           label="Predict typing"
-          description="On a slow link, what you type shows before the box echoes it, underlined until the box agrees, as in Mosh. Adaptive does it only when the round trip is over about 60 ms."
+          description="For ordinary remote shells, shows typing before the computer echoes it, underlined until confirmed. Adaptive activates above about 60 ms round trip. Does not apply to agent terminals or Windows terminals on this computer."
         >
           <Segmented
             value={t.predict}
@@ -125,7 +125,7 @@ export function TerminalSection() {
             onChange={(predict) => set({ predict })}
           />
         </SettingsRow>
-        <SettingsRow label="Copy on select" description="Selecting text copies it, as in most Linux terminals.">
+        <SettingsRow label="Copy on select" description="Selecting text in a remote terminal copies it. Does not apply to Windows terminals on this computer.">
           <Switch checked={copyOnSelect} onCheckedChange={(copyOnSelect) => setPrefs({ copyOnSelect })} />
         </SettingsRow>
         <SettingsRow
@@ -139,7 +139,7 @@ export function TerminalSection() {
                 </button>
               </>
             ) : (
-              "Ghostty's terminal core, compiled to WebAssembly, or xterm.js. Switch if something draws wrong."
+              "Choose Ghostty or xterm.js for remote terminal panes. Switch if something draws wrong. Windows terminals on this computer always use xterm.js."
             )
           }
         >

@@ -17,6 +17,7 @@ export interface ChatTransport {
   recall?: { box: string; session: string };
   subscribeDraft?(fill: (value: { text: string; send?: boolean }) => void): () => void;
   sendDisabled?: boolean;
+  optionsReason?: string;
   onError?(error: unknown): void;
   commands?: readonly { name: string; description?: string }[];
   // Terminal-backed transports already own their queue and its idempotency keys.
