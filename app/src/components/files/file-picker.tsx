@@ -383,10 +383,10 @@ function Picker() {
 
   const choose = (e: Entry | undefined, how: How) => {
     if (!e) return;
+    // Capture the old pane before the store can render the new one.
+    if (how !== "external") focusNewPane();
     setPickerOpen(false);
     openFile(e.path, how);
-    // The file takes the keyboard, in its tab or beside (not in an editor app).
-    if (how !== "external") focusNewPane();
   };
   // ↵ before the box has answered what you typed opens its best match as
   // soon as it does.

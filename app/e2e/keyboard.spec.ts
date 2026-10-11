@@ -84,6 +84,38 @@ test("⌘P opens a file in the editor, which takes the keyboard, and ⌘S saves 
   await notLost(page);
 });
 
+for (const moveFocus of [false, true]) {
+  test(`a delayed file editor ${moveFocus ? "preserves deliberate toolbar focus" : "takes the keyboard when ready"}`, async ({ app }) => {
+    mockOnly("holds the synthetic editor module until its toolbar is ready");
+    const page = app.page;
+    let release!: () => void;
+    const ready = new Promise<void>((resolve) => { release = resolve; });
+    await page.route(/\/(?:assets\/code-editor-[^/]+\.js|src\/components\/files\/code-editor\.tsx)(?:\?.*)?$/, async (route) => {
+      await ready;
+      await route.continue();
+    });
+    try {
+      await app.open();
+      await app.openWorktree("devl/checkout-fix");
+      await page.keyboard.press("ControlOrMeta+p");
+      await expect(page.getByTestId("file-picker").getByRole("combobox")).toBeFocused();
+      await page.keyboard.type("webhook.ts");
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("file-picker")).toHaveCount(0);
+      const pane = page.getByTestId("file-pane");
+      await expect(pane.getByRole("button", { name: "Previous change", exact: true })).toBeFocused();
+      if (moveFocus) await page.keyboard.press("Tab");
+      release();
+      const editor = pane.locator(".cm-content");
+      await expect(editor).toBeVisible();
+      if (moveFocus) await expect(pane.getByRole("button", { name: "Next change", exact: true })).toBeFocused();
+      else await expect(editor).toBeFocused();
+    } finally {
+      release();
+    }
+  });
+}
+
 test("split, switch tabs and move between panes with the keyboard", async ({ app }) => {
   await app.open();
   await app.openWorktree(await agentWorktree(app, "devl/checkout-fix"));

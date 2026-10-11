@@ -198,7 +198,8 @@ export function useKeepFocusIn(ref: RefObject<HTMLElement | null>) {
 
 // focusNewPane gives the keyboard to the pane that just opened (a panel
 // from the New tab menu): once the menu is gone and the pane has something
-// to focus, its first field or control. Gives up after three seconds.
+// to focus, its first field or control. A control can hold the keyboard
+// while a lazy field loads, until the person uses it or leaves the pane.
 export function focusNewPane() {
   // A pane can take a while to draw its content (a file read from the box),
   // and the pane in front until then is the old one: wait for another.
@@ -207,20 +208,44 @@ export function focusNewPane() {
   // Its field (a file's editor, a reply box) once drawn, over a toolbar's
   // button; a pane with none gets its first control after a moment.
   const fieldsFirst = Date.now() + 1500;
+  const focus = (target: HTMLElement) => {
+    put(target);
+    // Writing carries on from the end, not above what is there.
+    if (target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement) {
+      try {
+        target.setSelectionRange(target.value.length, target.value.length);
+      } catch {
+        // Some inputs (number, email) have no selection.
+      }
+    }
+  };
   const tick = () => {
     const now = document.querySelector("main [data-pane-focused]");
     const pane = now !== before ? now : null;
     const keep = (el: HTMLElement) => !el.closest(".group\\/header") && (Date.now() > fieldsFirst || el.matches(`[data-autofocus], ${FIELD}`));
     const t = !document.querySelector(OVERLAYS) && pane ? firstFocusable(pane, keep) : undefined;
     if (t) {
-      put(t);
-      // Writing carries on from the end, not above what is there.
-      if (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement) {
-        try {
-          t.setSelectionRange(t.value.length, t.value.length);
-        } catch {
-          // Some inputs (number, email) have no selection.
-        }
+      focus(t);
+      if (!t.matches(`[data-autofocus], ${FIELD}`) && pane) {
+        // The header draws before a lazy editor. Keep its control as a
+        // temporary home, then give the field the keyboard when ready.
+        const stop = () => {
+          observer.disconnect();
+          document.removeEventListener("keydown", stop, true);
+          document.removeEventListener("pointerdown", stop, true);
+        };
+        const observer = new MutationObserver(() => {
+          if (document.querySelector("main [data-pane-focused]") !== pane || !pane.isConnected) return stop();
+          if (document.activeElement !== t && document.activeElement !== placed && !lost()) return stop();
+          if (document.querySelector(OVERLAYS)) return;
+          const field = firstFocusable(pane, (el) => !el.closest(".group\\/header") && el.matches(`[data-autofocus], ${FIELD}`));
+          if (!field) return;
+          focus(field);
+          stop();
+        });
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-pane-focused", "disabled", "inert"] });
+        document.addEventListener("keydown", stop, true);
+        document.addEventListener("pointerdown", stop, true);
       }
     } else if (Date.now() < until) requestAnimationFrame(tick);
   };

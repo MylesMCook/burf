@@ -134,8 +134,8 @@ export function NewTabMenu() {
           icon: item.icon ? <Icon name={item.icon} /> : <PuzzleIcon />,
           // The panel takes the keyboard, not the "+" that opened it.
           run: done(() => {
-            openPanel(plugin, item.id, item.title);
             focusNewPane();
+            openPanel(plugin, item.id, item.title);
           }),
         }))
       : [];
