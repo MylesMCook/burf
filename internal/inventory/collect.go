@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -17,6 +18,9 @@ import (
 
 const maxCollectorOutput = 4 << 20
 const collectorTimeout = 5 * time.Second
+
+// launchd does not include Homebrew or Docker Desktop's CLI links in PATH.
+var dockerSearchDirs = []string{"/opt/homebrew/bin", "/usr/local/bin"}
 
 // Runner executes a bounded read-only query. Errors must not be persisted verbatim.
 type Runner func(context.Context, string, ...string) ([]byte, error)
@@ -193,7 +197,18 @@ func (b *cappedOutput) Write(p []byte) (int, error) {
 	return b.Buffer.Write(p)
 }
 func runCollector(ctx context.Context, name string, args ...string) ([]byte, error) {
-	cmd := backgroundcmd.CommandContext(ctx, name, args...)
+	program := name
+	if name == "docker" && runtime.GOOS == "darwin" {
+		if _, err := exec.LookPath(name); errors.Is(err, exec.ErrNotFound) {
+			for _, dir := range dockerSearchDirs {
+				if found, err := exec.LookPath(filepath.Join(dir, name)); err == nil {
+					program = found
+					break
+				}
+			}
+		}
+	}
+	cmd := backgroundcmd.CommandContext(ctx, program, args...)
 	if name == "docker" && slices.Contains(args, "--host") {
 		// Explicit local socket selection must win over case-insensitive Windows
 		// environment keys, without a shell that could outlive cancellation.
