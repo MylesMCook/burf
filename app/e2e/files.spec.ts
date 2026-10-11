@@ -29,6 +29,7 @@ const picker = (app: { page: import("@playwright/test").Page }) => app.page.getB
 async function openPicker(app: { page: import("@playwright/test").Page }) {
   await app.page.keyboard.press("ControlOrMeta+p");
   await expect(picker(app)).toBeVisible();
+  await expect(picker(app).getByRole("combobox")).toBeFocused();
 }
 
 // Opens webhook.ts from ⌘P and waits for its editor.
