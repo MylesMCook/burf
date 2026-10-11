@@ -21,8 +21,11 @@
     "perf:guard": "node perf/guard.mjs",
     "perf:soak": "node perf/soak.mjs",
     "perf:terminals": "node perf/terminals.mjs",
-    "test": "node --experimental-strip-types --test \"src/lib/**/*.test.ts\" \"src/components/**/*.test.ts\" \"src/hooks/**/*.test.ts\" \"src/views/**/*.test.ts\" && node --test ../scripts/ui-manifest.test.mjs",
-    "dev:feedback": "node wails-feedback/run.mjs"
+    "test": "node --experimental-strip-types --test \"src/lib/**/*.test.ts\" \"src/components/**/*.test.ts\" \"src/hooks/**/*.test.ts\" \"src/views/**/*.test.ts\" && node --test ../scripts/ui-manifest.test.mjs && node --test wails-feedback/mcp.test.mjs",
+    "dev:feedback": "node wails-feedback/run.mjs",
+    "feedback:connect": "node wails-feedback/connect-codex.mjs",
+    "feedback:disconnect": "node wails-feedback/connect-codex.mjs --remove",
+    "test:feedback": "node --test wails-feedback/mcp.test.mjs"
   },
   "dependencies": {
     "@assistant-ui/react": "^0.15.25",
