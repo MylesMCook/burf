@@ -140,6 +140,12 @@ test("split, switch tabs and move between panes with the keyboard", async ({ app
   await tabs.first().focus();
   await page.keyboard.press("Shift+F10");
   await expect(page.getByRole("menuitem", { name: /Close tab/ })).toBeVisible();
+  // The popup is visible before Base UI finishes transferring keyboard focus.
+  // A keyboard-opened menu must own focus before testing its Escape behavior.
+  await expect.poll(() => page.getByRole("menu").evaluate((menu) => {
+    const active = document.activeElement;
+    return menu.contains(active) ? "menu" : `${active?.tagName}/${active?.getAttribute("role")}/${active?.getAttribute("data-slot")}`;
+  }), { timeout: 1000 }).toBe("menu");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
   await notLost(page);

@@ -38,6 +38,9 @@ export function somethingElseHasFocus(mine: HTMLElement | null): boolean {
   const a = document.activeElement;
   if (a?.closest(OVERLAYS)) return true;
   if (!a || a === document.body || (mine && mine.contains(a))) return false;
+  // Arrow-key tab navigation deliberately focuses an unselected tab. A
+  // terminal finishing its initialization must not activate the input over it.
+  if (a.closest("[role=tab][aria-selected=false]")) return true;
   // Another terminal is editable too, but the focused pane is this one.
   if (a.closest("[data-terminal]")) return false;
   return a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || a instanceof HTMLSelectElement || (a as HTMLElement).isContentEditable;

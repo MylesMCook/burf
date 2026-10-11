@@ -552,7 +552,10 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
       }
       frames?.kick();
     },
-    focus: () => t.focus(),
+    // Ghostty's focus() schedules a second focus after this call. That can
+    // steal the keyboard from a menu opened in between. Its public element
+    // is the input host; focus it once and let TerminalView own focus policy.
+    focus: () => host.focus({ preventScroll: true }),
     setTheme: (c) => {
       t.options.theme = theme(c);
       frames?.kick();
