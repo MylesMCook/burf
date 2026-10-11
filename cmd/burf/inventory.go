@@ -25,6 +25,9 @@ const inventoryUsage = `Machine inventory
 External services are inspected only. SSH uses existing authentication and verified host keys.
 `
 
+const machinesInventoryUsage = "usage: burf machines list|add|routes|refresh [--name NAME] [--ssh HOST] [--paired BOX] [--os linux|darwin|windows] [--json]"
+const servicesInventoryUsage = "usage: burf services list|history --machine ID [--after N] [--limit N] [--json]"
+
 type inventoryRequest struct {
 	method, path, output string
 	body                 any
@@ -38,16 +41,33 @@ func parseInventoryRequest(kind string, args []string) (inventoryRequest, error)
 		command = args[0]
 		args = args[1:]
 	}
-	fs := flag.NewFlagSet(kind+" "+command, flag.ContinueOnError)
+	var fs *flag.FlagSet
+	var name, ssh, paired, goos, machine string
+	var after int64
+	limit := 100
+	switch kind {
+	case "machines":
+		fs = flag.NewFlagSet("machines", flag.ContinueOnError)
+		fs.StringVar(&name, "name", "", "machine name")
+		fs.StringVar(&ssh, "ssh", "", "SSH target")
+		fs.StringVar(&paired, "paired", "", "paired box")
+		fs.StringVar(&goos, "os", "", "platform")
+		if command != "list" && command != "add" && command != "routes" && command != "refresh" {
+			return r, errors.New(machinesInventoryUsage)
+		}
+	case "services":
+		fs = flag.NewFlagSet("services", flag.ContinueOnError)
+		fs.StringVar(&machine, "machine", "", "machine ID")
+		fs.Int64Var(&after, "after", 0, "history cursor")
+		fs.IntVar(&limit, "limit", 100, "history limit")
+		if command != "list" && command != "history" {
+			return r, errors.New(servicesInventoryUsage)
+		}
+	default:
+		return r, errors.New(inventoryUsage)
+	}
 	fs.SetOutput(io.Discard)
 	jsonOut := fs.Bool("json", false, "JSON output")
-	name := fs.String("name", "", "machine name")
-	ssh := fs.String("ssh", "", "SSH target")
-	paired := fs.String("paired", "", "paired box")
-	goos := fs.String("os", "", "platform")
-	machine := fs.String("machine", "", "machine ID")
-	after := fs.Int64("after", 0, "history cursor")
-	limit := fs.Int("limit", 100, "history limit")
 	args, err := parseAnywhere(fs, args)
 	if err != nil {
 		return r, err
@@ -62,27 +82,27 @@ func parseInventoryRequest(kind string, args []string) (inventoryRequest, error)
 			r.path = "/v1/machines"
 			r.output = "machines"
 		case "add":
-			if len(args) != 0 || *name == "" || inventory.ValidateSSHTarget(*ssh) != nil || (*goos != "" && *goos != "linux" && *goos != "darwin" && *goos != "windows") {
+			if len(args) != 0 || name == "" || inventory.ValidateSSHTarget(ssh) != nil || (goos != "" && goos != "linux" && goos != "darwin" && goos != "windows") {
 				return r, errors.New(inventoryUsage)
 			}
 			r.method = "POST"
 			r.path = "/v1/machines"
 			r.output = "machine"
 			// Registration accepts only user-set fields, not stored identity/timestamps.
-			r.body = map[string]any{"name": *name, "os": *goos, "routes": []inventory.Route{{Kind: "ssh", Target: *ssh}}}
+			r.body = map[string]any{"name": name, "os": goos, "routes": []inventory.Route{{Kind: "ssh", Target: ssh}}}
 		case "routes":
-			if len(args) != 1 || (*ssh == "" && *paired == "") {
+			if len(args) != 1 || (ssh == "" && paired == "") {
 				return r, errors.New(inventoryUsage)
 			}
 			routes := []inventory.Route{}
-			if *ssh != "" {
-				if inventory.ValidateSSHTarget(*ssh) != nil {
+			if ssh != "" {
+				if inventory.ValidateSSHTarget(ssh) != nil {
 					return r, errors.New("invalid SSH target")
 				}
-				routes = append(routes, inventory.Route{Kind: "ssh", Target: *ssh})
+				routes = append(routes, inventory.Route{Kind: "ssh", Target: ssh})
 			}
-			if *paired != "" {
-				routes = append(routes, inventory.Route{Kind: "paired", Target: *paired})
+			if paired != "" {
+				routes = append(routes, inventory.Route{Kind: "paired", Target: paired})
 			}
 			r.method = "PUT"
 			r.path = "/v1/machines/" + url.PathEscape(args[0]) + "/routes"
@@ -100,10 +120,10 @@ func parseInventoryRequest(kind string, args []string) (inventoryRequest, error)
 			return r, errors.New(inventoryUsage)
 		}
 	} else {
-		if *machine == "" {
+		if machine == "" {
 			return r, errors.New("choose a machine with --machine ID; see burf machines list")
 		}
-		r.path = "/v1/machines/" + url.PathEscape(*machine)
+		r.path = "/v1/machines/" + url.PathEscape(machine)
 		switch command {
 		case "list":
 			if len(args) != 0 {
@@ -112,10 +132,10 @@ func parseInventoryRequest(kind string, args []string) (inventoryRequest, error)
 			r.path += "/inventory"
 			r.output = "snapshot"
 		case "history":
-			if len(args) != 1 || *after < 0 || *limit < 1 || *limit > 500 {
+			if len(args) != 1 || after < 0 || limit < 1 || limit > 500 {
 				return r, errors.New(inventoryUsage)
 			}
-			r.path += "/history?" + url.Values{"service": {args[0]}, "after": {fmt.Sprint(*after)}, "limit": {fmt.Sprint(*limit)}}.Encode()
+			r.path += "/history?" + url.Values{"service": {args[0]}, "after": {fmt.Sprint(after)}, "limit": {fmt.Sprint(limit)}}.Encode()
 			r.output = "history"
 		default:
 			return r, errors.New(inventoryUsage)

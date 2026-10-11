@@ -48,3 +48,17 @@ func TestInventoryCLIRejectsUnsafeTargetsAndCursors(t *testing.T) {
 		}
 	}
 }
+
+func TestInventoryCLIRejectsFlagsFromAnotherCommand(t *testing.T) {
+	for _, tc := range []struct {
+		kind string
+		args []string
+	}{
+		{"machines", []string{"list", "--machine", "m"}},
+		{"services", []string{"list", "--machine", "m", "--ssh", "host"}},
+	} {
+		if _, err := parseInventoryRequest(tc.kind, tc.args); err == nil {
+			t.Fatalf("accepted unrelated command flags: %s %v", tc.kind, tc.args)
+		}
+	}
+}
