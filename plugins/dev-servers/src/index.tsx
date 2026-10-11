@@ -21,6 +21,7 @@ import {
   Skeleton,
   Menu,
   MenuItem,
+  MenuGroup,
   MenuPopup,
   MenuSeparator,
   MenuTrigger,
@@ -429,11 +430,11 @@ function WorktreeGroup({ group: g, berth, here, onChanged }: { group: Group; ber
 function ServerRow({ item: l, berth, service, onChanged }: { item: Listening; berth: BerthPluginContext; service?: Configured; onChanged(): void }) {
   const [copied, setCopied] = useState(false);
   const worktree = { box: l.box, location: l.location, worktree: l.worktree, path: l.path, main: l.main };
-  // A database, a cache or a helper has an address and no page, so it gets
-  // its address to copy and nothing to open. Only its command says so: a
-  // listener it doesn't name stays openable, whatever port it is on.
+  // Recognized data stores get an address rather than a web promise. Other
+  // process roles do not identify every socket: a debug-enabled Node process
+  // can also serve HTTP, so those listeners remain manually openable.
   const known = knownServiceProcess(l.process);
-  const page = !known || known.kind === "dev" || known.kind === "web";
+  const page = known?.kind !== "data";
   const address = `localhost:${l.port}`;
   const openInTab = (split?: "row") => {
     berth.openWorktree(worktree);
@@ -476,6 +477,7 @@ function ServerRow({ item: l, berth, service, onChanged }: { item: Listening; be
             <Icon name="Ellipsis" className={sx(paint.s21)} />
           </MenuTrigger>
           <MenuPopup align="end" className={sx(paint.s22)}>
+            <MenuGroup>
             {page && (
               <>
                 <MenuItem onClick={() => openInTab("row")}>
@@ -497,6 +499,7 @@ function ServerRow({ item: l, berth, service, onChanged }: { item: Listening; be
                 </MenuItem>
               </>
             )}
+            </MenuGroup>
           </MenuPopup>
         </Menu>
       )}

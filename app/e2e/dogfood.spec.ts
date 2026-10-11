@@ -157,6 +157,8 @@ scenario("Known database listeners do not promise a web page", async ({ app }) =
   const agent = await fakeAgent();
   await app.context.route(`${agent.url}/v1/boxes/devl/api/services`, (route) => route.fulfill({ json: [
     { port: 5432, process: "custom-web-server", path: "/w/shop" },
+    { port: 3000, process: "node --inspect=9229 server.js", path: "/w/shop" },
+    { port: 9229, process: "node --inspect=9229 server.js", path: "/w/shop" },
   ] }));
   try {
     await app.open({ agent });
@@ -164,6 +166,10 @@ scenario("Known database listeners do not promise a web page", async ({ app }) =
     await app.page.getByRole("menuitem", { name: "Dev servers", exact: true }).click();
     const unknown = app.page.locator("li").filter({ hasText: "custom-web-server" }).first();
     await expect(unknown.getByRole("button", { name: "Open in tab", exact: true })).toBeVisible();
+    for (const port of [3000, 9229]) {
+      const debug = app.page.locator("li").filter({ has: app.page.getByText(String(port), { exact: true }) });
+      await expect(debug.getByRole("button", { name: "Open in tab", exact: true })).toBeVisible({ timeout: 1000 });
+    }
   } finally { await agent.close(); }
 });
 
