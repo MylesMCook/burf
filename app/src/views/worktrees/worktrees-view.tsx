@@ -33,6 +33,7 @@ const paint = stylex.create({
   s1: {
     "display": "flex",
     "flexShrink": 0,
+    "flexWrap": "wrap",
     "alignItems": "center",
     "gap": "8px",
     "borderBottomWidth": 1,
@@ -43,11 +44,14 @@ const paint = stylex.create({
     "paddingTop": "8px",
     "paddingBottom": "8px",
   },
+  // The fields start at their narrowest and grow to their full width, so the
+  // row wraps only once they cannot get any narrower.
   s2: {
     "position": "relative",
-    "width": "224px",
-    "minWidth": "144px",
-    "flexShrink": 1,
+    "flexGrow": 1,
+    "flexShrink": 0,
+    "flexBasis": "144px",
+    "maxWidth": "224px",
   },
   s3: {
     "pointerEvents": "none",
@@ -59,9 +63,10 @@ const paint = stylex.create({
     "color": "var(--muted-foreground)",
   },
   s4: {
-    "width": "160px",
-    "minWidth": "112px",
-    "flexShrink": 1,
+    "flexGrow": 1,
+    "flexShrink": 0,
+    "flexBasis": "112px",
+    "maxWidth": "160px",
   },
   s5: {
     "display": "flex",
@@ -74,9 +79,10 @@ const paint = stylex.create({
   },
   s7: {
     "marginLeft": "auto",
-    "width": "176px",
-    "minWidth": "128px",
-    "flexShrink": 1,
+    "flexGrow": 1,
+    "flexShrink": 0,
+    "flexBasis": "128px",
+    "maxWidth": "176px",
   },
   s8: {
     "minHeight": "0px",
@@ -325,7 +331,9 @@ export function WorktreesView({ box }: { box?: string } = {}) {
         </div>
       )}
 
-      {/* One row of filters, search first; it stays one row down to 1100px. */}
+      {/* One row of filters, search first; it stays one row down to 1100px,
+          then wraps, so sorting is never pushed off the window. The table
+          below scrolls sideways by itself. */}
       <div className={[sx(paint.s1), sx(paint.s12)].filter(Boolean).join(" ")}>
         <div className={sx(paint.s2)}>
           <SearchIcon className={[sx(paint.s3), sx(paint.s13)].filter(Boolean).join(" ")} />
@@ -357,6 +365,7 @@ export function WorktreesView({ box }: { box?: string } = {}) {
         )}
         <div className={sx(paint.s7)}>
           <SimpleSelect
+            aria-label="Sort worktrees"
             size="sm"
             measure="grow"
             value={sort}
@@ -378,7 +387,7 @@ export function WorktreesView({ box }: { box?: string } = {}) {
         {!loaded ? (
           <div className={sx(paint.s10)}>
             {[0, 1, 2, 3, 4, 5].map((i) => (
-              <div className={sx(paint.s11)}><Skeleton key={i}  /></div>
+              <div key={i} className={sx(paint.s11)}><Skeleton /></div>
             ))}
           </div>
         ) : flat.length === 0 ? (

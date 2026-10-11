@@ -81,13 +81,20 @@ export function middle(s: string, max = 40): string {
   return `${s.slice(0, half)}…${s.slice(s.length - (max - 1 - half))}`;
 }
 
+// knownServiceProcess is what a command line says a listener is; undefined
+// when it doesn't say. The port is never asked: a page can be served from a
+// database's usual port. Plugins ask the same through @berth/plugin.
+export function knownServiceProcess(process?: string): { name: string; kind: Kind } | undefined {
+  const byCmd = BY_COMMAND.find(([re]) => re.test(process ?? ""));
+  return byCmd && { name: byCmd[1], kind: byCmd[2] };
+}
+
 function identify(s: Service): { name: string; kind: Kind } {
-  const cmd = s.process ?? "";
-  const byCmd = BY_COMMAND.find(([re]) => re.test(cmd));
-  if (byCmd) return { name: byCmd[1], kind: byCmd[2] };
+  const byCmd = knownServiceProcess(s.process);
+  if (byCmd) return byCmd;
   const byPort = BY_PORT[s.port];
   if (byPort) return { name: byPort[0], kind: byPort[1] };
-  const exe = executable(cmd);
+  const exe = executable(s.process);
   if (!exe) return { name: `Port ${s.port}`, kind: "other" };
   return { name: middle(exe, 24), kind: RUNTIMES.test(exe) ? "web" : "other" };
 }

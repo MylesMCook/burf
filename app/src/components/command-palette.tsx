@@ -328,8 +328,9 @@ export function CommandPalette() {
       return {
         value: `session:${box}/${session.name}`,
         label: sessionName(session, { sessions: boxes[box]?.sessions, locations: boxes[box]?.locations, place: true }),
-        // Its state in the same words as everywhere else, then where.
-        detail: [sessionAgent(session), state !== "idle" && sessionWord(state), where?.worktree.branch, box].filter(Boolean).join(" · "),
+        // Its computer first, so a row cut short still says where it runs;
+        // then its state in the same words as everywhere else, and its branch.
+        detail: [box, sessionAgent(session), state !== "idle" && sessionWord(state), where?.worktree.branch].filter(Boolean).join(" · "),
         search: [session.name, where?.worktree.title ? where.worktree.name : undefined].filter(Boolean).join(" "),
         icon: (
           <span className={sx(paint.s1)}>
@@ -348,7 +349,7 @@ export function CommandPalette() {
           value: `wt:${box}:${wt.path}`,
           label: wt.main ? loc.name : `${loc.name} / ${worktreeLabel(wt)}`,
           // A renamed worktree still answers to its own name and branch.
-          detail: [wt.title ? wt.name : undefined, wt.branch !== wt.name || !wt.title ? wt.branch : undefined, box].filter(Boolean).join(" · "),
+          detail: [box, wt.title ? wt.name : undefined, wt.branch !== wt.name || !wt.title ? wt.branch : undefined].filter(Boolean).join(" · "),
           search: [wt.name, wt.title, wt.branch].filter(Boolean).join(" "),
           icon: slot(<GitBranchIcon />),
           run: go(() => selectWorktree(refOf(box, loc, wt))),
@@ -459,7 +460,8 @@ export function CommandPalette() {
           <CommandInput aria-label="Search sessions, worktrees and commands" placeholder="Jump to a session, worktree, or command…" />
           <CommandPanel>
             <CommandEmpty>Nothing matches.</CommandEmpty>
-            <CommandList>
+            {/* Rows keep to the palette's width: a long one truncates in place. */}
+            <CommandList contentSize="container">
               {(group: Group) => (
                 <CommandGroup key={group.value} items={group.items}>
                   <CommandGroupLabel>{group.value}</CommandGroupLabel>

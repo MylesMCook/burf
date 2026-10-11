@@ -37,7 +37,7 @@ test("headings, Pixel and Paper Mono use their bundled local assets", async ({ a
   await app.open();
   await app.openSettings("boxes");
   await app.page.getByRole("button", { name: "Add computer", exact: true }).first().click();
-  await expect(app.page.getByRole("dialog", { name: "Add a box", exact: true }).getByRole("heading", { name: "Add a box", exact: true })).toHaveCSS("font-family", /Geist/);
+  await expect(app.page.getByRole("dialog", { name: "Add computer", exact: true }).getByRole("heading", { name: "Add computer", exact: true })).toHaveCSS("font-family", /Geist/);
   await app.page.evaluate(async () => {
     await document.fonts.load('400 13px "Geist Pixel Square"');
     await document.fonts.load('400 13px "Paper Mono"');

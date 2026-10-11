@@ -1,9 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
 import { ChevronRightIcon, XIcon } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import { StepHeader } from "@/components/step-header";
 import { Tip } from "@/components/tip";
+import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DialogPanel } from "@/components/ui/dialog";
 import { offerLocalBox, useLocalBox } from "@/lib/local-box";
@@ -147,6 +148,21 @@ const paint = stylex.create({
       textOverflow: "clip",
     },
   },
+  inspect: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  inspectNote: {
+    minWidth: 0,
+    flexGrow: 1,
+    color: "var(--muted-foreground)",
+    fontSize: "12px",
+    lineHeight: "1.625",
+  },
+  inspectAction: {
+    flexShrink: 0,
+  },
 });
 function sx(...parts: readonly (false | null | undefined | object)[]): string {
   return (stylex.props as (...args: readonly (false | null | undefined | object)[]) => { className?: string })(...parts).className ?? "";
@@ -167,22 +183,30 @@ type From = "link" | "ssh" | "tailnet";
 // sits below the command as "Or use Tailscale". Use this Mac (local-box.tsx),
 // when this computer can be a box and isn't one yet, comes first without a
 // tailnet and right below its machines with one. The screen is laid out once,
-// when it knows which, and keeps that layout. Onboarding and the Add a box
+// when it knows which, and keeps that layout. Onboarding and the Add computer
 // dialog both show it under one StepHeader; onExit, when given, is where the
 // back arrow leads from the first screen.
+//
+// inspect, when given, offers the other thing a machine can be added for:
+// reading what runs on it over SSH, with no daemon there. It is not a way to
+// add a box, so it sits after them and its caller opens it as its own step;
+// reason says why it cannot open.
 export function AddBoxFlow({
   intro,
   variant,
+  inspect,
   onDone,
   onExit,
   onStage,
 }: {
   intro: { title: ReactNode; description: ReactNode };
   variant: "dialog" | "page";
+  inspect?: { onOpen(): void; disabled?: boolean; reason?: string };
   onDone(box: string): void;
   onExit?(): void;
   onStage?(stage: AddBoxStage): void;
 }) {
+  const inspectNote = useId();
   const [signingIn, setSigningIn] = useState<From>();
   const [network, setNetwork] = useState<string>();
   const [sshOpen, setSshOpen] = useState(false);
@@ -326,6 +350,18 @@ export function AddBoxFlow({
                 </div>
               </CollapsiblePanel>
             </Collapsible>}
+            {inspect && (
+              <div className={sx(paint.inspect)}>
+                <p id={inspectNote} className={sx(paint.inspectNote)}>
+                  To only see what runs on a machine, inspect it over SSH. Nothing is installed there, so it cannot run chats or tasks.
+                  {inspect.reason && ` ${inspect.reason}`}
+                </p>
+                {/* Off while a box is being set up: its pairing closes this screen. */}
+                <span className={sx(paint.inspectAction)}><Button size="sm" variant="outline" aria-describedby={inspectNote} disabled={inspect.disabled || busy || !!paired} onClick={inspect.onOpen}>
+                  Inspect over SSH
+                </Button></span>
+              </div>
+            )}
           </div>
         </div>
       )}

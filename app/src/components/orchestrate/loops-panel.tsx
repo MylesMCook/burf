@@ -204,6 +204,8 @@ function detail(l: Loop): string {
   if (l.outcome === "passed") return `Passed after ${rounds(l.round)}.`;
   if (l.outcome === "failed") return `The check still fails after ${rounds(l.max)}.`;
   if (l.outcome === "cancelled") return `Stopped in round ${l.round}.`;
+  // A run with nothing else to report names its round, which the heading shows.
+  if (l.message === `Round ${l.round}`) return "";
   return l.message.replace(/ round\(s\)/, l.round === 1 ? " round" : " rounds");
 }
 
@@ -228,7 +230,9 @@ export function LoopsPanel() {
     .filter((r) => !r.finished || Date.now() - new Date(r.finished).getTime() < 30 * 60_000)
     .map(loopOfRun);
   const loops = [...local, ...fromRuns];
-  const [folded, setFoldedState] = useState(() => load("berth.loops.folded", false));
+  // Folded until someone opens it: a loop found running on a box must not
+  // open over the page in front. What was last chosen is kept.
+  const [folded, setFoldedState] = useState(() => load("berth.loops.folded", true));
   const setFolded = (f: boolean) => {
     setFoldedState(f);
     save("berth.loops.folded", f);
@@ -369,7 +373,7 @@ function LoopCard({ loop: l }: { loop: Loop }) {
           {name} · <span className={sx(paint.s15)}>{l.check}</span>
         </p>
       </Tip>
-      <p className={sx(paint.s16)}>{said}</p>
+      {said && <p className={sx(paint.s16)}>{said}</p>}
       {l.output !== undefined && (
         <>
           <button type="button" className={sx(paint.s17)} aria-expanded={open} onClick={() => setOpen(!open)}>

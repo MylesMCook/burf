@@ -430,3 +430,10 @@ export declare function worktreeLocation(w: { location: string; worktree: string
 // Code"); with place, where it runs too ("shop / checkout-fix · Codex").
 // Pass the box's sessions for the number and its locations for the place.
 export declare function sessionName(session: Session, opts?: { sessions?: Session[]; locations?: Location[]; place?: boolean; agent?: boolean }): string;
+// What the app takes a listening service for by its command line
+// (Service.process), so a plugin treats it the same way: "dev" and "web"
+// serve a page to open; "data" (a database, a cache) and "other" (a debugger,
+// a language server) have an address and no page. undefined when the command
+// doesn't say: it may serve a page, so leave it openable. The port is not
+// evidence: a page can be served from a database's usual port.
+export declare function knownServiceProcess(process?: string): { name: string; kind: "dev" | "web" | "data" | "other" } | undefined;
