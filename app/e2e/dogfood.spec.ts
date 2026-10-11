@@ -76,16 +76,34 @@ scenario("An automation opens with the keyboard without toggling it", async ({ a
 
 scenario("Computer setup explains its scope", async ({ app }) => {
   mockOnly();
+  await app.page.setViewportSize({ width: 900, height: 560 });
   await app.open();
   await app.openSettings("boxes");
   await app.page.getByRole("button", { name: "Add computer", exact: true }).click();
   const dialog = app.page.getByRole("dialog", { name: "Add computer", exact: true });
   await expect(dialog).toBeVisible({ timeout: 1000 });
   await expect(dialog.getByText(/only watches/)).toHaveCount(0);
+  await expect(dialog).toContainText("Chats on this computer need no pairing");
+  await expect(dialog).toContainText("A machine inspected only over SSH cannot run chats or tasks in Burf");
   await expect(dialog.getByRole("button", { name: "Inspect over SSH", exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "Inspect over SSH", exact: true }).click();
-  await expect(app.page.getByRole("dialog", { name: "Inspect over SSH", exact: true })).toBeVisible();
-  await expect(app.page.getByRole("textbox", { name: "SSH target", exact: true })).toBeVisible();
+  const inspect = app.page.getByRole("dialog", { name: "Inspect over SSH", exact: true });
+  await expect(inspect).toBeVisible();
+  const target = inspect.getByRole("textbox", { name: "SSH target", exact: true });
+  await inspect.getByRole("textbox", { name: "Name", exact: true }).fill("qa-machine");
+  await app.page.keyboard.press("Tab");
+  await app.page.keyboard.press("Tab");
+  await expect(target).toBeFocused();
+  await expect.poll(() => inspect.evaluate((el) => {
+    const viewport = el.querySelector('[data-slot="scroll-area-viewport"]')!.getBoundingClientRect();
+    const footer = el.querySelector('[data-slot="dialog-footer"]')!.getBoundingClientRect();
+    const field = el.querySelector('[aria-label="SSH target"]')!.getBoundingClientRect();
+    const popup = el.getBoundingClientRect();
+    return viewport.bottom <= footer.top + 1 && field.top >= viewport.top && field.bottom <= viewport.bottom && footer.bottom <= popup.bottom;
+  }), { timeout: 1000 }).toBe(true);
+  await inspect.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Inspect over SSH", exact: true })).toBeFocused();
 });
 
 scenario("Wide service records keep inventory controls inside their sheet", async ({ app }) => {

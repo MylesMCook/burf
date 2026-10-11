@@ -23,6 +23,8 @@ Feature: Everyday Burf workflows remain usable
     Given I can already start chats on this computer
     When I add a computer
     Then setup explains hosting agents and inspecting services as distinct choices
+    And inspection fields stay above the actions in a small window
+    And cancelling inspection returns me to computer setup
 
   Scenario: Wide service records keep inventory controls inside their sheet
     Given a machine reports services with many ports
