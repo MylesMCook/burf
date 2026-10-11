@@ -159,6 +159,8 @@ scenario("Known database listeners do not promise a web page", async ({ app }) =
     { port: 5432, process: "custom-web-server", path: "/w/shop" },
     { port: 3000, process: "node --inspect=9229 server.js", path: "/w/shop" },
     { port: 9229, process: "node --inspect=9229 server.js", path: "/w/shop" },
+    { port: 3001, process: "node /work/redis-ui/server.js", path: "/w/shop" },
+    { port: 3002, process: "node server.js --redis redis://localhost:6379", path: "/w/shop" },
   ] }));
   try {
     await app.open({ agent });
@@ -166,7 +168,7 @@ scenario("Known database listeners do not promise a web page", async ({ app }) =
     await app.page.getByRole("menuitem", { name: "Dev servers", exact: true }).click();
     const unknown = app.page.locator("li").filter({ hasText: "custom-web-server" }).first();
     await expect(unknown.getByRole("button", { name: "Open in tab", exact: true })).toBeVisible();
-    for (const port of [3000, 9229]) {
+    for (const port of [3000, 9229, 3001, 3002]) {
       const debug = app.page.locator("li").filter({ has: app.page.getByText(String(port), { exact: true }) });
       await expect(debug.getByRole("button", { name: "Open in tab", exact: true })).toBeVisible({ timeout: 1000 });
     }

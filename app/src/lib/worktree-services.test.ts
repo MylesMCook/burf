@@ -10,6 +10,11 @@ test("a listener is known by what its command says, never by its port", () => {
   // Nothing says what these are: whoever asks leaves them openable.
   assert.equal(knownServiceProcess("custom-web-server --port 5432"), undefined);
   assert.equal(knownServiceProcess("node server.js"), undefined);
+  assert.equal(knownServiceProcess("node /work/redis-ui/server.js"), undefined);
+  assert.equal(knownServiceProcess("node server.js --redis redis://localhost:6379"), undefined);
+  assert.equal(knownServiceProcess('"C:\\work\\redis-ui\\node.exe" server.js'), undefined);
+  assert.equal(knownServiceProcess("redis-cli --listen 3000"), undefined);
+  assert.deepEqual(knownServiceProcess('"C:\\Redis\\redis-server.exe" --port 6379'), { name: "Redis", kind: "data" });
   assert.equal(knownServiceProcess(undefined), undefined);
 });
 
